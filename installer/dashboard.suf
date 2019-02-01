@@ -134838,7 +134838,7 @@ end
 <IDS_CTRL_EDIT_MASK_PLACE_HOLDER_01> </IDS_CTRL_EDIT_MASK_PLACE_HOLDER_01>
 <IDS_CTRL_STATICTEXT_LABEL_01>mSupply API port number:</IDS_CTRL_STATICTEXT_LABEL_01>
 <IDS_CTRL_STATICTEXT_LABEL_02>Domain name:</IDS_CTRL_STATICTEXT_LABEL_02>
-<IDS_CTRL_EDIT_02>https://something.msupply.org</IDS_CTRL_EDIT_02>
+<IDS_CTRL_EDIT_02>something.msupply.org</IDS_CTRL_EDIT_02>
 <IDS_CTRL_EDIT_MASK_02/>
 <IDS_CTRL_EDIT_MASK_PLACE_HOLDER_02> </IDS_CTRL_EDIT_MASK_PLACE_HOLDER_02>
 </Messages>
@@ -137420,7 +137420,7 @@ Please click Finish to exit.
 <Event>
 <Name>On Pre Uninstall</Name>
 <Args/>
-<Script>Service.Delete("mSupply Dashboard", "grafana");
+<Script>result = Shell.Execute(SessionVar.Expand("%AppFolder%\\bin\\nssm.exe"), "open", SessionVar.Expand("remove \"mSupply Dashboard\" confirm"), "", SW_SHOWNORMAL, true);
 </Script>
 <BookMarks count="0">
 </BookMarks>
@@ -137630,12 +137630,16 @@ g_HandleSystemReboot();
 <Event>
 <Name>On Post Install</Name>
 <Args/>
-<Script>datasources = TextFile.ReadToString(SessionVar.Expand("%AppFolder%\\conf\\provisioning\\datasources\\datasources.yaml"));
+<Script>datasources = TextFile.ReadToString(SessionVar.Expand("%AppFolder%\\conf\\provisioning\\datasources\\datasource.yaml"));
 datasources = String.Replace(datasources, "[[database_server]]", SessionVar.Expand("localhost:%db_port%"), true);
 datasources = String.Replace(datasources, "[[database_name]]", SessionVar.Expand("%db_name%"), true);
 datasources = String.Replace(datasources, "[[database_user]]", SessionVar.Expand("%db_user%"), true);
 datasources = String.Replace(datasources, "[[database_password]]", SessionVar.Expand("%db_pass%"), true);
 TextFile.WriteFromString(SessionVar.Expand("%AppFolder%\\conf\\provisioning\\datasources\\datasource.yaml"), datasources, false);
+
+dashboards = TextFile.ReadToString(SessionVar.Expand("%AppFolder%\\conf\\provisioning\\dashboards\\dashboards.yaml"));
+dashboards = String.Replace(datasources, "[[app_folder]]", SessionVar.Expand("%AppFolder%"), true);
+TextFile.WriteFromString(SessionVar.Expand("%AppFolder%\\conf\\provisioning\\dashboards\\dashboards.yaml"), dashboards, false);
 
 INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "server", "root_url", SessionVar.Expand("https://%domain_name%:3000"));
 INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "server", "domain", SessionVar.Expand("%domain_name%"));
@@ -137644,7 +137648,10 @@ INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "auth.gener
 INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "auth.generic_oauth", "token_url", SessionVar.Expand("https://%domain_name%:%msupply_port%/api/v4/oauth/access_token/"));
 INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "auth.generic_oauth", "api_url", SessionVar.Expand("https://%domain_name%:%msupply_port%/api/v4/oauth/userinfo/"));
 
-Service.Create(SessionVar.Expand("%AppFolder%\\bin\\grafana-server.exe"), "mSupply Dashboard", "grafana", SERVICE_WIN32_OWN_PROCESS, false, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL, "", nil, nil, "", "");
+result = Shell.Execute(SessionVar.Expand("%AppFolder%\\bin\\nssm.exe"), "open", SessionVar.Expand("install \"mSupply Dashboard\" \"%AppFolder%\\bin\\grafana-server.exe\""), "", SW_SHOWNORMAL, true);
+result = Shell.Execute(SessionVar.Expand("%AppFolder%\\bin\\nssm.exe"), "open", SessionVar.Expand("set \"mSupply Dashboard\" Description \"Server which provides the mSupply Dashboard.\""));
+result = Shell.Execute(SessionVar.Expand("%AppFolder%\\bin\\nssm.exe"), "open", SessionVar.Expand("set \"mSupply Dashboard\" start SERVICE_DELAYED_START "));
+
 Service.Start("mSupply Dashboard", "grafana", nil);
 </Script>
 <BookMarks count="0">
