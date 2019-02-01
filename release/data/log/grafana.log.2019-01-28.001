@@ -1,0 +1,482 @@
+t=2019-01-24T00:13:46+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=30 size=189 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:13:55+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=32 size=189 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:14:03+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=20 size=189 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:14:15+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=15 size=189 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:14:17+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=33 size=189 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:14:42+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=31 size=189 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:14:59+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=16 size=189 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:15:23+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=38 size=189 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:15:23+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=23 size=189 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:16:41+0100 lvl=info msg="Database table locked, sleeping then retrying" logger=sqlstore retry=0
+t=2019-01-24T00:17:45+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=24 size=184 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:18:39+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=23 size=184 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:18:45+0100 lvl=info msg="Shutdown started" logger=server reason="System signal: interrupt"
+t=2019-01-24T00:18:45+0100 lvl=info msg="Stopped InternalMetricsService" logger=server reason="context canceled"
+t=2019-01-24T00:18:45+0100 lvl=info msg="Stopped PluginManager" logger=server reason="context canceled"
+t=2019-01-24T00:18:45+0100 lvl=info msg="Stopped CleanUpService" logger=server reason="context canceled"
+t=2019-01-24T00:18:45+0100 lvl=info msg="Stopped Stream Manager"
+t=2019-01-24T00:18:45+0100 lvl=info msg="Stopped ProvisioningService" logger=server reason="context canceled"
+t=2019-01-24T00:18:45+0100 lvl=info msg="Stopped NotificationService" logger=server reason="context canceled"
+t=2019-01-24T00:18:45+0100 lvl=info msg="Stopped RenderingService" logger=server reason=nil
+t=2019-01-24T00:18:45+0100 lvl=info msg="Stopped TracingService" logger=server reason=nil
+t=2019-01-24T00:18:45+0100 lvl=info msg="Stopped AlertingService" logger=server reason="context canceled"
+t=2019-01-24T00:18:45+0100 lvl=info msg="Stopped HTTPServer" logger=server reason=nil
+t=2019-01-24T00:18:45+0100 lvl=eror msg="Server shutdown" logger=server reason="System signal: interrupt"
+t=2019-01-24T00:21:36+0100 lvl=info msg="Starting Grafana" logger=server version=5.4.2 commit=d812109 branch=HEAD compiled=2018-12-13T13:49:23+0100
+t=2019-01-24T00:21:36+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana/conf/defaults.ini"
+t=2019-01-24T00:21:36+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana\\conf\\custom.ini"
+t=2019-01-24T00:21:36+0100 lvl=info msg="Path Home" logger=settings path="C:\\Program Files\\grafana"
+t=2019-01-24T00:21:36+0100 lvl=info msg="Path Data" logger=settings path="C:\\Program Files\\grafana\\data"
+t=2019-01-24T00:21:36+0100 lvl=info msg="Path Logs" logger=settings path="C:\\Program Files\\grafana\\data\\log"
+t=2019-01-24T00:21:36+0100 lvl=info msg="Path Plugins" logger=settings path="C:\\Program Files\\grafana\\data\\plugins"
+t=2019-01-24T00:21:36+0100 lvl=info msg="Path Provisioning" logger=settings path="C:\\Program Files\\grafana\\conf\\provisioning"
+t=2019-01-24T00:21:36+0100 lvl=info msg="App mode production" logger=settings
+t=2019-01-24T00:21:36+0100 lvl=info msg="Initializing HTTPServer" logger=server
+t=2019-01-24T00:21:36+0100 lvl=info msg="Initializing SqlStore" logger=server
+t=2019-01-24T00:21:36+0100 lvl=info msg="Connecting to DB" logger=sqlstore dbtype=sqlite3
+t=2019-01-24T00:21:36+0100 lvl=info msg="Starting DB migration" logger=migrator
+t=2019-01-24T00:21:36+0100 lvl=info msg="Initializing SearchService" logger=server
+t=2019-01-24T00:21:36+0100 lvl=info msg="Initializing RenderingService" logger=server
+t=2019-01-24T00:21:36+0100 lvl=info msg="Initializing AlertingService" logger=server
+t=2019-01-24T00:21:36+0100 lvl=info msg="Initializing DatasourceCacheService" logger=server
+t=2019-01-24T00:21:36+0100 lvl=info msg="Initializing HooksService" logger=server
+t=2019-01-24T00:21:36+0100 lvl=info msg="Initializing InternalMetricsService" logger=server
+t=2019-01-24T00:21:36+0100 lvl=info msg="Initializing CleanUpService" logger=server
+t=2019-01-24T00:21:36+0100 lvl=info msg="Initializing NotificationService" logger=server
+t=2019-01-24T00:21:36+0100 lvl=info msg="Initializing ProvisioningService" logger=server
+t=2019-01-24T00:21:36+0100 lvl=info msg="Initializing PluginManager" logger=server
+t=2019-01-24T00:21:36+0100 lvl=info msg="Starting plugin search" logger=plugins
+t=2019-01-24T00:21:36+0100 lvl=info msg="Registering plugin" logger=plugins name="Pie Chart"
+t=2019-01-24T00:21:36+0100 lvl=info msg="Registering plugin" logger=plugins name="Region Map Panel"
+t=2019-01-24T00:21:36+0100 lvl=info msg="Registering plugin" logger=plugins name="Worldmap Panel"
+t=2019-01-24T00:21:36+0100 lvl=info msg="Initializing TracingService" logger=server
+t=2019-01-24T00:21:36+0100 lvl=info msg="Initializing Stream Manager"
+t=2019-01-24T00:21:36+0100 lvl=info msg="HTTP Server Listen" logger=http.server address=0.0.0.0:3000 protocol=https subUrl= socket=
+t=2019-01-24T00:22:41+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=147 size=201 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:23:00+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=29 size=199 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:23:16+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=25 size=201 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:23:31+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=23 size=203 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:25:37+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=15 size=200 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:26:04+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=16 size=200 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:27:03+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=21 size=200 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:34:30+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=37 size=304 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1"
+t=2019-01-24T00:35:07+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=21 size=302 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1"
+t=2019-01-24T00:35:15+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=16 size=266 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1"
+t=2019-01-24T00:35:46+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=18 size=266 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1"
+t=2019-01-24T00:35:47+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=22 size=266 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1"
+t=2019-01-24T00:36:19+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=18 size=303 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1"
+t=2019-01-24T00:39:16+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=29 size=300 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T00:52:10+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=POST path=/api/tsdb/query status=400 remote_addr=114.23.246.10 time_ms=19 size=156 referer="https://demo-board.msupply.org:3000/dashboard/new?panelId=2&fullscreen&edit&orgId=1&tab=metrics"
+t=2019-01-24T01:00:03+0100 lvl=eror msg="Failed to get user with id" logger=context userId=1 error="User not found"
+t=2019-01-24T01:00:03+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/api/search status=401 remote_addr=114.23.246.10 time_ms=2 size=54 referer="https://demo-board.msupply.org:3000/d/jquMpWPik/overview?orgId=1"
+t=2019-01-24T02:11:16+0100 lvl=info msg="Shutdown started" logger=server reason="System signal: interrupt"
+t=2019-01-24T02:11:16+0100 lvl=info msg="Stopped InternalMetricsService" logger=server reason="context canceled"
+t=2019-01-24T02:11:16+0100 lvl=info msg="Stopped PluginManager" logger=server reason="context canceled"
+t=2019-01-24T02:11:16+0100 lvl=info msg="Stopped CleanUpService" logger=server reason="context canceled"
+t=2019-01-24T02:11:16+0100 lvl=info msg="Stopped ProvisioningService" logger=server reason="context canceled"
+t=2019-01-24T02:11:16+0100 lvl=info msg="Stopped Stream Manager"
+t=2019-01-24T02:11:16+0100 lvl=info msg="Stopped NotificationService" logger=server reason="context canceled"
+t=2019-01-24T02:11:16+0100 lvl=info msg="Stopped RenderingService" logger=server reason=nil
+t=2019-01-24T02:11:16+0100 lvl=info msg="Stopped TracingService" logger=server reason=nil
+t=2019-01-24T02:11:16+0100 lvl=info msg="Stopped AlertingService" logger=server reason="context canceled"
+t=2019-01-24T02:11:16+0100 lvl=info msg="Stopped HTTPServer" logger=server reason=nil
+t=2019-01-24T02:11:16+0100 lvl=eror msg="Server shutdown" logger=server reason="System signal: interrupt"
+t=2019-01-24T02:17:04+0100 lvl=eror msg="Failed to detect generated javascript files in public/build" logger=settings
+t=2019-01-24T02:17:04+0100 lvl=info msg="Starting Grafana" logger=server version=6.0.0-pre1 commit=c7b556c0e branch=master compiled=2019-01-23T22:02:21+0100
+t=2019-01-24T02:17:04+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana/conf/defaults.ini"
+t=2019-01-24T02:17:04+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana\\conf\\custom.ini"
+t=2019-01-24T02:17:04+0100 lvl=info msg="Path Home" logger=settings path="C:\\Program Files\\grafana"
+t=2019-01-24T02:17:04+0100 lvl=info msg="Path Data" logger=settings path="C:\\Program Files\\grafana\\data"
+t=2019-01-24T02:17:04+0100 lvl=info msg="Path Logs" logger=settings path="C:\\Program Files\\grafana\\data\\log"
+t=2019-01-24T02:17:04+0100 lvl=info msg="Path Plugins" logger=settings path="C:\\Program Files\\grafana\\data\\plugins"
+t=2019-01-24T02:17:04+0100 lvl=info msg="Path Provisioning" logger=settings path="C:\\Program Files\\grafana\\conf\\provisioning"
+t=2019-01-24T02:17:04+0100 lvl=info msg="App mode production" logger=settings
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing HTTPServer" logger=server
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing SqlStore" logger=server
+t=2019-01-24T02:17:04+0100 lvl=info msg="Connecting to DB" logger=sqlstore dbtype=sqlite3
+t=2019-01-24T02:17:04+0100 lvl=info msg="Starting DB migration" logger=migrator
+t=2019-01-24T02:17:04+0100 lvl=info msg="Executing migration" logger=migrator id="Migrate logging ds to loki ds"
+t=2019-01-24T02:17:04+0100 lvl=info msg="Executing migration" logger=migrator id="Add column external_delete_url to dashboard_snapshots table"
+t=2019-01-24T02:17:04+0100 lvl=info msg="Executing migration" logger=migrator id="create server_lock table"
+t=2019-01-24T02:17:04+0100 lvl=info msg="Executing migration" logger=migrator id="add index server_lock.operation_uid"
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing SearchService" logger=server
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing RenderingService" logger=server
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing AlertingService" logger=server
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing DatasourceCacheService" logger=server
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing HooksService" logger=server
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing InternalMetricsService" logger=server
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing PluginManager" logger=server
+t=2019-01-24T02:17:04+0100 lvl=info msg="Starting plugin search" logger=plugins
+t=2019-01-24T02:17:04+0100 lvl=info msg="Registering plugin" logger=plugins name="Pie Chart"
+t=2019-01-24T02:17:04+0100 lvl=info msg="Registering plugin" logger=plugins name="Region Map Panel"
+t=2019-01-24T02:17:04+0100 lvl=info msg="Registering plugin" logger=plugins name="Worldmap Panel"
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing ServerLockService" logger=server
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing CleanUpService" logger=server
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing NotificationService" logger=server
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing ProvisioningService" logger=server
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing TracingService" logger=server
+t=2019-01-24T02:17:04+0100 lvl=info msg="Initializing Stream Manager"
+t=2019-01-24T02:17:04+0100 lvl=info msg="HTTP Server Listen" logger=http.server address=0.0.0.0:3000 protocol=https subUrl= socket=
+t=2019-01-24T02:17:15+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/ status=302 remote_addr=114.23.246.10 time_ms=2 size=57 referer=
+t=2019-01-24T02:17:15+0100 lvl=eror msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/login status=500 remote_addr=114.23.246.10 time_ms=4 size=64 referer=
+t=2019-01-24T02:17:16+0100 lvl=eror msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/favicon.ico status=500 remote_addr=114.23.246.10 time_ms=1 size=64 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-24T02:18:03+0100 lvl=eror msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/login status=500 remote_addr=114.23.246.10 time_ms=2 size=64 referer=
+t=2019-01-24T02:18:03+0100 lvl=eror msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/favicon.ico status=500 remote_addr=114.23.246.10 time_ms=4 size=64 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-24T02:18:08+0100 lvl=info msg="Shutdown started" logger=server reason="System signal: interrupt"
+t=2019-01-24T02:18:08+0100 lvl=info msg="Stopped NotificationService" logger=server reason="context canceled"
+t=2019-01-24T02:18:08+0100 lvl=info msg="Stopped ProvisioningService" logger=server reason="context canceled"
+t=2019-01-24T02:18:08+0100 lvl=info msg="Stopped InternalMetricsService" logger=server reason="context canceled"
+t=2019-01-24T02:18:08+0100 lvl=info msg="Stopped PluginManager" logger=server reason="context canceled"
+t=2019-01-24T02:18:08+0100 lvl=info msg="Stopped Stream Manager"
+t=2019-01-24T02:18:08+0100 lvl=info msg="Stopped RenderingService" logger=server reason=nil
+t=2019-01-24T02:18:08+0100 lvl=info msg="Stopped CleanUpService" logger=server reason="context canceled"
+t=2019-01-24T02:18:08+0100 lvl=info msg="Stopped TracingService" logger=server reason=nil
+t=2019-01-24T02:18:08+0100 lvl=info msg="Stopped AlertingService" logger=server reason="context canceled"
+t=2019-01-24T02:18:08+0100 lvl=info msg="Stopped HTTPServer" logger=server reason=nil
+t=2019-01-24T02:18:08+0100 lvl=eror msg="Server shutdown" logger=server reason="System signal: interrupt"
+t=2019-01-24T02:18:09+0100 lvl=eror msg="Failed to detect generated javascript files in public/build" logger=settings
+t=2019-01-24T02:18:09+0100 lvl=info msg="Starting Grafana" logger=server version=6.0.0-pre1 commit=c7b556c0e branch=master compiled=2019-01-23T22:02:21+0100
+t=2019-01-24T02:18:09+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana/conf/defaults.ini"
+t=2019-01-24T02:18:09+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana\\conf\\custom.ini"
+t=2019-01-24T02:18:09+0100 lvl=info msg="Path Home" logger=settings path="C:\\Program Files\\grafana"
+t=2019-01-24T02:18:09+0100 lvl=info msg="Path Data" logger=settings path="C:\\Program Files\\grafana\\data"
+t=2019-01-24T02:18:09+0100 lvl=info msg="Path Logs" logger=settings path="C:\\Program Files\\grafana\\data\\log"
+t=2019-01-24T02:18:09+0100 lvl=info msg="Path Plugins" logger=settings path="C:\\Program Files\\grafana\\data\\plugins"
+t=2019-01-24T02:18:09+0100 lvl=info msg="Path Provisioning" logger=settings path="C:\\Program Files\\grafana\\conf\\provisioning"
+t=2019-01-24T02:18:09+0100 lvl=info msg="App mode production" logger=settings
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing HTTPServer" logger=server
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing SqlStore" logger=server
+t=2019-01-24T02:18:09+0100 lvl=info msg="Connecting to DB" logger=sqlstore dbtype=sqlite3
+t=2019-01-24T02:18:09+0100 lvl=info msg="Starting DB migration" logger=migrator
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing SearchService" logger=server
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing RenderingService" logger=server
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing AlertingService" logger=server
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing DatasourceCacheService" logger=server
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing HooksService" logger=server
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing InternalMetricsService" logger=server
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing PluginManager" logger=server
+t=2019-01-24T02:18:09+0100 lvl=info msg="Starting plugin search" logger=plugins
+t=2019-01-24T02:18:09+0100 lvl=info msg="Registering plugin" logger=plugins name="Pie Chart"
+t=2019-01-24T02:18:09+0100 lvl=info msg="Registering plugin" logger=plugins name="Region Map Panel"
+t=2019-01-24T02:18:09+0100 lvl=info msg="Registering plugin" logger=plugins name="Worldmap Panel"
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing ServerLockService" logger=server
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing CleanUpService" logger=server
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing NotificationService" logger=server
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing ProvisioningService" logger=server
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing TracingService" logger=server
+t=2019-01-24T02:18:09+0100 lvl=info msg="Initializing Stream Manager"
+t=2019-01-24T02:18:09+0100 lvl=info msg="HTTP Server Listen" logger=http.server address=0.0.0.0:3000 protocol=https subUrl= socket=
+t=2019-01-24T02:18:13+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/public/build/vendor.dfabdd44b3be44288eac.js status=404 remote_addr=114.23.246.10 time_ms=4 size=6374 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-24T02:18:13+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/public/build/app.dfabdd44b3be44288eac.js.map status=404 remote_addr=114.23.246.10 time_ms=5 size=6374 referer=
+t=2019-01-24T02:18:14+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/public/build/app.dfabdd44b3be44288eac.js.map status=404 remote_addr=114.23.246.10 time_ms=2 size=6374 referer=
+t=2019-01-24T02:19:42+0100 lvl=info msg="Shutdown started" logger=server reason="System signal: interrupt"
+t=2019-01-24T02:19:42+0100 lvl=info msg="Stopped InternalMetricsService" logger=server reason="context canceled"
+t=2019-01-24T02:19:42+0100 lvl=info msg="Stopped PluginManager" logger=server reason="context canceled"
+t=2019-01-24T02:19:42+0100 lvl=info msg="Stopped Stream Manager"
+t=2019-01-24T02:19:42+0100 lvl=info msg="Stopped ProvisioningService" logger=server reason="context canceled"
+t=2019-01-24T02:19:42+0100 lvl=info msg="Stopped NotificationService" logger=server reason="context canceled"
+t=2019-01-24T02:19:42+0100 lvl=info msg="Stopped RenderingService" logger=server reason=nil
+t=2019-01-24T02:19:42+0100 lvl=info msg="Stopped TracingService" logger=server reason=nil
+t=2019-01-24T02:19:42+0100 lvl=info msg="Stopped AlertingService" logger=server reason="context canceled"
+t=2019-01-24T02:19:42+0100 lvl=info msg="Stopped CleanUpService" logger=server reason="context canceled"
+t=2019-01-24T02:19:42+0100 lvl=info msg="Stopped HTTPServer" logger=server reason=nil
+t=2019-01-24T02:19:42+0100 lvl=eror msg="Server shutdown" logger=server reason="System signal: interrupt"
+t=2019-01-24T05:44:10+0100 lvl=info msg="Starting Grafana" logger=server version=6.0.0-pre1 commit=c7b556c0e branch=master compiled=2019-01-23T22:02:21+0100
+t=2019-01-24T05:44:10+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana/conf/defaults.ini"
+t=2019-01-24T05:44:10+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana\\conf\\custom.ini"
+t=2019-01-24T05:44:10+0100 lvl=info msg="Path Home" logger=settings path="C:\\Program Files\\grafana"
+t=2019-01-24T05:44:10+0100 lvl=info msg="Path Data" logger=settings path="C:\\Program Files\\grafana\\data"
+t=2019-01-24T05:44:10+0100 lvl=info msg="Path Logs" logger=settings path="C:\\Program Files\\grafana\\data\\log"
+t=2019-01-24T05:44:10+0100 lvl=info msg="Path Plugins" logger=settings path="C:\\Program Files\\grafana\\data\\plugins"
+t=2019-01-24T05:44:10+0100 lvl=info msg="Path Provisioning" logger=settings path="C:\\Program Files\\grafana\\conf\\provisioning"
+t=2019-01-24T05:44:10+0100 lvl=info msg="App mode production" logger=settings
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing HTTPServer" logger=server
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing SqlStore" logger=server
+t=2019-01-24T05:44:10+0100 lvl=info msg="Connecting to DB" logger=sqlstore dbtype=sqlite3
+t=2019-01-24T05:44:10+0100 lvl=info msg="Starting DB migration" logger=migrator
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing SearchService" logger=server
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing RenderingService" logger=server
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing AlertingService" logger=server
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing DatasourceCacheService" logger=server
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing HooksService" logger=server
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing InternalMetricsService" logger=server
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing PluginManager" logger=server
+t=2019-01-24T05:44:10+0100 lvl=info msg="Starting plugin search" logger=plugins
+t=2019-01-24T05:44:10+0100 lvl=info msg="Registering plugin" logger=plugins name="Pie Chart"
+t=2019-01-24T05:44:10+0100 lvl=info msg="Registering plugin" logger=plugins name="Region Map Panel"
+t=2019-01-24T05:44:10+0100 lvl=info msg="Registering plugin" logger=plugins name="Worldmap Panel"
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing ServerLockService" logger=server
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing CleanUpService" logger=server
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing NotificationService" logger=server
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing ProvisioningService" logger=server
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing TracingService" logger=server
+t=2019-01-24T05:44:10+0100 lvl=info msg="Initializing Stream Manager"
+t=2019-01-24T05:44:10+0100 lvl=info msg="HTTP Server Listen" logger=http.server address=0.0.0.0:3000 protocol=https subUrl= socket=
+t=2019-01-24T05:44:14+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/ status=302 remote_addr=114.23.246.10 time_ms=8 size=57 referer=
+t=2019-01-24T05:44:20+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/public/build/grafana.dark.dfabdd44b3be44288eac.css status=404 remote_addr=114.23.246.10 time_ms=3 size=6374 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-24T05:44:20+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/public/build/vendor.dfabdd44b3be44288eac.js status=404 remote_addr=114.23.246.10 time_ms=22 size=6374 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-24T05:44:20+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/public/build/app.dfabdd44b3be44288eac.js status=404 remote_addr=114.23.246.10 time_ms=4 size=6374 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-24T05:46:11+0100 lvl=info msg="Shutdown started" logger=server reason="System signal: interrupt"
+t=2019-01-24T05:46:11+0100 lvl=info msg="Stopped InternalMetricsService" logger=server reason="context canceled"
+t=2019-01-24T05:46:11+0100 lvl=info msg="Stopped PluginManager" logger=server reason="context canceled"
+t=2019-01-24T05:46:11+0100 lvl=info msg="Stopped Stream Manager"
+t=2019-01-24T05:46:11+0100 lvl=info msg="Stopped ProvisioningService" logger=server reason="context canceled"
+t=2019-01-24T05:46:11+0100 lvl=info msg="Stopped RenderingService" logger=server reason=nil
+t=2019-01-24T05:46:11+0100 lvl=info msg="Stopped NotificationService" logger=server reason="context canceled"
+t=2019-01-24T05:46:11+0100 lvl=info msg="Stopped CleanUpService" logger=server reason="context canceled"
+t=2019-01-24T05:46:11+0100 lvl=info msg="Stopped TracingService" logger=server reason=nil
+t=2019-01-24T05:46:11+0100 lvl=info msg="Stopped AlertingService" logger=server reason="context canceled"
+t=2019-01-24T05:46:11+0100 lvl=info msg="Stopped HTTPServer" logger=server reason=nil
+t=2019-01-24T05:46:11+0100 lvl=eror msg="Server shutdown" logger=server reason="System signal: interrupt"
+t=2019-01-24T05:46:12+0100 lvl=info msg="Starting Grafana" logger=server version=6.0.0-pre1 commit=c7b556c0e branch=master compiled=2019-01-23T22:02:21+0100
+t=2019-01-24T05:46:12+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana/conf/defaults.ini"
+t=2019-01-24T05:46:12+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana\\conf\\custom.ini"
+t=2019-01-24T05:46:12+0100 lvl=info msg="Path Home" logger=settings path="C:\\Program Files\\grafana"
+t=2019-01-24T05:46:12+0100 lvl=info msg="Path Data" logger=settings path="C:\\Program Files\\grafana\\data"
+t=2019-01-24T05:46:12+0100 lvl=info msg="Path Logs" logger=settings path="C:\\Program Files\\grafana\\data\\log"
+t=2019-01-24T05:46:12+0100 lvl=info msg="Path Plugins" logger=settings path="C:\\Program Files\\grafana\\data\\plugins"
+t=2019-01-24T05:46:12+0100 lvl=info msg="Path Provisioning" logger=settings path="C:\\Program Files\\grafana\\conf\\provisioning"
+t=2019-01-24T05:46:12+0100 lvl=info msg="App mode production" logger=settings
+t=2019-01-24T05:46:12+0100 lvl=info msg="Initializing HTTPServer" logger=server
+t=2019-01-24T05:46:12+0100 lvl=info msg="Initializing SqlStore" logger=server
+t=2019-01-24T05:46:12+0100 lvl=info msg="Connecting to DB" logger=sqlstore dbtype=sqlite3
+t=2019-01-24T05:46:12+0100 lvl=info msg="Starting DB migration" logger=migrator
+t=2019-01-24T05:46:12+0100 lvl=info msg="Initializing SearchService" logger=server
+t=2019-01-24T05:46:12+0100 lvl=info msg="Initializing RenderingService" logger=server
+t=2019-01-24T05:46:12+0100 lvl=info msg="Initializing AlertingService" logger=server
+t=2019-01-24T05:46:12+0100 lvl=info msg="Initializing DatasourceCacheService" logger=server
+t=2019-01-24T05:46:12+0100 lvl=info msg="Initializing HooksService" logger=server
+t=2019-01-24T05:46:12+0100 lvl=info msg="Initializing InternalMetricsService" logger=server
+t=2019-01-24T05:46:12+0100 lvl=info msg="Initializing PluginManager" logger=server
+t=2019-01-24T05:46:12+0100 lvl=info msg="Starting plugin search" logger=plugins
+t=2019-01-24T05:46:12+0100 lvl=info msg="Registering plugin" logger=plugins name="Pie Chart"
+t=2019-01-24T05:46:12+0100 lvl=info msg="Registering plugin" logger=plugins name="Region Map Panel"
+t=2019-01-24T05:46:13+0100 lvl=info msg="Registering plugin" logger=plugins name="Worldmap Panel"
+t=2019-01-24T05:46:13+0100 lvl=info msg="Initializing ServerLockService" logger=server
+t=2019-01-24T05:46:13+0100 lvl=info msg="Initializing CleanUpService" logger=server
+t=2019-01-24T05:46:13+0100 lvl=info msg="Initializing NotificationService" logger=server
+t=2019-01-24T05:46:13+0100 lvl=info msg="Initializing ProvisioningService" logger=server
+t=2019-01-24T05:46:13+0100 lvl=info msg="Initializing TracingService" logger=server
+t=2019-01-24T05:46:13+0100 lvl=info msg="Initializing Stream Manager"
+t=2019-01-24T05:46:13+0100 lvl=info msg="HTTP Server Listen" logger=http.server address=0.0.0.0:3000 protocol=https subUrl= socket=
+t=2019-01-24T05:46:47+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/public/build/grafana.dark.dfabdd44b3be44288eac.css status=404 remote_addr=114.23.246.10 time_ms=17 size=6386 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-24T05:48:11+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/public/build/grafana.dark.dfabdd44b3be44288eac.css status=404 remote_addr=114.23.246.10 time_ms=17 size=6386 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-24T05:48:15+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/public/build/grafana.dark.dfabdd44b3be44288eac.css status=404 remote_addr=114.23.246.10 time_ms=2 size=6386 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-24T05:48:22+0100 lvl=info msg="Shutdown started" logger=server reason="System signal: interrupt"
+t=2019-01-24T05:48:22+0100 lvl=info msg="Stopped NotificationService" logger=server reason="context canceled"
+t=2019-01-24T05:48:22+0100 lvl=info msg="Stopped InternalMetricsService" logger=server reason="context canceled"
+t=2019-01-24T05:48:22+0100 lvl=info msg="Stopped CleanUpService" logger=server reason="context canceled"
+t=2019-01-24T05:48:22+0100 lvl=info msg="Stopped RenderingService" logger=server reason=nil
+t=2019-01-24T05:48:22+0100 lvl=info msg="Stopped TracingService" logger=server reason=nil
+t=2019-01-24T05:48:22+0100 lvl=info msg="Stopped AlertingService" logger=server reason="context canceled"
+t=2019-01-24T05:48:22+0100 lvl=info msg="Stopped Stream Manager"
+t=2019-01-24T05:48:22+0100 lvl=info msg="Stopped PluginManager" logger=server reason="context canceled"
+t=2019-01-24T05:48:22+0100 lvl=info msg="Stopped ProvisioningService" logger=server reason="context canceled"
+t=2019-01-24T05:48:22+0100 lvl=info msg="Stopped HTTPServer" logger=server reason=nil
+t=2019-01-24T05:48:22+0100 lvl=eror msg="Server shutdown" logger=server reason="System signal: interrupt"
+t=2019-01-24T05:48:23+0100 lvl=info msg="Starting Grafana" logger=server version=6.0.0-pre1 commit=c7b556c0e branch=master compiled=2019-01-23T22:02:21+0100
+t=2019-01-24T05:48:23+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana/conf/defaults.ini"
+t=2019-01-24T05:48:23+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana\\conf\\custom.ini"
+t=2019-01-24T05:48:23+0100 lvl=info msg="Path Home" logger=settings path="C:\\Program Files\\grafana"
+t=2019-01-24T05:48:23+0100 lvl=info msg="Path Data" logger=settings path="C:\\Program Files\\grafana\\data"
+t=2019-01-24T05:48:23+0100 lvl=info msg="Path Logs" logger=settings path="C:\\Program Files\\grafana\\data\\log"
+t=2019-01-24T05:48:23+0100 lvl=info msg="Path Plugins" logger=settings path="C:\\Program Files\\grafana\\data\\plugins"
+t=2019-01-24T05:48:23+0100 lvl=info msg="Path Provisioning" logger=settings path="C:\\Program Files\\grafana\\conf\\provisioning"
+t=2019-01-24T05:48:23+0100 lvl=info msg="App mode production" logger=settings
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing HTTPServer" logger=server
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing SqlStore" logger=server
+t=2019-01-24T05:48:23+0100 lvl=info msg="Connecting to DB" logger=sqlstore dbtype=sqlite3
+t=2019-01-24T05:48:23+0100 lvl=info msg="Starting DB migration" logger=migrator
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing SearchService" logger=server
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing RenderingService" logger=server
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing AlertingService" logger=server
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing DatasourceCacheService" logger=server
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing HooksService" logger=server
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing InternalMetricsService" logger=server
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing PluginManager" logger=server
+t=2019-01-24T05:48:23+0100 lvl=info msg="Starting plugin search" logger=plugins
+t=2019-01-24T05:48:23+0100 lvl=info msg="Registering plugin" logger=plugins name="Pie Chart"
+t=2019-01-24T05:48:23+0100 lvl=info msg="Registering plugin" logger=plugins name="Region Map Panel"
+t=2019-01-24T05:48:23+0100 lvl=info msg="Registering plugin" logger=plugins name="Worldmap Panel"
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing ServerLockService" logger=server
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing CleanUpService" logger=server
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing NotificationService" logger=server
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing ProvisioningService" logger=server
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing TracingService" logger=server
+t=2019-01-24T05:48:23+0100 lvl=info msg="Initializing Stream Manager"
+t=2019-01-24T05:48:23+0100 lvl=info msg="HTTP Server Listen" logger=http.server address=0.0.0.0:3000 protocol=https subUrl= socket=
+t=2019-01-24T05:56:52+0100 lvl=info msg="Shutdown started" logger=server reason="System signal: interrupt"
+t=2019-01-24T05:56:52+0100 lvl=info msg="Stopped InternalMetricsService" logger=server reason="context canceled"
+t=2019-01-24T05:56:52+0100 lvl=info msg="Stopped PluginManager" logger=server reason="context canceled"
+t=2019-01-24T05:56:52+0100 lvl=info msg="Stopped Stream Manager"
+t=2019-01-24T05:56:52+0100 lvl=info msg="Stopped ProvisioningService" logger=server reason="context canceled"
+t=2019-01-24T05:56:52+0100 lvl=info msg="Stopped NotificationService" logger=server reason="context canceled"
+t=2019-01-24T05:56:52+0100 lvl=info msg="Stopped CleanUpService" logger=server reason="context canceled"
+t=2019-01-24T05:56:52+0100 lvl=info msg="Stopped TracingService" logger=server reason=nil
+t=2019-01-24T05:56:52+0100 lvl=info msg="Stopped RenderingService" logger=server reason=nil
+t=2019-01-24T05:56:52+0100 lvl=info msg="Stopped AlertingService" logger=server reason="context canceled"
+t=2019-01-24T05:56:53+0100 lvl=info msg="Stopped HTTPServer" logger=server reason=nil
+t=2019-01-24T05:56:53+0100 lvl=eror msg="Server shutdown" logger=server reason="System signal: interrupt"
+t=2019-01-24T05:56:54+0100 lvl=info msg="Starting Grafana" logger=server version=6.0.0-pre1 commit=c7b556c0e branch=master compiled=2019-01-23T22:02:21+0100
+t=2019-01-24T05:56:54+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana/conf/defaults.ini"
+t=2019-01-24T05:56:54+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana\\conf\\custom.ini"
+t=2019-01-24T05:56:54+0100 lvl=info msg="Path Home" logger=settings path="C:\\Program Files\\grafana"
+t=2019-01-24T05:56:54+0100 lvl=info msg="Path Data" logger=settings path="C:\\Program Files\\grafana\\data"
+t=2019-01-24T05:56:54+0100 lvl=info msg="Path Logs" logger=settings path="C:\\Program Files\\grafana\\data\\log"
+t=2019-01-24T05:56:54+0100 lvl=info msg="Path Plugins" logger=settings path="C:\\Program Files\\grafana\\data\\plugins"
+t=2019-01-24T05:56:54+0100 lvl=info msg="Path Provisioning" logger=settings path="C:\\Program Files\\grafana\\conf\\provisioning"
+t=2019-01-24T05:56:54+0100 lvl=info msg="App mode production" logger=settings
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing HTTPServer" logger=server
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing SqlStore" logger=server
+t=2019-01-24T05:56:54+0100 lvl=info msg="Connecting to DB" logger=sqlstore dbtype=sqlite3
+t=2019-01-24T05:56:54+0100 lvl=info msg="Starting DB migration" logger=migrator
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing SearchService" logger=server
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing RenderingService" logger=server
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing AlertingService" logger=server
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing DatasourceCacheService" logger=server
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing HooksService" logger=server
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing InternalMetricsService" logger=server
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing PluginManager" logger=server
+t=2019-01-24T05:56:54+0100 lvl=info msg="Starting plugin search" logger=plugins
+t=2019-01-24T05:56:54+0100 lvl=info msg="Registering plugin" logger=plugins name="Pie Chart"
+t=2019-01-24T05:56:54+0100 lvl=info msg="Registering plugin" logger=plugins name="Region Map Panel"
+t=2019-01-24T05:56:54+0100 lvl=info msg="Registering plugin" logger=plugins name="Worldmap Panel"
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing ServerLockService" logger=server
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing CleanUpService" logger=server
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing NotificationService" logger=server
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing ProvisioningService" logger=server
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing TracingService" logger=server
+t=2019-01-24T05:56:54+0100 lvl=info msg="Initializing Stream Manager"
+t=2019-01-24T05:56:54+0100 lvl=info msg="HTTP Server Listen" logger=http.server address=0.0.0.0:3000 protocol=https subUrl= socket=
+t=2019-01-24T05:57:19+0100 lvl=info msg="Request Completed" logger=context userId=1 orgId=1 uname=admin method=GET path=/logout status=302 remote_addr=114.23.246.10 time_ms=15 size=103 referer="https://demo-board.msupply.org:3000/d/jquMpWPik/overview?orgId=1"
+t=2019-01-24T05:57:26+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/login/generic_oauth status=302 remote_addr=114.23.246.10 time_ms=10 size=270 referer=https://demo-board.msupply.org:2048/dashboard-oauth/
+t=2019-01-24T05:57:27+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/login/generic_oauth status=302 remote_addr=114.23.246.10 time_ms=295 size=52 referer=https://demo-board.msupply.org:2048/dashboard-oauth/
+t=2019-01-24T05:58:20+0100 lvl=info msg="Shutdown started" logger=server reason="System signal: interrupt"
+t=2019-01-24T05:58:20+0100 lvl=info msg="Stopped InternalMetricsService" logger=server reason="context canceled"
+t=2019-01-24T05:58:20+0100 lvl=info msg="Stopped PluginManager" logger=server reason="context canceled"
+t=2019-01-24T05:58:20+0100 lvl=info msg="Stopped Stream Manager"
+t=2019-01-24T05:58:20+0100 lvl=info msg="Stopped ProvisioningService" logger=server reason="context canceled"
+t=2019-01-24T05:58:20+0100 lvl=info msg="Stopped NotificationService" logger=server reason="context canceled"
+t=2019-01-24T05:58:20+0100 lvl=info msg="Stopped CleanUpService" logger=server reason="context canceled"
+t=2019-01-24T05:58:20+0100 lvl=info msg="Stopped TracingService" logger=server reason=nil
+t=2019-01-24T05:58:20+0100 lvl=info msg="Stopped RenderingService" logger=server reason=nil
+t=2019-01-24T05:58:20+0100 lvl=info msg="Stopped AlertingService" logger=server reason="context canceled"
+t=2019-01-24T05:58:20+0100 lvl=info msg="Stopped HTTPServer" logger=server reason=nil
+t=2019-01-24T05:58:20+0100 lvl=eror msg="Server shutdown" logger=server reason="System signal: interrupt"
+t=2019-01-24T05:58:21+0100 lvl=info msg="Starting Grafana" logger=server version=6.0.0-pre1 commit=c7b556c0e branch=master compiled=2019-01-23T22:02:21+0100
+t=2019-01-24T05:58:21+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana/conf/defaults.ini"
+t=2019-01-24T05:58:21+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana\\conf\\custom.ini"
+t=2019-01-24T05:58:21+0100 lvl=info msg="Path Home" logger=settings path="C:\\Program Files\\grafana"
+t=2019-01-24T05:58:21+0100 lvl=info msg="Path Data" logger=settings path="C:\\Program Files\\grafana\\data"
+t=2019-01-24T05:58:21+0100 lvl=info msg="Path Logs" logger=settings path="C:\\Program Files\\grafana\\data\\log"
+t=2019-01-24T05:58:21+0100 lvl=info msg="Path Plugins" logger=settings path="C:\\Program Files\\grafana\\data\\plugins"
+t=2019-01-24T05:58:21+0100 lvl=info msg="Path Provisioning" logger=settings path="C:\\Program Files\\grafana\\conf\\provisioning"
+t=2019-01-24T05:58:21+0100 lvl=info msg="App mode production" logger=settings
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing HTTPServer" logger=server
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing SqlStore" logger=server
+t=2019-01-24T05:58:21+0100 lvl=info msg="Connecting to DB" logger=sqlstore dbtype=sqlite3
+t=2019-01-24T05:58:21+0100 lvl=info msg="Starting DB migration" logger=migrator
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing SearchService" logger=server
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing RenderingService" logger=server
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing AlertingService" logger=server
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing DatasourceCacheService" logger=server
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing HooksService" logger=server
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing InternalMetricsService" logger=server
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing PluginManager" logger=server
+t=2019-01-24T05:58:21+0100 lvl=info msg="Starting plugin search" logger=plugins
+t=2019-01-24T05:58:21+0100 lvl=info msg="Registering plugin" logger=plugins name="Pie Chart"
+t=2019-01-24T05:58:21+0100 lvl=info msg="Registering plugin" logger=plugins name="Region Map Panel"
+t=2019-01-24T05:58:21+0100 lvl=info msg="Registering plugin" logger=plugins name="Worldmap Panel"
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing ServerLockService" logger=server
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing CleanUpService" logger=server
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing NotificationService" logger=server
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing ProvisioningService" logger=server
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing TracingService" logger=server
+t=2019-01-24T05:58:21+0100 lvl=info msg="Initializing Stream Manager"
+t=2019-01-24T05:58:21+0100 lvl=info msg="HTTP Server Listen" logger=http.server address=0.0.0.0:3000 protocol=https subUrl= socket=
+t=2019-01-24T06:01:17+0100 lvl=info msg="Shutdown started" logger=server reason="System signal: interrupt"
+t=2019-01-24T06:01:17+0100 lvl=info msg="Stopped InternalMetricsService" logger=server reason="context canceled"
+t=2019-01-24T06:01:17+0100 lvl=info msg="Stopped PluginManager" logger=server reason="context canceled"
+t=2019-01-24T06:01:17+0100 lvl=info msg="Stopped ProvisioningService" logger=server reason="context canceled"
+t=2019-01-24T06:01:17+0100 lvl=info msg="Stopped NotificationService" logger=server reason="context canceled"
+t=2019-01-24T06:01:17+0100 lvl=info msg="Stopped CleanUpService" logger=server reason="context canceled"
+t=2019-01-24T06:01:17+0100 lvl=info msg="Stopped Stream Manager"
+t=2019-01-24T06:01:17+0100 lvl=info msg="Stopped RenderingService" logger=server reason=nil
+t=2019-01-24T06:01:17+0100 lvl=info msg="Stopped AlertingService" logger=server reason="context canceled"
+t=2019-01-24T06:01:17+0100 lvl=info msg="Stopped TracingService" logger=server reason=nil
+t=2019-01-24T06:01:17+0100 lvl=info msg="Stopped HTTPServer" logger=server reason=nil
+t=2019-01-24T06:01:17+0100 lvl=eror msg="Server shutdown" logger=server reason="System signal: interrupt"
+t=2019-01-24T06:01:18+0100 lvl=info msg="Starting Grafana" logger=server version=6.0.0-pre1 commit=c7b556c0e branch=master compiled=2019-01-23T22:02:21+0100
+t=2019-01-24T06:01:18+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana/conf/defaults.ini"
+t=2019-01-24T06:01:18+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana\\conf\\custom.ini"
+t=2019-01-24T06:01:18+0100 lvl=info msg="Path Home" logger=settings path="C:\\Program Files\\grafana"
+t=2019-01-24T06:01:18+0100 lvl=info msg="Path Data" logger=settings path="C:\\Program Files\\grafana\\data"
+t=2019-01-24T06:01:18+0100 lvl=info msg="Path Logs" logger=settings path="C:\\Program Files\\grafana\\data\\log"
+t=2019-01-24T06:01:18+0100 lvl=info msg="Path Plugins" logger=settings path="C:\\Program Files\\grafana\\data\\plugins"
+t=2019-01-24T06:01:18+0100 lvl=info msg="Path Provisioning" logger=settings path="C:\\Program Files\\grafana\\conf\\provisioning"
+t=2019-01-24T06:01:18+0100 lvl=info msg="App mode production" logger=settings
+t=2019-01-24T06:01:18+0100 lvl=info msg="Initializing HTTPServer" logger=server
+t=2019-01-24T06:01:19+0100 lvl=info msg="Initializing SqlStore" logger=server
+t=2019-01-24T06:01:19+0100 lvl=info msg="Connecting to DB" logger=sqlstore dbtype=sqlite3
+t=2019-01-24T06:01:19+0100 lvl=info msg="Starting DB migration" logger=migrator
+t=2019-01-24T06:01:19+0100 lvl=info msg="Initializing SearchService" logger=server
+t=2019-01-24T06:01:19+0100 lvl=info msg="Initializing RenderingService" logger=server
+t=2019-01-24T06:01:19+0100 lvl=info msg="Initializing AlertingService" logger=server
+t=2019-01-24T06:01:19+0100 lvl=info msg="Initializing DatasourceCacheService" logger=server
+t=2019-01-24T06:01:19+0100 lvl=info msg="Initializing HooksService" logger=server
+t=2019-01-24T06:01:19+0100 lvl=info msg="Initializing InternalMetricsService" logger=server
+t=2019-01-24T06:01:19+0100 lvl=info msg="Initializing PluginManager" logger=server
+t=2019-01-24T06:01:19+0100 lvl=info msg="Starting plugin search" logger=plugins
+t=2019-01-24T06:01:19+0100 lvl=info msg="Registering plugin" logger=plugins name="Pie Chart"
+t=2019-01-24T06:01:19+0100 lvl=info msg="Registering plugin" logger=plugins name="Region Map Panel"
+t=2019-01-24T06:01:19+0100 lvl=info msg="Registering plugin" logger=plugins name="Worldmap Panel"
+t=2019-01-24T06:01:19+0100 lvl=info msg="Initializing ServerLockService" logger=server
+t=2019-01-24T06:01:19+0100 lvl=info msg="Initializing CleanUpService" logger=server
+t=2019-01-24T06:01:19+0100 lvl=info msg="Initializing NotificationService" logger=server
+t=2019-01-24T06:01:19+0100 lvl=info msg="Initializing ProvisioningService" logger=server
+t=2019-01-24T06:01:19+0100 lvl=info msg="Initializing TracingService" logger=server
+t=2019-01-24T06:01:19+0100 lvl=info msg="Initializing Stream Manager"
+t=2019-01-24T06:01:19+0100 lvl=info msg="HTTP Server Listen" logger=http.server address=0.0.0.0:3000 protocol=https subUrl= socket=
+t=2019-01-24T06:02:57+0100 lvl=info msg="Shutdown started" logger=server reason="System signal: interrupt"
+t=2019-01-24T06:02:57+0100 lvl=info msg="Stopped InternalMetricsService" logger=server reason="context canceled"
+t=2019-01-24T06:02:57+0100 lvl=info msg="Stopped PluginManager" logger=server reason="context canceled"
+t=2019-01-24T06:02:57+0100 lvl=info msg="Stopped NotificationService" logger=server reason="context canceled"
+t=2019-01-24T06:02:57+0100 lvl=info msg="Stopped CleanUpService" logger=server reason="context canceled"
+t=2019-01-24T06:02:57+0100 lvl=info msg="Stopped ProvisioningService" logger=server reason="context canceled"
+t=2019-01-24T06:02:57+0100 lvl=info msg="Stopped Stream Manager"
+t=2019-01-24T06:02:57+0100 lvl=info msg="Stopped TracingService" logger=server reason=nil
+t=2019-01-24T06:02:57+0100 lvl=info msg="Stopped RenderingService" logger=server reason=nil
+t=2019-01-24T06:02:57+0100 lvl=info msg="Stopped AlertingService" logger=server reason="context canceled"
+t=2019-01-24T06:02:57+0100 lvl=info msg="Stopped HTTPServer" logger=server reason=nil
+t=2019-01-24T06:02:57+0100 lvl=eror msg="Server shutdown" logger=server reason="System signal: interrupt"
+t=2019-01-24T06:03:28+0100 lvl=info msg="Starting Grafana" logger=server version=6.0.0-pre1 commit=c7b556c0e branch=master compiled=2019-01-23T22:02:21+0100
+t=2019-01-24T06:03:28+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana/conf/defaults.ini"
+t=2019-01-24T06:03:28+0100 lvl=info msg="Config loaded from" logger=settings file="C:\\Program Files\\grafana\\conf\\custom.ini"
+t=2019-01-24T06:03:28+0100 lvl=info msg="Path Home" logger=settings path="C:\\Program Files\\grafana"
+t=2019-01-24T06:03:28+0100 lvl=info msg="Path Data" logger=settings path="C:\\Program Files\\grafana\\data"
+t=2019-01-24T06:03:28+0100 lvl=info msg="Path Logs" logger=settings path="C:\\Program Files\\grafana\\data\\log"
+t=2019-01-24T06:03:28+0100 lvl=info msg="Path Plugins" logger=settings path="C:\\Program Files\\grafana\\data\\plugins"
+t=2019-01-24T06:03:28+0100 lvl=info msg="Path Provisioning" logger=settings path="C:\\Program Files\\grafana\\conf\\provisioning"
+t=2019-01-24T06:03:28+0100 lvl=info msg="App mode production" logger=settings
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing HTTPServer" logger=server
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing SqlStore" logger=server
+t=2019-01-24T06:03:28+0100 lvl=info msg="Connecting to DB" logger=sqlstore dbtype=sqlite3
+t=2019-01-24T06:03:28+0100 lvl=info msg="Starting DB migration" logger=migrator
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing SearchService" logger=server
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing RenderingService" logger=server
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing AlertingService" logger=server
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing DatasourceCacheService" logger=server
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing HooksService" logger=server
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing InternalMetricsService" logger=server
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing PluginManager" logger=server
+t=2019-01-24T06:03:28+0100 lvl=info msg="Starting plugin search" logger=plugins
+t=2019-01-24T06:03:28+0100 lvl=info msg="Registering plugin" logger=plugins name="Pie Chart"
+t=2019-01-24T06:03:28+0100 lvl=info msg="Registering plugin" logger=plugins name="Region Map Panel"
+t=2019-01-24T06:03:28+0100 lvl=info msg="Registering plugin" logger=plugins name="Worldmap Panel"
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing ServerLockService" logger=server
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing CleanUpService" logger=server
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing NotificationService" logger=server
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing ProvisioningService" logger=server
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing TracingService" logger=server
+t=2019-01-24T06:03:28+0100 lvl=info msg="Initializing Stream Manager"
+t=2019-01-24T06:03:28+0100 lvl=info msg="HTTP Server Listen" logger=http.server address=0.0.0.0:3000 protocol=https subUrl= socket=

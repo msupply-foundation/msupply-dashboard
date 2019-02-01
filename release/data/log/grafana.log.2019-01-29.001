@@ -1,0 +1,1 @@
+t=2019-01-28T04:33:15+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/ status=302 remote_addr=150.107.175.198 time_ms=10 size=57 referer=

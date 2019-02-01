@@ -1,0 +1,19 @@
+t=2019-01-30T04:28:05+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/login status=302 remote_addr=114.23.246.10 time_ms=16 size=52 referer=
+t=2019-01-30T07:22:58+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/ status=302 remote_addr=116.90.235.10 time_ms=2 size=57 referer=
+t=2019-01-30T07:22:58+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/login status=302 remote_addr=116.90.235.10 time_ms=8 size=52 referer=
+t=2019-01-30T07:23:20+0100 lvl=info msg="Request Completed" logger=context userId=2 orgId=1 uname=demo method=GET path=/{{team.avatarUrl}} status=404 remote_addr=116.90.235.10 time_ms=8 size=6749 referer=https://demo-board.msupply.org:3000/profile
+t=2019-01-30T07:23:30+0100 lvl=info msg="Request Completed" logger=context userId=2 orgId=1 uname=demo method=GET path=/logout status=302 remote_addr=116.90.235.10 time_ms=5 size=103 referer=https://demo-board.msupply.org:3000/profile
+t=2019-01-30T09:27:27+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/ status=302 remote_addr=210.54.39.97 time_ms=1 size=57 referer=
+t=2019-01-30T09:28:59+0100 lvl=eror msg="Invalid username or password" logger=context userId=0 orgId=0 uname= error="Invalid Username or Password"
+t=2019-01-30T09:28:59+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=POST path=/login status=401 remote_addr=210.54.39.97 time_ms=10 size=70 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-30T09:29:44+0100 lvl=eror msg="Invalid username or password" logger=context userId=0 orgId=0 uname= error="Invalid Username or Password"
+t=2019-01-30T09:29:44+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=POST path=/login status=401 remote_addr=210.54.39.97 time_ms=43 size=70 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-30T09:31:22+0100 lvl=eror msg="Invalid username or password" logger=context userId=0 orgId=0 uname= error="Invalid Username or Password"
+t=2019-01-30T09:31:22+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=POST path=/login status=401 remote_addr=210.54.39.97 time_ms=14 size=70 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-30T09:31:27+0100 lvl=eror msg="Invalid username or password" logger=context userId=0 orgId=0 uname= error="Invalid Username or Password"
+t=2019-01-30T09:31:27+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=POST path=/login status=401 remote_addr=210.54.39.97 time_ms=10 size=70 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-30T09:31:33+0100 lvl=eror msg="Invalid username or password" logger=context userId=0 orgId=0 uname= error="Invalid Username or Password"
+t=2019-01-30T09:31:33+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=POST path=/login status=401 remote_addr=210.54.39.97 time_ms=6 size=70 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-30T09:31:43+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/login/generic_oauth status=302 remote_addr=210.54.39.97 time_ms=0 size=268 referer=https://demo-board.msupply.org:3000/login
+t=2019-01-30T09:31:54+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/ status=302 remote_addr=210.54.39.97 time_ms=7 size=57 referer=
+t=2019-01-30T09:43:31+0100 lvl=info msg="Request Completed" logger=context userId=0 orgId=0 uname= method=GET path=/ status=302 remote_addr=150.107.175.198 time_ms=7 size=57 referer=
