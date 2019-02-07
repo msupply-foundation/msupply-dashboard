@@ -1,0 +1,12 @@
+License
+
+The mSupply dashboard is distributed under Apache 2.0 License (https://github.com/grafana/grafana/blob/master/LICENSE.md) as is Grafana (https://grafana.com).
+
+
+Warranty
+
+No warranty is given on product software, the user guide and other training materials. Even though Sustainable Solutions (NZ) Ltd has tested the software and documentation and reviewed their contents, Sustainable Solutions (NZ) Ltd and its distributors and dealers make no warranties, either expressed or implied, with respect to their fitness for a particular purpose. The program and the user guides are distributed solely on an “as is” basis. The entire risk as to their quality and performance is with the you.
+
+Should either the software or the manuals or both prove defective, you, and not Sustainable Solutions (NZ) Ltd or its distributors or dealers, assume the entire cost of all necessary servicing, repair, or correction.
+
+Sustainable Solutions (NZ) Ltd and its distributors and dealers will not be liable for direct, indirect, incidental, or consequential damages resulting from any defect in the software or user guide, even if they have been advised of the possibility of such damage.

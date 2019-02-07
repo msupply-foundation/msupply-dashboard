@@ -137615,7 +137615,53 @@ g_HandleSystemReboot();
 <Event>
 <Name>On Pre Install</Name>
 <Args/>
-<Script/>
+<Script>-- Callback function for HTTP.DownloadSecure
+function DownloadCallback (nDownloaded, nTotal, TransferRate, SecondLeft, SecondsLeftFormat, Message)
+    -- Convert total and downloaded bytes into formatted strings
+    sDownloaded = String.GetFormattedSize(nDownloaded, FMTSIZE_AUTOMATIC, true);
+    sTotal = String.GetFormattedSize(nTotal, FMTSIZE_AUTOMATIC, true);
+
+    StatusDlg.SetTitle("Downloading postgreSQL. . . ");
+    StatusDlg.SetMessage("Currently downloading postgreSQL installer . . . Time Left: " .. SecondsLeftFormat);
+    StatusDlg.SetStatusText("Downloaded: " .. sDownloaded .. " / " .. sTotal);
+    -- Set meter range (max range = 65534)
+    StatusDlg.SetMeterRange(0, 65534);
+    -- Set meter position (fraction downloaded * max meter range)
+    StatusDlg.SetMeterPos((nDownloaded / nTotal) * 65534);
+end
+
+if (cb_postgres) then
+  -- Check to see if the user is connected to the internet
+  connected = HTTP.TestConnection("http://msupply.foundation", 20, 80, nil, nil);
+
+  if connected then
+    StatusDlg.Show(0, false);
+    HTTP.DownloadSecure("https://get.enterprisedb.com/postgresql/postgresql-11.1-1-windows-x64.exe", _TempFolder .. "\\postgresql-11.1-1-windows-x64.exe", MODE_BINARY, 20, 443, nil, nil, DownloadCallback);
+
+    if (Application.GetLastError() ~= 0) then
+      local errorInfo = HTTP.GetHTTPErrorInfo();
+      local errorText = errorInfo.Message .. "\r\nServer Status: " .. errorInfo.Status;
+      Dialog.Message("Error Downloading PostgreSQL installer: " .. errorInfo.Number, errorText, MB_OK, MB_ICONEXCLAMATION);
+    else
+  
+      StatusDlg.Hide();
+      StatusDlg.Show(MB_ICONINFORMATION, false);
+      StatusDlg.SetMessage("Hold on, installing postgreSQL")
+      StatusDlg.SetStatusText("Installing...");
+      StatusDlg.SetMeterRange(0, 1);
+      local args = SessionVar.Expand("--disable-components pgAdmin,stackbuilder --enable-components server,commandlinetools --superaccount %db_user% --superpassword %db_pass% --mode unattended --serverport %db_port%")
+      result = File.Run(_TempFolder .. "\\postgresql-11.1-1-windows-x64.exe", args, "", SW_SHOWNORMAL, true);
+      StatusDlg.SetMeterPos(1);
+      StatusDlg.Hide();
+      
+      if (result ~= 0) then
+        Dialog.Message("PostgreSQL Install Failed", "Something went wrong with the postgreSQL installation.", MB_OK, MB_ICONEXCLAMATION)
+      end
+    end
+  else
+    Dialog.Message("Internet Error", "You are not connected to the internet. Please connect to download.");
+  end
+end</Script>
 <BookMarks count="0">
 </BookMarks>
 </Event>
