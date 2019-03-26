@@ -11,6 +11,24 @@ CREATE TABLE public.geojson (
 	"data" json NULL
 );
 
+CREATE TABLE public."user" (
+	id varchar(255) NOT NULL DEFAULT ''::character varying,
+	lastlogin date NULL,
+	group_id varchar(255) NOT NULL DEFAULT ''::character varying,
+	"mode" varchar(8) NOT NULL DEFAULT ''::character varying,
+	active bool NOT NULL DEFAULT false,
+	lasttime time NOT NULL DEFAULT '00:00:00'::time without time zone,
+	date_created date NULL,
+	date_left date NULL,
+	"language" int4 NOT NULL DEFAULT 0,
+	is_group bool NOT NULL DEFAULT false,
+	license_category_id varchar(255) NOT NULL DEFAULT ''::character varying,
+	tags jsonb NULL,
+	"type" jsonb NULL,
+	CONSTRAINT user_pkey PRIMARY KEY (id)
+);
+CREATE INDEX user_id ON public."user" USING btree (id);
+
 -- VIEWS --
 
 CREATE OR REPLACE VIEW public.store_mos
@@ -43,6 +61,18 @@ FROM ( SELECT s.name AS store,
  JOIN name_category1_level1 region ON n.category1_id = region.id
  join geojson g on region.id=g.id
 order by region.description;
+
+CREATE OR REPLACE VIEW public.store_transactions
+AS select min(date_trunc('month', confirm_date)) as "date", s."name" as store, count(*) as "month", sum(case when t.confirm_date > current_date-7 then 1 else 0 end) as "week" 
+	from store s
+	left outer join transact t on s.id = t.store_id 
+	where s.store_mode not in ('supervisor', 'his', 'drug_registration')
+	and s.disabled = false
+	and t.confirm_date > current_date-30
+	and t.confirm_date <= CURRENT_DATE
+	group by s."name"
+    order by s."name";
+
 
 -- FUNCTIONS --
 
@@ -113,4 +143,9 @@ begin
   call public.aggregate_stock_status();
  
 end $$
+;
+
+CREATE FUNCTION year_month(d date) RETURNS varchar AS $$
+    select concat(extract(year from d), extract(month from d));
+$$ LANGUAGE SQL;
 ;
