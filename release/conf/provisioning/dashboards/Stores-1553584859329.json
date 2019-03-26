@@ -15,8 +15,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 2,
-  "iteration": 1546582047712,
+  "id": 6,
+  "iteration": 1553584853047,
   "links": [
     {
       "icon": "external link",
@@ -32,12 +32,12 @@
       "datasource": "PostgreSQL",
       "fontSize": "100%",
       "gridPos": {
-        "h": 11,
-        "w": 10,
+        "h": 9,
+        "w": 12,
         "x": 0,
         "y": 0
       },
-      "id": 4,
+      "id": 2,
       "links": [],
       "pageSize": null,
       "scroll": true,
@@ -61,38 +61,6 @@
             "rgba(237, 129, 40, 0.89)",
             "rgba(50, 172, 45, 0.97)"
           ],
-          "dateFormat": "YYYY-MM-DD HH:mm:ss",
-          "decimals": 0,
-          "mappingType": 1,
-          "pattern": "Week",
-          "thresholds": [],
-          "type": "number",
-          "unit": "short"
-        },
-        {
-          "alias": "",
-          "colorMode": null,
-          "colors": [
-            "rgba(245, 54, 54, 0.9)",
-            "rgba(237, 129, 40, 0.89)",
-            "rgba(50, 172, 45, 0.97)"
-          ],
-          "dateFormat": "YYYY-MM-DD HH:mm:ss",
-          "decimals": 0,
-          "mappingType": 1,
-          "pattern": "Month",
-          "thresholds": [],
-          "type": "number",
-          "unit": "short"
-        },
-        {
-          "alias": "",
-          "colorMode": null,
-          "colors": [
-            "rgba(245, 54, 54, 0.9)",
-            "rgba(237, 129, 40, 0.89)",
-            "rgba(50, 172, 45, 0.97)"
-          ],
           "decimals": 2,
           "pattern": "/.*/",
           "thresholds": [],
@@ -106,7 +74,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "select \"Store\", \"Week\", \"Month\" from store_transactions\nwhere \"Store\" in ([[store]])\n\n\n",
+          "rawSql": "select \"store\", \"week\", \"month\" from store_transactions\nwhere \"store\" in ([[store]])\n\n\n",
           "refId": "A",
           "select": [
             [
@@ -144,14 +112,14 @@
       "decimals": 0,
       "esMetric": "Count",
       "gridPos": {
-        "h": 11,
-        "w": 13,
-        "x": 10,
+        "h": 9,
+        "w": 12,
+        "x": 12,
         "y": 0
       },
       "hideEmpty": false,
       "hideZero": false,
-      "id": 10,
+      "id": 4,
       "initialZoom": "5",
       "links": [],
       "locationData": "table",
@@ -176,15 +144,15 @@
           "group": [
             {
               "params": [
-                "\"Store\""
+                "store"
               ],
               "type": "column"
             }
           ],
           "hide": false,
-          "metricColumn": "\"Store\"",
-          "rawQuery": true,
-          "rawSql": "SELECT\n  current_date AS \"time\",\n  \"Store\" AS metric,\n  max(latitude) AS \"latitude\",\n  max(longitude) AS \"longitude\",\n  avg(value) AS \"value\"\nFROM store_mos\nWHERE\n  $__timeFilter(current_date) AND \"Store\" in ([[store]])\nGROUP BY \"Store\",2\nORDER BY 1,2",
+          "metricColumn": "store",
+          "rawQuery": false,
+          "rawSql": "SELECT\n  current_date AS \"time\",\n  store AS metric,\n  max(latitude) AS \"latitude\",\n  max(longitude) AS \"longitude\",\n  avg(value) AS \"value\"\nFROM store_mos\nWHERE\n  $__timeFilter(current_date)\nGROUP BY store,2\nORDER BY 1,2",
           "refId": "A",
           "select": [
             [
@@ -278,22 +246,24 @@
       {
         "allValue": null,
         "current": {
-          "text": "Heretaunga Clinic",
-          "value": "Heretaunga Clinic"
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": "PostgreSQL",
-        "definition": "select de.name from data_elements de join user_elements ue on de.uid = ue.element_uid where de.type = 'store'  order by de.name",
+        "definition": " select distinct n.name from name n join name_store_join nsj on n.id=nsj.name_id where n.type='store' and nsj.inactive=false order by n.name",
         "hide": 0,
         "includeAll": true,
         "label": "Store",
         "multi": true,
         "name": "store",
         "options": [],
-        "query": "select de.name from data_elements de join user_elements ue on de.uid = ue.element_uid where de.type = 'store'  order by de.name",
+        "query": " select distinct n.name from name n join name_store_join nsj on n.id=nsj.name_id where n.type='store' and nsj.inactive=false order by n.name",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 1,
+        "sort": 0,
         "tagValuesQuery": "",
         "tags": [],
         "tagsQuery": "",
@@ -303,22 +273,47 @@
       {
         "allValue": null,
         "current": {
-          "text": "(blds. syst.) HOLDER for VACUUM TUBE, reusable, non-sterile",
-          "value": "(blds. syst.) HOLDER for VACUUM TUBE, reusable, non-sterile"
+          "text": "AMOXICILLIN 500 mg / CLAVULANIC acid 125 mg, tab.",
+          "value": "AMOXICILLIN 500 mg / CLAVULANIC acid 125 mg, tab."
         },
         "datasource": "PostgreSQL",
-        "definition": "select de.name from data_elements de where de.type = 'item' order by de.name",
+        "definition": " select item_name from item order by item_name;",
         "hide": 0,
         "includeAll": true,
         "label": "Item",
         "multi": false,
         "name": "item",
         "options": [],
-        "query": "select de.name from data_elements de where de.type = 'item' order by de.name",
+        "query": " select item_name from item order by item_name;",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 1,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": "PostgreSQL",
+        "definition": " select description from name_category1_level1 order by description",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Region",
+        "multi": false,
+        "name": "region",
+        "options": [],
+        "query": " select description from name_category1_level1 order by description",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
         "tagValuesQuery": "",
         "tags": [],
         "tagsQuery": "",
@@ -358,6 +353,6 @@
   },
   "timezone": "",
   "title": "Stores",
-  "uid": "lCXbAKUmz",
+  "uid": "T5Nhy3qmz",
   "version": 7
 }
