@@ -6,9 +6,15 @@ export interface PanelPlugin {
   hideFromList?: boolean;
   module: string;
   baseUrl: string;
-  info: any;
+  info: PluginMetaInfo;
   sort: number;
   exports?: PluginExports;
+  dataFormats: PanelDataFormat[];
+}
+
+export enum PanelDataFormat {
+  Table = 'table',
+  TimeSeries = 'time_series',
 }
 
 export interface Plugin {
@@ -47,6 +53,7 @@ export interface PluginsState {
   layoutMode: string;
   hasFetched: boolean;
   dashboards: PluginDashboard[];
+  isLoadingPluginDashboards: boolean;
 }
 
 export interface VariableQueryProps {

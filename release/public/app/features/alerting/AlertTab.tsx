@@ -12,8 +12,8 @@ import StateHistory from './StateHistory';
 import 'app/features/alerting/AlertTabCtrl';
 
 // Types
-import { DashboardModel } from '../dashboard/dashboard_model';
-import { PanelModel } from '../dashboard/panel_model';
+import { DashboardModel } from '../dashboard/state/DashboardModel';
+import { PanelModel } from '../dashboard/state/PanelModel';
 import { TestRuleResult } from './TestRuleResult';
 
 interface Props {
@@ -133,7 +133,7 @@ export class AlertTab extends PureComponent<Props> {
 
     const model = {
       title: 'Panel has no alert rule defined',
-      icon: 'icon-gf icon-gf-alert',
+      buttonIcon: 'icon-gf icon-gf-alert',
       onClick: this.onAddAlert,
       buttonTitle: 'Create Alert',
     };

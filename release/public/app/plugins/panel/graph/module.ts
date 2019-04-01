@@ -9,6 +9,8 @@ import _ from 'lodash';
 import { MetricsPanelCtrl } from 'app/plugins/sdk';
 import { DataProcessor } from './data_processor';
 import { axesEditorComponent } from './axes_editor';
+import config from 'app/core/config';
+import { getColorFromHexRgbOrName } from '@grafana/ui';
 
 class GraphCtrl extends MetricsPanelCtrl {
   static template = template;
@@ -71,7 +73,7 @@ class GraphCtrl extends MetricsPanelCtrl {
     // length of a dash
     dashLength: 10,
     // length of space between two dashes
-    paceLength: 10,
+    spaceLength: 10,
     // show hide points
     points: false,
     // point radius in pixels
@@ -242,8 +244,8 @@ class GraphCtrl extends MetricsPanelCtrl {
   }
 
   onColorChange = (series, color) => {
-    series.setColor(color);
-    this.panel.aliasColors[series.alias] = series.color;
+    series.setColor(getColorFromHexRgbOrName(color, config.theme.type));
+    this.panel.aliasColors[series.alias] = color;
     this.render();
   };
 
@@ -279,7 +281,7 @@ class GraphCtrl extends MetricsPanelCtrl {
 
   toggleLegend() {
     this.panel.legend.show = !this.panel.legend.show;
-    this.refresh();
+    this.render();
   }
 
   legendValuesOptionChanged() {

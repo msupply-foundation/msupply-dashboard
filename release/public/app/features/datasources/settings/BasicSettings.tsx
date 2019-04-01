@@ -1,6 +1,5 @@
 import React, { FC } from 'react';
-import { FormLabel } from '@grafana/ui';
-import { Switch } from '../../../core/components/Switch/Switch';
+import { FormLabel, Input, Switch } from '@grafana/ui';
 
 export interface Props {
   dataSourceName: string;
@@ -22,7 +21,7 @@ const BasicSettings: FC<Props> = ({ dataSourceName, isDefault, onDefaultChange, 
           >
             Name
           </FormLabel>
-          <input
+          <Input
             className="gf-form-input max-width-23"
             type="text"
             value={dataSourceName}
@@ -31,6 +30,8 @@ const BasicSettings: FC<Props> = ({ dataSourceName, isDefault, onDefaultChange, 
             required
           />
         </div>
+        {/*
+        //@ts-ignore */}
         <Switch label="Default" checked={isDefault} onChange={event => onDefaultChange(event.target.checked)} />
       </div>
     </div>

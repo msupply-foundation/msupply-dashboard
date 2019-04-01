@@ -1,12 +1,6 @@
-import './dashboard_ctrl';
-import './time_srv';
-import './repeat_option/repeat_option';
 import './dashgrid/DashboardGridDirective';
-import './dashgrid/RowOptions';
-import './panellinks/module';
 
 // Services
-import './services/DashboardViewStateSrv';
 import './services/UnsavedChangesSrv';
 import './services/DashboardLoaderSrv';
 import './services/DashboardSrv';
@@ -25,6 +19,7 @@ import './components/UnsavedChangesModal';
 import './components/SaveModals';
 import './components/ShareModal';
 import './components/AdHocFilters';
+import './components/RowOptions';
 
 import DashboardPermissions from './components/DashboardPermissions/DashboardPermissions';
 
@@ -32,4 +27,3 @@ import DashboardPermissions from './components/DashboardPermissions/DashboardPer
 import { react2AngularDirective } from 'app/core/utils/react2angular';
 
 react2AngularDirective('dashboardPermissions', DashboardPermissions, ['dashboardId', 'folder']);
-

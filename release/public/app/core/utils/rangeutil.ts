@@ -16,8 +16,10 @@ const spans = {
 };
 
 const rangeOptions = [
-  /*  { from: 'now/d', to: 'now/d', display: 'Today', section: 2 },
-  { from: 'now/d', to: 'now', display: 'Today so far', section: 2 },*/
+  /*
+  { from: 'now/d', to: 'now/d', display: 'Today', section: 2 },
+  { from: 'now/d', to: 'now', display: 'Today so far', section: 2 },
+  */
   { from: 'now/w', to: 'now/w', display: 'This week', section: 2 },
   { from: 'now/w', to: 'now', display: 'This week so far', section: 2 },
   { from: 'now/M', to: 'now/M', display: 'This month', section: 2 },

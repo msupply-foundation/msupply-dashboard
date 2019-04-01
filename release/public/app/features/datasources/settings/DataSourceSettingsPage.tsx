@@ -4,8 +4,7 @@ import { hot } from 'react-hot-loader';
 import { connect } from 'react-redux';
 
 // Components
-import PageHeader from 'app/core/components/PageHeader/PageHeader';
-import PageLoader from 'app/core/components/PageLoader/PageLoader';
+import Page from 'app/core/components/Page/Page';
 import PluginSettings from './PluginSettings';
 import BasicSettings from './BasicSettings';
 import ButtonRow from './ButtonRow';
@@ -22,7 +21,7 @@ import { getNavModel } from 'app/core/selectors/navModel';
 import { getRouteParamsId } from 'app/core/selectors/location';
 
 // Types
-import { NavModel, Plugin } from 'app/types/';
+import { NavModel, Plugin, StoreState } from 'app/types/';
 import { DataSourceSettings } from '@grafana/ui/src/types/';
 import { getDataSourceLoadingNav } from '../state/navModel';
 
@@ -51,7 +50,7 @@ enum DataSourceStates {
 }
 
 export class DataSourceSettingsPage extends PureComponent<Props, State> {
-  constructor(props) {
+  constructor(props: Props) {
     super(props);
 
     this.state = {
@@ -65,10 +64,24 @@ export class DataSourceSettingsPage extends PureComponent<Props, State> {
     await loadDataSource(pageId);
   }
 
-  onSubmit = async event => {
-    event.preventDefault();
+  componentDidUpdate(prevProps: Props) {
+    const { dataSource } = this.props;
+
+    if (prevProps.dataSource !== dataSource) {
+      this.setState({ dataSource });
+    }
+  }
+
+  onSubmit = async (evt: React.FormEvent<HTMLFormElement>) => {
+    evt.preventDefault();
 
     await this.props.updateDataSource({ ...this.state.dataSource, name: this.props.dataSource.name });
+
+    this.testDataSource();
+  };
+
+  onTest = async (evt: React.FormEvent<HTMLFormElement>) => {
+    evt.preventDefault();
 
     this.testDataSource();
   };
@@ -89,10 +102,8 @@ export class DataSourceSettingsPage extends PureComponent<Props, State> {
     this.props.deleteDataSource();
   };
 
-  onModelChange = dataSource => {
-    this.setState({
-      dataSource: dataSource,
-    });
+  onModelChange = (dataSource: DataSourceSettings) => {
+    this.setState({ dataSource });
   };
 
   isReadOnly() {
@@ -170,17 +181,18 @@ export class DataSourceSettingsPage extends PureComponent<Props, State> {
     });
   }
 
+  get hasDataSource() {
+    return Object.keys(this.props.dataSource).length > 0;
+  }
+
   render() {
     const { dataSource, dataSourceMeta, navModel, setDataSourceName, setIsDefault } = this.props;
     const { testingMessage, testingStatus } = this.state;
 
     return (
-      <div>
-        <PageHeader model={navModel} />
-        {Object.keys(dataSource).length === 0 ? (
-          <PageLoader pageName="Data source settings" />
-        ) : (
-          <div className="page-container page-body">
+      <Page navModel={navModel}>
+        <Page.Contents isLoading={!this.hasDataSource}>
+          {this.hasDataSource && (
             <div>
               <form onSubmit={this.onSubmit}>
                 {this.isReadOnly() && this.renderIsReadOnlyMessage()}
@@ -201,7 +213,7 @@ export class DataSourceSettingsPage extends PureComponent<Props, State> {
                   />
                 )}
 
-                <div className="gf-form-group section">
+                <div className="gf-form-group">
                   {testingMessage && (
                     <div className={`alert-${testingStatus} alert`}>
                       <div className="alert-icon">
@@ -222,17 +234,18 @@ export class DataSourceSettingsPage extends PureComponent<Props, State> {
                   onSubmit={event => this.onSubmit(event)}
                   isReadOnly={this.isReadOnly()}
                   onDelete={this.onDelete}
+                  onTest={event => this.onTest(event)}
                 />
               </form>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </Page.Contents>
+      </Page>
     );
   }
 }
 
-function mapStateToProps(state) {
+function mapStateToProps(state: StoreState) {
   const pageId = getRouteParamsId(state.location);
   const dataSource = getDataSource(state.dataSources, pageId);
 
@@ -252,4 +265,9 @@ const mapDispatchToProps = {
   setIsDefault,
 };
 
-export default hot(module)(connect(mapStateToProps, mapDispatchToProps)(DataSourceSettingsPage));
+export default hot(module)(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps
+  )(DataSourceSettingsPage)
+);

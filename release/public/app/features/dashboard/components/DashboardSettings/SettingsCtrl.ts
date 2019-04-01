@@ -1,5 +1,5 @@
 import { coreModule, appEvents, contextSrv } from 'app/core/core';
-import { DashboardModel } from '../../dashboard_model';
+import { DashboardModel } from '../../state/DashboardModel';
 import $ from 'jquery';
 import _ from 'lodash';
 import angular from 'angular';
@@ -38,7 +38,7 @@ export class SettingsCtrl {
       });
     });
 
-    this.canSaveAs = this.dashboard.meta.canEdit && contextSrv.hasEditPermissionInFolders;
+    this.canSaveAs = contextSrv.hasEditPermissionInFolders;
     this.canSave = this.dashboard.meta.canSave;
     this.canDelete = this.dashboard.meta.canSave;
 

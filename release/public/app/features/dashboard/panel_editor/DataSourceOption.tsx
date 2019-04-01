@@ -1,31 +1,30 @@
-﻿import React, { FC } from 'react';
-import { Tooltip } from '@grafana/ui';
+import React, { FC, ChangeEvent } from 'react';
+import { FormLabel, Input } from '@grafana/ui';
 
 interface Props {
   label: string;
   placeholder?: string;
-  name?: string;
-  value?: string;
-  onChange?: (evt: any) => void;
+  name: string;
+  value: string;
+  onBlur: (event: ChangeEvent<HTMLInputElement>) => void;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   tooltipInfo?: any;
 }
 
-export const DataSourceOptions: FC<Props> = ({ label, placeholder, name, value, onChange, tooltipInfo }) => {
-  const dsOption = (
+export const DataSourceOption: FC<Props> = ({ label, placeholder, name, value, onBlur, onChange, tooltipInfo }) => {
+  return (
     <div className="gf-form gf-form--flex-end">
-      <label className="gf-form-label">{label}</label>
-      <input
+      <FormLabel tooltip={tooltipInfo}>{label}</FormLabel>
+      <Input
         type="text"
         className="gf-form-input width-6"
         placeholder={placeholder}
         name={name}
         spellCheck={false}
-        onBlur={evt => onChange(evt.target.value)}
+        onBlur={onBlur}
+        onChange={onChange}
+        value={value}
       />
     </div>
   );
-
-  return tooltipInfo ? <Tooltip content={tooltipInfo}>{dsOption}</Tooltip> : dsOption;
 };
-
-export default DataSourceOptions;

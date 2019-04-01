@@ -1,12 +1,11 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`Render should render alpha info text 1`] = `
-<div>
-  <PageHeader
-    model={Object {}}
-  />
-  <div
-    className="page-container page-body"
+<Page
+  navModel={Object {}}
+>
+  <PageContents
+    isLoading={false}
   >
     <div>
       <form
@@ -89,26 +88,26 @@ exports[`Render should render alpha info text 1`] = `
           onModelChange={[Function]}
         />
         <div
-          className="gf-form-group section"
+          className="gf-form-group"
         />
         <ButtonRow
           isReadOnly={false}
           onDelete={[Function]}
           onSubmit={[Function]}
+          onTest={[Function]}
         />
       </form>
     </div>
-  </div>
-</div>
+  </PageContents>
+</Page>
 `;
 
 exports[`Render should render beta info text 1`] = `
-<div>
-  <PageHeader
-    model={Object {}}
-  />
-  <div
-    className="page-container page-body"
+<Page
+  navModel={Object {}}
+>
+  <PageContents
+    isLoading={false}
   >
     <div>
       <form
@@ -191,26 +190,26 @@ exports[`Render should render beta info text 1`] = `
           onModelChange={[Function]}
         />
         <div
-          className="gf-form-group section"
+          className="gf-form-group"
         />
         <ButtonRow
           isReadOnly={false}
           onDelete={[Function]}
           onSubmit={[Function]}
+          onTest={[Function]}
         />
       </form>
     </div>
-  </div>
-</div>
+  </PageContents>
+</Page>
 `;
 
 exports[`Render should render component 1`] = `
-<div>
-  <PageHeader
-    model={Object {}}
-  />
-  <div
-    className="page-container page-body"
+<Page
+  navModel={Object {}}
+>
+  <PageContents
+    isLoading={false}
   >
     <div>
       <form
@@ -288,26 +287,26 @@ exports[`Render should render component 1`] = `
           onModelChange={[Function]}
         />
         <div
-          className="gf-form-group section"
+          className="gf-form-group"
         />
         <ButtonRow
           isReadOnly={false}
           onDelete={[Function]}
           onSubmit={[Function]}
+          onTest={[Function]}
         />
       </form>
     </div>
-  </div>
-</div>
+  </PageContents>
+</Page>
 `;
 
 exports[`Render should render is ready only message 1`] = `
-<div>
-  <PageHeader
-    model={Object {}}
-  />
-  <div
-    className="page-container page-body"
+<Page
+  navModel={Object {}}
+>
+  <PageContents
+    isLoading={false}
   >
     <div>
       <form
@@ -390,26 +389,26 @@ exports[`Render should render is ready only message 1`] = `
           onModelChange={[Function]}
         />
         <div
-          className="gf-form-group section"
+          className="gf-form-group"
         />
         <ButtonRow
           isReadOnly={true}
           onDelete={[Function]}
           onSubmit={[Function]}
+          onTest={[Function]}
         />
       </form>
     </div>
-  </div>
-</div>
+  </PageContents>
+</Page>
 `;
 
 exports[`Render should render loader 1`] = `
-<div>
-  <PageHeader
-    model={Object {}}
+<Page
+  navModel={Object {}}
+>
+  <PageContents
+    isLoading={true}
   />
-  <PageLoader
-    pageName="Data source settings"
-  />
-</div>
+</Page>
 `;
