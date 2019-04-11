@@ -461,6 +461,9 @@ CREATE INDEX IF NOT EXISTS user_id ON "user" USING btree (id);
 
 -- VIEWS --
 
+/*
+-- as you'll see below, these are now created after exporting --
+
 CREATE OR REPLACE VIEW store_mos
 AS SELECT CURRENT_DATE AS "current_date",
     name.name AS store,
@@ -503,6 +506,7 @@ AS select min(date_trunc('month', confirm_date)) as "date", s."name" as store, c
 	group by s."name"
     order by s."name";
 
+*/
 
 -- FUNCTIONS --
 CREATE OR REPLACE FUNCTION year_month(d date) RETURNS varchar AS $$
@@ -577,4 +581,65 @@ begin
   call public.aggregate_stock_status();
  
 end $$
+;
+
+CREATE OR REPLACE PROCEDURE public.pre_export()
+ LANGUAGE sql
+AS $procedure$ 	
+DROP VIEW IF EXISTS public.region_mos;
+DROP VIEW IF EXISTS public.store_mos; 
+DROP VIEW IF EXISTS public.store_transactions; 
+ $procedure$
+;
+
+CREATE OR REPLACE PROCEDURE public.post_export()
+ LANGUAGE sql
+AS $procedure$ 	
+CREATE OR REPLACE VIEW public.region_mos
+AS SELECT CURRENT_DATE AS "time",
+    region.description AS region,
+    a.store,
+    a.value,
+    g.data AS geojson
+   FROM ( SELECT s.name AS store,
+            s.id AS storeid,
+            avg(a_1.value) AS value,
+            s.name_id
+           FROM aggregator a_1
+             JOIN store s ON a_1.storeid = s.id::text
+          WHERE a_1.dataelement = 'mos'::text
+          GROUP BY s.name, s.id, s.name_id) a
+     JOIN name n ON a.name_id::text = n.id::text
+     JOIN name_category1_level1 region ON n.category1_id::text = region.id::text
+     JOIN geojson g ON region.id::text = g.id::text
+  ORDER BY region.description;
+  
+ CREATE OR REPLACE VIEW public.store_mos
+AS SELECT CURRENT_DATE AS "current_date",
+    name.name AS store,
+    a.value,
+    name.latitude,
+    name.longitude
+   FROM store
+     JOIN name ON store.name_id::text = name.id::text
+     JOIN aggregator a ON store.id::text = a.storeid
+  WHERE store.disabled = false AND a.dataelement = 'mos'::text;
+
+
+CREATE OR REPLACE VIEW public.store_transactions
+AS SELECT min(date_trunc('month'::text, t.confirm_date::timestamp with time zone)) AS date,
+    s.name AS store,
+    count(*) AS month,
+    sum(
+        CASE
+            WHEN t.confirm_date > (CURRENT_DATE - 7) THEN 1
+            ELSE 0
+        END) AS week
+   FROM store s
+     LEFT JOIN transact t ON s.id::text = t.store_id::text
+  WHERE (s.store_mode <> ALL (ARRAY['supervisor'::text, 'his'::text, 'drug_registration'::text])) AND s.disabled = false AND t.confirm_date > (CURRENT_DATE - 30) AND t.confirm_date <= CURRENT_DATE
+  GROUP BY s.name
+  ORDER BY s.name;
+ 
+ $procedure$
 ;
