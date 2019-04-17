@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 6,
-  "iteration": 1553584853047,
+  "iteration": 1555459172658,
   "links": [
     {
       "icon": "external link",
@@ -29,7 +29,6 @@
   "panels": [
     {
       "columns": [],
-      "datasource": "PostgreSQL",
       "fontSize": "100%",
       "gridPos": {
         "h": 9,
@@ -152,7 +151,7 @@
           "hide": false,
           "metricColumn": "store",
           "rawQuery": false,
-          "rawSql": "SELECT\n  current_date AS \"time\",\n  store AS metric,\n  max(latitude) AS \"latitude\",\n  max(longitude) AS \"longitude\",\n  avg(value) AS \"value\"\nFROM store_mos\nWHERE\n  $__timeFilter(current_date)\nGROUP BY store,2\nORDER BY 1,2",
+          "rawSql": "SELECT\n  current_date AS \"time\",\n  store AS metric,\n  max(latitude) AS \"latitude\",\n  max(longitude) AS \"longitude\",\n  avg(value) AS \"value\"\nFROM store_mos\nWHERE\n  item IN ($item) AND\n  store IN ($store)\nGROUP BY store,2\nORDER BY 1,2",
           "refId": "A",
           "select": [
             [
@@ -221,9 +220,24 @@
           "timeColumnType": "date",
           "where": [
             {
-              "name": "$__timeFilter",
-              "params": [],
-              "type": "macro"
+              "datatype": "varchar",
+              "name": "",
+              "params": [
+                "item",
+                "IN",
+                "($item)"
+              ],
+              "type": "expression"
+            },
+            {
+              "datatype": "text",
+              "name": "",
+              "params": [
+                "store",
+                "IN",
+                "($store)"
+              ],
+              "type": "expression"
             }
           ]
         }
@@ -236,7 +250,7 @@
       "valueName": "total"
     }
   ],
-  "schemaVersion": 16,
+  "schemaVersion": 17,
   "style": "dark",
   "tags": [
     "mSupply"
@@ -323,7 +337,7 @@
     ]
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-2y",
     "to": "now"
   },
   "timepicker": {
@@ -354,5 +368,5 @@
   "timezone": "",
   "title": "Stores",
   "uid": "T5Nhy3qmz",
-  "version": 7
+  "version": 9
 }

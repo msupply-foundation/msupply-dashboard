@@ -15,6 +15,7 @@ datasources:
     url: [[database_server]]
     database: [[database_name]]
     user: [[database_user]]
+    isDefault: true
     secureJsonData:
       password: [[database_password]]
     jsonData:
