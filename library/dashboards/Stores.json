@@ -1,0 +1,372 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 6,
+  "iteration": 1555459172658,
+  "links": [
+    {
+      "icon": "external link",
+      "tags": [
+        "mSupply"
+      ],
+      "type": "dashboards"
+    }
+  ],
+  "panels": [
+    {
+      "columns": [],
+      "fontSize": "100%",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "links": [],
+      "pageSize": null,
+      "scroll": true,
+      "showHeader": true,
+      "sort": {
+        "col": 0,
+        "desc": false
+      },
+      "styles": [
+        {
+          "alias": "Time",
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "pattern": "Time",
+          "type": "date"
+        },
+        {
+          "alias": "",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "decimals": 2,
+          "pattern": "/.*/",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select \"store\", \"week\", \"month\" from store_transactions\nwhere \"store\" in ([[store]])\n\n\n",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Transactions per Store",
+      "transform": "table",
+      "type": "table"
+    },
+    {
+      "circleMaxSize": 30,
+      "circleMinSize": 2,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "#0a50a1",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "decimals": 0,
+      "esMetric": "Count",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "hideEmpty": false,
+      "hideZero": false,
+      "id": 4,
+      "initialZoom": "5",
+      "links": [],
+      "locationData": "table",
+      "mapCenter": "custom",
+      "mapCenterLatitude": "-41.2141504",
+      "mapCenterLongitude": "173.9660801",
+      "maxDataPoints": 1,
+      "mouseWheelZoom": false,
+      "showLegend": true,
+      "stickyLabels": false,
+      "tableQueryOptions": {
+        "geohashField": "geohash",
+        "labelField": "metric",
+        "latitudeField": "latitude",
+        "longitudeField": "longitude",
+        "metricField": "value",
+        "queryType": "coordinates"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "group": [
+            {
+              "params": [
+                "store"
+              ],
+              "type": "column"
+            }
+          ],
+          "hide": false,
+          "metricColumn": "store",
+          "rawQuery": false,
+          "rawSql": "SELECT\n  current_date AS \"time\",\n  store AS metric,\n  max(latitude) AS \"latitude\",\n  max(longitude) AS \"longitude\",\n  avg(value) AS \"value\"\nFROM store_mos\nWHERE\n  item IN ($item) AND\n  store IN ($store)\nGROUP BY store,2\nORDER BY 1,2",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "latitude"
+                ],
+                "type": "column"
+              },
+              {
+                "params": [
+                  "max"
+                ],
+                "type": "aggregate"
+              },
+              {
+                "params": [
+                  "latitude"
+                ],
+                "type": "alias"
+              }
+            ],
+            [
+              {
+                "params": [
+                  "longitude"
+                ],
+                "type": "column"
+              },
+              {
+                "params": [
+                  "max"
+                ],
+                "type": "aggregate"
+              },
+              {
+                "params": [
+                  "longitude"
+                ],
+                "type": "alias"
+              }
+            ],
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              },
+              {
+                "params": [
+                  "avg"
+                ],
+                "type": "aggregate"
+              },
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "alias"
+              }
+            ]
+          ],
+          "table": "store_mos",
+          "timeColumn": "current_date",
+          "timeColumnType": "date",
+          "where": [
+            {
+              "datatype": "varchar",
+              "name": "",
+              "params": [
+                "item",
+                "IN",
+                "($item)"
+              ],
+              "type": "expression"
+            },
+            {
+              "datatype": "text",
+              "name": "",
+              "params": [
+                "store",
+                "IN",
+                "($store)"
+              ],
+              "type": "expression"
+            }
+          ]
+        }
+      ],
+      "thresholds": "0,6,12",
+      "title": "Months of stock by Store",
+      "type": "grafana-worldmap-panel",
+      "unitPlural": "",
+      "unitSingle": "",
+      "valueName": "total"
+    }
+  ],
+  "schemaVersion": 17,
+  "style": "dark",
+  "tags": [
+    "mSupply"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": " select distinct n.name from name n join name_store_join nsj on n.id=nsj.name_id where n.type='store' and nsj.inactive=false order by n.name",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Store",
+        "multi": true,
+        "name": "store",
+        "options": [],
+        "query": " select distinct n.name from name n join name_store_join nsj on n.id=nsj.name_id where n.type='store' and nsj.inactive=false order by n.name",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "AMOXICILLIN 500 mg / CLAVULANIC acid 125 mg, tab.",
+          "value": "AMOXICILLIN 500 mg / CLAVULANIC acid 125 mg, tab."
+        },
+        "datasource": "PostgreSQL",
+        "definition": " select item_name from item order by item_name;",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Item",
+        "multi": false,
+        "name": "item",
+        "options": [],
+        "query": " select item_name from item order by item_name;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": "PostgreSQL",
+        "definition": " select description from name_category1_level1 order by description",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Region",
+        "multi": false,
+        "name": "region",
+        "options": [],
+        "query": " select description from name_category1_level1 order by description",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now-2y",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ]
+  },
+  "timezone": "",
+  "title": "Stores",
+  "uid": "T5Nhy3qmz",
+  "version": 9
+}
