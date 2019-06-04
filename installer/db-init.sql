@@ -614,18 +614,19 @@ AS SELECT CURRENT_DATE AS "time",
      JOIN geojson g ON region.id::text = g.id::text
   ORDER BY region.description;
   
- CREATE OR REPLACE VIEW public.store_mos
+CREATE OR REPLACE VIEW public.store_mos
 AS SELECT CURRENT_DATE AS "current_date",
     name.name AS store,
     a.value,
     name.latitude,
     name.longitude,
-	i.item_name as item
+    i.item_name AS item
    FROM store
      JOIN name ON store.name_id::text = name.id::text
      JOIN aggregator a ON store.id::text = a.storeid
-     JOIN item i ON a.itemid=i.id
+     JOIN item i ON a.itemid = i.id::text
   WHERE store.disabled = false AND a.dataelement = 'mos'::text;
+
 
 CREATE OR REPLACE VIEW public.store_transactions
 AS SELECT min(date_trunc('month'::text, t.confirm_date::timestamp with time zone)) AS date,

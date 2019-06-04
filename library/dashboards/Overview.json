@@ -15,8 +15,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 2,
-  "iteration": 1553584818024,
+  "id": 4,
+  "iteration": 1556822550985,
   "links": [
     {
       "icon": "external link",
@@ -269,7 +269,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "select CURRENT_DATE AS \"time\", case when value = 0 then 'zero' when value > 2 then 'over' when value < 1 then 'under' else 'normal' end as metric, count(*) as count \nfrom\n(\nselect avg(value) as value\nfrom\n(\n   SELECT item.item_name AS item, mos.value\n   FROM aggregator mos\n    JOIN store ON mos.storeid = store.id \n    join item on mos.itemid = item.id\n  WHERE mos.dataelement = 'mos'\n  AND store.name IN ($store)\n  GROUP BY store.name, item.item_name, value\n) as a\n  WHERE item = $item\ngroup by item\n) as b\ngroup by 2;",
+          "rawSql": "select CURRENT_DATE AS \"time\", case when value = 0 then 'zero' when value > 2 then 'over' when value < 1 then 'under' else 'normal' end as metric, count(*) as count \nfrom\n(\nselect avg(value) as value\nfrom\n(\n   SELECT item.item_name AS item, mos.value\n   FROM aggregator mos\n    JOIN store ON mos.storeid = store.id \n    join item on mos.itemid = item.id\n  WHERE mos.dataelement = 'mos'\n  AND store.name IN ($store)\n  GROUP BY store.name, item.item_name, value\n) as a\n  WHERE item = $item\ngroup by item\n) as b\ngroup by 2;\n",
           "refId": "A",
           "select": [
             [
@@ -1009,7 +1009,7 @@
       "type": "row"
     }
   ],
-  "schemaVersion": 16,
+  "schemaVersion": 18,
   "style": "dark",
   "tags": [
     "mSupply"
@@ -1218,5 +1218,5 @@
   "timezone": "",
   "title": "Overview",
   "uid": "jquMpWPik",
-  "version": 79
+  "version": 3
 }
