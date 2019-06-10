@@ -1,0 +1,102 @@
+{
+  "aliasColors": {},
+  "breakPoint": "50%",
+  "cacheTimeout": null,
+  "combine": {
+    "label": "Others",
+    "threshold": 0
+  },
+  "fontSize": "80%",
+  "format": "currencyUSD",
+  "gridPos": {
+    "h": 9,
+    "w": 5,
+    "x": 6,
+    "y": 2
+  },
+  "id": 12,
+  "interval": null,
+  "legend": {
+    "percentage": false,
+    "show": true,
+    "sort": null,
+    "sortDesc": null,
+    "values": true
+  },
+  "legendType": "Under graph",
+  "links": [],
+  "maxDataPoints": 3,
+  "nullPointMode": "connected",
+  "pieType": "pie",
+  "strokeWidth": 1,
+  "targets": [
+    {
+      "format": "time_series",
+      "group": [
+        {
+          "params": [
+            "store"
+          ],
+          "type": "column"
+        },
+        {
+          "params": [
+            "date"
+          ],
+          "type": "column"
+        }
+      ],
+      "hide": false,
+      "metricColumn": "store",
+      "rawQuery": true,
+      "rawSql": "SELECT CURRENT_DATE AS \"time\",\n    store.name AS \"metric\",\n    sum(stock.value) \n   FROM aggregator stock\n   join store ON stock.storeid = store.id\n  WHERE stock.dataelement = 'totalStockValue' AND store.name IN ($store)\n  group by 1, 2;",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          },
+          {
+            "params": [
+              "avg"
+            ],
+            "type": "aggregate"
+          },
+          {
+            "params": [
+              "value"
+            ],
+            "type": "alias"
+          }
+        ]
+      ],
+      "table": "stock_status",
+      "timeColumn": "date",
+      "timeColumnType": "date",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        },
+        {
+          "datatype": "varchar",
+          "name": "",
+          "params": [
+            "store",
+            "IN",
+            "($store)"
+          ],
+          "type": "expression"
+        }
+      ]
+    }
+  ],
+  "title": "Stock Value by Store",
+  "type": "grafana-piechart-panel",
+  "valueName": "current",
+  "options": {}
+}

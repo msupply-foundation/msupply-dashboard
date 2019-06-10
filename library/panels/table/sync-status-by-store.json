@@ -1,0 +1,74 @@
+{
+  "columns": [],
+  "fontSize": "100%",
+  "gridPos": {
+    "h": 13,
+    "w": 22,
+    "x": 0,
+    "y": 0
+  },
+  "id": 2,
+  "links": [],
+  "pageSize": null,
+  "scroll": true,
+  "showHeader": true,
+  "sort": {
+    "col": null,
+    "desc": false
+  },
+  "styles": [
+    {
+      "alias": "Time",
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "pattern": "Time",
+      "type": "date"
+    },
+    {
+      "alias": "",
+      "colorMode": null,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "decimals": 2,
+      "pattern": "/.*/",
+      "thresholds": [],
+      "type": "number",
+      "unit": "short"
+    }
+  ],
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "select s.name as \"Store\", count(*) as \"Sync Count\", current_date-max(date_created) as \"Days since last sync\"\nfrom sync_out\njoin store s on sync_out.store_ID=s.ID\ngroup by 1",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "timeFrom": null,
+  "timeShift": null,
+  "title": "Sync Status by Store",
+  "transform": "table",
+  "type": "table"
+}

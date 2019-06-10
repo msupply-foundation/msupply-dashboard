@@ -1,0 +1,151 @@
+{
+  "circleMaxSize": 30,
+  "circleMinSize": 2,
+  "colors": [
+    "rgba(245, 54, 54, 0.9)",
+    "rgba(237, 129, 40, 0.89)",
+    "#0a50a1",
+    "rgba(50, 172, 45, 0.97)"
+  ],
+  "decimals": 0,
+  "esMetric": "Count",
+  "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 12,
+    "y": 0
+  },
+  "hideEmpty": false,
+  "hideZero": false,
+  "id": 4,
+  "initialZoom": "5",
+  "links": [],
+  "locationData": "table",
+  "mapCenter": "custom",
+  "mapCenterLatitude": "-41.2141504",
+  "mapCenterLongitude": "173.9660801",
+  "maxDataPoints": 1,
+  "mouseWheelZoom": false,
+  "showLegend": true,
+  "stickyLabels": false,
+  "tableQueryOptions": {
+    "geohashField": "geohash",
+    "labelField": "metric",
+    "latitudeField": "latitude",
+    "longitudeField": "longitude",
+    "metricField": "value",
+    "queryType": "coordinates"
+  },
+  "targets": [
+    {
+      "format": "table",
+      "group": [
+        {
+          "params": [
+            "store"
+          ],
+          "type": "column"
+        }
+      ],
+      "hide": false,
+      "metricColumn": "store",
+      "rawQuery": false,
+      "rawSql": "SELECT\n  current_date AS \"time\",\n  store AS metric,\n  max(latitude) AS \"latitude\",\n  max(longitude) AS \"longitude\",\n  avg(value) AS \"value\"\nFROM store_mos\nWHERE\n  item IN ($item) AND\n  store IN ($store)\nGROUP BY store,2\nORDER BY 1,2",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "latitude"
+            ],
+            "type": "column"
+          },
+          {
+            "params": [
+              "max"
+            ],
+            "type": "aggregate"
+          },
+          {
+            "params": [
+              "latitude"
+            ],
+            "type": "alias"
+          }
+        ],
+        [
+          {
+            "params": [
+              "longitude"
+            ],
+            "type": "column"
+          },
+          {
+            "params": [
+              "max"
+            ],
+            "type": "aggregate"
+          },
+          {
+            "params": [
+              "longitude"
+            ],
+            "type": "alias"
+          }
+        ],
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          },
+          {
+            "params": [
+              "avg"
+            ],
+            "type": "aggregate"
+          },
+          {
+            "params": [
+              "value"
+            ],
+            "type": "alias"
+          }
+        ]
+      ],
+      "table": "store_mos",
+      "timeColumn": "current_date",
+      "timeColumnType": "date",
+      "where": [
+        {
+          "datatype": "varchar",
+          "name": "",
+          "params": [
+            "item",
+            "IN",
+            "($item)"
+          ],
+          "type": "expression"
+        },
+        {
+          "datatype": "text",
+          "name": "",
+          "params": [
+            "store",
+            "IN",
+            "($store)"
+          ],
+          "type": "expression"
+        }
+      ]
+    }
+  ],
+  "thresholds": "0,6,12",
+  "title": "Months of stock by Store",
+  "type": "grafana-worldmap-panel",
+  "unitPlural": "",
+  "unitSingle": "",
+  "valueName": "total",
+  "options": {}
+}

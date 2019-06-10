@@ -11,6 +11,8 @@ import TimeSeries from 'app/core/time_series2';
 import { MetricsPanelCtrl } from 'app/plugins/sdk';
 import { GrafanaThemeType, getValueFormat, getColorFromHexRgbOrName, isTableData } from '@grafana/ui';
 
+const BASE_FONT_SIZE = 38;
+
 class SingleStatCtrl extends MetricsPanelCtrl {
   static templateUrl = 'module.html';
 
@@ -191,7 +193,7 @@ class SingleStatCtrl extends MetricsPanelCtrl {
       data.value = 0;
       data.valueRounded = 0;
     } else {
-      const decimalInfo = getDecimalsForValue(data.value);
+      const decimalInfo = getDecimalsForValue(data.value, this.panel.decimals);
       const formatFunc = getValueFormat(this.panel.format);
 
       data.valueFormatted = formatFunc(
@@ -199,7 +201,7 @@ class SingleStatCtrl extends MetricsPanelCtrl {
         decimalInfo.decimals,
         decimalInfo.scaledDecimals
       );
-      data.valueRounded = kbn.roundValue(data.value, this.panel.decimals || 0);
+      data.valueRounded = kbn.roundValue(data.value, decimalInfo.decimals);
     }
 
     this.setValueMapping(data);
@@ -279,17 +281,15 @@ class SingleStatCtrl extends MetricsPanelCtrl {
         data.value = this.series[0].stats[this.panel.valueName];
         data.flotpairs = this.series[0].flotpairs;
 
-        let decimals = this.panel.decimals;
-        let scaledDecimals = 0;
+        const decimalInfo = getDecimalsForValue(data.value, this.panel.decimals);
 
-        if (!this.panel.decimals) {
-          const decimalInfo = getDecimalsForValue(data.value);
-          decimals = decimalInfo.decimals;
-          scaledDecimals = decimalInfo.scaledDecimals;
-        }
-
-        data.valueFormatted = formatFunc(data.value, decimals, scaledDecimals, this.dashboard.isTimezoneUtc());
-        data.valueRounded = kbn.roundValue(data.value, decimals);
+        data.valueFormatted = formatFunc(
+          data.value,
+          decimalInfo.decimals,
+          decimalInfo.scaledDecimals,
+          this.dashboard.isTimezoneUtc()
+        );
+        data.valueRounded = kbn.roundValue(data.value, decimalInfo.decimals);
       }
 
       // Add $__name variable for using in prefix or postfix
@@ -386,10 +386,11 @@ class SingleStatCtrl extends MetricsPanelCtrl {
       return valueString;
     }
 
-    function getSpan(className, fontSize, applyColoring, value) {
+    function getSpan(className, fontSizePercent, applyColoring, value) {
       value = $sanitize(templateSrv.replace(value, data.scopedVars));
       value = applyColoring ? applyColoringThresholds(value) : value;
-      return '<span class="' + className + '" style="font-size:' + fontSize + '">' + value + '</span>';
+      const pixelSize = (parseInt(fontSizePercent, 10) / 100) * BASE_FONT_SIZE;
+      return '<span class="' + className + '" style="font-size:' + pixelSize + 'px">' + value + '</span>';
     }
 
     function getBigValueHtml() {
@@ -432,7 +433,7 @@ class SingleStatCtrl extends MetricsPanelCtrl {
 
       const plotCanvas = $('<div></div>');
       const plotCss = {
-        top: '10px',
+        top: '5px',
         margin: 'auto',
         position: 'relative',
         height: height * 0.9 + 'px',
@@ -496,7 +497,7 @@ class SingleStatCtrl extends MetricsPanelCtrl {
               },
               font: {
                 size: fontSize,
-                family: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+                family: config.theme.typography.fontFamily.sansSerif,
               },
             },
             show: true,
@@ -514,7 +515,7 @@ class SingleStatCtrl extends MetricsPanelCtrl {
     }
 
     function addSparkline() {
-      const width = elem.width() + 20;
+      const width = elem.width();
       if (width < 30) {
         // element has not gotten it's width yet
         // delay sparkline render
@@ -526,17 +527,16 @@ class SingleStatCtrl extends MetricsPanelCtrl {
       const plotCanvas = $('<div></div>');
       const plotCss: any = {};
       plotCss.position = 'absolute';
+      plotCss.bottom = '0px';
 
       if (panel.sparkline.full) {
-        plotCss.bottom = '5px';
-        plotCss.left = '-5px';
-        plotCss.width = width - 10 + 'px';
+        plotCss.left = '0px';
+        plotCss.width = width + 'px';
         const dynamicHeightMargin = height <= 100 ? 5 : Math.round(height / 100) * 15 + 5;
         plotCss.height = height - dynamicHeightMargin + 'px';
       } else {
-        plotCss.bottom = '0px';
-        plotCss.left = '-5px';
-        plotCss.width = width - 10 + 'px';
+        plotCss.left = '0px';
+        plotCss.width = width + 'px';
         plotCss.height = Math.floor(height * 0.25) + 'px';
       }
 

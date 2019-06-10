@@ -1,0 +1,71 @@
+{
+  "cacheTimeout": null,
+  "gridPos": {
+    "h": 8,
+    "w": 5,
+    "x": 7,
+    "y": 9
+  },
+  "id": 8,
+  "links": [],
+  "options": {
+    "orientation": "auto",
+    "showThresholdLabels": true,
+    "showThresholdMarkers": true,
+    "fieldOptions": {
+      "mappings": [],
+      "thresholds": [
+        {
+          "color": "green",
+          "index": 0,
+          "value": null
+        },
+        {
+          "color": "red",
+          "index": 1,
+          "value": 20
+        }
+      ],
+      "defaults": {
+        "unit": "none",
+        "decimals": null,
+        "min": 0,
+        "max": "50"
+      },
+      "calcs": [
+        "mean"
+      ]
+    }
+  },
+  "pluginVersion": "6.2.2",
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "SELECT count(type) from transact\nwhere status = 'sg'",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "title": "Suggested invoices",
+  "type": "gauge"
+}

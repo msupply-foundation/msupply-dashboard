@@ -1,0 +1,153 @@
+{
+  "alert": {
+    "conditions": [
+      {
+        "evaluator": {
+          "params": [
+            150000
+          ],
+          "type": "gt"
+        },
+        "operator": {
+          "type": "and"
+        },
+        "query": {
+          "params": [
+            "A",
+            "5m",
+            "now"
+          ]
+        },
+        "reducer": {
+          "params": [],
+          "type": "avg"
+        },
+        "type": "query"
+      }
+    ],
+    "executionErrorState": "alerting",
+    "for": "5m",
+    "frequency": "1m",
+    "handler": 1,
+    "message": "Yo",
+    "name": "Stock on Hand History by Item and  by Store alert",
+    "noDataState": "no_data",
+    "notifications": [
+      {
+        "uid": "FkcW1KmZk"
+      }
+    ]
+  },
+  "aliasColors": {},
+  "bars": false,
+  "dashLength": 10,
+  "dashes": false,
+  "fill": 1,
+  "gridPos": {
+    "h": 6,
+    "w": 24,
+    "x": 0,
+    "y": 27
+  },
+  "id": 22,
+  "legend": {
+    "alignAsTable": true,
+    "avg": false,
+    "current": false,
+    "max": false,
+    "min": false,
+    "rightSide": true,
+    "show": true,
+    "total": false,
+    "values": false
+  },
+  "lines": true,
+  "linewidth": 1,
+  "links": [],
+  "nullPointMode": "null",
+  "percentage": false,
+  "pointradius": 5,
+  "points": false,
+  "renderer": "flot",
+  "seriesOverrides": [],
+  "spaceLength": 10,
+  "stack": false,
+  "steppedLine": false,
+  "targets": [
+    {
+      "format": "time_series",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "SELECT a.fulldate as \"time\", store.name as metric, max(value)\n          FROM aggregator a\n          JOIN store on a.storeid = store.id \n          WHERE a.dataelement='stockHistory' \n            and store.disabled = false\n            and $__timeFilter(a.fulldate)\n            and store.name in ([[store]])\n  group by 1, 2\n  order by 1, 2\n",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "thresholds": [
+    {
+      "colorMode": "critical",
+      "fill": true,
+      "line": true,
+      "op": "gt",
+      "value": 150000
+    }
+  ],
+  "timeFrom": null,
+  "timeRegions": [],
+  "timeShift": null,
+  "title": "Stock on Hand History by Item and  by Store",
+  "tooltip": {
+    "shared": true,
+    "sort": 0,
+    "value_type": "individual"
+  },
+  "type": "graph",
+  "xaxis": {
+    "buckets": null,
+    "mode": "time",
+    "name": null,
+    "show": true,
+    "values": []
+  },
+  "yaxes": [
+    {
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    },
+    {
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    }
+  ],
+  "yaxis": {
+    "align": false,
+    "alignLevel": null
+  },
+  "options": {}
+}
