@@ -18,31 +18,31 @@
   },
   "styles": [
     {
-      "alias": "Factures client",
+      "alias": "Client invoices",
       "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
       "pattern": "cistore",
       "type": "number",
-      "unit": "short",
-      "decimals": 2
+      "unit": "short"
     },
     {
-      "unit": "short",
-      "type": "number",
       "alias": "",
-      "decimals": 2,
+      "colorMode": null,
       "colors": [
         "rgba(245, 54, 54, 0.9)",
         "rgba(237, 129, 40, 0.89)",
         "rgba(50, 172, 45, 0.97)"
       ],
-      "colorMode": null,
-      "pattern": "",
       "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
+      "pattern": "",
       "thresholds": [],
-      "mappingType": 1
+      "type": "number",
+      "unit": "short"
     },
     {
-      "alias": "Crédits client",
+      "alias": "Client credits",
       "colorMode": null,
       "colors": [
         "rgba(245, 54, 54, 0.9)",
@@ -56,116 +56,116 @@
       "unit": "short"
     },
     {
-      "unit": "short",
-      "type": "number",
-      "alias": "Distribuer",
-      "decimals": 2,
+      "alias": "Prescriptions",
+      "colorMode": null,
       "colors": [
         "rgba(245, 54, 54, 0.9)",
         "rgba(237, 129, 40, 0.89)",
         "rgba(50, 172, 45, 0.97)"
       ],
-      "colorMode": null,
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
       "pattern": "cidispensary",
-      "dateFormat": "YYYY-MM-DD HH:mm:ss",
       "thresholds": [],
-      "mappingType": 1
+      "type": "number",
+      "unit": "short"
     },
     {
-      "unit": "short",
-      "type": "number",
-      "alias": "Paiement fournisseur",
-      "decimals": 2,
+      "alias": "Supplier payments",
+      "colorMode": null,
       "colors": [
         "rgba(245, 54, 54, 0.9)",
         "rgba(237, 129, 40, 0.89)",
         "rgba(50, 172, 45, 0.97)"
       ],
-      "colorMode": null,
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
       "pattern": "psdispendary",
-      "dateFormat": "YYYY-MM-DD HH:mm:ss",
       "thresholds": [],
-      "mappingType": 1
+      "type": "number",
+      "unit": "short"
     },
     {
-      "unit": "short",
-      "type": "number",
-      "alias": "Recettes en espèces",
-      "decimals": 2,
+      "alias": "Cash receipts",
+      "colorMode": null,
       "colors": [
         "rgba(245, 54, 54, 0.9)",
         "rgba(237, 129, 40, 0.89)",
         "rgba(50, 172, 45, 0.97)"
       ],
-      "colorMode": null,
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
       "pattern": "rcstore",
-      "dateFormat": "YYYY-MM-DD HH:mm:ss",
       "thresholds": [],
-      "mappingType": 1
+      "type": "number",
+      "unit": "short"
     },
     {
-      "unit": "short",
-      "type": "number",
-      "alias": "Crédits fournisseur",
-      "decimals": 2,
+      "alias": "Supplier credits",
+      "colorMode": null,
       "colors": [
         "rgba(245, 54, 54, 0.9)",
         "rgba(237, 129, 40, 0.89)",
         "rgba(50, 172, 45, 0.97)"
       ],
-      "colorMode": null,
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
       "pattern": "scstore",
-      "dateFormat": "YYYY-MM-DD HH:mm:ss",
       "thresholds": [],
-      "mappingType": 1
+      "type": "number",
+      "unit": "short"
     },
     {
-      "unit": "short",
-      "type": "number",
-      "alias": "Factures fournisseurs",
-      "decimals": 2,
+      "alias": "Supplier invoices",
+      "colorMode": null,
       "colors": [
         "rgba(245, 54, 54, 0.9)",
         "rgba(237, 129, 40, 0.89)",
         "rgba(50, 172, 45, 0.97)"
       ],
-      "colorMode": null,
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
       "pattern": "sistore",
-      "dateFormat": "YYYY-MM-DD HH:mm:ss",
       "thresholds": [],
-      "mappingType": 1
+      "type": "number",
+      "unit": "short"
     },
     {
-      "unit": "short",
-      "type": "number",
-      "alias": "Réemballages",
-      "decimals": 2,
+      "alias": "Repacks",
+      "colorMode": null,
       "colors": [
         "rgba(245, 54, 54, 0.9)",
         "rgba(237, 129, 40, 0.89)",
         "rgba(50, 172, 45, 0.97)"
       ],
-      "colorMode": null,
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
       "pattern": "srstore",
-      "dateFormat": "YYYY-MM-DD HH:mm:ss",
       "thresholds": [],
-      "mappingType": 1
+      "type": "number",
+      "unit": "short"
     },
     {
-      "unit": "short",
-      "type": "number",
-      "alias": "Dépôt",
-      "decimals": 2,
+      "alias": "Store",
+      "colorMode": null,
       "colors": [
         "rgba(245, 54, 54, 0.9)",
         "rgba(237, 129, 40, 0.89)",
         "rgba(50, 172, 45, 0.97)"
       ],
-      "colorMode": null,
-      "pattern": "name",
       "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
+      "pattern": "name",
       "thresholds": [],
-      "mappingType": 1
+      "type": "number",
+      "unit": "short"
     }
   ],
   "targets": [
@@ -174,7 +174,7 @@
       "group": [],
       "metricColumn": "none",
       "rawQuery": true,
-      "rawSql": "SELECT * FROM crosstab( 'select name, concat(type, mode), count(type) from transact\njoin store on store.id = transact.store_ID\ngroup by store.name, concat(type, mode)\norder by 1, 2', 'select distinct concat(\"type\", mode) from transact order by 1;') \nAS ct(name varchar, ccstore bigint, cidispensary bigint, cistore bigint, psdispendary bigint, rcstore bigint, scstore bigint, sistore bigint, srstore bigint);",
+      "rawSql": "SELECT * FROM crosstab( 'select name, concat(type, mode), count(type) from transact\njoin store on store.id = transact.store_ID\ngroup by store.name, concat(type, mode)\norder by 1, 2', 'select a from (values(''ccstore''), (''cidispensary''), (''cistore''), (''psdispendary''), (''rcstore''), (''scstore''), (''sistore''), (''srstore'')) s(a);') \nAS ct(name varchar, ccstore bigint, cidispensary bigint, cistore bigint, psdispendary bigint, rcstore bigint, scstore bigint, sistore bigint, srstore bigint);\n",
       "refId": "A",
       "select": [
         [
@@ -198,7 +198,8 @@
   ],
   "timeFrom": null,
   "timeShift": null,
-  "title": "Transactions per store by type",
+  "title": "Transactions by Store and Type",
   "transform": "table",
-  "type": "table"
+  "type": "table",
+  "options": {}
 }

@@ -1,0 +1,70 @@
+{
+  "aliasColors": {
+    "normal": "#7ED321",
+    "over": "#22C7FC",
+    "under": "#F5A623",
+    "zero": "#D80206"
+  },
+  "breakPoint": "50%",
+  "cacheTimeout": null,
+  "combine": {
+    "label": "Others",
+    "threshold": 0
+  },
+  "decimals": null,
+  "fontSize": "80%",
+  "format": "short",
+  "gridPos": {
+    "h": 9,
+    "w": 5,
+    "x": 1,
+    "y": 2
+  },
+  "id": 16,
+  "interval": null,
+  "legend": {
+    "header": "",
+    "percentage": false,
+    "show": true,
+    "values": true
+  },
+  "legendType": "Under graph",
+  "links": [],
+  "maxDataPoints": 3,
+  "nullPointMode": "connected",
+  "pieType": "donut",
+  "strokeWidth": 1,
+  "targets": [
+    {
+      "format": "time_series",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "select CURRENT_DATE AS \"time\", case when value = 0 then 'zero' when value > 2 then 'over' when value < 1 then 'under' else 'normal' end as metric, count(*) as count \nfrom\n(\nselect avg(value) as value\nfrom\n(\n   SELECT item.item_name AS item, mos.value\n   FROM aggregator mos\n    JOIN store ON mos.storeid = store.id \n    join item on mos.itemid = item.id\n  WHERE mos.dataelement = 'mos'\n  AND store.name IN ($store)\n  GROUP BY store.name, item.item_name, value\n) as a\n  WHERE item = $item\ngroup by item\n) as b\ngroup by 2;\n",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "title": "Stock Status",
+  "transparent": true,
+  "type": "grafana-piechart-panel",
+  "valueName": "current",
+  "options": {}
+}

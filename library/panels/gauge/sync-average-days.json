@@ -1,0 +1,81 @@
+{
+  "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 2
+  },
+  "id": 24,
+  "links": [],
+  "options": {
+    "maxValue": "5",
+    "minValue": 0,
+    "orientation": "auto",
+    "showThresholdLabels": true,
+    "showThresholdMarkers": true,
+    "thresholds": [
+      {
+        "color": "green",
+        "index": 0,
+        "value": null
+      },
+      {
+        "color": "blue",
+        "index": 1,
+        "value": 1
+      },
+      {
+        "color": "orange",
+        "index": 2,
+        "value": 2
+      },
+      {
+        "color": "red",
+        "index": 3,
+        "value": 3
+      }
+    ],
+    "valueMappings": [],
+    "valueOptions": {
+      "decimals": null,
+      "prefix": "",
+      "stat": "mean",
+      "suffix": "",
+      "unit": "none"
+    }
+  },
+  "pluginVersion": "6.1.0-pre",
+  "targets": [
+    {
+      "format": "time_series",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "select max(date_created) as time, current_date-max(date_created)\nfrom sync_out\ngroup by to_from_id",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "timeFrom": null,
+  "timeShift": null,
+  "title": "Average Days since last Sync",
+  "transparent": true,
+  "type": "gauge"
+}

@@ -1,0 +1,77 @@
+{
+  "columns": [],
+  "datasource": "PostgreSQL",
+  "fontSize": "100%",
+  "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 12,
+    "y": 9
+  },
+  "id": 24,
+  "links": [],
+  "pageSize": null,
+  "scroll": true,
+  "showHeader": true,
+  "sort": {
+    "col": 0,
+    "desc": true
+  },
+  "styles": [
+    {
+      "alias": "Time",
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "pattern": "Time",
+      "type": "date"
+    },
+    {
+      "alias": "",
+      "colorMode": "cell",
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "decimals": 2,
+      "pattern": "/.*/",
+      "thresholds": [
+        "80",
+        "160"
+      ],
+      "type": "number",
+      "unit": "short"
+    }
+  ],
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "select item_name, sum(available) as \"stock\" from item\njoin item_line on item_line.item_ID = item.ID\njoin store on item_line.store_ID = store.ID\nwhere store.name IN ($store)\ngroup by item_name\n  \n",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "title": "Total Stock per item for selected Stores",
+  "transform": "table",
+  "type": "table",
+  "options": {}
+}

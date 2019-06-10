@@ -1,0 +1,104 @@
+{
+  "cacheTimeout": null,
+  "colorBackground": false,
+  "colorValue": false,
+  "colors": [
+    "#299c46",
+    "rgba(237, 129, 40, 0.89)",
+    "#d44a3a"
+  ],
+  "datasource": "PostgreSQL",
+  "decimals": null,
+  "format": "currencyUSD",
+  "gauge": {
+    "maxValue": 100,
+    "minValue": 0,
+    "show": false,
+    "thresholdLabels": false,
+    "thresholdMarkers": true
+  },
+  "gridPos": {
+    "h": 2,
+    "w": 12,
+    "x": 0,
+    "y": 0
+  },
+  "id": 18,
+  "interval": null,
+  "links": [],
+  "mappingType": 1,
+  "mappingTypes": [
+    {
+      "name": "value to text",
+      "value": 1
+    },
+    {
+      "name": "range to text",
+      "value": 2
+    }
+  ],
+  "maxDataPoints": 100,
+  "nullPointMode": "connected",
+  "nullText": null,
+  "postfix": "",
+  "postfixFontSize": "50%",
+  "prefix": "USD",
+  "prefixFontSize": "50%",
+  "rangeMaps": [
+    {
+      "from": "null",
+      "text": "N/A",
+      "to": "null"
+    }
+  ],
+  "repeat": null,
+  "repeatDirection": "h",
+  "sparkline": {
+    "fillColor": "rgba(31, 118, 189, 0.18)",
+    "full": false,
+    "lineColor": "rgb(31, 120, 193)",
+    "show": false
+  },
+  "tableColumn": "time",
+  "targets": [
+    {
+      "format": "time_series",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "select current_date as time, sum(a.value)\nfrom aggregator a\njoin store s on a.storeid = s.id \nwhere a.dataelement='totalStockValue' and s.name in ([[store]]) \ngroup by 1;\n",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "thresholds": "",
+  "title": "Total Stock Value",
+  "type": "singlestat",
+  "valueFontSize": "80%",
+  "valueMaps": [
+    {
+      "op": "=",
+      "text": "N/A",
+      "value": "null"
+    }
+  ],
+  "valueName": "avg",
+  "options": {}
+}

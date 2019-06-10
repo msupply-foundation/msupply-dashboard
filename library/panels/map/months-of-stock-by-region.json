@@ -1,0 +1,98 @@
+{
+  "circleMaxSize": 30,
+  "circleMinSize": 2,
+  "colors": [
+    "rgba(245, 54, 54, 0.9)",
+    "rgba(237, 129, 40, 0.89)",
+    "#0a50a1",
+    "rgba(50, 172, 45, 0.97)"
+  ],
+  "decimals": 0,
+  "esMetric": "Count",
+  "gridPos": {
+    "h": 16,
+    "w": 12,
+    "x": 0,
+    "y": 11
+  },
+  "hideEmpty": false,
+  "hideZero": false,
+  "id": 20,
+  "initialZoom": "5",
+  "links": [],
+  "locationData": "table",
+  "mapCenter": "custom",
+  "mapCenterLatitude": "-41.2141504",
+  "mapCenterLongitude": "173.9660801",
+  "maxDataPoints": 1,
+  "mouseWheelZoom": false,
+  "showLegend": true,
+  "stickyLabels": false,
+  "tableQueryOptions": {
+    "geohashField": "geojson",
+    "geojsonField": "geojson",
+    "labelField": "region",
+    "latitudeField": "latitude",
+    "longitudeField": "longitude",
+    "metricField": "value",
+    "queryType": "geojson"
+  },
+  "targets": [
+    {
+      "format": "table",
+      "group": [
+        {
+          "params": [
+            "$__interval",
+            "none"
+          ],
+          "type": "time"
+        }
+      ],
+      "hide": false,
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "SELECT\n  \"time\",\n  region,\n  geojson::text,\n  avg(value) AS \"value\"\nFROM region_mos\nwhere store in ([[store]])\nGROUP BY 1,2,3\nORDER BY 1",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          },
+          {
+            "params": [
+              "sum"
+            ],
+            "type": "aggregate"
+          },
+          {
+            "params": [
+              "value"
+            ],
+            "type": "alias"
+          }
+        ]
+      ],
+      "table": "region_mos",
+      "timeColumn": "value",
+      "timeColumnType": "float8",
+      "where": [
+        {
+          "name": "$__unixEpochFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "thresholds": "0,6,12",
+  "title": "Months of Stock by Region",
+  "type": "grafana-region-map-panel",
+  "unitPlural": "",
+  "unitSingle": "",
+  "valueName": "total",
+  "options": {}
+}

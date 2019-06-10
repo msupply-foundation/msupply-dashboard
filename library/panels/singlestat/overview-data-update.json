@@ -1,0 +1,103 @@
+{
+  "cacheTimeout": null,
+  "colorBackground": false,
+  "colorValue": false,
+  "colors": [
+    "#299c46",
+    "rgba(237, 129, 40, 0.89)",
+    "#d44a3a"
+  ],
+  "format": "none",
+  "gauge": {
+    "maxValue": 100,
+    "minValue": 0,
+    "show": false,
+    "thresholdLabels": false,
+    "thresholdMarkers": true
+  },
+  "gridPos": {
+    "h": 2,
+    "w": 24,
+    "x": 0,
+    "y": 0
+  },
+  "id": 26,
+  "interval": null,
+  "links": [],
+  "mappingType": 1,
+  "mappingTypes": [
+    {
+      "name": "value to text",
+      "value": 1
+    },
+    {
+      "name": "range to text",
+      "value": 2
+    }
+  ],
+  "maxDataPoints": 100,
+  "nullPointMode": "connected",
+  "nullText": null,
+  "postfix": "",
+  "postfixFontSize": "50%",
+  "prefix": "",
+  "prefixFontSize": "50%",
+  "rangeMaps": [
+    {
+      "from": "null",
+      "text": "N/A",
+      "to": "null"
+    }
+  ],
+  "sparkline": {
+    "fillColor": "rgba(31, 118, 189, 0.18)",
+    "full": false,
+    "lineColor": "rgb(31, 120, 193)",
+    "show": false
+  },
+  "tableColumn": "case",
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "select case\n  when event_type='export ends' then concat ('Data updated on ', to_char(datetime, 'DD Mon at HH24:MI'))\n  when event_type='export begins' then concat('Data update in progress - started ', to_char(datetime, 'DD Mon at HH24:MI'))\n  else ''\nend\nfrom export_log\norder by datetime desc limit 1\n",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "thresholds": "",
+  "timeFrom": null,
+  "timeShift": null,
+  "title": "",
+  "transparent": true,
+  "type": "singlestat",
+  "valueFontSize": "50%",
+  "valueMaps": [
+    {
+      "op": "=",
+      "text": "",
+      "value": "null"
+    }
+  ],
+  "valueName": "avg",
+  "options": {}
+}
