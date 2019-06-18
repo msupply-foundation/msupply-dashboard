@@ -1,0 +1,73 @@
+{
+  "columns": [],
+  "fontSize": "100%",
+  "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 12,
+    "y": 0
+  },
+  "id": 32,
+  "links": [],
+  "options": {},
+  "pageSize": null,
+  "scroll": true,
+  "showHeader": true,
+  "sort": {
+    "col": 0,
+    "desc": false
+  },
+  "styles": [
+    {
+      "alias": "Time",
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "pattern": "Time",
+      "type": "date"
+    },
+    {
+      "alias": "",
+      "colorMode": null,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "decimals": 2,
+      "pattern": "/.*/",
+      "thresholds": [],
+      "type": "number",
+      "unit": "short"
+    }
+  ],
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "select store as \"Store\", SUM(quantity) as \"Stock on Hand\"\nfrom \n(\n\tselect item.item_name as \"item\", store.name as \"store\", il.quantity\n\tfrom item\n\tjoin item_line il on item.ID = il.item_id\n\tjoin store on il.store_ID = store.id\n\twhere \n\t      item.type_of = 'general'\n\t\tand il.quantity>0\n\t\tand il.ID <> ''\n) as a\nwhere a.item = [[item]] and store in ([[store]])\ngroup by store\n",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "title": "Stock on hand by Store",
+  "transform": "table",
+  "type": "table"
+}

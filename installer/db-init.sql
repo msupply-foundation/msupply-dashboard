@@ -647,6 +647,7 @@ AS SELECT min(date_trunc('month'::text, t.confirm_date::timestamp with time zone
 ;
 
 -- TODO: the username should be changed by installer
+/*
 CREATE ROLE dboard NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT LOGIN PASSWORD '*****';
 
 GRANT USAGE ON schema public TO dboard;
@@ -654,3 +655,4 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO dboard;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO dboard;
 ALTER DEFAULT PRIVILEGES IN SCHEMA PUBLIC GRANT SELECT ON TABLES TO dboard;
 ALTER DEFAULT PRIVILEGES IN SCHEMA PUBLIC GRANT EXECUTE ON FUNCTIONS TO dboard;
+*/
