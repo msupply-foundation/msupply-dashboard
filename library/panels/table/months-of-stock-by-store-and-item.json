@@ -1,0 +1,78 @@
+{
+    "columns": [],
+    "fontSize": "100%",
+    "gridPos": {
+      "h": 25,
+      "w": 18,
+      "x": 0,
+      "y": 0
+    },
+    "id": 2,
+    "links": [],
+    "options": {},
+    "pageSize": null,
+    "scroll": true,
+    "showHeader": true,
+    "sort": {
+      "col": 0,
+      "desc": true
+    },
+    "styles": [
+      {
+        "alias": "Time",
+        "dateFormat": "YYYY-MM-DD HH:mm:ss",
+        "pattern": "Time",
+        "type": "date"
+      },
+      {
+        "alias": "",
+        "colorMode": "cell",
+        "colors": [
+          "rgba(245, 54, 54, 0.9)",
+          "rgba(237, 129, 40, 0.89)",
+          "rgba(50, 172, 45, 0.97)"
+        ],
+        "decimals": 2,
+        "pattern": "/.*/",
+        "thresholds": [
+          "2",
+          "3"
+        ],
+        "type": "number",
+        "unit": "locale"
+      }
+    ],
+    "targets": [
+      {
+        "format": "table",
+        "group": [],
+        "metricColumn": "none",
+        "rawQuery": true,
+        "rawSql": "WITH amc as (\n\tselect item.item_name, value, store.name as store_name\n\tfrom aggregator\n\tinner join store on store.id = aggregator.storeid\n\tinner join item on item.id = aggregator.itemid\n\twhere dataElement = 'AMC'\n\tand store.name IN  ($store)\n\tand item.item_name IN ($item)\n),\ncurrent_stock as (\n\tselect item.item_name, sum(available * pack_size) as value from item_line\n\tinner join item on item.id = item_line.item_id\n\tinner join store on store.id = item_line.store_id\n\twhere store.name  IN  ($store)\n\tand item.item_name IN ($item)\n\tgroup by item.item_name\n)\nselect amc.store_name as \"Store\", amc.item_name as \"Item\", current_stock.value/amc.value as \"Months of Stock\" \nfrom amc\ninner join current_stock on current_stock.item_name = amc.item_name\n",
+        "refId": "A",
+        "select": [
+          [
+            {
+              "params": [
+                "value"
+              ],
+              "type": "column"
+            }
+          ]
+        ],
+        "timeColumn": "time",
+        "where": [
+          {
+            "name": "$__timeFilter",
+            "params": [],
+            "type": "macro"
+          }
+        ]
+      }
+    ],
+    "timeFrom": null,
+    "timeShift": null,
+    "title": "Months of Stock by Store and Item",
+    "transform": "table",
+    "type": "table"
+  }
