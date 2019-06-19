@@ -1,0 +1,2967 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 5,
+  "iteration": 1560904693694,
+  "links": [
+    {
+      "icon": "external link",
+      "tags": [
+        "mSupply"
+      ],
+      "type": "dashboards"
+    }
+  ],
+  "panels": [
+    {
+      "circleMaxSize": 30,
+      "circleMinSize": 2,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "#0a50a1",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "decimals": 0,
+      "esMetric": "Count",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "hideEmpty": false,
+      "hideZero": false,
+      "id": 2,
+      "initialZoom": "5",
+      "links": [],
+      "locationData": "table",
+      "mapCenter": "custom",
+      "mapCenterLatitude": "-41.2141504",
+      "mapCenterLongitude": "173.9660801",
+      "maxDataPoints": 1,
+      "mouseWheelZoom": false,
+      "options": {},
+      "showLegend": true,
+      "stickyLabels": false,
+      "tableQueryOptions": {
+        "geojsonField": "geojson",
+        "labelField": "region",
+        "latitudeField": "latitude",
+        "longitudeField": "longitude",
+        "metricField": "value",
+        "queryType": "geojson"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select current_date as \"time\", store, item, value, region.description as \"region\", geojson.\"data\" as \"geojson\"\nfrom (\n\tselect store.name as store, item.item_name as item, store.id as store_id, item.id as item_id, store.name_id as name_id, avg(a.value) AS value\n\tfrom aggregator a\n\tjoin store on a.storeid = store.id and store.disabled = false\n\tjoin item on a.itemid = item.id\n\tjoin item_store_join isj on a.storeid = isj.store_id and a.itemid = isj.item_id and isj.inactive = false\n\twhere a.dataelement = 'mos' and item.ven_category in ([[ven]])\n\tgroup by 1,2,3,4,5\t\n) as a\n\tjoin \"name\" as n on name_id=n.id\n\tjoin name_category1_level1 as region on n.category1_id = region.id\n\tjoin geojson on region.id = geojson.id\nwhere item = [[item]] and store in ([[store]])\norder by region.description;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "thresholds": "0,6,12",
+      "title": "Stock Status by Item",
+      "type": "grafana-region-map-panel",
+      "unitPlural": "",
+      "unitSingle": "",
+      "valueName": "total"
+    },
+    {
+      "columns": [],
+      "fontSize": "100%",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 4,
+      "links": [],
+      "options": {},
+      "pageSize": null,
+      "scroll": true,
+      "showHeader": true,
+      "sort": {
+        "col": 0,
+        "desc": false
+      },
+      "styles": [
+        {
+          "alias": "Time",
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "pattern": "Time",
+          "type": "date"
+        },
+        {
+          "alias": "",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "decimals": 2,
+          "pattern": "/.*/",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select store, SUM(value) as value\nfrom \n(\n\tselect item.item_name as \"item\", store.name as \"store\", item_line.cost_price*item_line.quantity as value\n\tfrom item\n\tjoin item_line on item.ID = item_line.item_id\n\tjoin item_store_join isj on item.id = isj.item_id\n\tjoin store on isj.store_id = store.id\n\twhere isj.inactive = false\n\t\tand isj.non_stock = false\n\t\tand item.type_of = 'general'\n\t\tand item_line.quantity>0\n\t\tand item_line.ID <> ''\n\t\tand item.ven_category in ([[ven]])\n) as a\nwhere a.item = [[item]] and store in ([[store]])\ngroup by store\n",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Item Value",
+      "transform": "table",
+      "type": "table"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "#299c46",
+        "#FF9830",
+        "#d44a3a"
+      ],
+      "format": "none",
+      "gauge": {
+        "maxValue": 100,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 2,
+        "x": 0,
+        "y": 9
+      },
+      "id": 6,
+      "interval": null,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "options": {},
+      "postfix": "",
+      "postfixFontSize": "50%",
+      "prefix": "",
+      "prefixFontSize": "100%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": false,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": false
+      },
+      "tableColumn": "count",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT count(supplier) from name\nwhere supplier = true",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "thresholds": "",
+      "title": "Suppliers",
+      "type": "singlestat",
+      "valueFontSize": "120%",
+      "valueMaps": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null"
+        }
+      ],
+      "valueName": "avg"
+    },
+    {
+      "cacheTimeout": null,
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 2,
+        "y": 9
+      },
+      "id": 9,
+      "links": [],
+      "options": {
+        "fieldOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "defaults": {
+            "decimals": null,
+            "max": "50",
+            "min": 0,
+            "unit": "none"
+          },
+          "mappings": [
+            {
+              "from": "0",
+              "id": 1,
+              "operator": "",
+              "text": "Good",
+              "to": "10",
+              "type": 2,
+              "value": "<10"
+            },
+            {
+              "from": "10",
+              "id": 2,
+              "operator": "",
+              "text": "Danger",
+              "to": "30",
+              "type": 2,
+              "value": "10"
+            }
+          ],
+          "thresholds": [
+            {
+              "color": "green",
+              "index": 0,
+              "value": null
+            },
+            {
+              "color": "dark-yellow",
+              "index": 1,
+              "value": 10
+            },
+            {
+              "color": "dark-orange",
+              "index": 2,
+              "value": 25
+            },
+            {
+              "color": "dark-red",
+              "index": 3,
+              "value": 40
+            }
+          ]
+        },
+        "orientation": "auto",
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "6.2.2",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT count(status) from purchase_order\nwhere status = 'sg'\n",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Suggested POs",
+      "type": "gauge"
+    },
+    {
+      "cacheTimeout": null,
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 7,
+        "y": 9
+      },
+      "id": 8,
+      "links": [],
+      "options": {
+        "fieldOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "defaults": {
+            "decimals": null,
+            "max": "50",
+            "min": 0,
+            "unit": "none"
+          },
+          "mappings": [],
+          "thresholds": [
+            {
+              "color": "green",
+              "index": 0,
+              "value": null
+            },
+            {
+              "color": "red",
+              "index": 1,
+              "value": 20
+            }
+          ]
+        },
+        "orientation": "auto",
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "6.2.2",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT count(type) from transact\nwhere status = 'sg'",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Suggested invoices",
+      "type": "gauge"
+    },
+    {
+      "columns": [],
+      "fontSize": "100%",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "id": 5,
+      "links": [],
+      "options": {},
+      "pageSize": null,
+      "scroll": true,
+      "showHeader": true,
+      "sort": {
+        "col": 0,
+        "desc": false
+      },
+      "styles": [
+        {
+          "alias": "Time",
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "pattern": "Time",
+          "type": "date"
+        },
+        {
+          "alias": "",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "decimals": 2,
+          "pattern": "/.*/",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT * FROM crosstab( 'select name, type, count(type) from transact\njoin store on store.id = transact.store_ID\ngroup by store.name, type \norder by 1, 2') \nAS ct(name varchar, ci bigint, si bigint, sr bigint, cc bigint, sc bigint) ",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Transactions per store by type",
+      "transform": "table",
+      "type": "table"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "#299c46",
+        "#FF9830",
+        "#d44a3a"
+      ],
+      "format": "none",
+      "gauge": {
+        "maxValue": 100,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 0,
+        "y": 12
+      },
+      "id": 7,
+      "interval": null,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "options": {},
+      "postfix": "",
+      "postfixFontSize": "50%",
+      "prefix": "",
+      "prefixFontSize": "100%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": false,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": false
+      },
+      "tableColumn": "count",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT count(customer) from name\nwhere customer = true",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "thresholds": "",
+      "title": "Customers",
+      "type": "singlestat",
+      "valueFontSize": "120%",
+      "valueMaps": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null"
+        }
+      ],
+      "valueName": "avg"
+    }
+  ],
+  "schemaVersion": 18,
+  "style": "dark",
+  "tags": [
+    "mSupply"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "text": "Heretaunga Clinic + Hikurangi + Kaitaia + Kirikiriroa + Moeraki Clinic + Moeraki Office + Otepoti Clinic + Otuatahi Clinic + Parawai + Pirongia",
+          "value": [
+            "Heretaunga Clinic",
+            "Hikurangi",
+            "Kaitaia",
+            "Kirikiriroa",
+            "Moeraki Clinic",
+            "Moeraki Office",
+            "Otepoti Clinic",
+            "Otuatahi Clinic",
+            "Parawai",
+            "Pirongia"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": " select distinct n.name from name n join name_store_join nsj on n.id=nsj.name_id where n.type='store' and nsj.inactive=false order by n.name",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Store",
+        "multi": true,
+        "name": "store",
+        "options": [],
+        "query": " select distinct n.name from name n join name_store_join nsj on n.id=nsj.name_id where n.type='store' and nsj.inactive=false order by n.name",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "item",
+        "current": {
+          "tags": [],
+          "text": "AMOXICILLIN, 500 mg, tab.",
+          "value": "AMOXICILLIN, 500 mg, tab."
+        },
+        "datasource": "PostgreSQL",
+        "definition": " select item_name from item order by item_name;",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Item",
+        "multi": false,
+        "name": "item",
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "$__all"
+          },
+          {
+            "selected": false,
+            "text": "(CyFlow Counter Partec) TUBE, plastic, 3.5 ml",
+            "value": "(CyFlow Counter Partec) TUBE, plastic, 3.5 ml"
+          },
+          {
+            "selected": false,
+            "text": "(Cyflow counter Partec) CD4, REAGENTS KIT (05-8401) for 100 tests",
+            "value": "(Cyflow counter Partec) CD4, REAGENTS KIT (05-8401) for 100 tests"
+          },
+          {
+            "selected": false,
+            "text": "(Cyflow counter Partec) CLEANING SOLUTION, 250 ml btl.",
+            "value": "(Cyflow counter Partec) CLEANING SOLUTION, 250 ml btl."
+          },
+          {
+            "selected": false,
+            "text": "(Cyflow counter Partec) COUNT CHECK BEADS, green, 2x25ml 50t",
+            "value": "(Cyflow counter Partec) COUNT CHECK BEADS, green, 2x25ml 50t"
+          },
+          {
+            "selected": false,
+            "text": "(Cyflow counter Partec) Partec CD4% easy count kit (05-8405), 100 test",
+            "value": "(Cyflow counter Partec) Partec CD4% easy count kit (05-8405), 100 test"
+          },
+          {
+            "selected": false,
+            "text": "(Cyflow counter Partec) SHEATH FLUIDE 5 L CONTAINER(Ref: 04-4007)",
+            "value": "(Cyflow counter Partec) SHEATH FLUIDE 5 L CONTAINER(Ref: 04-4007)"
+          },
+          {
+            "selected": false,
+            "text": "(Cyflow counter Partec)DECONTAMINATION SOLUTION,250ml, bt.",
+            "value": "(Cyflow counter Partec)DECONTAMINATION SOLUTION,250ml, bt."
+          },
+          {
+            "selected": false,
+            "text": "(Determine rapid test) BUFFER CHASE, 2.5ml, ref.7D2243",
+            "value": "(Determine rapid test) BUFFER CHASE, 2.5ml, ref.7D2243"
+          },
+          {
+            "selected": false,
+            "text": "(Glucometer) BLOOD LANCET for lancing device",
+            "value": "(Glucometer) BLOOD LANCET for lancing device"
+          },
+          {
+            "selected": false,
+            "text": "(Glucometer) LANCING DEVICE, adjustable, microlet",
+            "value": "(Glucometer) LANCING DEVICE, adjustable, microlet"
+          },
+          {
+            "selected": false,
+            "text": "(HemoCue Hb 201+) MICROCUVETTES, s.u.",
+            "value": "(HemoCue Hb 201+) MICROCUVETTES, s.u."
+          },
+          {
+            "selected": false,
+            "text": "(HemoCue Hb 201+/301) CLEANER, box of 5",
+            "value": "(HemoCue Hb 201+/301) CLEANER, box of 5"
+          },
+          {
+            "selected": false,
+            "text": "(HemoCue Hb 301+) MICROCUVETTES, s.u.",
+            "value": "(HemoCue Hb 301+) MICROCUVETTES, s.u."
+          },
+          {
+            "selected": false,
+            "text": "(blds. syst.) HOLDER for VACUUM TUBE, reusable, non-sterile",
+            "value": "(blds. syst.) HOLDER for VACUUM TUBE, reusable, non-sterile"
+          },
+          {
+            "selected": false,
+            "text": "(blds.syst.) NEEDLE, sterile, 21G (Vacutainer)",
+            "value": "(blds.syst.) NEEDLE, sterile, 21G (Vacutainer)"
+          },
+          {
+            "selected": false,
+            "text": "(blds.syst.) TUBE, VACUUM, plastic, EDTA, 2 ml, purple",
+            "value": "(blds.syst.) TUBE, VACUUM, plastic, EDTA, 2 ml, purple"
+          },
+          {
+            "selected": false,
+            "text": "(blds.syst.) TUBE, VACUUM, plastic, EDTA, 3 ml, purple",
+            "value": "(blds.syst.) TUBE, VACUUM, plastic, EDTA, 3 ml, purple"
+          },
+          {
+            "selected": false,
+            "text": "(blds.syst.) TUBE, VACUUM, plastic, EDTA, 4 ml, purple",
+            "value": "(blds.syst.) TUBE, VACUUM, plastic, EDTA, 4 ml, purple"
+          },
+          {
+            "selected": false,
+            "text": "(blds.syst.) TUBE, VACUUM, plastic, EDTA, 6 ml, purple",
+            "value": "(blds.syst.) TUBE, VACUUM, plastic, EDTA, 6 ml, purple"
+          },
+          {
+            "selected": false,
+            "text": "(blds.syst.) TUBE, VACUUM, plastic, SERUM, 4 ml, red (Plain Tube)",
+            "value": "(blds.syst.) TUBE, VACUUM, plastic, SERUM, 4 ml, red (Plain Tube)"
+          },
+          {
+            "selected": false,
+            "text": "(pipette, automatic 10-100 µl, Eppendorf) TIP, YELLOW",
+            "value": "(pipette, automatic 10-100 µl, Eppendorf) TIP, YELLOW"
+          },
+          {
+            "selected": false,
+            "text": "(pipette, automatic 50-1000 μl, Eppendorf) TIP, Blue",
+            "value": "(pipette, automatic 50-1000 μl, Eppendorf) TIP, Blue"
+          },
+          {
+            "selected": false,
+            "text": "(tube 50ml, centrifuge, Ø 35 mm) RACK",
+            "value": "(tube 50ml, centrifuge, Ø 35 mm) RACK"
+          },
+          {
+            "selected": false,
+            "text": "ABACAVIR (ABC), 60 mg / LAMIVUDINE (3TC), 30 mg, tab.",
+            "value": "ABACAVIR (ABC), 60 mg / LAMIVUDINE (3TC), 30 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "ABACAVIR (ABC), 600mg/ LAMIVUDINE (3TC), 300mg, tab",
+            "value": "ABACAVIR (ABC), 600mg/ LAMIVUDINE (3TC), 300mg, tab"
+          },
+          {
+            "selected": false,
+            "text": "ABACAVIR sulfate (ABC), 300 mg, tab.",
+            "value": "ABACAVIR sulfate (ABC), 300 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "ABACAVIR sulfate (ABC), 60 mg, tab.",
+            "value": "ABACAVIR sulfate (ABC), 60 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "ACETYLSALICYLIC acid (aspirin), enteric coated 75 mg, tabs",
+            "value": "ACETYLSALICYLIC acid (aspirin), enteric coated 75 mg, tabs"
+          },
+          {
+            "selected": false,
+            "text": "ACICLOVIR, 200 mg, tab.",
+            "value": "ACICLOVIR, 200 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "ACICLOVIR, cream,sterile,5 g,Tube ",
+            "value": "ACICLOVIR, cream,sterile,5 g,Tube "
+          },
+          {
+            "selected": false,
+            "text": "ALAT, IFCC mod LiquiUV, 12022",
+            "value": "ALAT, IFCC mod LiquiUV, 12022"
+          },
+          {
+            "selected": false,
+            "text": "ALBENDAZOLE, 400 mg, tab.",
+            "value": "ALBENDAZOLE, 400 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "ALUMINIUM hydroxide 400mg / MAGNESIUM hydroxide 400mg, tab.",
+            "value": "ALUMINIUM hydroxide 400mg / MAGNESIUM hydroxide 400mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "AMITRIPTYLINE hydrochloride, 25 mg, tab.",
+            "value": "AMITRIPTYLINE hydrochloride, 25 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "AMLODAPINE 5mg, tab",
+            "value": "AMLODAPINE 5mg, tab"
+          },
+          {
+            "selected": false,
+            "text": "AMOXICILLIN 125mg / CLAVUL.ac. 31.25mg/5ml, oral susp.,100ml",
+            "value": "AMOXICILLIN 125mg / CLAVUL.ac. 31.25mg/5ml, oral susp.,100ml"
+          },
+          {
+            "selected": false,
+            "text": "AMOXICILLIN 500 mg / CLAVULANIC acid 125 mg, tab.",
+            "value": "AMOXICILLIN 500 mg / CLAVULANIC acid 125 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "AMOXICILLIN, 125mg/5ml, powder for oral susp., 100ml, bot",
+            "value": "AMOXICILLIN, 125mg/5ml, powder for oral susp., 100ml, bot"
+          },
+          {
+            "selected": false,
+            "text": "AMOXICILLIN, 250 mg, tab.",
+            "value": "AMOXICILLIN, 250 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "AMOXICILLIN, 500 mg, tab.",
+            "value": "AMOXICILLIN, 500 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "AMPHOTERICIN B conventional, 50 mg, powder, vial",
+            "value": "AMPHOTERICIN B conventional, 50 mg, powder, vial"
+          },
+          {
+            "selected": false,
+            "text": "AMPHOTERICIN B liposomal complex, 50 mg,powder, vial",
+            "value": "AMPHOTERICIN B liposomal complex, 50 mg,powder, vial"
+          },
+          {
+            "selected": false,
+            "text": "AMPICILLIN, 1 g, powder, vial ",
+            "value": "AMPICILLIN, 1 g, powder, vial "
+          },
+          {
+            "selected": false,
+            "text": "APRON PROTECTION, plastic",
+            "value": "APRON PROTECTION, plastic"
+          },
+          {
+            "selected": false,
+            "text": "ARTEMETHER 20mg / LUMEFANTRINE 120mg, blister adults 24 tab.",
+            "value": "ARTEMETHER 20mg / LUMEFANTRINE 120mg, blister adults 24 tab."
+          },
+          {
+            "selected": false,
+            "text": "ARTEMETHER 20mg / LUMEFANTRINE 120mg, blister child 12 tab.",
+            "value": "ARTEMETHER 20mg / LUMEFANTRINE 120mg, blister child 12 tab."
+          },
+          {
+            "selected": false,
+            "text": "ARTEMETHER 20mg / LUMEFANTRINE 120mg, blister infant 6 tab",
+            "value": "ARTEMETHER 20mg / LUMEFANTRINE 120mg, blister infant 6 tab"
+          },
+          {
+            "selected": false,
+            "text": "ARTEMETHER 20mg / LUMEFANTRINE 120mg, blister youth 18 tab.",
+            "value": "ARTEMETHER 20mg / LUMEFANTRINE 120mg, blister youth 18 tab."
+          },
+          {
+            "selected": false,
+            "text": "ASCORBIC acid (vitamin C), 250 mg, tab.",
+            "value": "ASCORBIC acid (vitamin C), 250 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "ATORVASTATIN 10mg, tab.",
+            "value": "ATORVASTATIN 10mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "AZITHROMYCIN, 250 mg, caps.",
+            "value": "AZITHROMYCIN, 250 mg, caps."
+          },
+          {
+            "selected": false,
+            "text": "Asdfer 10mg",
+            "value": "Asdfer 10mg"
+          },
+          {
+            "selected": false,
+            "text": "Atazanavir(ATZ)300mg/Ritonavir¨ 100mg tab",
+            "value": "Atazanavir(ATZ)300mg/Ritonavir¨ 100mg tab"
+          },
+          {
+            "selected": false,
+            "text": "Auto-Creatinine Liquicolor, Ref-10052",
+            "value": "Auto-Creatinine Liquicolor, Ref-10052"
+          },
+          {
+            "selected": false,
+            "text": "BAG, URINE, 2 l, drainable + non-return valves, sterile",
+            "value": "BAG, URINE, 2 l, drainable + non-return valves, sterile"
+          },
+          {
+            "selected": false,
+            "text": "BAG, plastic, for drug, 4x 3, per lb (Zip Bag)",
+            "value": "BAG, plastic, for drug, 4x 3, per lb (Zip Bag)"
+          },
+          {
+            "selected": false,
+            "text": "BAG, plastic, for drug, 5x 3.5, per lb (Zip Bag)",
+            "value": "BAG, plastic, for drug, 5x 3.5, per lb (Zip Bag)"
+          },
+          {
+            "selected": false,
+            "text": "BAG, plastic, for drug, 7x 4.5, per lb (Zip Bag)",
+            "value": "BAG, plastic, for drug, 7x 4.5, per lb (Zip Bag)"
+          },
+          {
+            "selected": false,
+            "text": "BAG,plastic, for drug, 2 x 3, per lb (Zip Bag)",
+            "value": "BAG,plastic, for drug, 2 x 3, per lb (Zip Bag)"
+          },
+          {
+            "selected": false,
+            "text": "BANDAGE, PLASTER OF PARIS, 20 cm x 2.7 m ",
+            "value": "BANDAGE, PLASTER OF PARIS, 20 cm x 2.7 m "
+          },
+          {
+            "selected": false,
+            "text": "BENZATHINE BENZYLPENICILLIN , 2.4 M IU, powder, vial",
+            "value": "BENZATHINE BENZYLPENICILLIN , 2.4 M IU, powder, vial"
+          },
+          {
+            "selected": false,
+            "text": "BENZOIC ACID 6% / SALICYLIC ACID 3%, ointment, 40 g, tube",
+            "value": "BENZOIC ACID 6% / SALICYLIC ACID 3%, ointment, 40 g, tube"
+          },
+          {
+            "selected": false,
+            "text": "BENZYL BENZOATE, 25%, lotion, 1 l, bot.",
+            "value": "BENZYL BENZOATE, 25%, lotion, 1 l, bot."
+          },
+          {
+            "selected": false,
+            "text": "BENZYL BENZOATE, 25%, lotion, 500ml, bot. ",
+            "value": "BENZYL BENZOATE, 25%, lotion, 500ml, bot. "
+          },
+          {
+            "selected": false,
+            "text": "BISACODYL, 5mg, tab.",
+            "value": "BISACODYL, 5mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "BLADE, surgical, scapel, sterile, No. 10",
+            "value": "BLADE, surgical, scapel, sterile, No. 10"
+          },
+          {
+            "selected": false,
+            "text": "BLADE, surgical, scapel, sterile, No. 11",
+            "value": "BLADE, surgical, scapel, sterile, No. 11"
+          },
+          {
+            "selected": false,
+            "text": "BLADE, surgical, scapel, sterile, No. 16",
+            "value": "BLADE, surgical, scapel, sterile, No. 16"
+          },
+          {
+            "selected": false,
+            "text": "BOX, SLIDES, plastic, for 100 slides",
+            "value": "BOX, SLIDES, plastic, for 100 slides"
+          },
+          {
+            "selected": false,
+            "text": "BRACELET, BRACHIAL PERIMETER (MUAC), paediatric, PP, 115 mm",
+            "value": "BRACELET, BRACHIAL PERIMETER (MUAC), paediatric, PP, 115 mm"
+          },
+          {
+            "selected": false,
+            "text": "Bandage, hydrophylic, w.o.w., 5 cm x 10 m, roll",
+            "value": "Bandage, hydrophylic, w.o.w., 5 cm x 10 m, roll"
+          },
+          {
+            "selected": false,
+            "text": "Beaker, graduated, 500ml",
+            "value": "Beaker, graduated, 500ml"
+          },
+          {
+            "selected": false,
+            "text": "Bean, kg",
+            "value": "Bean, kg"
+          },
+          {
+            "selected": false,
+            "text": "Blend food, WSB++, kg ",
+            "value": "Blend food, WSB++, kg "
+          },
+          {
+            "selected": false,
+            "text": "Blend food, WSB+, kg",
+            "value": "Blend food, WSB+, kg"
+          },
+          {
+            "selected": false,
+            "text": "Bowl, Stainless Steel, small size",
+            "value": "Bowl, Stainless Steel, small size"
+          },
+          {
+            "selected": false,
+            "text": "CALAMINE, 15%, lotion, 100 ml, bot. ",
+            "value": "CALAMINE, 15%, lotion, 100 ml, bot. "
+          },
+          {
+            "selected": false,
+            "text": "CALAMINE, 15%, lotion, 500 ml, bot. ",
+            "value": "CALAMINE, 15%, lotion, 500 ml, bot. "
+          },
+          {
+            "selected": false,
+            "text": "CALAMINE, 15%, lotion, 60 ml, bot.",
+            "value": "CALAMINE, 15%, lotion, 60 ml, bot."
+          },
+          {
+            "selected": false,
+            "text": "CALCIUM GLUCONATE, 100 mg/ml, 10 ml, amp.",
+            "value": "CALCIUM GLUCONATE, 100 mg/ml, 10 ml, amp."
+          },
+          {
+            "selected": false,
+            "text": "CANNULA, NASAL, OXYGEN, adult",
+            "value": "CANNULA, NASAL, OXYGEN, adult"
+          },
+          {
+            "selected": false,
+            "text": "CANNULA, NASAL, OXYGEN, paediatric",
+            "value": "CANNULA, NASAL, OXYGEN, paediatric"
+          },
+          {
+            "selected": false,
+            "text": "CAP, SURGICAL, bouffant, nonwoven, s.u",
+            "value": "CAP, SURGICAL, bouffant, nonwoven, s.u"
+          },
+          {
+            "selected": false,
+            "text": "CARBAMAZEPINE, 200 mg, tab.",
+            "value": "CARBAMAZEPINE, 200 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "CATHETER, URETHRAL, Red Rubber, sterile, s.u., CH14",
+            "value": "CATHETER, URETHRAL, Red Rubber, sterile, s.u., CH14"
+          },
+          {
+            "selected": false,
+            "text": "CATHETER, URETHRAL, Red Rubber, sterile, s.u., CH16",
+            "value": "CATHETER, URETHRAL, Red Rubber, sterile, s.u., CH16"
+          },
+          {
+            "selected": false,
+            "text": "CATHETER, URINARY, FOLEY, balloon, sterile, s.u., CH16",
+            "value": "CATHETER, URINARY, FOLEY, balloon, sterile, s.u., CH16"
+          },
+          {
+            "selected": false,
+            "text": "CEFIXIME, 100 mg/5 ml, powder for oral susp., 40ml, bottle",
+            "value": "CEFIXIME, 100 mg/5 ml, powder for oral susp., 40ml, bottle"
+          },
+          {
+            "selected": false,
+            "text": "CEFIXIME, 200 mg, tab.",
+            "value": "CEFIXIME, 200 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "CEFTRIAXONE sodium, 250 mg, powder, vial",
+            "value": "CEFTRIAXONE sodium, 250 mg, powder, vial"
+          },
+          {
+            "selected": false,
+            "text": "CEFTRIAXONE, 1 g, powder, vial",
+            "value": "CEFTRIAXONE, 1 g, powder, vial"
+          },
+          {
+            "selected": false,
+            "text": "CENTRIFUGE, electrical 220V, 8 tubes",
+            "value": "CENTRIFUGE, electrical 220V, 8 tubes"
+          },
+          {
+            "selected": false,
+            "text": "CHLORAMPHENICOL, 0.5%, eye drops, sterile, 10 ml, bot.",
+            "value": "CHLORAMPHENICOL, 0.5%, eye drops, sterile, 10 ml, bot."
+          },
+          {
+            "selected": false,
+            "text": "CHLORINE 2G, Tab",
+            "value": "CHLORINE 2G, Tab"
+          },
+          {
+            "selected": false,
+            "text": "CHLORINE, 1g (NaDCC/dichloroisocyan.sodium 1.67 g), tab",
+            "value": "CHLORINE, 1g (NaDCC/dichloroisocyan.sodium 1.67 g), tab"
+          },
+          {
+            "selected": false,
+            "text": "CHLOROQUINE, 155 mg base, (250 mg phosphate), tab.",
+            "value": "CHLOROQUINE, 155 mg base, (250 mg phosphate), tab."
+          },
+          {
+            "selected": false,
+            "text": "CHLORPHENAMINE 10mg/ml, 1ml, amp.",
+            "value": "CHLORPHENAMINE 10mg/ml, 1ml, amp."
+          },
+          {
+            "selected": false,
+            "text": "CHLORPHENAMINE hydrogen maleate, 4 mg, tab.",
+            "value": "CHLORPHENAMINE hydrogen maleate, 4 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "CIPROFLOXACIN hydrochloride, eq. 500 mg base, breakable tab.",
+            "value": "CIPROFLOXACIN hydrochloride, eq. 500 mg base, breakable tab."
+          },
+          {
+            "selected": false,
+            "text": "CIPROFLOXACIN, 0.3%, eye drops, sterile, 5ml, bot.",
+            "value": "CIPROFLOXACIN, 0.3%, eye drops, sterile, 5ml, bot."
+          },
+          {
+            "selected": false,
+            "text": "CLOTRIMAZOLE, 500 mg, vaginal tab. + applicator",
+            "value": "CLOTRIMAZOLE, 500 mg, vaginal tab. + applicator"
+          },
+          {
+            "selected": false,
+            "text": "CLOXACILLIN sodium, eq. 250 mg base, caps.",
+            "value": "CLOXACILLIN sodium, eq. 250 mg base, caps."
+          },
+          {
+            "selected": false,
+            "text": "COMPRESS, GAUZE, 10 cm, 12 plies, 17 threads, non sterile",
+            "value": "COMPRESS, GAUZE, 10 cm, 12 plies, 17 threads, non sterile"
+          },
+          {
+            "selected": false,
+            "text": "CONDOM, with LUBR.GEL, non-flavor, 3pcs/pack ",
+            "value": "CONDOM, with LUBR.GEL, non-flavor, 3pcs/pack "
+          },
+          {
+            "selected": false,
+            "text": "CONICAL CENTRIFUGE TUBE, falcon, 50ml",
+            "value": "CONICAL CENTRIFUGE TUBE, falcon, 50ml"
+          },
+          {
+            "selected": false,
+            "text": "CONTAINER, SAMPLE, sputum/urine, plastic, non-sterile",
+            "value": "CONTAINER, SAMPLE, sputum/urine, plastic, non-sterile"
+          },
+          {
+            "selected": false,
+            "text": "CONTAINER, antiseptic solution, plastic, non-sterile",
+            "value": "CONTAINER, antiseptic solution, plastic, non-sterile"
+          },
+          {
+            "selected": false,
+            "text": "COTRIMOXAZOLE, 100 mg / 20 mg, tab.",
+            "value": "COTRIMOXAZOLE, 100 mg / 20 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "COTRIMOXAZOLE, 200mg/40mg/5ml, powder oral susp,100 ml, bot.",
+            "value": "COTRIMOXAZOLE, 200mg/40mg/5ml, powder oral susp,100 ml, bot."
+          },
+          {
+            "selected": false,
+            "text": "COTRIMOXAZOLE, 400 mg / 80 mg, tab.",
+            "value": "COTRIMOXAZOLE, 400 mg / 80 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "COTRIMOXAZOLE, 800 mg / 160 mg, tab.",
+            "value": "COTRIMOXAZOLE, 800 mg / 160 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "COTTON WOOL, hydrophilic, roll, 500 g",
+            "value": "COTTON WOOL, hydrophilic, roll, 500 g"
+          },
+          {
+            "selected": false,
+            "text": "COVER GLASS, 22 x 22 mm",
+            "value": "COVER GLASS, 22 x 22 mm"
+          },
+          {
+            "selected": false,
+            "text": "CRYOTUBE, 1.5 ml, conical bottom, screw lid, non-sterile",
+            "value": "CRYOTUBE, 1.5 ml, conical bottom, screw lid, non-sterile"
+          },
+          {
+            "selected": false,
+            "text": "CYLINDER, MEASURING, plastic, graduated, spout, 250 ml",
+            "value": "CYLINDER, MEASURING, plastic, graduated, spout, 250 ml"
+          },
+          {
+            "selected": false,
+            "text": "Canned Fish, can",
+            "value": "Canned Fish, can"
+          },
+          {
+            "selected": false,
+            "text": "Caps for sample tube 3.5ml, PARTEC",
+            "value": "Caps for sample tube 3.5ml, PARTEC"
+          },
+          {
+            "selected": false,
+            "text": "Carbol Fuchsin, (ZN1), solution, 1L",
+            "value": "Carbol Fuchsin, (ZN1), solution, 1L"
+          },
+          {
+            "selected": false,
+            "text": "Cholesterol Liquicolor, 4x100ml 10028",
+            "value": "Cholesterol Liquicolor, 4x100ml 10028"
+          },
+          {
+            "selected": false,
+            "text": "Chromic Catgut, 2/0 (3.5 Meteric) 75cm, with 1/2 circle round bodies 35mm",
+            "value": "Chromic Catgut, 2/0 (3.5 Meteric) 75cm, with 1/2 circle round bodies 35mm"
+          },
+          {
+            "selected": false,
+            "text": "Cord Clamps, umbilical, with gated hinges, sterile",
+            "value": "Cord Clamps, umbilical, with gated hinges, sterile"
+          },
+          {
+            "selected": false,
+            "text": "DACLATASVIR dihydrochloride (DCV), eq. 60 mg base, tab. ",
+            "value": "DACLATASVIR dihydrochloride (DCV), eq. 60 mg base, tab. "
+          },
+          {
+            "selected": false,
+            "text": "DAPSONE, 100mg, tab",
+            "value": "DAPSONE, 100mg, tab"
+          },
+          {
+            "selected": false,
+            "text": "DBS card, Dried Blood Spot Collection Card, Set",
+            "value": "DBS card, Dried Blood Spot Collection Card, Set"
+          },
+          {
+            "selected": false,
+            "text": "DENGUE NS1/IgM/IgG TEST (Dengue Duo), ser/pl, 1 test",
+            "value": "DENGUE NS1/IgM/IgG TEST (Dengue Duo), ser/pl, 1 test"
+          },
+          {
+            "selected": false,
+            "text": "DEPRESSOR, TONGUE, wooden",
+            "value": "DEPRESSOR, TONGUE, wooden"
+          },
+          {
+            "selected": false,
+            "text": "DEXAMETHASONE 0.5 mg, tab.",
+            "value": "DEXAMETHASONE 0.5 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "DEXAMETHASONE 5 mg / NEOMYCINE 17500 IU, eye drops, 5ml, bot",
+            "value": "DEXAMETHASONE 5 mg / NEOMYCINE 17500 IU, eye drops, 5ml, bot"
+          },
+          {
+            "selected": false,
+            "text": "DEXAMETHASONE phosphate, 4 mg/ml, 1 ml, amp.",
+            "value": "DEXAMETHASONE phosphate, 4 mg/ml, 1 ml, amp."
+          },
+          {
+            "selected": false,
+            "text": "DEXTROMETHOPHAN, 10mg, cap.",
+            "value": "DEXTROMETHOPHAN, 10mg, cap."
+          },
+          {
+            "selected": false,
+            "text": "DEXTROSE (GLUCOSE) 5% 500 ml, plastic pouch",
+            "value": "DEXTROSE (GLUCOSE) 5% 500 ml, plastic pouch"
+          },
+          {
+            "selected": false,
+            "text": "DEXTROSE (GLUCOSE) 5% in SODIUM CHLORIDE 0.9%, 500ml, ",
+            "value": "DEXTROSE (GLUCOSE) 5% in SODIUM CHLORIDE 0.9%, 500ml, "
+          },
+          {
+            "selected": false,
+            "text": "DIAZEPAM, 5 mg, tab.",
+            "value": "DIAZEPAM, 5 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "DIAZEPAM, 5 mg/ml, 2 ml, amp.",
+            "value": "DIAZEPAM, 5 mg/ml, 2 ml, amp."
+          },
+          {
+            "selected": false,
+            "text": "DICLOFENAC SODIUM, enteric coated, 25mg, tab.",
+            "value": "DICLOFENAC SODIUM, enteric coated, 25mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "DICLOFENAC sodium, 25 mg/ml, 3 ml, amp.",
+            "value": "DICLOFENAC sodium, 25 mg/ml, 3 ml, amp."
+          },
+          {
+            "selected": false,
+            "text": "DOLUTEGRAVIR(50)mg",
+            "value": "DOLUTEGRAVIR(50)mg"
+          },
+          {
+            "selected": false,
+            "text": "DOXYCYCLINE hydrochloride, 100 mg, tab.",
+            "value": "DOXYCYCLINE hydrochloride, 100 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "Digital Rotator DSR 2100D",
+            "value": "Digital Rotator DSR 2100D"
+          },
+          {
+            "selected": false,
+            "text": "Direct Opthalmoscope",
+            "value": "Direct Opthalmoscope"
+          },
+          {
+            "selected": false,
+            "text": "Drum for cotton wool and gauze height 15 cm diameter 15 cm",
+            "value": "Drum for cotton wool and gauze height 15 cm diameter 15 cm"
+          },
+          {
+            "selected": false,
+            "text": "EFAVIRENZ (EFV or EFZ), 200 mg, tab.",
+            "value": "EFAVIRENZ (EFV or EFZ), 200 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "EFAVIRENZ (EFV or EFZ), 600 mg, tab.",
+            "value": "EFAVIRENZ (EFV or EFZ), 600 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "ENALAPRIL maleate, 5 mg, tab.",
+            "value": "ENALAPRIL maleate, 5 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "EPINEPHRINE (adrenaline) tartrate, 1 mg/ml base, 1 ml, amp IM",
+            "value": "EPINEPHRINE (adrenaline) tartrate, 1 mg/ml base, 1 ml, amp IM"
+          },
+          {
+            "selected": false,
+            "text": "ETHAMBUTOL hydrochloride (E), 100 mg, tab.",
+            "value": "ETHAMBUTOL hydrochloride (E), 100 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "ETHAMBUTOL hydrochloride (E), 400 mg, tab.",
+            "value": "ETHAMBUTOL hydrochloride (E), 400 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "ETHANOL, denaturated, 95%, 1 l, bot.",
+            "value": "ETHANOL, denaturated, 95%, 1 l, bot."
+          },
+          {
+            "selected": false,
+            "text": "ETHINYLESTR. 0.03 mg / LEVONORGESTREL 0.15 mg, plaq. 28 tab.",
+            "value": "ETHINYLESTR. 0.03 mg / LEVONORGESTREL 0.15 mg, plaq. 28 tab."
+          },
+          {
+            "selected": false,
+            "text": "EUSOL SOLUTION,500ML",
+            "value": "EUSOL SOLUTION,500ML"
+          },
+          {
+            "selected": false,
+            "text": "FEMALE CONDOM, lubricated, 170 mm, s.u.",
+            "value": "FEMALE CONDOM, lubricated, 170 mm, s.u."
+          },
+          {
+            "selected": false,
+            "text": "FENOFIBRATE MICRONISED 200MG CAPSULES",
+            "value": "FENOFIBRATE MICRONISED 200MG CAPSULES"
+          },
+          {
+            "selected": false,
+            "text": "FERROUS GLUCONATE 50mg, drinkable ampoule",
+            "value": "FERROUS GLUCONATE 50mg, drinkable ampoule"
+          },
+          {
+            "selected": false,
+            "text": "FERROUS sulfate (or fumarate), 200 mg (= 65 mg iron), tab",
+            "value": "FERROUS sulfate (or fumarate), 200 mg (= 65 mg iron), tab"
+          },
+          {
+            "selected": false,
+            "text": "FLUCONAZOLE, 200 mg, tab.",
+            "value": "FLUCONAZOLE, 200 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "FOLIC acid, 5 mg, tab.",
+            "value": "FOLIC acid, 5 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "FORCEPS, ARTERY, (Umbilical Cord Clamp Forcep), Straight Big, 20cm",
+            "value": "FORCEPS, ARTERY, (Umbilical Cord Clamp Forcep), Straight Big, 20cm"
+          },
+          {
+            "selected": false,
+            "text": "FORCEPS, ARTERY, 14 cm, Curved",
+            "value": "FORCEPS, ARTERY, 14 cm, Curved"
+          },
+          {
+            "selected": false,
+            "text": "FORCEPS, ARTERY, 14 cm, straight",
+            "value": "FORCEPS, ARTERY, 14 cm, straight"
+          },
+          {
+            "selected": false,
+            "text": "FORCEPS, DISSECTING with non-tooth, 15 cm",
+            "value": "FORCEPS, DISSECTING with non-tooth, 15 cm"
+          },
+          {
+            "selected": false,
+            "text": "FORCEPS, DISSECTING with tooth, 15cm",
+            "value": "FORCEPS, DISSECTING with tooth, 15cm"
+          },
+          {
+            "selected": false,
+            "text": "FORCEPS, HAEMOST, KOCHER, 22 cm, 1x2 teeth curved",
+            "value": "FORCEPS, HAEMOST, KOCHER, 22 cm, 1x2 teeth curved"
+          },
+          {
+            "selected": false,
+            "text": "FORCEPS, HAEMOST., PEAN, 14 cm, straight 16-10-14",
+            "value": "FORCEPS, HAEMOST., PEAN, 14 cm, straight 16-10-14"
+          },
+          {
+            "selected": false,
+            "text": "FORCEPS, Sponge Holding, Straight, 25.4cm",
+            "value": "FORCEPS, Sponge Holding, Straight, 25.4cm"
+          },
+          {
+            "selected": false,
+            "text": "FUROSEMIDE, 10 mg/ml, 2 ml, amp.",
+            "value": "FUROSEMIDE, 10 mg/ml, 2 ml, amp."
+          },
+          {
+            "selected": false,
+            "text": "FUROSEMIDE, 40 mg, tab.",
+            "value": "FUROSEMIDE, 40 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "Funnel, plastic, 145mmx210mm",
+            "value": "Funnel, plastic, 145mmx210mm"
+          },
+          {
+            "selected": false,
+            "text": "Funnel, plastic, 75mmx130mm",
+            "value": "Funnel, plastic, 75mmx130mm"
+          },
+          {
+            "selected": false,
+            "text": "GANCICLOVIR, 500 mg, powder, vial for infusion",
+            "value": "GANCICLOVIR, 500 mg, powder, vial for infusion"
+          },
+          {
+            "selected": false,
+            "text": "GENTAMICIN sulfate, 40 mg/ml, 2 ml, amp. ",
+            "value": "GENTAMICIN sulfate, 40 mg/ml, 2 ml, amp. "
+          },
+          {
+            "selected": false,
+            "text": "GENTIAN VIOLET, for bacteriology, powderGentian Violet,powder,25g,bot",
+            "value": "GENTIAN VIOLET, for bacteriology, powderGentian Violet,powder,25g,bot"
+          },
+          {
+            "selected": false,
+            "text": "GIEMSA, stain (Merck), solution, 500 ml, bot.",
+            "value": "GIEMSA, stain (Merck), solution, 500 ml, bot."
+          },
+          {
+            "selected": false,
+            "text": "GLICLAZIDE 80mg, tabs",
+            "value": "GLICLAZIDE 80mg, tabs"
+          },
+          {
+            "selected": false,
+            "text": "GLOVE, EXAMINATION, latex, s.u. non sterile, large",
+            "value": "GLOVE, EXAMINATION, latex, s.u. non sterile, large"
+          },
+          {
+            "selected": false,
+            "text": "GLOVE, EXAMINATION, latex, s.u. non sterile, medium",
+            "value": "GLOVE, EXAMINATION, latex, s.u. non sterile, medium"
+          },
+          {
+            "selected": false,
+            "text": "GLOVE, EXAMINATION, latex, s.u. non sterile, small",
+            "value": "GLOVE, EXAMINATION, latex, s.u. non sterile, small"
+          },
+          {
+            "selected": false,
+            "text": "GLOVES, SURGICAL, latex, s.u., sterile, pair, 6",
+            "value": "GLOVES, SURGICAL, latex, s.u., sterile, pair, 6"
+          },
+          {
+            "selected": false,
+            "text": "GLOVES, SURGICAL, latex, s.u., sterile, pair, 6.5",
+            "value": "GLOVES, SURGICAL, latex, s.u., sterile, pair, 6.5"
+          },
+          {
+            "selected": false,
+            "text": "GLOVES, SURGICAL, latex, s.u., sterile, pair, 7",
+            "value": "GLOVES, SURGICAL, latex, s.u., sterile, pair, 7"
+          },
+          {
+            "selected": false,
+            "text": "GLOVES, SURGICAL, latex, s.u., sterile, pair, 7.5",
+            "value": "GLOVES, SURGICAL, latex, s.u., sterile, pair, 7.5"
+          },
+          {
+            "selected": false,
+            "text": "GLOVES, examination, plastic, s.u., non-sterile",
+            "value": "GLOVES, examination, plastic, s.u., non-sterile"
+          },
+          {
+            "selected": false,
+            "text": "GLUCOMETER, blood glucose monitor",
+            "value": "GLUCOMETER, blood glucose monitor"
+          },
+          {
+            "selected": false,
+            "text": "GLUCOSE HYPERTONIC, 50%, 20 ml, vial",
+            "value": "GLUCOSE HYPERTONIC, 50%, 20 ml, vial"
+          },
+          {
+            "selected": false,
+            "text": "GLUCOSE HYPERTONIC, 50%, 50 ml, vial",
+            "value": "GLUCOSE HYPERTONIC, 50%, 50 ml, vial"
+          },
+          {
+            "selected": false,
+            "text": "GLUCOSE Powder, 450g, (Cal-D)",
+            "value": "GLUCOSE Powder, 450g, (Cal-D)"
+          },
+          {
+            "selected": false,
+            "text": "GOWN, SURGICAL, nonwoven, s.u., L",
+            "value": "GOWN, SURGICAL, nonwoven, s.u., L"
+          },
+          {
+            "selected": false,
+            "text": "GOWN, SURGICAL, nonwoven, s.u., XL",
+            "value": "GOWN, SURGICAL, nonwoven, s.u., XL"
+          },
+          {
+            "selected": false,
+            "text": "GRAM HUCKER, bacterio. (RAL), 4 x 230 ml, kit",
+            "value": "GRAM HUCKER, bacterio. (RAL), 4 x 230 ml, kit"
+          },
+          {
+            "selected": false,
+            "text": "HAEMOGLOBIN PHOTOMETER (HemoCue Hb 201+)",
+            "value": "HAEMOGLOBIN PHOTOMETER (HemoCue Hb 201+)"
+          },
+          {
+            "selected": false,
+            "text": "HAEMOGLOBIN PHOTOMETER (HemoCue Hb 301+) ",
+            "value": "HAEMOGLOBIN PHOTOMETER (HemoCue Hb 301+) "
+          },
+          {
+            "selected": false,
+            "text": "HAMMER, REFLEXES, BABINSKY model, 25 cm, adult",
+            "value": "HAMMER, REFLEXES, BABINSKY model, 25 cm, adult"
+          },
+          {
+            "selected": false,
+            "text": "HDL Cholesterol, 4x100ml 10018",
+            "value": "HDL Cholesterol, 4x100ml 10018"
+          },
+          {
+            "selected": false,
+            "text": "HYDROCHLOROTHIAZIDE 25mg, tab",
+            "value": "HYDROCHLOROTHIAZIDE 25mg, tab"
+          },
+          {
+            "selected": false,
+            "text": "HYDROCHLOROTHIAZIDE 50mg, tab",
+            "value": "HYDROCHLOROTHIAZIDE 50mg, tab"
+          },
+          {
+            "selected": false,
+            "text": "HYDROCORTISONE acetate, 1%, ointment, 15 g, tube",
+            "value": "HYDROCORTISONE acetate, 1%, ointment, 15 g, tube"
+          },
+          {
+            "selected": false,
+            "text": "HYDROCORTISONE sodium succinate, eq.100mg base, powder, vial",
+            "value": "HYDROCORTISONE sodium succinate, eq.100mg base, powder, vial"
+          },
+          {
+            "selected": false,
+            "text": "HYOSCINE BUTYLBROMIDE (scopolamine butylbrom), 20 mg/1ml,amp",
+            "value": "HYOSCINE BUTYLBROMIDE (scopolamine butylbrom), 20 mg/1ml,amp"
+          },
+          {
+            "selected": false,
+            "text": "HYOSCINE BUTYLBROMIDE (scopolamine butylbromide), 10 mg, tab ",
+            "value": "HYOSCINE BUTYLBROMIDE (scopolamine butylbromide), 10 mg, tab "
+          },
+          {
+            "selected": false,
+            "text": "Halogen Lamp 6V, 10 W",
+            "value": "Halogen Lamp 6V, 10 W"
+          },
+          {
+            "selected": false,
+            "text": "Humatrol N, Lyophilise 13511",
+            "value": "Humatrol N, Lyophilise 13511"
+          },
+          {
+            "selected": false,
+            "text": "IBUPROFEN, 400 mg, tab.",
+            "value": "IBUPROFEN, 400 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "IMMUNOGLOBULIN HUMAN HEPATITIS B, 100 IU/ml, 2 ml, vial.",
+            "value": "IMMUNOGLOBULIN HUMAN HEPATITIS B, 100 IU/ml, 2 ml, vial."
+          },
+          {
+            "selected": false,
+            "text": "IMMUNOGLOBULIN, HUMAN, ANTITETANUS, 250 IU/ml, syr.",
+            "value": "IMMUNOGLOBULIN, HUMAN, ANTITETANUS, 250 IU/ml, syr."
+          },
+          {
+            "selected": false,
+            "text": "INDIAN INK, black, cryptococcus test, dropper, 0.5 ml, amp.",
+            "value": "INDIAN INK, black, cryptococcus test, dropper, 0.5 ml, amp."
+          },
+          {
+            "selected": false,
+            "text": "INTRA UTERINE DEVICE, (I.U.D.), copper, TCU 380 A",
+            "value": "INTRA UTERINE DEVICE, (I.U.D.), copper, TCU 380 A"
+          },
+          {
+            "selected": false,
+            "text": "ISONIAZID (H), 100 mg, tab.",
+            "value": "ISONIAZID (H), 100 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "ISONIAZID (H), 300 mg, tab.",
+            "value": "ISONIAZID (H), 300 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "ITRACONAZOLE, 100 mg, caps.",
+            "value": "ITRACONAZOLE, 100 mg, caps."
+          },
+          {
+            "selected": false,
+            "text": "IV CATHETER, injection port, s.u. 18 G (1.2 x 45 mm), green",
+            "value": "IV CATHETER, injection port, s.u. 18 G (1.2 x 45 mm), green"
+          },
+          {
+            "selected": false,
+            "text": "IV CATHETER, injection port, s.u. 20 G (1.0 x 32 mm), pink",
+            "value": "IV CATHETER, injection port, s.u. 20 G (1.0 x 32 mm), pink"
+          },
+          {
+            "selected": false,
+            "text": "IV CATHETER, injection port, s.u. 24 G (0.7 x 19 mm) yellow",
+            "value": "IV CATHETER, injection port, s.u. 24 G (0.7 x 19 mm) yellow"
+          },
+          {
+            "selected": false,
+            "text": "IV CATHETER, injjection port, s.u. 22G (0.8 x 25mm), blue",
+            "value": "IV CATHETER, injjection port, s.u. 22G (0.8 x 25mm), blue"
+          },
+          {
+            "selected": false,
+            "text": "IVERMECTIN (scabies + other indic), 3 mg, tab.",
+            "value": "IVERMECTIN (scabies + other indic), 3 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "KIDNEY DISH, 26 cm x 14 cm, stainless steel",
+            "value": "KIDNEY DISH, 26 cm x 14 cm, stainless steel"
+          },
+          {
+            "selected": false,
+            "text": "LAMIVUD(3TC) 150mg/ZIDOVUD(AZT) 300mg/NEVIR(NVP) 200mg tab",
+            "value": "LAMIVUD(3TC) 150mg/ZIDOVUD(AZT) 300mg/NEVIR(NVP) 200mg tab"
+          },
+          {
+            "selected": false,
+            "text": "LAMIVUD(3TC) 30 mg / ZIDOVUD(AZT) 60 mg / NEVIR(NVP) 50 mg tab",
+            "value": "LAMIVUD(3TC) 30 mg / ZIDOVUD(AZT) 60 mg / NEVIR(NVP) 50 mg tab"
+          },
+          {
+            "selected": false,
+            "text": "LAMIVUDINE 30mg/ ZIDOVUDINE 60mg tab",
+            "value": "LAMIVUDINE 30mg/ ZIDOVUDINE 60mg tab"
+          },
+          {
+            "selected": false,
+            "text": "LAMIVUDINE, (3TC), 150 mg, tab.",
+            "value": "LAMIVUDINE, (3TC), 150 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "LAMIVUDINE, (3TC), 300 mg, tab.",
+            "value": "LAMIVUDINE, (3TC), 300 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "LAMP, spirit, 65-100 ml, complete, wick ¯ 7 mm",
+            "value": "LAMP, spirit, 65-100 ml, complete, wick ¯ 7 mm"
+          },
+          {
+            "selected": false,
+            "text": "LEVOFLOXACIN, 500mg, tab.",
+            "value": "LEVOFLOXACIN, 500mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "LEVOFLOXACIN,250mg, tab.",
+            "value": "LEVOFLOXACIN,250mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "LEVONORGESTREL, 1.5mg, tab",
+            "value": "LEVONORGESTREL, 1.5mg, tab"
+          },
+          {
+            "selected": false,
+            "text": "LEVONORGESTREL, 2x75mg, Contraceptive implant, Jadelle",
+            "value": "LEVONORGESTREL, 2x75mg, Contraceptive implant, Jadelle"
+          },
+          {
+            "selected": false,
+            "text": "LIDOCAINE Hydrochloride, 2%, 100mg, 20mg/ml, jelly, sterile, tube",
+            "value": "LIDOCAINE Hydrochloride, 2%, 100mg, 20mg/ml, jelly, sterile, tube"
+          },
+          {
+            "selected": false,
+            "text": "LIDOCAINE hydrochloride, 1%, 20 ml, vial",
+            "value": "LIDOCAINE hydrochloride, 1%, 20 ml, vial"
+          },
+          {
+            "selected": false,
+            "text": "LOPERAMIDE, 2 mg, tab.",
+            "value": "LOPERAMIDE, 2 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "LOPINAVIR (LPV) 100 mg / RITONAVIR (r) 25 mg tab.",
+            "value": "LOPINAVIR (LPV) 100 mg / RITONAVIR (r) 25 mg tab."
+          },
+          {
+            "selected": false,
+            "text": "LOPINAVIR (LPV) 200 mg / RITONAVIR (r) 50 mg tab.",
+            "value": "LOPINAVIR (LPV) 200 mg / RITONAVIR (r) 50 mg tab."
+          },
+          {
+            "selected": false,
+            "text": "LOPINAVIR(LPV) / RITONAVIR(r) 80/20mg/ml, oral susp, 60ml bot",
+            "value": "LOPINAVIR(LPV) / RITONAVIR(r) 80/20mg/ml, oral susp, 60ml bot"
+          },
+          {
+            "selected": false,
+            "text": "LOPINAVIR(LPV)40mg/RITONAVIR10mg tab.",
+            "value": "LOPINAVIR(LPV)40mg/RITONAVIR10mg tab."
+          },
+          {
+            "selected": false,
+            "text": "LUBRICATING JELLY, 35 gr., tube",
+            "value": "LUBRICATING JELLY, 35 gr., tube"
+          },
+          {
+            "selected": false,
+            "text": "MACHINE, Nebulizer",
+            "value": "MACHINE, Nebulizer"
+          },
+          {
+            "selected": false,
+            "text": "MANOMETER CEREBRO-SPINAL+STOPCOCK SET PLASTIC DISPOSABLE",
+            "value": "MANOMETER CEREBRO-SPINAL+STOPCOCK SET PLASTIC DISPOSABLE"
+          },
+          {
+            "selected": false,
+            "text": "MASK, SURGICAL, type II, s.u.",
+            "value": "MASK, SURGICAL, type II, s.u."
+          },
+          {
+            "selected": false,
+            "text": "MEDROXYPROGESTERONE acetate, 150 mg, 1 ml, vial",
+            "value": "MEDROXYPROGESTERONE acetate, 150 mg, 1 ml, vial"
+          },
+          {
+            "selected": false,
+            "text": "METFORMIN hydrochloride, 500 mg, tab.",
+            "value": "METFORMIN hydrochloride, 500 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "METHANOL, 1 l, bot.",
+            "value": "METHANOL, 1 l, bot."
+          },
+          {
+            "selected": false,
+            "text": "METHYLATED spirit, external use, 500ml, bottle",
+            "value": "METHYLATED spirit, external use, 500ml, bottle"
+          },
+          {
+            "selected": false,
+            "text": "METHYLENE BLUE, 1L , bot.",
+            "value": "METHYLENE BLUE, 1L , bot."
+          },
+          {
+            "selected": false,
+            "text": "METOCLOPRAMIDE hydrochloride anhydrous, 10 mg, tab.",
+            "value": "METOCLOPRAMIDE hydrochloride anhydrous, 10 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "METOCLOPRAMIDE hydrochloride, 5 mg/ml, 2 ml, amp.",
+            "value": "METOCLOPRAMIDE hydrochloride, 5 mg/ml, 2 ml, amp."
+          },
+          {
+            "selected": false,
+            "text": "METRONIDAZOLE, 250 mg, tab.",
+            "value": "METRONIDAZOLE, 250 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "METRONIDAZOLE, 500 mg, tab.",
+            "value": "METRONIDAZOLE, 500 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "MICONAZOL nitrate, 2%, cream, 30 g, tube",
+            "value": "MICONAZOL nitrate, 2%, cream, 30 g, tube"
+          },
+          {
+            "selected": false,
+            "text": "MICONAZOL nitrate,2% cream, 15g, tube",
+            "value": "MICONAZOL nitrate,2% cream, 15g, tube"
+          },
+          {
+            "selected": false,
+            "text": "MICROSCOPE (Olympus CX22), COMPLETE (bin.,mirror/mains, box)",
+            "value": "MICROSCOPE (Olympus CX22), COMPLETE (bin.,mirror/mains, box)"
+          },
+          {
+            "selected": false,
+            "text": "MIFEPRISTONE, 10mg, tab",
+            "value": "MIFEPRISTONE, 10mg, tab"
+          },
+          {
+            "selected": false,
+            "text": "MILK, INFANT, FORMULA, Lactogen Step 1, 0-6 month, 350 g, pcs",
+            "value": "MILK, INFANT, FORMULA, Lactogen Step 1, 0-6 month, 350 g, pcs"
+          },
+          {
+            "selected": false,
+            "text": "MILK, INFANT, FORMULA, Lactogen Step 2, 7-36 month, 350 g, pcs",
+            "value": "MILK, INFANT, FORMULA, Lactogen Step 2, 7-36 month, 350 g, pcs"
+          },
+          {
+            "selected": false,
+            "text": "MOSQUITO NET, LLIN, 190x180x150cm, denier 100, white, (WHOPES)",
+            "value": "MOSQUITO NET, LLIN, 190x180x150cm, denier 100, white, (WHOPES)"
+          },
+          {
+            "selected": false,
+            "text": "MULTIVITAMINES, tab.",
+            "value": "MULTIVITAMINES, tab."
+          },
+          {
+            "selected": false,
+            "text": "MYDEKLA 30(Daclatasvir) 30mg tab",
+            "value": "MYDEKLA 30(Daclatasvir) 30mg tab"
+          },
+          {
+            "selected": false,
+            "text": "MYHEP DVIR(DACL/SOFO) 60/400mg tab",
+            "value": "MYHEP DVIR(DACL/SOFO) 60/400mg tab"
+          },
+          {
+            "selected": false,
+            "text": "NEEDLE HOLDER, MAYO-HEGAR, standard, 18 cm",
+            "value": "NEEDLE HOLDER, MAYO-HEGAR, standard, 18 cm"
+          },
+          {
+            "selected": false,
+            "text": "NEEDLE, 30 G (YELLOW), 13 mm½",
+            "value": "NEEDLE, 30 G (YELLOW), 13 mm½"
+          },
+          {
+            "selected": false,
+            "text": "NEEDLE, SPINAL L.P., s.u., 20 G (0.9 x 90 mm)",
+            "value": "NEEDLE, SPINAL L.P., s.u., 20 G (0.9 x 90 mm)"
+          },
+          {
+            "selected": false,
+            "text": "NEEDLE, SPINAL L.P., s.u., 22 G (0.7 x 40 mm)",
+            "value": "NEEDLE, SPINAL L.P., s.u., 22 G (0.7 x 40 mm)"
+          },
+          {
+            "selected": false,
+            "text": "NEEDLE, SPINAL L.P., s.u., 23 G",
+            "value": "NEEDLE, SPINAL L.P., s.u., 23 G"
+          },
+          {
+            "selected": false,
+            "text": "NEEDLE, s.u., Luer, 19 G (1.1 x 40 mm) cream, IV",
+            "value": "NEEDLE, s.u., Luer, 19 G (1.1 x 40 mm) cream, IV"
+          },
+          {
+            "selected": false,
+            "text": "NEEDLE, s.u., Luer, 21 G (0.8 x 40 mm) green, IM",
+            "value": "NEEDLE, s.u., Luer, 21 G (0.8 x 40 mm) green, IM"
+          },
+          {
+            "selected": false,
+            "text": "NEEDLE, s.u., Luer, 23 G (0.6 x 30mm) blue,  SC, IM child",
+            "value": "NEEDLE, s.u., Luer, 23 G (0.6 x 30mm) blue,  SC, IM child"
+          },
+          {
+            "selected": false,
+            "text": "NEVIRAPINE (NVP), 200 mg, tab.",
+            "value": "NEVIRAPINE (NVP), 200 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "NEVIRAPINE (NVP), 50mg/5ml, oral suspension 100 ml, bott.",
+            "value": "NEVIRAPINE (NVP), 50mg/5ml, oral suspension 100 ml, bott."
+          },
+          {
+            "selected": false,
+            "text": "NUTRITION powder, (rice & carrot), 480g(Gold Power)",
+            "value": "NUTRITION powder, (rice & carrot), 480g(Gold Power)"
+          },
+          {
+            "selected": false,
+            "text": "NUTRITION powder, (rice, potato & spinach), 480g(Gold Power)",
+            "value": "NUTRITION powder, (rice, potato & spinach), 480g(Gold Power)"
+          },
+          {
+            "selected": false,
+            "text": "NYSTATIN, 100,000 IU/ml, oral suspension",
+            "value": "NYSTATIN, 100,000 IU/ml, oral suspension"
+          },
+          {
+            "selected": false,
+            "text": "Nebulized ventolin 2.5mg/2ml nebules",
+            "value": "Nebulized ventolin 2.5mg/2ml nebules"
+          },
+          {
+            "selected": false,
+            "text": "Nebulizer Mask (for Adult)",
+            "value": "Nebulizer Mask (for Adult)"
+          },
+          {
+            "selected": false,
+            "text": "Nebulizer Mask (for paediatric)",
+            "value": "Nebulizer Mask (for paediatric)"
+          },
+          {
+            "selected": false,
+            "text": "Non stock items",
+            "value": "Non stock items"
+          },
+          {
+            "selected": false,
+            "text": "OIL, IMMERSION, 1000 ml, bot.",
+            "value": "OIL, IMMERSION, 1000 ml, bot."
+          },
+          {
+            "selected": false,
+            "text": "OMEPRAZOLE, 20 mg, enteric caps.",
+            "value": "OMEPRAZOLE, 20 mg, enteric caps."
+          },
+          {
+            "selected": false,
+            "text": "OPHTHALMOSCOPE, halogen",
+            "value": "OPHTHALMOSCOPE, halogen"
+          },
+          {
+            "selected": false,
+            "text": "ORAL REHYDRATION SALTS (ORS) low osmol., sachet 20.5 g/1l",
+            "value": "ORAL REHYDRATION SALTS (ORS) low osmol., sachet 20.5 g/1l"
+          },
+          {
+            "selected": false,
+            "text": "OTOSCOPE, halogen + 4 SPECULA",
+            "value": "OTOSCOPE, halogen + 4 SPECULA"
+          },
+          {
+            "selected": false,
+            "text": "OXYBUPROCAINE, 0.4 %, eye drops, ster, 0.5 ml, unidose, amp. ",
+            "value": "OXYBUPROCAINE, 0.4 %, eye drops, ster, 0.5 ml, unidose, amp. "
+          },
+          {
+            "selected": false,
+            "text": "OXYGEN MASK, adult size",
+            "value": "OXYGEN MASK, adult size"
+          },
+          {
+            "selected": false,
+            "text": "OXYGEN MASK, paediatric size",
+            "value": "OXYGEN MASK, paediatric size"
+          },
+          {
+            "selected": false,
+            "text": "OXYMETER, PULSE (Masimo RAD-5V) + accessories",
+            "value": "OXYMETER, PULSE (Masimo RAD-5V) + accessories"
+          },
+          {
+            "selected": false,
+            "text": "OXYTOCIN, 10 IU/ml, 1 ml, amp.",
+            "value": "OXYTOCIN, 10 IU/ml, 1 ml, amp."
+          },
+          {
+            "selected": false,
+            "text": "Oil, cooking, 1ltr",
+            "value": "Oil, cooking, 1ltr"
+          },
+          {
+            "selected": false,
+            "text": "PAPER, FILTER",
+            "value": "PAPER, FILTER"
+          },
+          {
+            "selected": false,
+            "text": "PAPER, LENS CLEANING, sheet",
+            "value": "PAPER, LENS CLEANING, sheet"
+          },
+          {
+            "selected": false,
+            "text": "PAPER, pH INDICATOR, 3.6 to 6.1, strip",
+            "value": "PAPER, pH INDICATOR, 3.6 to 6.1, strip"
+          },
+          {
+            "selected": false,
+            "text": "PARACETAMOL (acetaminophen), 100 mg, tab.",
+            "value": "PARACETAMOL (acetaminophen), 100 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "PARACETAMOL (acetaminophen), 120 mg/5 ml, syrup, 60 ml, bot.",
+            "value": "PARACETAMOL (acetaminophen), 120 mg/5 ml, syrup, 60 ml, bot."
+          },
+          {
+            "selected": false,
+            "text": "PARACETAMOL (acetaminophen), 500 mg, tab.",
+            "value": "PARACETAMOL (acetaminophen), 500 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "PARACETAMOL, 120mg, suppositories",
+            "value": "PARACETAMOL, 120mg, suppositories"
+          },
+          {
+            "selected": false,
+            "text": "PARACETAMOL, 250mg, suppositories",
+            "value": "PARACETAMOL, 250mg, suppositories"
+          },
+          {
+            "selected": false,
+            "text": "PARACETAMOL, 500mg, suppositories",
+            "value": "PARACETAMOL, 500mg, suppositories"
+          },
+          {
+            "selected": false,
+            "text": "PARTEC, Control blood dry kit",
+            "value": "PARTEC, Control blood dry kit"
+          },
+          {
+            "selected": false,
+            "text": "PARTEC, Hypochlorite sol., 250 ml, bot",
+            "value": "PARTEC, Hypochlorite sol., 250 ml, bot"
+          },
+          {
+            "selected": false,
+            "text": "PERMETHRIN, 1 %, lotion, bot.",
+            "value": "PERMETHRIN, 1 %, lotion, bot."
+          },
+          {
+            "selected": false,
+            "text": "PERMETHRIN, 5% lotion, bot",
+            "value": "PERMETHRIN, 5% lotion, bot"
+          },
+          {
+            "selected": false,
+            "text": "PHYTOMENADIONE ( Vitamin K), tab, 10mg ",
+            "value": "PHYTOMENADIONE ( Vitamin K), tab, 10mg "
+          },
+          {
+            "selected": false,
+            "text": "PHYTOMENADIONE (vitamin K), 10 mg/ml, 0.2 ml, amp.",
+            "value": "PHYTOMENADIONE (vitamin K), 10 mg/ml, 0.2 ml, amp."
+          },
+          {
+            "selected": false,
+            "text": "PIPETTE, 3ml, Graduated Pasteur, sterile, individual pack",
+            "value": "PIPETTE, 3ml, Graduated Pasteur, sterile, individual pack"
+          },
+          {
+            "selected": false,
+            "text": "PIPETTE, AUTOMATIC (Eppendorf), adjustable volume 10-100 µl",
+            "value": "PIPETTE, AUTOMATIC (Eppendorf), adjustable volume 10-100 µl"
+          },
+          {
+            "selected": false,
+            "text": "PIPETTE, AUTOMATIC (Eppendorf), adjustable volume 100-1000 µl",
+            "value": "PIPETTE, AUTOMATIC (Eppendorf), adjustable volume 100-1000 µl"
+          },
+          {
+            "selected": false,
+            "text": "PIPETTE, Eppendorf 20μl yellow",
+            "value": "PIPETTE, Eppendorf 20μl yellow"
+          },
+          {
+            "selected": false,
+            "text": "PIPETTE, PASTEUR, PE 3 ml, sterile, 0.5ml graduation ",
+            "value": "PIPETTE, PASTEUR, PE 3 ml, sterile, 0.5ml graduation "
+          },
+          {
+            "selected": false,
+            "text": "PIPETTE, TRANSFER, graduated, plastic, non sterile, s.u.",
+            "value": "PIPETTE, TRANSFER, graduated, plastic, non sterile, s.u."
+          },
+          {
+            "selected": false,
+            "text": "PLASTERS, (hansaplast), for small cuts, etc.",
+            "value": "PLASTERS, (hansaplast), for small cuts, etc."
+          },
+          {
+            "selected": false,
+            "text": "PMTCT Kit",
+            "value": "PMTCT Kit"
+          },
+          {
+            "selected": false,
+            "text": "PODOPHYLLOTOXIN, 0.5%, solution, 3.5ml, + 30 applicator tips",
+            "value": "PODOPHYLLOTOXIN, 0.5%, solution, 3.5ml, + 30 applicator tips"
+          },
+          {
+            "selected": false,
+            "text": "POLYVIDONE IODINE, 10% solution, 100ml, dropper bot.",
+            "value": "POLYVIDONE IODINE, 10% solution, 100ml, dropper bot."
+          },
+          {
+            "selected": false,
+            "text": "POLYVIDONE IODINE, 10%, solution, 15 ml, dropper bot",
+            "value": "POLYVIDONE IODINE, 10%, solution, 15 ml, dropper bot"
+          },
+          {
+            "selected": false,
+            "text": "POLYVIDONE IODINE, 10%, solution, 200 ml, dropper bot.",
+            "value": "POLYVIDONE IODINE, 10%, solution, 200 ml, dropper bot."
+          },
+          {
+            "selected": false,
+            "text": "POTASSIUM HYDROXIDE, (KOH), gram",
+            "value": "POTASSIUM HYDROXIDE, (KOH), gram"
+          },
+          {
+            "selected": false,
+            "text": "POTASSIUM chloride, 600 mg, sustained release tab.",
+            "value": "POTASSIUM chloride, 600 mg, sustained release tab."
+          },
+          {
+            "selected": false,
+            "text": "PREDNISOLONE, 20 mg, tab.",
+            "value": "PREDNISOLONE, 20 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "PREDNISOLONE, 5 mg, tab.",
+            "value": "PREDNISOLONE, 5 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "PRIMAQUINE diphosphate, eq. 15 mg base, tab.",
+            "value": "PRIMAQUINE diphosphate, eq. 15 mg base, tab."
+          },
+          {
+            "selected": false,
+            "text": "PRIMAQUINE diphosphate, eq. 7.5 mg base, tab.",
+            "value": "PRIMAQUINE diphosphate, eq. 7.5 mg base, tab."
+          },
+          {
+            "selected": false,
+            "text": "PROMETHAZINE hydrochloride, 25mg/ml, 2ml, amp.",
+            "value": "PROMETHAZINE hydrochloride, 25mg/ml, 2ml, amp."
+          },
+          {
+            "selected": false,
+            "text": "PROMETHAZINE hydrochloride, eq. 25 mg base, tab.",
+            "value": "PROMETHAZINE hydrochloride, eq. 25 mg base, tab."
+          },
+          {
+            "selected": false,
+            "text": "PROPRANOLOL 40mg, tab ",
+            "value": "PROPRANOLOL 40mg, tab "
+          },
+          {
+            "selected": false,
+            "text": "PYRAZINAMIDE (Z), 400 mg, tab.",
+            "value": "PYRAZINAMIDE (Z), 400 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "PYRAZINAMIDE (Z), 500 mg, tab.",
+            "value": "PYRAZINAMIDE (Z), 500 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "PYRIDOXINE hydrochloride (vitamin B6), 10 mg, tab.",
+            "value": "PYRIDOXINE hydrochloride (vitamin B6), 10 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "PYRIDOXINE hydrochloride (vitamin B6), 50 mg, tab.",
+            "value": "PYRIDOXINE hydrochloride (vitamin B6), 50 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "PYRIMETHAMINE, 25 mg, tab. ",
+            "value": "PYRIMETHAMINE, 25 mg, tab. "
+          },
+          {
+            "selected": false,
+            "text": "RACK FOR DRYING SLIDES, vertical, plastic 10 slides",
+            "value": "RACK FOR DRYING SLIDES, vertical, plastic 10 slides"
+          },
+          {
+            "selected": false,
+            "text": "RACK, FOR STAINING SLIDES, expendable, stainless steel",
+            "value": "RACK, FOR STAINING SLIDES, expendable, stainless steel"
+          },
+          {
+            "selected": false,
+            "text": "RACK, TUBES, 4 x 12, squares 18mm, stainless steel, height a",
+            "value": "RACK, TUBES, 4 x 12, squares 18mm, stainless steel, height a"
+          },
+          {
+            "selected": false,
+            "text": "RANITIDINE INJECTION",
+            "value": "RANITIDINE INJECTION"
+          },
+          {
+            "selected": false,
+            "text": "READY TO USE THERAPEUTIC FOOD, paste, 500 kcal, 92 g sachet",
+            "value": "READY TO USE THERAPEUTIC FOOD, paste, 500 kcal, 92 g sachet"
+          },
+          {
+            "selected": false,
+            "text": "RESPIRATOR, FFP2 or N95 (3M V FLEX 1805)",
+            "value": "RESPIRATOR, FFP2 or N95 (3M V FLEX 1805)"
+          },
+          {
+            "selected": false,
+            "text": "RESPIRATOR, FFP2 or N95 (3M-1860)",
+            "value": "RESPIRATOR, FFP2 or N95 (3M-1860)"
+          },
+          {
+            "selected": false,
+            "text": "RESPIRATOR, FFP2 or N95 (3M-1860s)",
+            "value": "RESPIRATOR, FFP2 or N95 (3M-1860s)"
+          },
+          {
+            "selected": false,
+            "text": "RESPIRATOR, FFP2 or N95 (3M-1862)",
+            "value": "RESPIRATOR, FFP2 or N95 (3M-1862)"
+          },
+          {
+            "selected": false,
+            "text": "RESPIRATOR, FFP2 or N95 (3M-8210)",
+            "value": "RESPIRATOR, FFP2 or N95 (3M-8210)"
+          },
+          {
+            "selected": false,
+            "text": "RESPIRATOR, FFP2 or N95 (3M-9001)",
+            "value": "RESPIRATOR, FFP2 or N95 (3M-9001)"
+          },
+          {
+            "selected": false,
+            "text": "RESPIRATOR, FFP2 or N95 (5321)",
+            "value": "RESPIRATOR, FFP2 or N95 (5321)"
+          },
+          {
+            "selected": false,
+            "text": "RETINOL (vitamin A) stabil., 100,000 IU, soft gelat. caps.",
+            "value": "RETINOL (vitamin A) stabil., 100,000 IU, soft gelat. caps."
+          },
+          {
+            "selected": false,
+            "text": "RETINOL (vitamin A) stabil., 200,000 IU, soft gelat. caps.",
+            "value": "RETINOL (vitamin A) stabil., 200,000 IU, soft gelat. caps."
+          },
+          {
+            "selected": false,
+            "text": "RIFAMP.150 / ISONIAZ.75 / PYRAZINAM.400/ ETHAMB.275 mg, tab.",
+            "value": "RIFAMP.150 / ISONIAZ.75 / PYRAZINAM.400/ ETHAMB.275 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "RIFAMPICIN (R), 150 mg, tab.",
+            "value": "RIFAMPICIN (R), 150 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "RIFAMPICIN (R), 300 mg, caps.",
+            "value": "RIFAMPICIN (R), 300 mg, caps."
+          },
+          {
+            "selected": false,
+            "text": "RIFAMPICIN 150 mg / ISONIAZID 75 mg, tab.",
+            "value": "RIFAMPICIN 150 mg / ISONIAZID 75 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "RIFAMPICIN 150 mg / ISONIAZID 75 mg/ ETHAMBUTOL 275mg, tab",
+            "value": "RIFAMPICIN 150 mg / ISONIAZID 75 mg/ ETHAMBUTOL 275mg, tab"
+          },
+          {
+            "selected": false,
+            "text": "RIFAMPICIN 75 mg / ISONIAZID 50 mg / PYRAZINAMIDE 150 mg tab",
+            "value": "RIFAMPICIN 75 mg / ISONIAZID 50 mg / PYRAZINAMIDE 150 mg tab"
+          },
+          {
+            "selected": false,
+            "text": "RIFAMPICIN 75 mg / ISONIAZID 50 mg, tab.",
+            "value": "RIFAMPICIN 75 mg / ISONIAZID 50 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "RINGER lactate, 500 ml, plastic pouch",
+            "value": "RINGER lactate, 500 ml, plastic pouch"
+          },
+          {
+            "selected": false,
+            "text": "RITONAVIR, 100 mg, heatstable tab",
+            "value": "RITONAVIR, 100 mg, heatstable tab"
+          },
+          {
+            "selected": false,
+            "text": "ROTATOR, orbital, for agglutination test, 230 V",
+            "value": "ROTATOR, orbital, for agglutination test, 230 V"
+          },
+          {
+            "selected": false,
+            "text": "Retinol, (vitamin A), 50 000 IU, cap.",
+            "value": "Retinol, (vitamin A), 50 000 IU, cap."
+          },
+          {
+            "selected": false,
+            "text": "Rice, kg",
+            "value": "Rice, kg"
+          },
+          {
+            "selected": false,
+            "text": "SAFETY boxes ",
+            "value": "SAFETY boxes "
+          },
+          {
+            "selected": false,
+            "text": "SALBUTAMOL sulfate, 0.1mg/puff, 200 puffs, aerosol",
+            "value": "SALBUTAMOL sulfate, 0.1mg/puff, 200 puffs, aerosol"
+          },
+          {
+            "selected": false,
+            "text": "SALBUTAMOL sulfate, 4mg, tab",
+            "value": "SALBUTAMOL sulfate, 4mg, tab"
+          },
+          {
+            "selected": false,
+            "text": "SALBUTAMOL sulfate,2mg, tab",
+            "value": "SALBUTAMOL sulfate,2mg, tab"
+          },
+          {
+            "selected": false,
+            "text": "SALBUTAMOL, solution for nebulizer, 2 mg/ml, 2,5ml monodosis",
+            "value": "SALBUTAMOL, solution for nebulizer, 2 mg/ml, 2,5ml monodosis"
+          },
+          {
+            "selected": false,
+            "text": "SALT, kg",
+            "value": "SALT, kg"
+          },
+          {
+            "selected": false,
+            "text": "SCALE, SALTER TYPE, 0-25 kg, no trousers, grad. 100 g",
+            "value": "SCALE, SALTER TYPE, 0-25 kg, no trousers, grad. 100 g"
+          },
+          {
+            "selected": false,
+            "text": "SCALE, mechanical, adult 0-150 kg, grad. 500 g",
+            "value": "SCALE, mechanical, adult 0-150 kg, grad. 500 g"
+          },
+          {
+            "selected": false,
+            "text": "SCISSORS, Episiotomy, 14cm",
+            "value": "SCISSORS, Episiotomy, 14cm"
+          },
+          {
+            "selected": false,
+            "text": "SCISSORS, MAYO, curved 14 cm",
+            "value": "SCISSORS, MAYO, curved 14 cm"
+          },
+          {
+            "selected": false,
+            "text": "SCISSORS, MAYO, straight 14 cm",
+            "value": "SCISSORS, MAYO, straight 14 cm"
+          },
+          {
+            "selected": false,
+            "text": "SET, INFUSION 'Y', Luer lock, air inlet, sterile, s.u.",
+            "value": "SET, INFUSION 'Y', Luer lock, air inlet, sterile, s.u."
+          },
+          {
+            "selected": false,
+            "text": "SLIDE, frosted, 76 x 26 mm, tropical packaging",
+            "value": "SLIDE, frosted, 76 x 26 mm, tropical packaging"
+          },
+          {
+            "selected": false,
+            "text": "SODIUM chloride, 0.9%, 500 ml, plastic pouch",
+            "value": "SODIUM chloride, 0.9%, 500 ml, plastic pouch"
+          },
+          {
+            "selected": false,
+            "text": "SOFOSBUVIR (SOF), 400 mg, tab. ",
+            "value": "SOFOSBUVIR (SOF), 400 mg, tab. "
+          },
+          {
+            "selected": false,
+            "text": "SPECULUM, VAGINAL, COLLIN, for virgin, 90 x 16 mm 52-10-11",
+            "value": "SPECULUM, VAGINAL, COLLIN, for virgin, 90 x 16 mm 52-10-11"
+          },
+          {
+            "selected": false,
+            "text": "SPECULUM, VAGINAL, COLLIN, standard, 100 x 35 mm 52-11-12",
+            "value": "SPECULUM, VAGINAL, COLLIN, standard, 100 x 35 mm 52-11-12"
+          },
+          {
+            "selected": false,
+            "text": "SPHYGMOMANOMETER, one-hand manometer, Velcro, adult",
+            "value": "SPHYGMOMANOMETER, one-hand manometer, Velcro, adult"
+          },
+          {
+            "selected": false,
+            "text": "SPHYGMOMANOMETER, one-hand manometer, Velcro, pediatric",
+            "value": "SPHYGMOMANOMETER, one-hand manometer, Velcro, pediatric"
+          },
+          {
+            "selected": false,
+            "text": "SPIRONOLACTONE, 25mg tab",
+            "value": "SPIRONOLACTONE, 25mg tab"
+          },
+          {
+            "selected": false,
+            "text": "SQUARE SHAPE STAINLESS STEEL BOX",
+            "value": "SQUARE SHAPE STAINLESS STEEL BOX"
+          },
+          {
+            "selected": false,
+            "text": "STETHOSCOPE, double cup, clinician",
+            "value": "STETHOSCOPE, double cup, clinician"
+          },
+          {
+            "selected": false,
+            "text": "STETHOSCOPE, one cup, nurse",
+            "value": "STETHOSCOPE, one cup, nurse"
+          },
+          {
+            "selected": false,
+            "text": "STOP TB KIT, (Cat 1)",
+            "value": "STOP TB KIT, (Cat 1)"
+          },
+          {
+            "selected": false,
+            "text": "STREPTOMYCIN sulfate, 1 g, powder, vial",
+            "value": "STREPTOMYCIN sulfate, 1 g, powder, vial"
+          },
+          {
+            "selected": false,
+            "text": "STRIP, blood glucose",
+            "value": "STRIP, blood glucose"
+          },
+          {
+            "selected": false,
+            "text": "SULFADIAZINE SILVER, 1%, cream, 50 g, tube",
+            "value": "SULFADIAZINE SILVER, 1%, cream, 50 g, tube"
+          },
+          {
+            "selected": false,
+            "text": "SWAB, alcohol (wipes), disposable",
+            "value": "SWAB, alcohol (wipes), disposable"
+          },
+          {
+            "selected": false,
+            "text": "SWAB, cotton tips, for sampling (Q-tips), pcs",
+            "value": "SWAB, cotton tips, for sampling (Q-tips), pcs"
+          },
+          {
+            "selected": false,
+            "text": "SYRINGE, Disposable, Luer, 20 ml, + needle, 23 G x 1 1/4'",
+            "value": "SYRINGE, Disposable, Luer, 20 ml, + needle, 23 G x 1 1/4'"
+          },
+          {
+            "selected": false,
+            "text": "SYRINGE, disposable, Luer, 5 ml, + needle, 23 G x 1 1/4'",
+            "value": "SYRINGE, disposable, Luer, 5 ml, + needle, 23 G x 1 1/4'"
+          },
+          {
+            "selected": false,
+            "text": "SYRINGE, s.u., Luer, 1 ml, graduated 1/100",
+            "value": "SYRINGE, s.u., Luer, 1 ml, graduated 1/100"
+          },
+          {
+            "selected": false,
+            "text": "SYRINGE, s.u., Luer, 10 ml, + needle, 23 G x 1 1/4'",
+            "value": "SYRINGE, s.u., Luer, 10 ml, + needle, 23 G x 1 1/4'"
+          },
+          {
+            "selected": false,
+            "text": "SYRINGE, s.u., Luer, 3 ml, + needle, 23 G x 1 1/4'",
+            "value": "SYRINGE, s.u., Luer, 3 ml, + needle, 23 G x 1 1/4'"
+          },
+          {
+            "selected": false,
+            "text": "Scalp vein infusion set 23G (0.7x19mm)",
+            "value": "Scalp vein infusion set 23G (0.7x19mm)"
+          },
+          {
+            "selected": false,
+            "text": "Service charges",
+            "value": "Service charges"
+          },
+          {
+            "selected": false,
+            "text": "TABLET COUNTER, triangular, fiber",
+            "value": "TABLET COUNTER, triangular, fiber"
+          },
+          {
+            "selected": false,
+            "text": "TABLET CUTTER, stainless blade",
+            "value": "TABLET CUTTER, stainless blade"
+          },
+          {
+            "selected": false,
+            "text": "TAPE, ADHESIVE, ROLL, perforated, 10 cm x 5 m",
+            "value": "TAPE, ADHESIVE, ROLL, perforated, 10 cm x 5 m"
+          },
+          {
+            "selected": false,
+            "text": "TAPE, ADHESIVE, zinc oxide, ROLL, 7.5 cm x 10 m",
+            "value": "TAPE, ADHESIVE, zinc oxide, ROLL, 7.5 cm x 10 m"
+          },
+          {
+            "selected": false,
+            "text": "TB DECOLORIZER,1000ml, bottle",
+            "value": "TB DECOLORIZER,1000ml, bottle"
+          },
+          {
+            "selected": false,
+            "text": "TB DECOLORIZER,4*250ML,BOT(BD-212517)",
+            "value": "TB DECOLORIZER,4*250ML,BOT(BD-212517)"
+          },
+          {
+            "selected": false,
+            "text": "TENOFOVIR (TDF) 300 mg/ LAMIVUDINE (3TC) 300 mg. tab.",
+            "value": "TENOFOVIR (TDF) 300 mg/ LAMIVUDINE (3TC) 300 mg. tab."
+          },
+          {
+            "selected": false,
+            "text": "TENOFOVIR 300mg / EMTRICITABINE 200mg / EFAVIRENZ 600mg, tb",
+            "value": "TENOFOVIR 300mg / EMTRICITABINE 200mg / EFAVIRENZ 600mg, tb"
+          },
+          {
+            "selected": false,
+            "text": "TENOFOVIR 300mg / LAMIVUDINE 300mg / EFAVIRENZ 600mg, tab",
+            "value": "TENOFOVIR 300mg / LAMIVUDINE 300mg / EFAVIRENZ 600mg, tab"
+          },
+          {
+            "selected": false,
+            "text": "TENOFOVIR, 300mg, tab.",
+            "value": "TENOFOVIR, 300mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "TEST SYPHILIS, RPR, (carbon test), serum/pl., 100 tests, kit",
+            "value": "TEST SYPHILIS, RPR, (carbon test), serum/pl., 100 tests, kit"
+          },
+          {
+            "selected": false,
+            "text": "TEST, HEPATITIS B (SD Bioline), ser/pl/wb, 30 tests, kit",
+            "value": "TEST, HEPATITIS B (SD Bioline), ser/pl/wb, 30 tests, kit"
+          },
+          {
+            "selected": false,
+            "text": "TEST, HEPATITIS C (SD Bioline), 30 tests, kit",
+            "value": "TEST, HEPATITIS C (SD Bioline), 30 tests, kit"
+          },
+          {
+            "selected": false,
+            "text": "TEST, HIV 1 + 2 (Determine) ser/pl/wb, rapid, 100 tests, kit",
+            "value": "TEST, HIV 1 + 2 (Determine) ser/pl/wb, rapid, 100 tests, kit"
+          },
+          {
+            "selected": false,
+            "text": "TEST, HIV 1 + 2 (Uni-Gold), ser/pl/wb, rapid, 20 tests, kit",
+            "value": "TEST, HIV 1 + 2 (Uni-Gold), ser/pl/wb, rapid, 20 tests, kit"
+          },
+          {
+            "selected": false,
+            "text": "TEST, HIV 1 + 2, rapid, (Stat-Pak), 30 tests, kit",
+            "value": "TEST, HIV 1 + 2, rapid, (Stat-Pak), 30 tests, kit"
+          },
+          {
+            "selected": false,
+            "text": "TEST, MALARIA, P.F/P.V, SD bioline (25 tests/kit), test",
+            "value": "TEST, MALARIA, P.F/P.V, SD bioline (25 tests/kit), test"
+          },
+          {
+            "selected": false,
+            "text": "TEST, PREGNANCY (RST/hCG), 1 strip",
+            "value": "TEST, PREGNANCY (RST/hCG), 1 strip"
+          },
+          {
+            "selected": false,
+            "text": "TEST, TB LAM Ag (Determine), 1 test",
+            "value": "TEST, TB LAM Ag (Determine), 1 test"
+          },
+          {
+            "selected": false,
+            "text": "TEST, URINE, pH,dens,prot,gluc,ket,blood,nit,leuc, 1 strip",
+            "value": "TEST, URINE, pH,dens,prot,gluc,ket,blood,nit,leuc, 1 strip"
+          },
+          {
+            "selected": false,
+            "text": "TEST,CRYPTOCOCCUS(Crypto-AG-LFA),50tests,kit",
+            "value": "TEST,CRYPTOCOCCUS(Crypto-AG-LFA),50tests,kit"
+          },
+          {
+            "selected": false,
+            "text": "TETRACYCLINE hydrochloride, 1%, eye ointment, ster, 5g, tube",
+            "value": "TETRACYCLINE hydrochloride, 1%, eye ointment, ster, 5g, tube"
+          },
+          {
+            "selected": false,
+            "text": "THERAPEUTIC MILK, F100, powder, 114g",
+            "value": "THERAPEUTIC MILK, F100, powder, 114g"
+          },
+          {
+            "selected": false,
+            "text": "THERAPEUTIC MILK, F75, powder, 102.5g",
+            "value": "THERAPEUTIC MILK, F75, powder, 102.5g"
+          },
+          {
+            "selected": false,
+            "text": "THERMOMETER(REFRIGERATOR)",
+            "value": "THERMOMETER(REFRIGERATOR)"
+          },
+          {
+            "selected": false,
+            "text": "THERMOMETER, ELECTRONIC, accuracy 0.1 ºC + case",
+            "value": "THERMOMETER, ELECTRONIC, accuracy 0.1 ºC + case"
+          },
+          {
+            "selected": false,
+            "text": "THERMOMETER, Tympanic",
+            "value": "THERMOMETER, Tympanic"
+          },
+          {
+            "selected": false,
+            "text": "THIAMINE (vitamin B1), 50 mg/ml, 2 ml, amp.",
+            "value": "THIAMINE (vitamin B1), 50 mg/ml, 2 ml, amp."
+          },
+          {
+            "selected": false,
+            "text": "THIAMINE hydrochloride (vitamin B1), 10 mg, tab. ",
+            "value": "THIAMINE hydrochloride (vitamin B1), 10 mg, tab. "
+          },
+          {
+            "selected": false,
+            "text": "THIAMINE hydrochloride (vitamin B1), 50 mg, tab.",
+            "value": "THIAMINE hydrochloride (vitamin B1), 50 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "TIMER, 60 mn",
+            "value": "TIMER, 60 mn"
+          },
+          {
+            "selected": false,
+            "text": "TINIDAZOLE, 500 mg, tab.",
+            "value": "TINIDAZOLE, 500 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "TOURNIQUET, elastic, 100 x 1.8 cm",
+            "value": "TOURNIQUET, elastic, 100 x 1.8 cm"
+          },
+          {
+            "selected": false,
+            "text": "TRAMADOL hydrochloride, 50 mg, caps.",
+            "value": "TRAMADOL hydrochloride, 50 mg, caps."
+          },
+          {
+            "selected": false,
+            "text": "TRAMADOL hydrochloride, 50 mg/ml, 2 ml, amp.",
+            "value": "TRAMADOL hydrochloride, 50 mg/ml, 2 ml, amp."
+          },
+          {
+            "selected": false,
+            "text": "TRANEXAMIC ACID, 500 mg tab ",
+            "value": "TRANEXAMIC ACID, 500 mg tab "
+          },
+          {
+            "selected": false,
+            "text": "TRANEXAMIC ACID, 500 mg/5ml, amp ",
+            "value": "TRANEXAMIC ACID, 500 mg/5ml, amp "
+          },
+          {
+            "selected": false,
+            "text": "TROPICAMIDE 1% EYE DROPS 0.5 ML, UNIDOSE",
+            "value": "TROPICAMIDE 1% EYE DROPS 0.5 ML, UNIDOSE"
+          },
+          {
+            "selected": false,
+            "text": "TROPICAMIDE 1% EYE DROPS 10ML, MULTIDOSE",
+            "value": "TROPICAMIDE 1% EYE DROPS 10ML, MULTIDOSE"
+          },
+          {
+            "selected": false,
+            "text": "TUBE, CENTRIFUGE, 15 ml, conical bottom, plastic",
+            "value": "TUBE, CENTRIFUGE, 15 ml, conical bottom, plastic"
+          },
+          {
+            "selected": false,
+            "text": "Test Syphilis,VDRL test kit",
+            "value": "Test Syphilis,VDRL test kit"
+          },
+          {
+            "selected": false,
+            "text": "Triglycerides Liquicolor,4x100ml 10724",
+            "value": "Triglycerides Liquicolor,4x100ml 10724"
+          },
+          {
+            "selected": false,
+            "text": "VACCINE HEPATITIS B, Adult, one dose, vial",
+            "value": "VACCINE HEPATITIS B, Adult, one dose, vial"
+          },
+          {
+            "selected": false,
+            "text": "VACCINE HEPATITIS B, Paediatric, one dose, vial",
+            "value": "VACCINE HEPATITIS B, Paediatric, one dose, vial"
+          },
+          {
+            "selected": false,
+            "text": "VACCINE TT (tetanus), 1 dose, multidose vial",
+            "value": "VACCINE TT (tetanus), 1 dose, multidose vial"
+          },
+          {
+            "selected": false,
+            "text": "VALGANCICLOVIR hydrochloride, eq. 450 mg base, tab.",
+            "value": "VALGANCICLOVIR hydrochloride, eq. 450 mg base, tab."
+          },
+          {
+            "selected": false,
+            "text": "VALPROATE SODIUM, 200 mg, enteric coated tab.",
+            "value": "VALPROATE SODIUM, 200 mg, enteric coated tab."
+          },
+          {
+            "selected": false,
+            "text": "Voltex",
+            "value": "Voltex"
+          },
+          {
+            "selected": false,
+            "text": "WATER for injection, 10 ml, plastic amp.",
+            "value": "WATER for injection, 10 ml, plastic amp."
+          },
+          {
+            "selected": false,
+            "text": "WATER for injection, 5ml, plastic amp",
+            "value": "WATER for injection, 5ml, plastic amp"
+          },
+          {
+            "selected": false,
+            "text": "ZIDOVUDINE (AZT) 300 mg / LAMIVUDINE (3TC) 150 mg, tab.",
+            "value": "ZIDOVUDINE (AZT) 300 mg / LAMIVUDINE (3TC) 150 mg, tab."
+          },
+          {
+            "selected": false,
+            "text": "ZIDOVUDINE, (AZT), 50mg/5ml, oral solution, 100ml bot.",
+            "value": "ZIDOVUDINE, (AZT), 50mg/5ml, oral solution, 100ml bot."
+          },
+          {
+            "selected": false,
+            "text": "ZINC OXIDE, 10%, ointment, 100 g, tube",
+            "value": "ZINC OXIDE, 10%, ointment, 100 g, tube"
+          },
+          {
+            "selected": false,
+            "text": "ZINC sulfate, eq. to 20 mg zinc mineral, dispersible tab.",
+            "value": "ZINC sulfate, eq. to 20 mg zinc mineral, dispersible tab."
+          }
+        ],
+        "query": " select item_name from item order by item_name;",
+        "refresh": 0,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "tags": [],
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "hide": 0,
+        "includeAll": true,
+        "label": "VEN",
+        "multi": true,
+        "name": "ven",
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "$__all"
+          },
+          {
+            "selected": false,
+            "text": "V",
+            "value": "V"
+          },
+          {
+            "selected": false,
+            "text": "E",
+            "value": "E"
+          },
+          {
+            "selected": false,
+            "text": "N",
+            "value": "N"
+          }
+        ],
+        "query": "V,E,N",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ]
+  },
+  "timezone": "",
+  "title": "Items",
+  "uid": "Fauoy33ik",
+  "version": 17
+}
