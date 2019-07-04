@@ -1,6 +1,7 @@
 const path = require('path');
 const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const {CleanWebpackPlugin} = require('clean-webpack-plugin');
 
 module.exports = {
   node: {
@@ -19,6 +20,7 @@ module.exports = {
   externals: [
     'lodash',
     'moment',
+    'jquery',
     function(context, request, callback) {
       var prefix = 'grafana/';
       if (request.indexOf(prefix) === 0) {
@@ -28,6 +30,7 @@ module.exports = {
     },
   ],
   plugins: [
+    new CleanWebpackPlugin(),
     new webpack.optimize.OccurrenceOrderPlugin(),
     new CopyWebpackPlugin([
       { from: 'plugin.json', to: '.' },
