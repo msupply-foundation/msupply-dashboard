@@ -77,7 +77,7 @@ export default class RegionMapCtrl extends MetricsPanelCtrl {
   setMapProvider = (contextSrv: any) => {
     this.tileServer = contextSrv.user.lightTheme ? 'CartoDB Positron' : 'CartoDB Dark';
     this.setMapSaturationClass();
-  };
+  }
 
   setMapSaturationClass = () => {
     if (this.tileServer === 'CartoDB Dark') {
@@ -85,7 +85,7 @@ export default class RegionMapCtrl extends MetricsPanelCtrl {
     } else {
       this.saturationClass = '';
     }
-  };
+  }
 
   loadLocationDataFromFile = (reload?: boolean) => {
     if (this.map && !reload) {
@@ -98,43 +98,34 @@ export default class RegionMapCtrl extends MetricsPanelCtrl {
     }
 
     if (this.panel.locationData !== 'table') {
-      $.getJSON(
-        'public/plugins/grafana-region-map-panel/data/' + this.panel.locationData + '.json'
-      ).then(this.reloadLocations.bind(this));
+      $.getJSON('public/plugins/grafana-region-map-panel/data/' + this.panel.locationData + '.json').then(
+        this.reloadLocations.bind(this)
+      );
     }
-  };
+  }
 
   reloadLocations = (res: any) => {
     this.locations = res;
     this.refresh();
-  };
+  }
 
   showTableGeojsonOptions = () => {
-    return (
-      this.panel.locationData === 'table' && this.panel.tableQueryOptions.queryType === 'geojson'
-    );
-  };
+    return this.panel.locationData === 'table' && this.panel.tableQueryOptions.queryType === 'geojson';
+  }
 
   showTableCoordinateOptions = () => {
-    return (
-      this.panel.locationData === 'table' &&
-      this.panel.tableQueryOptions.queryType === 'coordinates'
-    );
-  };
+    return this.panel.locationData === 'table' && this.panel.tableQueryOptions.queryType === 'coordinates';
+  }
 
   onPanelTeardown = () => {
     if (this.map) {
       this.map.remove();
     }
-  };
+  }
 
   onInitEditMode = () => {
-    this.addEditorTab(
-      'RegionMap',
-      'public/plugins/grafana-region-map-panel/partials/editor.html',
-      2
-    );
-  };
+    this.addEditorTab('RegionMap', 'public/plugins/grafana-region-map-panel/partials/editor.html', 2);
+  }
 
   onDataReceived = (dataList: any) => {
     if (!dataList) {
@@ -160,18 +151,18 @@ export default class RegionMapCtrl extends MetricsPanelCtrl {
     } else {
       this.render();
     }
-  };
+  }
 
   centerOnLastGeoHash = () => {
     const last: any = _.last(this.data);
     mapCenters[this.panel.mapCenter].mapCenterLatitude = last.locationLatitude;
     mapCenters[this.panel.mapCenter].mapCenterLongitude = last.locationLongitude;
     this.setNewMapCenter();
-  };
+  }
 
   onDataSnapshotLoad = (snapshotData: any) => {
     this.onDataReceived(snapshotData);
-  };
+  }
 
   setNewMapCenter = () => {
     if (this.panel.mapCenter !== 'custom') {
@@ -180,34 +171,34 @@ export default class RegionMapCtrl extends MetricsPanelCtrl {
     }
     this.mapCenterMoved = true;
     this.render();
-  };
+  }
 
   setZoom = () => {
     this.map.setZoom(this.panel.initialZoom || 1);
-  };
+  }
 
   toggleLegend = () => {
     if (!this.panel.showLegend) {
       this.map.removeLegend();
     }
     this.render();
-  };
+  }
 
   toggleMouseWheelZoom = () => {
     this.map.setMouseWheelZoom();
     this.render();
-  };
+  }
 
   toggleStickyLabels = () => {
     this.map.clearCircles();
     this.render();
-  };
+  }
 
   changeThresholds = () => {
     this.updateThresholdData();
     this.map.legend.update();
     this.render();
-  };
+  }
 
   updateThresholdData = () => {
     this.data.thresholds = this.panel.thresholds.split(',').map(strValue => {
@@ -222,11 +213,11 @@ export default class RegionMapCtrl extends MetricsPanelCtrl {
       const newColor = 'rgba(50, 172, 45, 0.97)';
       this.panel.colors.push(newColor);
     }
-  };
+  }
 
   changeLocationData = () => {
     this.loadLocationDataFromFile(true);
-  };
+  }
 
   link = (scope: any, elem: any, attrs: any, ctrl: any) => {
     ctrl.events.on('render', () => {
@@ -250,7 +241,8 @@ export default class RegionMapCtrl extends MetricsPanelCtrl {
         map.createMap();
         ctrl.map = map;
       }
-      ctrl.map.resize();
+
+      setTimeout(() => ctrl.map.resize(), 1);
 
       if (ctrl.mapCenterMoved) {
         ctrl.map.panToMapCenter();
@@ -263,5 +255,5 @@ export default class RegionMapCtrl extends MetricsPanelCtrl {
       // ctrl.map.drawPolygons();
       ctrl.map.drawGeoJSONs();
     };
-  };
+  }
 }
