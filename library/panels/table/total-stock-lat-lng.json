@@ -2,12 +2,12 @@
   "columns": [],
   "fontSize": "100%",
   "gridPos": {
-    "h": 8,
-    "w": 18,
+    "h": 21,
+    "w": 5,
     "x": 0,
-    "y": 44
+    "y": 0
   },
-  "id": 48,
+  "id": 4,
   "links": [],
   "options": {},
   "pageSize": null,
@@ -26,7 +26,7 @@
     },
     {
       "alias": "",
-      "colorMode": "cell",
+      "colorMode": null,
       "colors": [
         "rgba(245, 54, 54, 0.9)",
         "rgba(237, 129, 40, 0.89)",
@@ -34,10 +34,7 @@
       ],
       "decimals": 2,
       "pattern": "/.*/",
-      "thresholds": [
-        "2",
-        "3"
-      ],
+      "thresholds": [],
       "type": "number",
       "unit": "locale"
     }
@@ -48,7 +45,7 @@
       "group": [],
       "metricColumn": "none",
       "rawQuery": true,
-      "rawSql": "WITH amc as (\n\tselect items.item, value, store.name as store_name\n\tfrom aggregator\n\tinner join store on store.id = aggregator.storeid\n\tinner join (select id, item_name as item from item) as items on items.id = aggregator.itemid\n\twhere dataElement = 'AMC'\n\tand store.name IN  ($store)\n\tand items.item IN ($item)\n),\ncurrent_stock as (\n\tselect items.item, sum(available * pack_size) as value from item_line\n\tinner join (select id, item_name as item from item) as items on item_line.item_id = items.id\n\tinner join store on store.id = item_line.store_id\n\twhere store.name  IN  ($store)\n\tand items.item IN ($item)\n\tgroup by items.item\n)\nselect amc.store_name as \"Store\", amc.item as \"Item\", current_stock.value/amc.value as \"Months of Stock\" \nfrom amc\ninner join current_stock on current_stock.item = amc.item\n",
+      "rawSql": "select store, n.latitude, n.longitude, SUM(quantity) as quantity\nfrom \n(\n  select item.item_name as \"item\", s.name as \"store\", item_line.quantity, s.name_id\n  from item\n  join item_line on item.ID = item_line.item_id\n  join store s on item_line.store_id = s.id\n  where item.type_of = 'general'\n  \t--and item_line.quantity>0\n  \tand item_line.ID <> ''\n  \tand s.disabled = false\n) as a\njoin name n ON a.name_id = n.id\nwhere a.item = [[item]] -- and store in ([[store]]) and n.latitude <> 0\ngroup by 1,2,3;",
       "refId": "A",
       "select": [
         [
@@ -72,7 +69,7 @@
   ],
   "timeFrom": null,
   "timeShift": null,
-  "title": "Months of Stock by Store and Item",
+  "title": "Total Stock",
   "transform": "table",
   "type": "table"
 }
