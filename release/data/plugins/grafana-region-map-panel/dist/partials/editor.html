@@ -170,7 +170,7 @@
       </div>
     </div>
     <div class="grafana-info-box max-width-28" ng-show="ctrl.panel.locationData ==='countries'">
-      <h5>Mapping Between Time Series Query and Worldmap</h5>
+      <h5>Mapping Between Time Series Query and Region Map</h5>
       <p>
         The query should be formatted as Time Series data. The time series (group by) name should be
         a 2-letter country code. For example: US for United States or FR for France.
@@ -182,7 +182,7 @@
       <ul>
         <li>
           <b>Location Name Field (optional)</b>: enter the name of the Location Name column. Used to
-          label each circle on the map. If it is empty then the geohash value is used as the label.
+          label each region on the map.
         </li>
         <li>
           <b>geojson Field</b>: enter the name of the geojson column. This gives a feature
@@ -195,19 +195,19 @@
       </ul>
     </div>
     <div class="grafana-info-box max-width-28" ng-show="ctrl.showTableGeojsonOptions()">
-      <h5>Mapping Between Table Query and Worldmap</h5>
+      <h5>Mapping Between Table Query and Region Map</h5>
       <p>
-        The query should be formatted as Table data and have a geohash column and a numeric metric
+        The query should be formatted as Table data and have a geojson column and a numeric metric
         column.
       </p>
       <ul>
         <li>
           <b>Location Name Field (optional)</b>: enter the name of the Location Name column. Used to
-          label each circle on the map. If it is empty then the geohash value is used as the label.
+          label each region on the map.
         </li>
         <li>
-          <b>Geohash Field</b>: enter the name of the geohash column. This is used to calculate
-          where the circle should be drawn.
+          <b>geojson Field</b>: enter the name of the geojson column. This gives a feature
+          collection as JSON
         </li>
         <li>
           <b>Metric Field</b>: enter the name of the metric column. This is used to give the circle
@@ -216,7 +216,7 @@
       </ul>
     </div>
     <div class="grafana-info-box max-width-28" ng-show="ctrl.showTableCoordinateOptions()">
-      <h5>Mapping Between Table Query and Worldmap</h5>
+      <h5>Mapping Between Table Query and Region Map</h5>
       <p>
         The query should be formatted as Table data and contain latitude, longitude columns and a
         numeric metric column.
@@ -224,7 +224,7 @@
       <ul>
         <li>
           <b>Location Name Field (optional)</b>: enter the name of the Location Name column. Used to
-          label each circle on the map. If it is empty then the value N/A is used as the label.
+          label each region on the map. If it is empty then the value N/A is used as the label.
         </li>
         <li>
           <b>Latitude/Longitude Fields</b>: enter the name of the latitude and longitude columns.

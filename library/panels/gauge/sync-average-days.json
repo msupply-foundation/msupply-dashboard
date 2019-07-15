@@ -51,7 +51,7 @@
       "group": [],
       "metricColumn": "none",
       "rawQuery": true,
-      "rawSql": "select max(date_created) as time, current_date-max(date_created)\nfrom sync_out\ngroup by to_from_id",
+      "rawSql": "select max(date_created) as time, current_date-max(date_created)\nfrom sync_out\nwhere date_created is not null\ngroup by to_from_id",
       "refId": "A",
       "select": [
         [

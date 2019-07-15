@@ -188,7 +188,7 @@ Similar to the Elasticsearch query above, 3 fields are expected (2 of them are m
 
 - A *metric* field. This is used to give the circle a value and determines how large the circle is.
 - A *geohash* field. This is used to calculate where the circle should be drawn.
-- an optional location name field (shown in the mouse over). Used to label each circle on the map. If it is empty then the geohash value is used as the label.
+- an optional location name field (shown in the mouse over). Used to label each region on the map. If it is empty then the geohash value is used as the label.
 
 The field mappings have to be specified on the Worldmap settings tab.
 
@@ -200,7 +200,7 @@ The Table Data format also works with two columns for latitude and longitude ins
 
 - A *metric* field. This is used to give the circle a value and determines how large the circle is.
 - Latitude/Longitude Fields. These are used to calculate where the circle should be drawn.
-- an optional location name field (shown in the mouse over). Used to label each circle on the map. If it is empty then the geohash value is used as the label.
+- an optional location name field (shown in the mouse over). Used to label each region on the map. If it is empty then the geohash value is used as the label.
 
 ## JSON result as the Data Source
 
