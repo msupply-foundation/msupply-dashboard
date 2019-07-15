@@ -238,6 +238,10 @@ CREATE TABLE IF NOT EXISTS transact (
 	authorisationstatus varchar(255) NOT NULL DEFAULT ''::character varying,
 	nameinsurancejoinid varchar(255) NOT NULL DEFAULT ''::character varying,
 	insurancediscountamount float8 NOT NULL DEFAULT 0,
+	optionid varchar(255),
+	insuranceDiscountRate float8,
+	internalData jsonb,
+	lastmodifiedat int4,
 	CONSTRAINT transact_pkey PRIMARY KEY (id)
 );
 CREATE INDEX IF NOT EXISTS transact_amount_outstanding ON public.transact USING btree (amount_outstanding);
@@ -431,14 +435,18 @@ CREATE INDEX IF NOT EXISTS item_store_join_store_id ON public.item_store_join US
 
 
 CREATE TABLE IF NOT EXISTS export_log (
+	id VARCHAR NULL,
 	datetime timestamp NULL,
+	start_timestamp INTEGER,
+	end_timestamp INTEGER,
 	event_type varchar NULL,
 	"comment" varchar NULL
 );
 
 CREATE TABLE IF NOT EXISTS geojson (
 	id varchar NULL,
-	"data" json NULL
+	"data" json NULL,
+	name varchar NULL
 );
 
 CREATE TABLE IF NOT EXISTS "user" (
@@ -610,7 +618,7 @@ AS SELECT CURRENT_DATE AS "time",
           WHERE a_1.dataelement = 'mos'::text
           GROUP BY s.name, s.id, s.name_id) a
      JOIN name n ON a.name_id::text = n.id::text
-     JOIN name_category1_level1 region ON n.category1_id::text = region.id::text
+     JOIN name_category1 region ON n.category1_id::text = region.id::text
      JOIN geojson g ON region.id::text = g.id::text
   ORDER BY region.description;
   
@@ -663,4 +671,6 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA PUBLIC GRANT TRUNCATE ON TABLES TO dboard;
 GRANT CREATE ON DATABASE public TO dboard;
 */
     
+-- ALTER TABLE public.transact ADD lastmodifiedat int NULL;
+
 
