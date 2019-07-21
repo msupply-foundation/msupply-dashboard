@@ -15,8 +15,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 6,
-  "iteration": 1555459172658,
+  "id": 16,
+  "iteration": 1563237614662,
   "links": [
     {
       "icon": "external link",
@@ -29,6 +29,7 @@
   "panels": [
     {
       "columns": [],
+      "datasource": "PostgreSQL",
       "fontSize": "100%",
       "gridPos": {
         "h": 9,
@@ -38,6 +39,7 @@
       },
       "id": 2,
       "links": [],
+      "options": {},
       "pageSize": null,
       "scroll": true,
       "showHeader": true,
@@ -127,6 +129,7 @@
       "mapCenterLongitude": "173.9660801",
       "maxDataPoints": 1,
       "mouseWheelZoom": false,
+      "options": {},
       "showLegend": true,
       "stickyLabels": false,
       "tableQueryOptions": {
@@ -151,7 +154,7 @@
           "hide": false,
           "metricColumn": "store",
           "rawQuery": false,
-          "rawSql": "SELECT\n  current_date AS \"time\",\n  store AS metric,\n  max(latitude) AS \"latitude\",\n  max(longitude) AS \"longitude\",\n  avg(value) AS \"value\"\nFROM store_mos\nWHERE\n  item IN ($item) AND\n  store IN ($store)\nGROUP BY store,2\nORDER BY 1,2",
+          "rawSql": "SELECT\n  current_date AS \"time\",\n  store AS metric,\n  max(latitude) AS \"latitude\",\n  max(longitude) AS \"longitude\",\n  avg(value) AS \"value\"\nFROM store_mos\nWHERE\n  $__timeFilter(current_date)\nGROUP BY store,2\nORDER BY 1,2",
           "refId": "A",
           "select": [
             [
@@ -220,24 +223,9 @@
           "timeColumnType": "date",
           "where": [
             {
-              "datatype": "varchar",
-              "name": "",
-              "params": [
-                "item",
-                "IN",
-                "($item)"
-              ],
-              "type": "expression"
-            },
-            {
-              "datatype": "text",
-              "name": "",
-              "params": [
-                "store",
-                "IN",
-                "($store)"
-              ],
-              "type": "expression"
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
             }
           ]
         }
@@ -250,7 +238,7 @@
       "valueName": "total"
     }
   ],
-  "schemaVersion": 17,
+  "schemaVersion": 18,
   "style": "dark",
   "tags": [
     "mSupply"
@@ -266,18 +254,18 @@
           ]
         },
         "datasource": "PostgreSQL",
-        "definition": " select distinct n.name from name n join name_store_join nsj on n.id=nsj.name_id where n.type='store' and nsj.inactive=false order by n.name",
+        "definition": "select distinct name from store where disabled=false and store_mode in ('store', 'dispensary');",
         "hide": 0,
         "includeAll": true,
         "label": "Store",
         "multi": true,
         "name": "store",
         "options": [],
-        "query": " select distinct n.name from name n join name_store_join nsj on n.id=nsj.name_id where n.type='store' and nsj.inactive=false order by n.name",
+        "query": "select distinct name from store where disabled=false and store_mode in ('store', 'dispensary');",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 0,
+        "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
         "tagsQuery": "",
@@ -316,18 +304,18 @@
           "value": "$__all"
         },
         "datasource": "PostgreSQL",
-        "definition": " select description from name_category1_level1 order by description",
+        "definition": "select region.description from name_category1 as region join name_category1_level2 as parent on parent.id = region.parent_id where parent.description = 'Aotearoa';",
         "hide": 0,
         "includeAll": true,
         "label": "Region",
         "multi": false,
         "name": "region",
         "options": [],
-        "query": " select description from name_category1_level1 order by description",
+        "query": "select region.description from name_category1 as region join name_category1_level2 as parent on parent.id = region.parent_id where parent.description = 'Aotearoa';",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 0,
+        "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
         "tagsQuery": "",
@@ -337,7 +325,7 @@
     ]
   },
   "time": {
-    "from": "now-2y",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {
@@ -368,5 +356,5 @@
   "timezone": "",
   "title": "Stores",
   "uid": "T5Nhy3qmz",
-  "version": 9
+  "version": 3
 }

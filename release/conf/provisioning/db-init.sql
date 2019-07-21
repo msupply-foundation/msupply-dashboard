@@ -241,7 +241,7 @@ CREATE TABLE IF NOT EXISTS transact (
 	optionid varchar(255),
 	insuranceDiscountRate float8,
 	internalData jsonb,
-	lastmodifiedat int4,
+	lastmodifiedat int8,
 	CONSTRAINT transact_pkey PRIMARY KEY (id)
 );
 CREATE INDEX IF NOT EXISTS transact_amount_outstanding ON public.transact USING btree (amount_outstanding);
@@ -671,6 +671,8 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA PUBLIC GRANT TRUNCATE ON TABLES TO dboard;
 GRANT CREATE ON DATABASE public TO dboard;
 */
     
--- ALTER TABLE public.transact ADD lastmodifiedat int NULL;
-
+-- ALTER TABLE public.transact ADD internaldata jsonb NULL;
+-- ALTER TABLE public.transact ADD lastmodifiedat int8 NULL;
+-- ALTER TABLE public.requisition ADD lastmodifiedat int8 NULL;
+-- ALTER TABLE public.trans_line ADD doses int4 NULL;
 

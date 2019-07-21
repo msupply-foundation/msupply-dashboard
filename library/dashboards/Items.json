@@ -15,8 +15,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 7,
-  "iteration": 1553584830714,
+  "id": 17,
+  "iteration": 1563237569890,
   "links": [
     {
       "icon": "external link",
@@ -55,6 +55,7 @@
       "mapCenterLongitude": "173.9660801",
       "maxDataPoints": 1,
       "mouseWheelZoom": false,
+      "options": {},
       "showLegend": true,
       "stickyLabels": false,
       "tableQueryOptions": {
@@ -111,6 +112,7 @@
       },
       "id": 4,
       "links": [],
+      "options": {},
       "pageSize": null,
       "scroll": true,
       "showHeader": true,
@@ -173,7 +175,7 @@
       "type": "table"
     }
   ],
-  "schemaVersion": 16,
+  "schemaVersion": 18,
   "style": "dark",
   "tags": [
     "mSupply"
@@ -187,18 +189,18 @@
           "value": "Heretaunga Clinic"
         },
         "datasource": "PostgreSQL",
-        "definition": " select distinct n.name from name n join name_store_join nsj on n.id=nsj.name_id where n.type='store' and nsj.inactive=false order by n.name",
+        "definition": "select distinct name from store where disabled=false and store_mode in ('store', 'dispensary');",
         "hide": 0,
         "includeAll": true,
         "label": "Store",
         "multi": true,
         "name": "store",
         "options": [],
-        "query": " select distinct n.name from name n join name_store_join nsj on n.id=nsj.name_id where n.type='store' and nsj.inactive=false order by n.name",
+        "query": "select distinct name from store where disabled=false and store_mode in ('store', 'dispensary');",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 0,
+        "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
         "tagsQuery": "",
@@ -2505,5 +2507,5 @@
   "timezone": "",
   "title": "Items",
   "uid": "Fauoy33ik",
-  "version": 13
+  "version": 2
 }
