@@ -15,8 +15,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 4,
-  "iteration": 1556822550985,
+  "id": 13,
+  "iteration": 1563236890973,
   "links": [
     {
       "icon": "external link",
@@ -69,6 +69,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "50%",
       "prefix": "USD",
@@ -158,6 +159,7 @@
       "mapCenterLongitude": "173.9660801",
       "maxDataPoints": 1,
       "mouseWheelZoom": false,
+      "options": {},
       "showLegend": true,
       "stickyLabels": false,
       "tableQueryOptions": {
@@ -261,6 +263,7 @@
       "links": [],
       "maxDataPoints": 3,
       "nullPointMode": "connected",
+      "options": {},
       "pieType": "donut",
       "strokeWidth": 1,
       "targets": [
@@ -269,7 +272,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "select CURRENT_DATE AS \"time\", case when value = 0 then 'zero' when value > 2 then 'over' when value < 1 then 'under' else 'normal' end as metric, count(*) as count \nfrom\n(\nselect avg(value) as value\nfrom\n(\n   SELECT item.item_name AS item, mos.value\n   FROM aggregator mos\n    JOIN store ON mos.storeid = store.id \n    join item on mos.itemid = item.id\n  WHERE mos.dataelement = 'mos'\n  AND store.name IN ($store)\n  GROUP BY store.name, item.item_name, value\n) as a\n  WHERE item = $item\ngroup by item\n) as b\ngroup by 2;\n",
+          "rawSql": "select CURRENT_DATE AS \"time\", case when value = 0 then 'zero' when value > 2 then 'over' when value < 1 then 'under' else 'normal' end as metric, count(*) as count \nfrom\n(\nselect avg(value) as value\nfrom\n(\n   SELECT item.item_name AS item, mos.value\n   FROM aggregator mos\n    JOIN store ON mos.storeid = store.id \n    join item on mos.itemid = item.id\n  WHERE mos.dataelement = 'mos'\n  AND store.name IN ($store)\n  GROUP BY store.name, item.item_name, value\n) as a\n  WHERE item = $item\ngroup by item\n) as b\ngroup by 2;",
           "refId": "A",
           "select": [
             [
@@ -325,6 +328,7 @@
       "links": [],
       "maxDataPoints": 3,
       "nullPointMode": "connected",
+      "options": {},
       "pieType": "pie",
       "strokeWidth": 1,
       "targets": [
@@ -409,6 +413,7 @@
       },
       "id": 4,
       "links": [],
+      "options": {},
       "pageSize": null,
       "scroll": true,
       "showHeader": true,
@@ -482,6 +487,7 @@
       },
       "id": 23,
       "links": [],
+      "options": {},
       "pageSize": null,
       "scroll": true,
       "showHeader": true,
@@ -571,6 +577,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -676,6 +683,7 @@
       "mapCenterLongitude": "173.9660801",
       "maxDataPoints": 1,
       "mouseWheelZoom": false,
+      "options": {},
       "showLegend": true,
       "stickyLabels": false,
       "tableQueryOptions": {
@@ -782,231 +790,6 @@
       "unitPlural": "",
       "unitSingle": "",
       "valueName": "total"
-    },
-    {
-      "collapsed": true,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 38
-      },
-      "id": 6,
-      "panels": [
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "fill": 1,
-          "gridPos": {
-            "h": 9,
-            "w": 12,
-            "x": 0,
-            "y": 21
-          },
-          "id": 2,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "null",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "format": "time_series",
-              "group": [],
-              "metricColumn": "name",
-              "rawQuery": true,
-              "rawSql": "SELECT date as \"time\", store.name as metric, sum(value)\n          FROM data_values stock\n             JOIN data_value_elements store_join ON stock.uid::text = store_join.data_value_uid\n                          join data_elements store on store_join.data_element_uid = store.uid\n          WHERE stock.type='stockHistory' and store.type = 'store'\n  and $__timeFilter(\"date\")\n  and store.name in ([[store]])\n  group by 1, 2\n  order by 1, 2\n  ",
-              "refId": "A",
-              "select": [
-                [
-                  {
-                    "params": [
-                      "id"
-                    ],
-                    "type": "column"
-                  }
-                ]
-              ],
-              "table": "data_values",
-              "timeColumn": "date",
-              "timeColumnType": "date",
-              "where": [
-                {
-                  "name": "$__timeFilter",
-                  "params": [],
-                  "type": "macro"
-                }
-              ]
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Stock History over time by Store",
-          "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "cards": {
-            "cardPadding": null,
-            "cardRound": null
-          },
-          "color": {
-            "cardColor": "#b4ff00",
-            "colorScale": "sqrt",
-            "colorScheme": "interpolateOranges",
-            "exponent": 0.5,
-            "mode": "spectrum"
-          },
-          "dataFormat": "timeseries",
-          "gridPos": {
-            "h": 9,
-            "w": 11,
-            "x": 12,
-            "y": 21
-          },
-          "heatmap": {},
-          "highlightCards": true,
-          "id": 14,
-          "legend": {
-            "show": true
-          },
-          "links": [],
-          "targets": [
-            {
-              "format": "time_series",
-              "group": [
-                {
-                  "params": [
-                    "store"
-                  ],
-                  "type": "column"
-                },
-                {
-                  "params": [
-                    "date"
-                  ],
-                  "type": "column"
-                }
-              ],
-              "metricColumn": "item",
-              "rawQuery": true,
-              "rawSql": "select time, case when value = 0 then 'zero' when value > 2 then 'over' when value < 1 then 'under' else 'normal' end as metric, count(*) as count \nfrom\n(\nselect time, avg(value) as value\nfrom\n(\n  SELECT mos.date as \"time\", item.name AS item, mos.value\n  FROM data_values mos\n  join data_value_elements store_join on mos.uid = store_join.data_value_uid \n  JOIN data_elements store ON store_join.data_element_uid = store.uid and store.type = 'store'\n  join data_value_elements item_join on mos.uid = item_join.data_value_uid \n  JOIN data_elements item ON item_join.data_element_uid::text = item.uid::text and item.type = 'item'\n  WHERE mos.type = 'MOS'\n  AND store.name IN ($store)\n  GROUP BY 1, store.name, item.name, value\n) as a\n  WHERE item = $item\ngroup by time, item\n) as b\ngroup by 1, 2;",
-              "refId": "A",
-              "select": [
-                [
-                  {
-                    "params": [
-                      "value"
-                    ],
-                    "type": "column"
-                  },
-                  {
-                    "params": [
-                      "avg"
-                    ],
-                    "type": "aggregate"
-                  },
-                  {
-                    "params": [
-                      "value"
-                    ],
-                    "type": "alias"
-                  }
-                ]
-              ],
-              "table": "stock_status",
-              "timeColumn": "date",
-              "timeColumnType": "date",
-              "where": [
-                {
-                  "name": "$__timeFilter",
-                  "params": [],
-                  "type": "macro"
-                }
-              ]
-            }
-          ],
-          "title": "Stock Status heat map",
-          "tooltip": {
-            "show": true,
-            "showHistogram": false
-          },
-          "transparent": true,
-          "type": "heatmap",
-          "xAxis": {
-            "show": true
-          },
-          "xBucketNumber": null,
-          "xBucketSize": null,
-          "yAxis": {
-            "decimals": null,
-            "format": "short",
-            "logBase": 1,
-            "max": null,
-            "min": null,
-            "show": true,
-            "splitFactor": null
-          },
-          "yBucketBound": "auto",
-          "yBucketNumber": null,
-          "yBucketSize": null
-        }
-      ],
-      "title": "A row with some tables in it",
-      "type": "row"
     }
   ],
   "schemaVersion": 18,
@@ -1025,18 +808,18 @@
           ]
         },
         "datasource": "PostgreSQL",
-        "definition": "select distinct n.name from name n join name_store_join nsj on n.id=nsj.name_id where n.type='store' and nsj.inactive=false order by n.name",
+        "definition": "select distinct name from store where disabled=false and store_mode in ('store', 'dispensary');",
         "hide": 0,
         "includeAll": true,
         "label": "Store",
         "multi": true,
         "name": "store",
         "options": [],
-        "query": "select distinct n.name from name n join name_store_join nsj on n.id=nsj.name_id where n.type='store' and nsj.inactive=false order by n.name",
+        "query": "select distinct name from store where disabled=false and store_mode in ('store', 'dispensary');",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 0,
+        "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
         "tagsQuery": "",
@@ -1075,7 +858,7 @@
           "value": "$__all"
         },
         "datasource": "PostgreSQL",
-        "definition": "select description from name_category1_level1 order by description",
+        "definition": "select region.description from name_category1 as region join name_category1_level2 as parent on parent.id = region.parent_id where parent.description = 'Aotearoa';",
         "hide": 0,
         "includeAll": true,
         "label": null,
@@ -1173,7 +956,7 @@
             "value": "West Coast"
           }
         ],
-        "query": "select description from name_category1_level1 order by description",
+        "query": "select region.description from name_category1 as region join name_category1_level2 as parent on parent.id = region.parent_id where parent.description = 'Aotearoa';",
         "refresh": 0,
         "regex": "",
         "skipUrlSync": false,
