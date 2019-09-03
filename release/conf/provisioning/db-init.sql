@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS tablefunc;
+
 -- TABLES --
 CREATE TABLE IF NOT EXISTS public.aggregator (
 	id serial NOT NULL,
@@ -242,6 +244,7 @@ CREATE TABLE IF NOT EXISTS transact (
 	insuranceDiscountRate float8,
 	internalData jsonb,
 	lastmodifiedat int8,
+	custom_data jsonb NULL,
 	CONSTRAINT transact_pkey PRIMARY KEY (id)
 );
 CREATE INDEX IF NOT EXISTS transact_amount_outstanding ON public.transact USING btree (amount_outstanding);
@@ -540,7 +543,9 @@ CREATE OR REPLACE PROCEDURE aggregate_stock_status()
  LANGUAGE plpgsql
 AS $procedure$
 begin
-	insert into aggregator (storeid, itemid, monthyear, value, fulldate, dataelement)
+	delete from aggregator where dataelement = 'mos';
+
+    insert into aggregator (storeid, itemid, monthyear, value, fulldate, dataelement)
 	select storeid, itemid, yearmonth, stockvalue / value, fulldate, 'mos'
 	from (
 		select stock.storeid, stock.itemid, concat(extract(year from stock.fulldate), extract(month from stock.fulldate)) as yearmonth, amc.value, date_trunc('month', stock.fulldate) as fulldate, SUM(stock.value) as stockvalue
@@ -564,6 +569,8 @@ declare
 	yearmonth varchar := concat(extract(year from current_date), extract(month from current_date));
 begin
 
+	delete from aggregator where dataelement = 'totalStockValue';
+
 	insert into aggregator (storeID, monthyear, value, fullDate, dataElement)
 	select item_store_join.store_ID, yearmonth, SUM(item_line.cost_price*item_line.quantity), current_date, 'totalStockValue'
 	from item_line
@@ -585,6 +592,7 @@ CREATE OR REPLACE PROCEDURE custom_aggregations()
 AS $$
 begin
 
+  perform setval('aggregator_id_seq', (select 1+max(id) from aggregator));
   call aggregate_total_stock();
   call public.aggregate_stock_status();
  
@@ -636,21 +644,30 @@ AS SELECT CURRENT_DATE AS "current_date",
   WHERE store.disabled = false AND a.dataelement = 'mos'::text;
 
 
-CREATE OR REPLACE VIEW public.store_transactions
-AS SELECT min(date_trunc('month'::text, t.confirm_date::timestamp with time zone)) AS date,
-    s.name AS store,
-    count(*) AS month,
-    sum(
-        CASE
-            WHEN t.confirm_date > (CURRENT_DATE - 7) THEN 1
-            ELSE 0
-        END) AS week
-   FROM store s
-     LEFT JOIN transact t ON s.id::text = t.store_id::text
-  WHERE (s.store_mode <> ALL (ARRAY['supervisor'::text, 'his'::text, 'drug_registration'::text])) AND s.disabled = false AND t.confirm_date > (CURRENT_DATE - 30) AND t.confirm_date <= CURRENT_DATE
-  GROUP BY s.name
-  ORDER BY s.name;
- 
+CREATE OR REPLACE VIEW public.store_transactions AS
+with stores as (
+  select id, name as store
+  from store
+  where (store_mode <> ALL (ARRAY['supervisor', 'his', 'drug_registration'])) 
+   and disabled = false 
+), transactions as (
+  select t.store_id, 
+    date_trunc('month', t.confirm_date::timestamp with time zone) confirm_date, 
+    1  "month", 
+    case when confirm_date > (CURRENT_DATE - 7) then 1 else 0 end "week"
+  from transact t
+  where t.confirm_date > (CURRENT_DATE - 30) 
+    and t.confirm_date <= CURRENT_DATE
+)
+SELECT min(confirm_date) AS date,
+    store,
+    coalesce(sum(month), 0) AS month,
+    coalesce(sum(week), 0) AS week
+  FROM stores s
+  LEFT JOIN transactions ON id = store_id
+  GROUP BY store
+  ORDER BY store;
+
  $procedure$
 ;
 
@@ -663,16 +680,27 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO dboard;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO dboard;
 
 /*
-ALTER DEFAULT PRIVILEGES IN SCHEMA PUBLIC GRANT CREATE ON TABLES TO dboard;
 ALTER DEFAULT PRIVILEGES IN SCHEMA PUBLIC GRANT INSERT ON TABLES TO dboard;
 ALTER DEFAULT PRIVILEGES IN SCHEMA PUBLIC GRANT UPDATE ON TABLES TO dboard;
 ALTER DEFAULT PRIVILEGES IN SCHEMA PUBLIC GRANT DELETE ON TABLES TO dboard;
 ALTER DEFAULT PRIVILEGES IN SCHEMA PUBLIC GRANT TRUNCATE ON TABLES TO dboard;
-GRANT CREATE ON DATABASE public TO dboard;
-*/
+GRANT CREATE ON DATABASE dashboard TO dboard;
+GRANT SELECT ON ALL TABLES IN SCHEMA PUBLIC TO dboard;
+GRANT INSERT ON ALL TABLES IN SCHEMA PUBLIC TO dboard;
+GRANT UPDATE ON ALL TABLES IN SCHEMA PUBLIC TO dboard;
+GRANT TRUNCATE ON ALL TABLES IN SCHEMA PUBLIC TO dboard;
+GRANT DELETE ON ALL TABLES IN SCHEMA PUBLIC TO dboard;
+**/
     
+-- ALTER TABLE public.transact ADD optionid varchar(255) NULL;
+-- ALTER TABLE public.transact ADD insurancediscountrate float8 NULL;
 -- ALTER TABLE public.transact ADD internaldata jsonb NULL;
 -- ALTER TABLE public.transact ADD lastmodifiedat int8 NULL;
+-- ALTER TABLE public.transact ADD lastmodifiedat int8 NULL;
+-- ALTER TABLE public.transact ADD custom_data jsonb NULL;
 -- ALTER TABLE public.requisition ADD lastmodifiedat int8 NULL;
+-- ALTER TABLE public.trans_line ADD sentquantity float8 NULL;
+-- ALTER TABLE public.trans_line ADD optionid varchar(255) NULL;
+-- ALTER TABLE public.trans_line ADD isvvmpassed varchar(255) NULL;
 -- ALTER TABLE public.trans_line ADD doses int4 NULL;
 
