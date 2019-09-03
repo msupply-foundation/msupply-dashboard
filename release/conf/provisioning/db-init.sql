@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS tablefunc;
+
 -- TABLES --
 CREATE TABLE IF NOT EXISTS public.aggregator (
 	id serial NOT NULL,
@@ -242,6 +244,7 @@ CREATE TABLE IF NOT EXISTS transact (
 	insuranceDiscountRate float8,
 	internalData jsonb,
 	lastmodifiedat int8,
+	custom_data jsonb NULL,
 	CONSTRAINT transact_pkey PRIMARY KEY (id)
 );
 CREATE INDEX IF NOT EXISTS transact_amount_outstanding ON public.transact USING btree (amount_outstanding);
@@ -689,8 +692,15 @@ GRANT TRUNCATE ON ALL TABLES IN SCHEMA PUBLIC TO dboard;
 GRANT DELETE ON ALL TABLES IN SCHEMA PUBLIC TO dboard;
 **/
     
+-- ALTER TABLE public.transact ADD optionid varchar(255) NULL;
+-- ALTER TABLE public.transact ADD insurancediscountrate float8 NULL;
 -- ALTER TABLE public.transact ADD internaldata jsonb NULL;
 -- ALTER TABLE public.transact ADD lastmodifiedat int8 NULL;
+-- ALTER TABLE public.transact ADD lastmodifiedat int8 NULL;
+-- ALTER TABLE public.transact ADD custom_data jsonb NULL;
 -- ALTER TABLE public.requisition ADD lastmodifiedat int8 NULL;
+-- ALTER TABLE public.trans_line ADD sentquantity float8 NULL;
+-- ALTER TABLE public.trans_line ADD optionid varchar(255) NULL;
+-- ALTER TABLE public.trans_line ADD isvvmpassed varchar(255) NULL;
 -- ALTER TABLE public.trans_line ADD doses int4 NULL;
 
