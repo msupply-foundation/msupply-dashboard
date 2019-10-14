@@ -1,0 +1,61 @@
+{
+  "columns": [],
+  "fontSize": "100%",
+  "gridPos": {
+    "h": 12,
+    "w": 24,
+    "x": 0,
+    "y": 0
+  },
+  "id": 2,
+  "links": [],
+  "options": {},
+  "pageSize": 250,
+  "scroll": true,
+  "showHeader": true,
+  "sort": {
+    "col": null,
+    "desc": false
+  },
+  "styles": [
+    {
+      "alias": "",
+      "colorMode": null,
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "pattern": "Unsupplied",
+      "type": "number",
+      "unit": "none"
+    }
+  ],
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "WITH\n  lines\n  AS\n  (\n    SELECT item_id, trans_line.quantity, trans_line.type\n    FROM trans_line\n      INNER JOIN transact ON transact.id = trans_line.transaction_id\n      INNER JOIN store on transact.store_ID = store.ID\n    WHERE store.name IN ($store)\n      AND transact.type='ci'\n      AND $__timeFilter(transact.confirm_date)\n  )\nSELECT item.item_name as \"Item name\",\n  (select sum(quantity)\n    from lines\n    where lines.item_ID = item.id) as \"Requested\",\n  (select sum(quantity)\n    from lines\n    where type = 'stock_out'\n    AND lines.item_ID = item.id) as \"Supplied\",\n  (select sum(quantity)\n    from lines\n    where type = 'placeholder'\n    AND lines.item_ID = item.id) as \"Unsupplied\"\nFROM item\nINNER JOIN lines ON lines.item_ID = item.id\nWHERE lines.quantity > 0\nGROUP BY item.id, item.item_name\n",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": ["value"],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "timeFrom": null,
+  "timeShift": null,
+  "title": "Item Short Fall",
+  "transform": "table",
+  "type": "table"
+}

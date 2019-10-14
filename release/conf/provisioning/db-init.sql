@@ -699,6 +699,7 @@ GRANT DELETE ON ALL TABLES IN SCHEMA PUBLIC TO dboard;
 -- ALTER TABLE public.transact ADD lastmodifiedat int8 NULL;
 -- ALTER TABLE public.transact ADD custom_data jsonb NULL;
 -- ALTER TABLE public.requisition ADD lastmodifiedat int8 NULL;
+-- ALTER TABLE public.requisition_line ADD cust_stock_issued real NULL;
 -- ALTER TABLE public.trans_line ADD sentquantity float8 NULL;
 -- ALTER TABLE public.trans_line ADD optionid varchar(255) NULL;
 -- ALTER TABLE public.trans_line ADD isvvmpassed varchar(255) NULL;

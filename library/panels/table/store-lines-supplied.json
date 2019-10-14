@@ -1,0 +1,61 @@
+{
+  "columns": [],
+  "fontSize": "100%",
+  "gridPos": {
+    "h": 11,
+    "w": 24,
+    "x": 0,
+    "y": 12
+  },
+  "id": 3,
+  "links": [],
+  "options": {},
+  "pageSize": 30,
+  "scroll": true,
+  "showHeader": true,
+  "sort": {
+    "col": 1,
+    "desc": false
+  },
+  "styles": [
+    {
+      "alias": "",
+      "colorMode": null,
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "pattern": "[Lines]",
+      "type": "number",
+      "unit": "none"
+    }
+  ],
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "WITH\n  customer_invoice_line\n  AS\n  (\n    SELECT name.id AS name_id, name.name, trans_line.type, quantity\n    FROM transact\n      INNER JOIN name ON name.id = transact.name_id\n      INNER JOIN trans_line ON trans_line.transaction_id = transact.id\n      INNER JOIN store ON store.id = transact.store_id\n    WHERE store.name IN ($store)\n      AND transact.type='ci'\n      AND $__timeFilter(transact.confirm_date) \n  ),\n  customer_stat\n  AS\n  (\n    SELECT name_id, name,\n    count(*) AS count_total,\n    (\n      SELECT count(*) \n      FROM customer_invoice_line c\n      WHERE c.type = 'stock_out'\n        AND c.name_id = gc.name_id\n    ) AS count_supplied\n    FROM customer_invoice_line gc -- \"Group Customer\"\n    GROUP BY name_id, name\n  )\nSELECT \n  ROW_NUMBER() OVER(ORDER BY name) AS \"Line #\",\n  name AS \"Customer\", \n  count_total AS \"Requested Lines\", \n  count_supplied AS \"Supplied Lines\",\n  count_total - count_supplied AS \"Unsupplied Lines\",\n  count_supplied * 100 / count_total AS \"Supplied Lines %\"\nFROM customer_stat\nORDER BY name\n",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": ["value"],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "timeFrom": null,
+  "timeShift": null,
+  "title": "Store Lines Supplied",
+  "transform": "table",
+  "type": "table"
+}
