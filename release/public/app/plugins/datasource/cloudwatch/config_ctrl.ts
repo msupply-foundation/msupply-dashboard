@@ -44,7 +44,6 @@ export class CloudWatchConfigCtrl {
   ];
 
   regions = [
-    'ap-east-1',
     'ap-northeast-1',
     'ap-northeast-2',
     'ap-northeast-3',

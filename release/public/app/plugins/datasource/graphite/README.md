@@ -1,4 +1,4 @@
-# Graphite Data Source -  Native Plugin
+# Graphite Datasource -  Native Plugin
 
 Grafana ships with **built in** support for Graphite (of course!). 
 

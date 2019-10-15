@@ -1,6 +1,7 @@
 import React, { PureComponent } from 'react';
 import { css, cx } from 'emotion';
 import tinycolor from 'tinycolor2';
+import { last } from 'lodash';
 
 import { Themeable, withTheme, GrafanaTheme, getLogRowStyles } from '@grafana/ui';
 import { LogsModel, LogRowModel, TimeZone } from '@grafana/data';
@@ -20,7 +21,7 @@ const getStyles = (theme: GrafanaTheme) => ({
       margin-top: auto !important;
     }
   `,
-  logsRowFade: css`
+  logsRowFresh: css`
     label: logs-row-fresh;
     color: ${theme.colors.text};
     background-color: ${tinycolor(theme.colors.blueLight)
@@ -37,6 +38,9 @@ const getStyles = (theme: GrafanaTheme) => ({
         background-color: transparent;
       }
     }
+  `,
+  logsRowOld: css`
+    label: logs-row-old;
   `,
   logsRowsIndicator: css`
     font-size: ${theme.typography.size.md};
@@ -60,6 +64,7 @@ export interface Props extends Themeable {
 
 interface State {
   logsResultToRender?: LogsModel;
+  lastTimestamp: number;
 }
 
 class LiveLogs extends PureComponent<Props, State> {
@@ -71,6 +76,7 @@ class LiveLogs extends PureComponent<Props, State> {
     super(props);
     this.state = {
       logsResultToRender: props.logsResult,
+      lastTimestamp: 0,
     };
   }
 
@@ -100,6 +106,10 @@ class LiveLogs extends PureComponent<Props, State> {
         // our state, but we do not show the updates, this allows us start again showing correct result after resuming
         // without creating a gap in the log results.
         logsResultToRender: nextProps.logsResult,
+        lastTimestamp:
+          state.logsResultToRender && last(state.logsResultToRender.rows)
+            ? last(state.logsResultToRender.rows).timeEpochMs
+            : 0,
       };
     } else {
       return null;
@@ -131,6 +141,15 @@ class LiveLogs extends PureComponent<Props, State> {
     return rowsToRender;
   };
 
+  /**
+   * Check if row is fresh so we can apply special styling. This is bit naive and does not take into account rows
+   * which arrive out of order. Because loki datasource sends full data instead of deltas we need to compare the
+   * data and this is easier than doing some intersection of some uuid of each row (which we do not have now anyway)
+   */
+  isFresh = (row: LogRowModel): boolean => {
+    return row.timeEpochMs > this.state.lastTimestamp;
+  };
+
   render() {
     const { theme, timeZone, onPause, onResume, isPaused } = this.props;
     const styles = getStyles(theme);
@@ -144,20 +163,23 @@ class LiveLogs extends PureComponent<Props, State> {
           className={cx(['logs-rows', styles.logsRowsLive])}
           ref={this.scrollContainerRef}
         >
-          {this.rowsToRender().map((row: LogRowModel) => {
+          {this.rowsToRender().map((row: LogRowModel, index) => {
             return (
-              <div className={cx(logsRow, styles.logsRowFade)} key={row.uid}>
+              <div
+                className={cx(logsRow, this.isFresh(row) ? styles.logsRowFresh : styles.logsRowOld)}
+                key={`${row.timeEpochMs}-${index}`}
+              >
                 {showUtc && (
-                  <div className={cx(logsRowLocalTime)} title={`Local: ${row.timeLocal} (${row.timeFromNow})`}>
+                  <div className={cx([logsRowLocalTime])} title={`Local: ${row.timeLocal} (${row.timeFromNow})`}>
                     {row.timeUtc}
                   </div>
                 )}
                 {!showUtc && (
-                  <div className={cx(logsRowLocalTime)} title={`${row.timeUtc} (${row.timeFromNow})`}>
+                  <div className={cx([logsRowLocalTime])} title={`${row.timeUtc} (${row.timeFromNow})`}>
                     {row.timeLocal}
                   </div>
                 )}
-                <div className={cx(logsRowMessage)}>{row.entry}</div>
+                <div className={cx([logsRowMessage])}>{row.entry}</div>
               </div>
             );
           })}

@@ -6,7 +6,6 @@ import appEvents from 'app/core/app_events';
 import { MetricDescriptor } from '../types';
 import { MetricSelect } from 'app/core/components/Select/MetricSelect';
 import { TemplateSrv } from 'app/features/templating/template_srv';
-import { CoreEvents } from 'app/types';
 
 export interface Props {
   onChange: (metricDescriptor: MetricDescriptor) => void;
@@ -59,7 +58,7 @@ export class Metrics extends React.Component<Props, State> {
         }
         resolve(this.state.defaultProject);
       } catch (error) {
-        appEvents.emit(CoreEvents.dsRequestError, error);
+        appEvents.emit('ds-request-error', error);
         reject();
       }
     });

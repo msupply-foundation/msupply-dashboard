@@ -144,7 +144,7 @@ export class LokiQueryFieldForm extends React.PureComponent<LokiQueryFieldFormPr
 
   render() {
     const {
-      data,
+      queryResponse,
       query,
       syntaxLoaded,
       logLabelOptions,
@@ -158,7 +158,7 @@ export class LokiQueryFieldForm extends React.PureComponent<LokiQueryFieldFormPr
     const hasLogLabels = logLabelOptions && logLabelOptions.length > 0;
     const chooserText = getChooserText(syntaxLoaded, hasLogLabels, datasourceStatus);
     const buttonDisabled = !syntaxLoaded || datasourceStatus === DataSourceStatus.Disconnected;
-    const showError = data && data.error && data.error.refId === query.refId;
+    const showError = queryResponse && queryResponse.error && queryResponse.error.refId === query.refId;
 
     return (
       <>
@@ -195,7 +195,9 @@ export class LokiQueryFieldForm extends React.PureComponent<LokiQueryFieldFormPr
             />
           </div>
         </div>
-        <div>{showError ? <div className="prom-query-field-info text-error">{data.error.message}</div> : null}</div>
+        <div>
+          {showError ? <div className="prom-query-field-info text-error">{queryResponse.error.message}</div> : null}
+        </div>
       </>
     );
   }

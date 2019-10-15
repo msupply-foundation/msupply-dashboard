@@ -1,11 +1,10 @@
 import $ from 'jquery';
 import coreModule from 'app/core/core_module';
 import config from 'app/core/config';
-import { GrafanaRootScope } from 'app/routes/GrafanaCtrl';
 
 export class Analytics {
   /** @ngInject */
-  constructor(private $rootScope: GrafanaRootScope, private $location: any) {}
+  constructor(private $rootScope: any, private $location: any) {}
 
   gaInit() {
     $.ajax({

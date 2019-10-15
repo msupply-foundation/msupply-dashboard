@@ -3,12 +3,9 @@ import { appEvents } from 'app/core/app_events';
 import locationUtil from 'app/core/utils/location_util';
 import { DashboardModel } from '../state/DashboardModel';
 import { removePanel } from '../utils/panel';
-import { DashboardMeta, CoreEvents } from 'app/types';
-import { GrafanaRootScope } from 'app/routes/GrafanaCtrl';
+import { DashboardMeta } from 'app/types';
 import { BackendSrv } from 'app/core/services/backend_srv';
 import { ILocationService } from 'angular';
-import { AppEvents } from '@grafana/data';
-import { PanelEvents } from '@grafana/ui';
 
 interface DashboardSaveOptions {
   folderId?: number;
@@ -21,14 +18,10 @@ export class DashboardSrv {
   dashboard: DashboardModel;
 
   /** @ngInject */
-  constructor(
-    private backendSrv: BackendSrv,
-    private $rootScope: GrafanaRootScope,
-    private $location: ILocationService
-  ) {
-    appEvents.on(CoreEvents.saveDashboard, this.saveDashboard.bind(this), $rootScope);
-    appEvents.on(PanelEvents.panelChangeView, this.onPanelChangeView);
-    appEvents.on(CoreEvents.removePanel, this.onRemovePanel);
+  constructor(private backendSrv: BackendSrv, private $rootScope: any, private $location: ILocationService) {
+    appEvents.on('save-dashboard', this.saveDashboard.bind(this), $rootScope);
+    appEvents.on('panel-change-view', this.onPanelChangeView);
+    appEvents.on('remove-panel', this.onRemovePanel);
 
     // Export to react
     setDashboardSrv(this);
@@ -103,7 +96,7 @@ export class DashboardSrv {
     if (err.data && err.data.status === 'version-mismatch') {
       err.isHandled = true;
 
-      this.$rootScope.appEvent(CoreEvents.showConfirmModal, {
+      this.$rootScope.appEvent('confirm-modal', {
         title: 'Conflict',
         text: 'Someone else has updated this dashboard.',
         text2: 'Would you still like to save this dashboard?',
@@ -118,7 +111,7 @@ export class DashboardSrv {
     if (err.data && err.data.status === 'name-exists') {
       err.isHandled = true;
 
-      this.$rootScope.appEvent(CoreEvents.showConfirmModal, {
+      this.$rootScope.appEvent('confirm-modal', {
         title: 'Conflict',
         text: 'A dashboard with the same name in selected folder already exists.',
         text2: 'Would you still like to save this dashboard?',
@@ -133,7 +126,7 @@ export class DashboardSrv {
     if (err.data && err.data.status === 'plugin-dashboard') {
       err.isHandled = true;
 
-      this.$rootScope.appEvent(CoreEvents.showConfirmModal, {
+      this.$rootScope.appEvent('confirm-modal', {
         title: 'Plugin Dashboard',
         text: err.data.message,
         text2: 'Your changes will be lost when you update the plugin. Use Save As to create custom version.',
@@ -154,8 +147,8 @@ export class DashboardSrv {
     this.dashboard.version = data.version;
 
     // important that these happen before location redirect below
-    this.$rootScope.appEvent(CoreEvents.dashboardSaved, this.dashboard);
-    this.$rootScope.appEvent(AppEvents.alertSuccess, ['Dashboard saved']);
+    this.$rootScope.appEvent('dashboard-saved', this.dashboard);
+    this.$rootScope.appEvent('alert-success', ['Dashboard saved']);
 
     const newUrl = locationUtil.stripBaseFromUrl(data.url);
     const currentPath = this.$location.path();
@@ -208,20 +201,20 @@ export class DashboardSrv {
   }
 
   showDashboardProvisionedModal() {
-    this.$rootScope.appEvent(CoreEvents.showModal, {
+    this.$rootScope.appEvent('show-modal', {
       templateHtml: '<save-provisioned-dashboard-modal dismiss="dismiss()"></save-provisioned-dashboard-modal>',
     });
   }
 
   showSaveAsModal() {
-    this.$rootScope.appEvent(CoreEvents.showModal, {
+    this.$rootScope.appEvent('show-modal', {
       templateHtml: '<save-dashboard-as-modal dismiss="dismiss()"></save-dashboard-as-modal>',
       modalClass: 'modal--narrow',
     });
   }
 
   showSaveModal() {
-    this.$rootScope.appEvent(CoreEvents.showModal, {
+    this.$rootScope.appEvent('show-modal', {
       templateHtml: '<save-dashboard-modal dismiss="dismiss()"></save-dashboard-modal>',
       modalClass: 'modal--narrow',
     });

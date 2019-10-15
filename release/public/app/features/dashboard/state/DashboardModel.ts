@@ -11,12 +11,11 @@ import { contextSrv } from 'app/core/services/context_srv';
 import sortByKeys from 'app/core/utils/sort_by_keys';
 
 // Types
-import { PanelModel, GridPos, panelAdded, panelRemoved } from './PanelModel';
+import { PanelModel, GridPos } from './PanelModel';
 import { DashboardMigrator } from './DashboardMigrator';
-import { TimeRange, TimeZone, AppEvent } from '@grafana/data';
+import { TimeRange, TimeZone } from '@grafana/data';
 import { UrlQueryValue } from '@grafana/runtime';
-import { PanelEvents } from '@grafana/ui';
-import { KIOSK_MODE_TV, DashboardMeta, CoreEvents } from 'app/types';
+import { KIOSK_MODE_TV, DashboardMeta } from 'app/types';
 import { toUtc, DateTimeInput, dateTime, isDateTime } from '@grafana/data';
 
 export interface CloneOptions {
@@ -216,15 +215,15 @@ export class DashboardModel {
 
     panel.setViewMode(fullscreen, this.meta.isEditing);
 
-    this.events.emit(PanelEvents.viewModeChanged, panel);
+    this.events.emit('view-mode-changed', panel);
   }
 
   timeRangeUpdated(timeRange: TimeRange) {
-    this.events.emit(CoreEvents.timeRangeUpdated, timeRange);
+    this.events.emit('time-range-updated', timeRange);
   }
 
   startRefresh() {
-    this.events.emit(PanelEvents.refresh);
+    this.events.emit('refresh');
 
     for (const panel of this.panels) {
       if (!this.otherPanelInFullscreen(panel)) {
@@ -234,7 +233,7 @@ export class DashboardModel {
   }
 
   render() {
-    this.events.emit(PanelEvents.render);
+    this.events.emit('render');
 
     for (const panel of this.panels) {
       panel.render();
@@ -307,7 +306,7 @@ export class DashboardModel {
 
     this.sortPanelsByGridPos();
 
-    this.events.emit(panelAdded, panel);
+    this.events.emit('panel-added', panel);
   }
 
   sortPanelsByGridPos() {
@@ -344,7 +343,7 @@ export class DashboardModel {
     _.pull(this.panels, ...panelsToRemove);
     panelsToRemove.map(p => p.destroy());
     this.sortPanelsByGridPos();
-    this.events.emit(CoreEvents.repeatsProcessed);
+    this.events.emit('repeats-processed');
   }
 
   processRepeats() {
@@ -364,7 +363,7 @@ export class DashboardModel {
     }
 
     this.sortPanelsByGridPos();
-    this.events.emit(CoreEvents.repeatsProcessed);
+    this.events.emit('repeats-processed');
   }
 
   cleanUpRowRepeats(rowPanels: PanelModel[]) {
@@ -597,7 +596,7 @@ export class DashboardModel {
   removePanel(panel: PanelModel) {
     const index = _.indexOf(this.panels, panel);
     this.panels.splice(index, 1);
-    this.events.emit(panelRemoved, panel);
+    this.events.emit('panel-removed', panel);
   }
 
   removeRow(row: PanelModel, removePanels: boolean) {
@@ -762,7 +761,7 @@ export class DashboardModel {
       this.sortPanelsByGridPos();
 
       // emit change event
-      this.events.emit(CoreEvents.rowExpanded);
+      this.events.emit('row-expanded');
       return;
     }
 
@@ -775,7 +774,7 @@ export class DashboardModel {
     row.collapsed = true;
 
     // emit change event
-    this.events.emit(CoreEvents.rowCollapsed);
+    this.events.emit('row-collapsed');
   }
 
   /**
@@ -799,12 +798,12 @@ export class DashboardModel {
     return rowPanels;
   }
 
-  on<T>(event: AppEvent<T>, callback: (payload?: T) => void) {
-    this.events.on(event, callback);
+  on(eventName: string, callback: (payload?: any) => void) {
+    this.events.on(eventName, callback);
   }
 
-  off<T>(event: AppEvent<T>, callback?: (payload?: T) => void) {
-    this.events.off(event, callback);
+  off(eventName: string, callback?: (payload?: any) => void) {
+    this.events.off(eventName, callback);
   }
 
   cycleGraphTooltip() {
@@ -912,7 +911,7 @@ export class DashboardModel {
 
   templateVariableValueUpdated() {
     this.processRepeats();
-    this.events.emit(CoreEvents.templateVariableValueUpdated);
+    this.events.emit('template-variable-value-updated');
   }
 
   expandParentRowFor(panelId: number) {

@@ -1,7 +1,6 @@
 import _ from 'lodash';
 import coreModule from '../../core_module';
 import appEvents from 'app/core/app_events';
-import { CoreEvents } from 'app/types';
 
 export class SearchResultsCtrl {
   results: any;
@@ -66,7 +65,7 @@ export class SearchResultsCtrl {
   onItemClick(item: any) {
     //Check if one string can be found in the other
     if (this.$location.path().indexOf(item.url) > -1 || item.url.indexOf(this.$location.path()) > -1) {
-      appEvents.emit(CoreEvents.hideDashSearch);
+      appEvents.emit('hide-dash-search');
     }
   }
 

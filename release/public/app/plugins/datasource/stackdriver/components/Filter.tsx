@@ -7,7 +7,6 @@ import { getAngularLoader, AngularComponent } from '@grafana/runtime';
 import { TemplateSrv } from 'app/features/templating/template_srv';
 import StackdriverDatasource from '../datasource';
 import '../query_filter_ctrl';
-import { AppEvents } from '@grafana/data';
 
 export interface Props {
   filtersChanged: (filters: string[]) => void;
@@ -103,7 +102,7 @@ export class Filter extends React.Component<Props, State> {
         }
         resolve();
       } catch (error) {
-        appEvents.emit(AppEvents.alertError, ['Error', 'Error loading metric labels for ' + this.props.metricType]);
+        appEvents.emit('alert-error', ['Error', 'Error loading metric labels for ' + this.props.metricType]);
         scope.labelData = labelData;
         resolve();
       }

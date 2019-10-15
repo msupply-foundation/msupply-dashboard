@@ -21,23 +21,20 @@ import { LocationUpdate, setLocationSrv } from '@grafana/runtime';
 import { updateLocation } from 'app/core/actions';
 
 // Types
-import { KioskUrlValue, CoreEvents, AppEventEmitter, AppEventConsumer } from 'app/types';
+import { KioskUrlValue } from 'app/types';
 import { setLinkSrv, LinkSrv } from 'app/features/panel/panellinks/link_srv';
 import { UtilSrv } from 'app/core/services/util_srv';
 import { ContextSrv } from 'app/core/services/context_srv';
 import { BridgeSrv } from 'app/core/services/bridge_srv';
 import { PlaylistSrv } from 'app/features/playlist/playlist_srv';
-import { ILocationService, ITimeoutService, IRootScopeService, IAngularEvent } from 'angular';
-import { AppEvent, AppEvents } from '@grafana/data';
-
-export type GrafanaRootScope = IRootScopeService & AppEventEmitter & AppEventConsumer & { colors: string[] };
+import { ILocationService, ITimeoutService, IRootScopeService } from 'angular';
 
 export class GrafanaCtrl {
   /** @ngInject */
   constructor(
     $scope: any,
     utilSrv: UtilSrv,
-    $rootScope: GrafanaRootScope,
+    $rootScope: any,
     contextSrv: ContextSrv,
     bridgeSrv: BridgeSrv,
     backendSrv: BackendSrv,
@@ -73,18 +70,8 @@ export class GrafanaCtrl {
 
     $rootScope.colors = colors;
 
-    $rootScope.onAppEvent = function<T>(
-      event: AppEvent<T> | string,
-      callback: (event: IAngularEvent, ...args: any[]) => void,
-      localScope?: any
-    ) {
-      let unbind;
-      if (typeof event === 'string') {
-        unbind = $rootScope.$on(event, callback);
-      } else {
-        unbind = $rootScope.$on(event.name, callback);
-      }
-
+    $rootScope.onAppEvent = function(name: string, callback: () => void, localScope: any) {
+      const unbind = $rootScope.$on(name, callback);
       let callerScope = this;
       if (callerScope.$id === 1 && !localScope) {
         console.log('warning rootScope onAppEvent called without localscope');
@@ -95,14 +82,9 @@ export class GrafanaCtrl {
       callerScope.$on('$destroy', unbind);
     };
 
-    $rootScope.appEvent = <T>(event: AppEvent<T> | string, payload?: T | any) => {
-      if (typeof event === 'string') {
-        $rootScope.$emit(event, payload);
-        appEvents.emit(event, payload);
-      } else {
-        $rootScope.$emit(event.name, payload);
-        appEvents.emit(event, payload);
-      }
+    $rootScope.appEvent = (name: string, payload: any) => {
+      $rootScope.$emit(name, payload);
+      appEvents.emit(name, payload);
     };
 
     $scope.init();
@@ -139,7 +121,7 @@ export function grafanaAppDirective(
   return {
     restrict: 'E',
     controller: GrafanaCtrl,
-    link: (scope: IRootScopeService & AppEventEmitter, elem: JQuery) => {
+    link: (scope: any, elem: JQuery) => {
       const body = $('body');
 
       // see https://github.com/zenorocha/clipboard.js/issues/155
@@ -147,19 +129,19 @@ export function grafanaAppDirective(
 
       $('.preloader').remove();
 
-      appEvents.on(CoreEvents.toggleSidemenuMobile, () => {
+      appEvents.on('toggle-sidemenu-mobile', () => {
         body.toggleClass('sidemenu-open--xs');
       });
 
-      appEvents.on(CoreEvents.toggleSidemenuHidden, () => {
+      appEvents.on('toggle-sidemenu-hidden', () => {
         body.toggleClass('sidemenu-hidden');
       });
 
-      appEvents.on(CoreEvents.playlistStarted, () => {
+      appEvents.on('playlist-started', () => {
         elem.toggleClass('view-mode--playlist', true);
       });
 
-      appEvents.on(CoreEvents.playlistStopped, () => {
+      appEvents.on('playlist-stopped', () => {
         elem.toggleClass('view-mode--playlist', false);
       });
 
@@ -196,11 +178,11 @@ export function grafanaAppDirective(
           drop.destroy();
         }
 
-        appEvents.emit(CoreEvents.hideDashSearch);
+        appEvents.emit('hide-dash-search');
       });
 
       // handle kiosk mode
-      appEvents.on(CoreEvents.toggleKioskMode, (options: { exit?: boolean }) => {
+      appEvents.on('toggle-kiosk-mode', (options: { exit?: boolean }) => {
         const search: { kiosk?: KioskUrlValue } = $location.search();
 
         if (options && options.exit) {
@@ -210,7 +192,7 @@ export function grafanaAppDirective(
         switch (search.kiosk) {
           case 'tv': {
             search.kiosk = true;
-            appEvents.emit(AppEvents.alertSuccess, ['Press ESC to exit Kiosk mode']);
+            appEvents.emit('alert-success', ['Press ESC to exit Kiosk mode']);
             break;
           }
           case '1':
@@ -266,7 +248,7 @@ export function grafanaAppDirective(
       // check every 2 seconds
       setInterval(checkForInActiveUser, 2000);
 
-      appEvents.on(CoreEvents.toggleViewMode, () => {
+      appEvents.on('toggle-view-mode', () => {
         lastActivity = 0;
         checkForInActiveUser();
       });
@@ -296,7 +278,7 @@ export function grafanaAppDirective(
         if (body.find('.search-container').length > 0) {
           if (target.parents('.search-results-container, .search-field-wrapper').length === 0) {
             scope.$apply(() => {
-              scope.appEvent(CoreEvents.hideDashSearch);
+              scope.appEvent('hide-dash-search');
             });
           }
         }

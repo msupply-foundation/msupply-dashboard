@@ -16,7 +16,8 @@ import {
 import { ExploreUrlState, ExploreMode } from 'app/types/explore';
 import store from 'app/core/store';
 import { LogsDedupStrategy, LogsModel, LogLevel, dateTime } from '@grafana/data';
-import { DataQueryError, RefreshPicker } from '@grafana/ui';
+import { DataQueryError } from '@grafana/ui';
+import { liveOption, offOption } from '@grafana/ui/src/components/RefreshPicker/RefreshPicker';
 
 const DEFAULT_EXPLORE_STATE: ExploreUrlState = {
   datasource: null,
@@ -340,7 +341,7 @@ describe('getRefIds', () => {
 describe('refreshIntervalToSortOrder', () => {
   describe('when called with live option', () => {
     it('then it should return ascending', () => {
-      const result = refreshIntervalToSortOrder(RefreshPicker.liveOption.value);
+      const result = refreshIntervalToSortOrder(liveOption.value);
 
       expect(result).toBe(SortOrder.Ascending);
     });
@@ -348,7 +349,7 @@ describe('refreshIntervalToSortOrder', () => {
 
   describe('when called with off option', () => {
     it('then it should return descending', () => {
-      const result = refreshIntervalToSortOrder(RefreshPicker.offOption.value);
+      const result = refreshIntervalToSortOrder(offOption.value);
 
       expect(result).toBe(SortOrder.Descending);
     });
@@ -383,7 +384,6 @@ describe('sortLogsResult', () => {
     timeFromNow: '',
     timeLocal: '',
     timeUtc: '',
-    uid: '1',
   };
   const sameAsFirstRow = firstRow;
   const secondRow = {
@@ -397,7 +397,6 @@ describe('sortLogsResult', () => {
     timeFromNow: '',
     timeLocal: '',
     timeUtc: '',
-    uid: '2',
   };
 
   describe('when called with SortOrder.Descending', () => {

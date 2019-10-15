@@ -26,8 +26,8 @@ class ScenarioCtx {
     this.results = [];
     this.request = {
       range: {
-        from: this.fromStartTime,
-        to: this.toStartTime,
+        from: this.toStartTime,
+        to: this.fromStartTime,
         raw: { from: '1h', to: 'now' },
       },
       targets: [

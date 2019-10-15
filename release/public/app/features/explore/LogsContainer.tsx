@@ -1,7 +1,7 @@
 import React, { PureComponent } from 'react';
 import { hot } from 'react-hot-loader';
 import { connect } from 'react-redux';
-import { DataSourceApi, Collapse } from '@grafana/ui';
+import { DataSourceApi, Collapse, RefreshPicker } from '@grafana/ui';
 
 import {
   RawTimeRange,
@@ -18,13 +18,16 @@ import { ExploreId, ExploreItemState } from 'app/types/explore';
 import { StoreState } from 'app/types';
 
 import { changeDedupStrategy, updateTimeRange } from './state/actions';
-import { toggleLogLevelAction } from 'app/features/explore/state/actionTypes';
+import {
+  toggleLogLevelAction,
+  changeRefreshIntervalAction,
+  setPausedStateAction,
+} from 'app/features/explore/state/actionTypes';
 import { deduplicatedLogsSelector, exploreItemUIStateSelector } from 'app/features/explore/state/selectors';
 import { getTimeZone } from '../profile/state/selectors';
 import { LiveLogsWithTheme } from './LiveLogs';
 import { Logs } from './Logs';
 import { LogsCrossFadeTransition } from './utils/LogsCrossFadeTransition';
-import { LiveTailControls } from './useLiveTailControls';
 
 interface LogsContainerProps {
   datasourceInstance: DataSourceApi | null;
@@ -45,17 +48,35 @@ interface LogsContainerProps {
   dedupStrategy: LogsDedupStrategy;
   width: number;
   isLive: boolean;
+  stopLive: typeof changeRefreshIntervalAction;
   updateTimeRange: typeof updateTimeRange;
   range: TimeRange;
-  syncedTimes: boolean;
   absoluteRange: AbsoluteTimeRange;
+  setPausedStateAction: typeof setPausedStateAction;
   isPaused: boolean;
 }
 
 export class LogsContainer extends PureComponent<LogsContainerProps> {
   onChangeTime = (absoluteRange: AbsoluteTimeRange) => {
     const { exploreId, updateTimeRange } = this.props;
+
     updateTimeRange({ exploreId, absoluteRange });
+  };
+
+  onStopLive = () => {
+    const { exploreId } = this.props;
+    this.onPause();
+    this.props.stopLive({ exploreId, refreshInterval: RefreshPicker.offOption.value });
+  };
+
+  onPause = () => {
+    const { exploreId } = this.props;
+    this.props.setPausedStateAction({ exploreId, isPaused: true });
+  };
+
+  onResume = () => {
+    const { exploreId } = this.props;
+    this.props.setPausedStateAction({ exploreId, isPaused: false });
   };
 
   handleDedupStrategyChange = (dedupStrategy: LogsDedupStrategy) => {
@@ -95,25 +116,20 @@ export class LogsContainer extends PureComponent<LogsContainerProps> {
       range,
       width,
       isLive,
-      exploreId,
     } = this.props;
 
     return (
       <>
         <LogsCrossFadeTransition visible={isLive}>
           <Collapse label="Logs" loading={false} isOpen>
-            <LiveTailControls exploreId={exploreId}>
-              {controls => (
-                <LiveLogsWithTheme
-                  logsResult={logsResult}
-                  timeZone={timeZone}
-                  stopLive={controls.stop}
-                  isPaused={this.props.isPaused}
-                  onPause={controls.pause}
-                  onResume={controls.resume}
-                />
-              )}
-            </LiveTailControls>
+            <LiveLogsWithTheme
+              logsResult={logsResult}
+              timeZone={timeZone}
+              stopLive={this.onStopLive}
+              isPaused={this.props.isPaused}
+              onPause={this.onPause}
+              onResume={this.onResume}
+            />
           </Collapse>
         </LogsCrossFadeTransition>
         <LogsCrossFadeTransition visible={!isLive}>
@@ -182,7 +198,9 @@ function mapStateToProps(state: StoreState, { exploreId }: { exploreId: string }
 const mapDispatchToProps = {
   changeDedupStrategy,
   toggleLogLevelAction,
+  stopLive: changeRefreshIntervalAction,
   updateTimeRange,
+  setPausedStateAction,
 };
 
 export default hot(module)(

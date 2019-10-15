@@ -5,9 +5,8 @@ import { connect } from 'react-redux';
 import find from 'lodash/find';
 // Types
 import { UrlQueryMap } from '@grafana/runtime';
-import { StoreState, AppNotificationSeverity, CoreEvents } from 'app/types';
+import { AppNotificationSeverity, StoreState } from 'app/types';
 import {
-  Alert,
   AppPlugin,
   GrafanaPlugin,
   PluginDependencies,
@@ -30,6 +29,7 @@ import { PluginDashboards } from './PluginDashboards';
 import { appEvents } from 'app/core/core';
 import { config } from 'app/core/config';
 import { ContextSrv } from '../../core/services/context_srv';
+import { AlertBox } from 'app/core/components/AlertBox/AlertBox';
 
 export function getLoadingNav(): NavModel {
   const node = {
@@ -143,7 +143,7 @@ class PluginPage extends PureComponent<Props, State> {
     const { plugin, nav } = this.state;
 
     if (!plugin) {
-      return <Alert severity={AppNotificationSeverity.Error} title="Plugin Not Found" />;
+      return <AlertBox severity={AppNotificationSeverity.Error} title="Plugin Not Found" />;
     }
 
     const active = nav.main.children.find(tab => tab.active);
@@ -173,7 +173,7 @@ class PluginPage extends PureComponent<Props, State> {
   }
 
   showUpdateInfo = () => {
-    appEvents.emit(CoreEvents.showModal, {
+    appEvents.emit('show-modal', {
       src: 'public/app/features/plugins/partials/update_instructions.html',
       model: this.state.plugin.meta,
     });
@@ -302,10 +302,10 @@ class PluginPage extends PureComponent<Props, State> {
             <div className="sidebar-container">
               <div className="sidebar-content">
                 {plugin.loadError && (
-                  <Alert
+                  <AlertBox
                     severity={AppNotificationSeverity.Error}
                     title="Error Loading Plugin"
-                    children={
+                    body={
                       <>
                         Check the server startup logs for more information. <br />
                         If this plugin was loaded from git, make sure it was compiled.

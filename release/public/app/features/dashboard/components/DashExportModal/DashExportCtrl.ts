@@ -5,8 +5,6 @@ import coreModule from 'app/core/core_module';
 import { DashboardExporter } from './DashboardExporter';
 import { DashboardSrv } from '../../services/DashboardSrv';
 import DatasourceSrv from 'app/features/plugins/datasource_srv';
-import { GrafanaRootScope } from 'app/routes/GrafanaCtrl';
-import { CoreEvents } from 'app/types';
 
 export class DashExportCtrl {
   dash: any;
@@ -19,7 +17,7 @@ export class DashExportCtrl {
     private dashboardSrv: DashboardSrv,
     datasourceSrv: DatasourceSrv,
     private $scope: any,
-    private $rootScope: GrafanaRootScope
+    private $rootScope: any
   ) {
     this.exporter = new DashboardExporter(datasourceSrv);
 
@@ -63,7 +61,7 @@ export class DashExportCtrl {
       enableCopy: true,
     };
 
-    this.$rootScope.appEvent(CoreEvents.showModal, {
+    this.$rootScope.appEvent('show-modal', {
       src: 'public/app/partials/edit_json.html',
       model: model,
     });

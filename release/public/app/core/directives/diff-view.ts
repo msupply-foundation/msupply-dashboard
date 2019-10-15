@@ -1,16 +1,14 @@
 import angular from 'angular';
 import coreModule from '../core_module';
-import { GrafanaRootScope } from 'app/routes/GrafanaCtrl';
-import { CoreEvents } from 'app/types';
 
 export class DeltaCtrl {
   observer: any;
 
   /** @ngInject */
-  constructor(private $rootScope: GrafanaRootScope) {
+  constructor(private $rootScope: any) {
     const waitForCompile = (mutations: any) => {
       if (mutations.length === 1) {
-        this.$rootScope.appEvent(CoreEvents.jsonDiffReady);
+        this.$rootScope.appEvent('json-diff-ready');
       }
     };
 
@@ -44,7 +42,7 @@ coreModule.directive('diffDelta', delta);
 // Link to JSON line number
 export class LinkJSONCtrl {
   /** @ngInject */
-  constructor(private $scope: any, private $rootScope: GrafanaRootScope, private $anchorScroll: any) {}
+  constructor(private $scope: any, private $rootScope: any, private $anchorScroll: any) {}
 
   goToLine(line: number) {
     let unbind: () => void;

@@ -2,6 +2,7 @@
 import React, { ComponentClass } from 'react';
 import { hot } from 'react-hot-loader';
 import { css } from 'emotion';
+// @ts-ignore
 import { connect } from 'react-redux';
 import { AutoSizer } from 'react-virtualized';
 import memoizeOne from 'memoize-one';
@@ -67,6 +68,7 @@ interface ExploreProps {
   changeSize: typeof changeSize;
   datasourceError: string;
   datasourceInstance: DataSourceApi;
+  datasourceLoading: boolean | null;
   datasourceMissing: boolean;
   exploreId: ExploreId;
   initializeExplore: typeof initializeExplore;
@@ -89,7 +91,6 @@ interface ExploreProps {
   mode: ExploreMode;
   initialUI: ExploreUIState;
   isLive: boolean;
-  syncedTimes: boolean;
   updateTimeRange: typeof updateTimeRange;
   graphResult?: GraphSeriesXY[];
   loading?: boolean;
@@ -179,6 +180,7 @@ export class Explore extends React.PureComponent<ExploreProps> {
 
   onChangeTime = (rawRange: RawTimeRange) => {
     const { updateTimeRange, exploreId } = this.props;
+
     updateTimeRange({ exploreId, rawRange });
   };
 
@@ -218,7 +220,7 @@ export class Explore extends React.PureComponent<ExploreProps> {
   };
 
   onUpdateTimeRange = (absoluteRange: AbsoluteTimeRange) => {
-    const { exploreId, updateTimeRange } = this.props;
+    const { updateTimeRange, exploreId } = this.props;
     updateTimeRange({ exploreId, absoluteRange });
   };
 
@@ -250,6 +252,7 @@ export class Explore extends React.PureComponent<ExploreProps> {
       StartPage,
       datasourceInstance,
       datasourceError,
+      datasourceLoading,
       datasourceMissing,
       exploreId,
       showingStartPage,
@@ -263,7 +266,6 @@ export class Explore extends React.PureComponent<ExploreProps> {
       showingTable,
       timeZone,
       queryResponse,
-      syncedTimes,
     } = this.props;
     const exploreClass = split ? 'explore explore-split' : 'explore';
     const styles = getStyles();
@@ -271,14 +273,14 @@ export class Explore extends React.PureComponent<ExploreProps> {
     return (
       <div className={exploreClass} ref={this.getRef}>
         <ExploreToolbar exploreId={exploreId} onChangeTime={this.onChangeTime} />
+        {datasourceLoading ? <div className="explore-container">Loading datasource...</div> : null}
         {datasourceMissing ? this.renderEmptyState() : null}
 
         <FadeIn duration={datasourceError ? 150 : 5} in={datasourceError ? true : false}>
           <div className="explore-container">
             <Alert
               title={`Error connecting to datasource: ${datasourceError}`}
-              buttonText={'Reconnect'}
-              onButtonClick={this.onReconnect}
+              button={{ text: 'Reconnect', onClick: this.onReconnect }}
             />
           </div>
         </FadeIn>
@@ -327,7 +329,6 @@ export class Explore extends React.PureComponent<ExploreProps> {
                             <LogsContainer
                               width={width}
                               exploreId={exploreId}
-                              syncedTimes={syncedTimes}
                               onClickLabel={this.onClickLabel}
                               onStartScanning={this.onStartScanning}
                               onStopScanning={this.onStopScanning}
@@ -350,15 +351,16 @@ export class Explore extends React.PureComponent<ExploreProps> {
 const ensureQueriesMemoized = memoizeOne(ensureQueries);
 const getTimeRangeFromUrlMemoized = memoizeOne(getTimeRangeFromUrl);
 
-function mapStateToProps(state: StoreState, { exploreId }: ExploreProps): Partial<ExploreProps> {
+function mapStateToProps(state: StoreState, { exploreId }: ExploreProps) {
   const explore = state.explore;
-  const { split, syncedTimes } = explore;
+  const { split } = explore;
   const item: ExploreItemState = explore[exploreId];
   const timeZone = getTimeZone(state.user);
   const {
     StartPage,
     datasourceError,
     datasourceInstance,
+    datasourceLoading,
     datasourceMissing,
     initialized,
     showingStartPage,
@@ -404,6 +406,7 @@ function mapStateToProps(state: StoreState, { exploreId }: ExploreProps): Partia
     StartPage,
     datasourceError,
     datasourceInstance,
+    datasourceLoading,
     datasourceMissing,
     initialized,
     showingStartPage,
@@ -423,11 +426,10 @@ function mapStateToProps(state: StoreState, { exploreId }: ExploreProps): Partia
     absoluteRange,
     queryResponse,
     originPanelId,
-    syncedTimes,
   };
 }
 
-const mapDispatchToProps: Partial<ExploreProps> = {
+const mapDispatchToProps = {
   changeSize,
   initializeExplore,
   modifyQueries,
@@ -441,7 +443,6 @@ const mapDispatchToProps: Partial<ExploreProps> = {
 };
 
 export default hot(module)(
-  // @ts-ignore
   connect(
     mapStateToProps,
     mapDispatchToProps

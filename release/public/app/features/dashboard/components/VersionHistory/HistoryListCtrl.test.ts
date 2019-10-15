@@ -3,7 +3,6 @@ import { HistoryListCtrl } from './HistoryListCtrl';
 import { versions, compare, restore } from './__mocks__/history';
 // @ts-ignore
 import $q from 'q';
-import { CoreEvents } from 'app/types';
 
 describe('HistoryListCtrl', () => {
   const RESTORE_ID = 4;
@@ -119,9 +118,9 @@ describe('HistoryListCtrl', () => {
         historyListCtrl.resetFromSource = jest.fn();
       });
 
-      it('should listen for the `dashboardSaved` appEvent', () => {
+      it('should listen for the `dashboard-saved` appEvent', () => {
         expect($rootScope.onAppEvent).toHaveBeenCalledTimes(1);
-        expect($rootScope.onAppEvent.mock.calls[0][0]).toBe(CoreEvents.dashboardSaved);
+        expect($rootScope.onAppEvent.mock.calls[0][0]).toBe('dashboard-saved');
       });
 
       it('should call `onDashboardSaved` when the appEvent is received', () => {
@@ -293,7 +292,7 @@ describe('HistoryListCtrl', () => {
 
     it('should display a modal allowing the user to restore or cancel', () => {
       expect($rootScope.appEvent).toHaveBeenCalledTimes(1);
-      expect($rootScope.appEvent.mock.calls[0][0]).toBe(CoreEvents.showConfirmModal);
+      expect($rootScope.appEvent.mock.calls[0][0]).toBe('confirm-modal');
     });
 
     describe('and restore fails to fetch', () => {

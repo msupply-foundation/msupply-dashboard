@@ -1,7 +1,7 @@
 import { AnnotationsSrv } from '../annotations_srv';
 
 describe('AnnotationsSrv', () => {
-  const $rootScope: any = {
+  const $rootScope = {
     onAppEvent: jest.fn(),
   };
 

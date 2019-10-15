@@ -2,8 +2,6 @@ import _ from 'lodash';
 import { NavModelSrv } from 'app/core/core';
 import { ILocationService } from 'angular';
 import { BackendSrv } from '@grafana/runtime';
-import { GrafanaRootScope } from 'app/routes/GrafanaCtrl';
-import { CoreEvents } from 'app/types';
 
 export class SnapshotListCtrl {
   navModel: any;
@@ -11,7 +9,7 @@ export class SnapshotListCtrl {
 
   /** @ngInject */
   constructor(
-    private $rootScope: GrafanaRootScope,
+    private $rootScope: any,
     private backendSrv: BackendSrv,
     navModelSrv: NavModelSrv,
     private $location: ILocationService
@@ -37,7 +35,7 @@ export class SnapshotListCtrl {
   }
 
   removeSnapshot(snapshot: any) {
-    this.$rootScope.appEvent(CoreEvents.showConfirmModal, {
+    this.$rootScope.appEvent('confirm-modal', {
       title: 'Delete',
       text: 'Are you sure you want to delete snapshot ' + snapshot.name + '?',
       yesText: 'Delete',

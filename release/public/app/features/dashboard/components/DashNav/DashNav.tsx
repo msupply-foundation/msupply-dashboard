@@ -16,7 +16,7 @@ import { updateLocation } from 'app/core/actions';
 
 // Types
 import { DashboardModel } from '../../state';
-import { StoreState, CoreEvents } from 'app/types';
+import { StoreState } from 'app/types';
 
 export interface OwnProps {
   dashboard: DashboardModel;
@@ -43,11 +43,11 @@ export class DashNav extends PureComponent<Props> {
   }
 
   onDahboardNameClick = () => {
-    appEvents.emit(CoreEvents.showDashSearch);
+    appEvents.emit('show-dash-search');
   };
 
   onFolderNameClick = () => {
-    appEvents.emit(CoreEvents.showDashSearch, {
+    appEvents.emit('show-dash-search', {
       query: 'folder:current',
     });
   };
@@ -67,7 +67,7 @@ export class DashNav extends PureComponent<Props> {
   };
 
   onToggleTVMode = () => {
-    appEvents.emit(CoreEvents.toggleKioskMode);
+    appEvents.emit('toggle-kiosk-mode');
   };
 
   onSave = () => {
@@ -112,7 +112,7 @@ export class DashNav extends PureComponent<Props> {
     modalScope.tabIndex = 0;
     modalScope.dashboard = this.props.dashboard;
 
-    appEvents.emit(CoreEvents.showModal, {
+    appEvents.emit('show-modal', {
       src: 'public/app/features/dashboard/components/ShareModal/template.html',
       scope: modalScope,
     });

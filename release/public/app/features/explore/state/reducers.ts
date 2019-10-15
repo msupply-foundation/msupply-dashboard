@@ -11,7 +11,7 @@ import {
 } from 'app/core/utils/explore';
 import { ExploreItemState, ExploreState, ExploreId, ExploreUpdateState, ExploreMode } from 'app/types/explore';
 import { LoadingState, toLegacyResponseData, DefaultTimeRange } from '@grafana/data';
-import { DataQuery, DataSourceApi, PanelData, DataQueryRequest, RefreshPicker, PanelEvents } from '@grafana/ui';
+import { DataQuery, DataSourceApi, PanelData, DataQueryRequest } from '@grafana/ui';
 import {
   HigherOrderAction,
   ActionTypes,
@@ -59,6 +59,7 @@ import { reducerFactory, ActionOf } from 'app/core/redux';
 import { updateLocation } from 'app/core/actions/location';
 import { LocationUpdate } from '@grafana/runtime';
 import TableModel from 'app/core/table_model';
+import { isLive } from '@grafana/ui/src/components/RefreshPicker/RefreshPicker';
 import { ResultProcessor } from '../utils/ResultProcessor';
 
 export const DEFAULT_RANGE = {
@@ -129,7 +130,6 @@ export const createEmptyQueryResponse = (): PanelData => ({
 export const initialExploreItemState = makeExploreItemState();
 export const initialExploreState: ExploreState = {
   split: null,
-  syncedTimes: false,
   left: initialExploreItemState,
   right: initialExploreItemState,
 };
@@ -191,11 +191,11 @@ export const itemReducer = reducerFactory<ExploreItemState>({} as ExploreItemSta
     filter: changeRefreshIntervalAction,
     mapper: (state, action): ExploreItemState => {
       const { refreshInterval } = action.payload;
-      const live = RefreshPicker.isLive(refreshInterval);
+      const live = isLive(refreshInterval);
       const sortOrder = refreshIntervalToSortOrder(refreshInterval);
       const logsResult = sortLogsResult(state.logsResult, sortOrder);
 
-      if (RefreshPicker.isLive(state.refreshInterval) && !live) {
+      if (isLive(state.refreshInterval) && !live) {
         stopQueryState(state.querySubscription);
       }
 
@@ -600,7 +600,7 @@ export const processQueryResponse = (
     }
 
     // For Angular editors
-    state.eventBridge.emit(PanelEvents.dataError, error);
+    state.eventBridge.emit('data-error', error);
 
     return {
       ...state,
@@ -624,7 +624,7 @@ export const processQueryResponse = (
   if (state.datasourceInstance.components.QueryCtrl) {
     const legacy = series.map(v => toLegacyResponseData(v));
 
-    state.eventBridge.emit(PanelEvents.dataReceived, legacy);
+    state.eventBridge.emit('data-received', legacy);
   }
 
   return {
@@ -727,9 +727,6 @@ export const exploreReducer = (state = initialExploreState, action: HigherOrderA
 
     case ActionTypes.SplitOpen: {
       return { ...state, split: true, right: { ...action.payload.itemState } };
-    }
-    case ActionTypes.SyncTimes: {
-      return { ...state, syncedTimes: action.payload.syncedTimes };
     }
 
     case ActionTypes.ResetExplore: {

@@ -5,14 +5,11 @@ import appEvents from 'app/core/app_events';
 import { getExploreUrl } from 'app/core/utils/explore';
 import locationUtil from 'app/core/utils/location_util';
 import { store } from 'app/store/store';
-import { CoreEvents, AppEventEmitter } from 'app/types';
 
 import Mousetrap from 'mousetrap';
-import { PanelEvents } from '@grafana/ui';
 import 'mousetrap-global-bind';
 import { ContextSrv } from './context_srv';
-import { ILocationService, ITimeoutService, IRootScopeService } from 'angular';
-import { GrafanaRootScope } from 'app/routes/GrafanaCtrl';
+import { ILocationService, ITimeoutService } from 'angular';
 
 export class KeybindingSrv {
   helpModal: boolean;
@@ -21,7 +18,7 @@ export class KeybindingSrv {
 
   /** @ngInject */
   constructor(
-    private $rootScope: GrafanaRootScope,
+    private $rootScope: any,
     private $location: ILocationService,
     private $timeout: ITimeoutService,
     private datasourceSrv: any,
@@ -36,9 +33,9 @@ export class KeybindingSrv {
     });
 
     this.setupGlobal();
-    appEvents.on(CoreEvents.showModal, () => (this.modalOpen = true));
-    appEvents.on(CoreEvents.timepickerOpen, () => (this.timepickerOpen = true));
-    appEvents.on(CoreEvents.timepickerClosed, () => (this.timepickerOpen = false));
+    appEvents.on('show-modal', () => (this.modalOpen = true));
+    appEvents.on('timepickerOpen', () => (this.timepickerOpen = true));
+    appEvents.on('timepickerClosed', () => (this.timepickerOpen = false));
   }
 
   setupGlobal() {
@@ -81,7 +78,7 @@ export class KeybindingSrv {
   }
 
   openSearch() {
-    appEvents.emit(CoreEvents.showDashSearch);
+    appEvents.emit('show-dash-search');
   }
 
   openAlerting() {
@@ -97,11 +94,11 @@ export class KeybindingSrv {
   }
 
   showHelpModal() {
-    appEvents.emit(CoreEvents.showModal, { templateHtml: '<help-modal></help-modal>' });
+    appEvents.emit('show-modal', { templateHtml: '<help-modal></help-modal>' });
   }
 
   exit() {
-    appEvents.emit(CoreEvents.hideModal);
+    appEvents.emit('hide-modal');
 
     if (this.modalOpen) {
       this.modalOpen = false;
@@ -109,7 +106,7 @@ export class KeybindingSrv {
     }
 
     if (this.timepickerOpen) {
-      this.$rootScope.appEvent(CoreEvents.closeTimepicker);
+      this.$rootScope.appEvent('closeTimepicker');
       this.timepickerOpen = false;
       return;
     }
@@ -123,12 +120,12 @@ export class KeybindingSrv {
     }
 
     if (search.fullscreen) {
-      appEvents.emit(PanelEvents.panelChangeView, { fullscreen: false, edit: false });
+      appEvents.emit('panel-change-view', { fullscreen: false, edit: false });
       return;
     }
 
     if (search.kiosk) {
-      this.$rootScope.appEvent(CoreEvents.toggleKioskMode, { exit: true });
+      this.$rootScope.appEvent('toggle-kiosk-mode', { exit: true });
     }
   }
 
@@ -167,37 +164,37 @@ export class KeybindingSrv {
     this.$location.search(search);
   }
 
-  setupDashboardBindings(scope: IRootScopeService & AppEventEmitter, dashboard: any) {
+  setupDashboardBindings(scope: any, dashboard: any) {
     this.bind('mod+o', () => {
       dashboard.graphTooltip = (dashboard.graphTooltip + 1) % 3;
-      appEvents.emit(CoreEvents.graphHoverClear);
+      appEvents.emit('graph-hover-clear');
       dashboard.startRefresh();
     });
 
     this.bind('mod+s', () => {
-      scope.appEvent(CoreEvents.saveDashboard);
+      scope.appEvent('save-dashboard');
     });
 
     this.bind('t z', () => {
-      scope.appEvent(CoreEvents.zoomOut, 2);
+      scope.appEvent('zoom-out', 2);
     });
 
     this.bind('ctrl+z', () => {
-      scope.appEvent(CoreEvents.zoomOut, 2);
+      scope.appEvent('zoom-out', 2);
     });
 
     this.bind('t left', () => {
-      scope.appEvent(CoreEvents.shiftTime, -1);
+      scope.appEvent('shift-time', -1);
     });
 
     this.bind('t right', () => {
-      scope.appEvent(CoreEvents.shiftTime, 1);
+      scope.appEvent('shift-time', 1);
     });
 
     // edit panel
     this.bind('e', () => {
       if (dashboard.meta.focusPanelId && dashboard.meta.canEdit) {
-        appEvents.emit(PanelEvents.panelChangeView, {
+        appEvents.emit('panel-change-view', {
           fullscreen: true,
           edit: true,
           panelId: dashboard.meta.focusPanelId,
@@ -209,7 +206,7 @@ export class KeybindingSrv {
     // view panel
     this.bind('v', () => {
       if (dashboard.meta.focusPanelId) {
-        appEvents.emit(PanelEvents.panelChangeView, {
+        appEvents.emit('panel-change-view', {
           fullscreen: true,
           panelId: dashboard.meta.focusPanelId,
           toggle: true,
@@ -236,7 +233,7 @@ export class KeybindingSrv {
     // delete panel
     this.bind('p r', () => {
       if (dashboard.meta.focusPanelId && dashboard.meta.canEdit) {
-        appEvents.emit(CoreEvents.removePanel, dashboard.meta.focusPanelId);
+        appEvents.emit('remove-panel', dashboard.meta.focusPanelId);
         dashboard.meta.focusPanelId = 0;
       }
     });
@@ -252,12 +249,12 @@ export class KeybindingSrv {
     // share panel
     this.bind('p s', () => {
       if (dashboard.meta.focusPanelId) {
-        const shareScope: any = scope.$new();
+        const shareScope = scope.$new();
         const panelInfo = dashboard.getPanelInfoById(dashboard.meta.focusPanelId);
         shareScope.panel = panelInfo.panel;
         shareScope.dashboard = dashboard;
 
-        appEvents.emit(CoreEvents.showModal, {
+        appEvents.emit('show-modal', {
           src: 'public/app/features/dashboard/components/ShareModal/template.html',
           scope: shareScope,
         });
@@ -304,11 +301,11 @@ export class KeybindingSrv {
     });
 
     this.bind('d k', () => {
-      appEvents.emit(CoreEvents.toggleKioskMode);
+      appEvents.emit('toggle-kiosk-mode');
     });
 
     this.bind('d v', () => {
-      appEvents.emit(CoreEvents.toggleViewMode);
+      appEvents.emit('toggle-view-mode');
     });
 
     //Autofit panels
