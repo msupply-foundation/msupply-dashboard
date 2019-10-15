@@ -7,8 +7,6 @@ import _ from 'lodash';
 import * as queryDef from './query_def';
 import { QueryCtrl } from 'app/plugins/sdk';
 import { ElasticsearchAggregation } from './types';
-import { GrafanaRootScope } from 'app/routes/GrafanaCtrl';
-import { CoreEvents } from 'app/types';
 
 export class ElasticQueryCtrl extends QueryCtrl {
   static templateUrl = 'partials/query.editor.html';
@@ -17,12 +15,7 @@ export class ElasticQueryCtrl extends QueryCtrl {
   rawQueryOld: string;
 
   /** @ngInject */
-  constructor(
-    $scope: any,
-    $injector: auto.IInjectorService,
-    private $rootScope: GrafanaRootScope,
-    private uiSegmentSrv: any
-  ) {
+  constructor($scope: any, $injector: auto.IInjectorService, private $rootScope: any, private uiSegmentSrv: any) {
     super($scope, $injector);
 
     this.esVersion = this.datasource.esVersion;
@@ -57,7 +50,7 @@ export class ElasticQueryCtrl extends QueryCtrl {
     }
 
     this.rawQueryOld = newJson;
-    this.$rootScope.appEvent(CoreEvents.elasticQueryUpdated);
+    this.$rootScope.appEvent('elastic-query-updated');
   }
 
   getCollapsedText() {

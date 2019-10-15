@@ -3,9 +3,7 @@ import appEvents from 'app/core/app_events';
 import { store } from 'app/store/store';
 import locationUtil from 'app/core/utils/location_util';
 import { updateLocation } from 'app/core/actions';
-import { ITimeoutService, ILocationService, IWindowService } from 'angular';
-import { CoreEvents } from 'app/types';
-import { GrafanaRootScope } from 'app/routes/GrafanaCtrl';
+import { ITimeoutService, ILocationService, IWindowService, IRootScopeService } from 'angular';
 
 // Services that handles angular -> redux store sync & other react <-> angular sync
 export class BridgeSrv {
@@ -16,7 +14,7 @@ export class BridgeSrv {
     private $location: ILocationService,
     private $timeout: ITimeoutService,
     private $window: IWindowService,
-    private $rootScope: GrafanaRootScope,
+    private $rootScope: IRootScopeService,
     private $route: any
   ) {
     this.fullPageReloadRoutes = ['/logout'];
@@ -64,7 +62,7 @@ export class BridgeSrv {
       }
     });
 
-    appEvents.on(CoreEvents.locationChange, payload => {
+    appEvents.on('location-change', (payload: any) => {
       const urlWithoutBase = locationUtil.stripBaseFromUrl(payload.href);
       if (this.fullPageReloadRoutes.indexOf(urlWithoutBase) > -1) {
         this.$window.location.href = payload.href;

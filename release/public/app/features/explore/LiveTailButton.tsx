@@ -4,15 +4,15 @@ import { css } from 'emotion';
 import memoizeOne from 'memoize-one';
 import tinycolor from 'tinycolor2';
 import { CSSTransition } from 'react-transition-group';
-import { ResponsiveButton } from './ResponsiveButton';
 
-import { GrafanaTheme, useTheme, Tooltip } from '@grafana/ui';
+import { GrafanaTheme, GrafanaThemeType, useTheme } from '@grafana/ui';
 
 const getStyles = memoizeOne((theme: GrafanaTheme) => {
-  const orangeLighter = tinycolor(theme.colors.orangeDark)
+  const orange = theme.type === GrafanaThemeType.Dark ? '#FF780A' : '#ED5700';
+  const orangeLighter = tinycolor(orange)
     .lighten(10)
     .toString();
-  const pulseTextColor = tinycolor(theme.colors.orangeDark)
+  const pulseTextColor = tinycolor(orange)
     .desaturate(90)
     .toString();
 
@@ -28,12 +28,12 @@ const getStyles = memoizeOne((theme: GrafanaTheme) => {
     `,
     isLive: css`
       label: isLive;
-      border-color: ${theme.colors.orangeDark};
-      color: ${theme.colors.orangeDark};
+      border-color: ${orange};
+      color: ${orange};
       background: transparent;
       &:focus {
-        border-color: ${theme.colors.orangeDark};
-        color: ${theme.colors.orangeDark};
+        border-color: ${orange};
+        color: ${orange};
       }
       &:active,
       &:hover {
@@ -43,11 +43,11 @@ const getStyles = memoizeOne((theme: GrafanaTheme) => {
     `,
     isPaused: css`
       label: isPaused;
-      border-color: ${theme.colors.orangeDark};
+      border-color: ${orange};
       background: transparent;
       animation: pulse 3s ease-out 0s infinite normal forwards;
       &:focus {
-        border-color: ${theme.colors.orangeDark};
+        border-color: ${orange};
       }
       &:active,
       &:hover {
@@ -58,7 +58,7 @@ const getStyles = memoizeOne((theme: GrafanaTheme) => {
           color: ${pulseTextColor};
         }
         50% {
-          color: ${theme.colors.orangeDark};
+          color: ${orange};
         }
         100% {
           color: ${pulseTextColor};
@@ -92,12 +92,7 @@ const getStyles = memoizeOne((theme: GrafanaTheme) => {
   };
 });
 
-const defaultLiveTooltip = () => {
-  return <>Live</>;
-};
-
 type LiveTailButtonProps = {
-  splitted: boolean;
   start: () => void;
   stop: () => void;
   pause: () => void;
@@ -106,7 +101,7 @@ type LiveTailButtonProps = {
   isPaused: boolean;
 };
 export function LiveTailButton(props: LiveTailButtonProps) {
-  const { start, pause, resume, isLive, isPaused, stop, splitted } = props;
+  const { start, pause, resume, isLive, isPaused, stop } = props;
   const theme = useTheme();
   const styles = getStyles(theme);
 
@@ -114,19 +109,17 @@ export function LiveTailButton(props: LiveTailButtonProps) {
 
   return (
     <>
-      <Tooltip content={defaultLiveTooltip} placement="bottom">
-        <ResponsiveButton
-          splitted={splitted}
-          buttonClassName={classNames('btn navbar-button', styles.liveButton, {
-            [`btn--radius-right-0 ${styles.noRightBorderStyle}`]: isLive,
-            [styles.isLive]: isLive && !isPaused,
-            [styles.isPaused]: isLive && isPaused,
-          })}
-          iconClassName={classNames('fa', isPaused || !isLive ? 'fa-play' : 'fa-pause')}
-          onClick={onClickMain}
-          title={'\xa0Live'}
-        />
-      </Tooltip>
+      <button
+        className={classNames('btn navbar-button', styles.liveButton, {
+          [`btn--radius-right-0 ${styles.noRightBorderStyle}`]: isLive,
+          [styles.isLive]: isLive && !isPaused,
+          [styles.isPaused]: isLive && isPaused,
+        })}
+        onClick={onClickMain}
+      >
+        <i className={classNames('fa', isPaused || !isLive ? 'fa-play' : 'fa-pause')} />
+        &nbsp; Live tailing
+      </button>
       <CSSTransition
         mountOnEnter={true}
         unmountOnExit={true}

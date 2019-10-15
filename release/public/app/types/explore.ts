@@ -131,10 +131,6 @@ export interface ExploreState {
    */
   split: boolean;
   /**
-   * True if time interval for panels are synced. Only possible with split mode.
-   */
-  syncedTimes: boolean;
-  /**
    * Explore state of the left split (left is default in non-split view).
    */
   left: ExploreItemState;
@@ -309,7 +305,6 @@ export interface ExploreUrlState {
   range: RawTimeRange;
   ui: ExploreUIState;
   originPanelId?: number;
-  context?: string;
 }
 
 export interface HistoryItem<TQuery extends DataQuery = DataQuery> {

@@ -4,13 +4,12 @@ import { BackendSrv } from 'app/core/services/backend_srv';
 import { TimeSrv } from '../../services/TimeSrv';
 import { DashboardModel } from '../../state/DashboardModel';
 import { PanelModel } from '../../state/PanelModel';
-import { GrafanaRootScope } from 'app/routes/GrafanaCtrl';
 
 export class ShareSnapshotCtrl {
   /** @ngInject */
   constructor(
     $scope: any,
-    $rootScope: GrafanaRootScope,
+    $rootScope: any,
     $location: ILocationService,
     backendSrv: BackendSrv,
     $timeout: any,

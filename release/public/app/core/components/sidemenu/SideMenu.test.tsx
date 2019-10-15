@@ -2,7 +2,6 @@ import React from 'react';
 import { shallow } from 'enzyme';
 import { SideMenu } from './SideMenu';
 import appEvents from '../../app_events';
-import { CoreEvents } from 'app/types';
 
 jest.mock('../../app_events', () => ({
   emit: jest.fn(),
@@ -59,7 +58,7 @@ describe('Functions', () => {
     instance.toggleSideMenuSmallBreakpoint();
 
     it('should emit toggle sidemenu event', () => {
-      expect(appEvents.emit).toHaveBeenCalledWith(CoreEvents.toggleSidemenuMobile);
+      expect(appEvents.emit).toHaveBeenCalledWith('toggle-sidemenu-mobile');
     });
   });
 });

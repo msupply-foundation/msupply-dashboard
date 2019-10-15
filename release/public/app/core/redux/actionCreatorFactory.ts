@@ -1,6 +1,6 @@
 import { Action } from 'redux';
 
-const allActionCreators = new Set<string>();
+const allActionCreators: string[] = [];
 
 export interface ActionOf<Payload> extends Action {
   readonly type: string;
@@ -25,21 +25,33 @@ export interface NoPayloadActionCreatorFactory {
   create: () => NoPayloadActionCreator;
 }
 
-export function actionCreatorFactory<Payload extends undefined>(type: string): NoPayloadActionCreatorFactory;
-export function actionCreatorFactory<Payload>(type: string): ActionCreatorFactory<Payload>;
-export function actionCreatorFactory<Payload>(type: string): ActionCreatorFactory<Payload> {
-  const upperCaseType = type.toLocaleUpperCase();
-  if (allActionCreators.has(upperCaseType)) {
-    throw new Error(`An actionCreator with type '${type}' has already been defined.`);
-  }
-
-  allActionCreators.add(upperCaseType);
-
+export const actionCreatorFactory = <Payload>(type: string): ActionCreatorFactory<Payload> => {
   const create = (): ActionCreator<Payload> => {
     return Object.assign((payload: Payload): ActionOf<Payload> => ({ type, payload }), { type });
   };
+
+  if (allActionCreators.some(t => (t && type ? t.toLocaleUpperCase() === type.toLocaleUpperCase() : false))) {
+    throw new Error(`There is already an actionCreator defined with the type ${type}`);
+  }
+
+  allActionCreators.push(type);
+
   return { create };
-}
+};
+
+export const noPayloadActionCreatorFactory = (type: string): NoPayloadActionCreatorFactory => {
+  const create = (): NoPayloadActionCreator => {
+    return Object.assign((): ActionOf<undefined> => ({ type, payload: undefined }), { type });
+  };
+
+  if (allActionCreators.some(t => (t && type ? t.toLocaleUpperCase() === type.toLocaleUpperCase() : false))) {
+    throw new Error(`There is already an actionCreator defined with the type ${type}`);
+  }
+
+  allActionCreators.push(type);
+
+  return { create };
+};
 
 export interface NoPayloadActionCreatorMock extends NoPayloadActionCreator {
   calls: number;
@@ -61,4 +73,4 @@ export const mockActionCreator = (creator: ActionCreator<any>) => {
 };
 
 // Should only be used by tests
-export const resetAllActionCreatorTypes = () => allActionCreators.clear();
+export const resetAllActionCreatorTypes = () => (allActionCreators.length = 0);

@@ -1,7 +1,4 @@
 import { Emitter } from '../utils/emitter';
-import { eventFactory } from '@grafana/data';
-
-const testEvent = eventFactory('test');
 
 describe('Emitter', () => {
   describe('given 2 subscribers', () => {
@@ -10,14 +7,14 @@ describe('Emitter', () => {
       let sub1Called = false;
       let sub2Called = false;
 
-      events.on(testEvent, () => {
+      events.on('test', () => {
         sub1Called = true;
       });
-      events.on(testEvent, () => {
+      events.on('test', () => {
         sub2Called = true;
       });
 
-      events.emit(testEvent, null);
+      events.emit('test', null);
 
       expect(sub1Called).toBe(true);
       expect(sub2Called).toBe(true);
@@ -31,10 +28,10 @@ describe('Emitter', () => {
         sub1Called += 1;
       }
 
-      events.on(testEvent, handler);
-      events.on(testEvent, handler);
+      events.on('test', handler);
+      events.on('test', handler);
 
-      events.emit(testEvent, null);
+      events.emit('test', null);
 
       expect(sub1Called).toBe(2);
     });
@@ -44,20 +41,20 @@ describe('Emitter', () => {
       let sub1Called = 0;
       let sub2Called = 0;
 
-      events.on(testEvent, () => {
+      events.on('test', () => {
         sub1Called++;
         throw { message: 'hello' };
       });
 
-      events.on(testEvent, () => {
+      events.on('test', () => {
         sub2Called++;
       });
 
       try {
-        events.emit(testEvent, null);
+        events.emit('test', null);
       } catch (_) {}
       try {
-        events.emit(testEvent, null);
+        events.emit('test', null);
       } catch (_) {}
 
       expect(sub1Called).toBe(2);

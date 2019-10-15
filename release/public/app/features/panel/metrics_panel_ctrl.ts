@@ -6,12 +6,11 @@ import { PanelCtrl } from 'app/features/panel/panel_ctrl';
 import { getExploreUrl } from 'app/core/utils/explore';
 import { applyPanelTimeOverrides, getResolution } from 'app/features/dashboard/utils/panel';
 import { ContextSrv } from 'app/core/services/context_srv';
-import { toLegacyResponseData, toDataFrameDTO, TimeRange, LoadingState, DataFrame } from '@grafana/data';
+import { toLegacyResponseData, TimeRange, LoadingState, DataFrame, toDataFrameDTO } from '@grafana/data';
 
-import { LegacyResponseData, DataSourceApi, PanelData, DataQueryResponse, PanelEvents } from '@grafana/ui';
+import { LegacyResponseData, DataSourceApi, PanelData, DataQueryResponse } from '@grafana/ui';
 import { Unsubscribable } from 'rxjs';
 import { PanelModel } from 'app/features/dashboard/state';
-import { CoreEvents } from 'app/types';
 
 class MetricsPanelCtrl extends PanelCtrl {
   scope: any;
@@ -43,8 +42,8 @@ class MetricsPanelCtrl extends PanelCtrl {
     this.scope = $scope;
     this.panel.datasource = this.panel.datasource || null;
 
-    this.events.on(PanelEvents.refresh, this.onMetricsPanelRefresh.bind(this));
-    this.events.on(PanelEvents.panelTeardown, this.onPanelTearDown.bind(this));
+    this.events.on('refresh', this.onMetricsPanelRefresh.bind(this));
+    this.events.on('panel-teardown', this.onPanelTearDown.bind(this));
   }
 
   private onPanelTearDown() {
@@ -72,7 +71,7 @@ class MetricsPanelCtrl extends PanelCtrl {
       // Defer panel rendering till the next digest cycle.
       // For some reason snapshot panels don't init at this time, so this helps to avoid rendering issues.
       return this.$timeout(() => {
-        this.events.emit(PanelEvents.dataSnapshotLoad, data);
+        this.events.emit('data-snapshot-load', data);
       });
     }
 
@@ -112,7 +111,7 @@ class MetricsPanelCtrl extends PanelCtrl {
 
     console.log('Panel data error:', err);
     return this.$timeout(() => {
-      this.events.emit(PanelEvents.dataError, err);
+      this.events.emit('data-error', err);
     });
   }
 
@@ -215,7 +214,7 @@ class MetricsPanelCtrl extends PanelCtrl {
     }
 
     try {
-      this.events.emit(CoreEvents.dataFramesReceived, data);
+      this.events.emit('data-frames-received', data);
     } catch (err) {
       this.processDataError(err);
     }
@@ -234,7 +233,7 @@ class MetricsPanelCtrl extends PanelCtrl {
     }
 
     try {
-      this.events.emit(PanelEvents.dataReceived, result.data);
+      this.events.emit('data-received', result.data);
     } catch (err) {
       this.processDataError(err);
     }

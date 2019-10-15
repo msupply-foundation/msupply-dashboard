@@ -2,12 +2,10 @@ import coreModule from 'app/core/core_module';
 import _ from 'lodash';
 import * as queryDef from './query_def';
 import { IQService } from 'angular';
-import { GrafanaRootScope } from 'app/routes/GrafanaCtrl';
-import { CoreEvents } from 'app/types';
 
 export class ElasticBucketAggCtrl {
   /** @ngInject */
-  constructor($scope: any, uiSegmentSrv: any, $q: IQService, $rootScope: GrafanaRootScope) {
+  constructor($scope: any, uiSegmentSrv: any, $q: IQService, $rootScope: any) {
     const bucketAggs = $scope.target.bucketAggs;
 
     $scope.orderByOptions = [];
@@ -25,7 +23,7 @@ export class ElasticBucketAggCtrl {
     };
 
     $rootScope.onAppEvent(
-      CoreEvents.elasticQueryUpdated,
+      'elastic-query-updated',
       () => {
         $scope.validateModel();
       },

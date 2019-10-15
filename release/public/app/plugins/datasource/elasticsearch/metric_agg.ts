@@ -3,12 +3,10 @@ import _ from 'lodash';
 import * as queryDef from './query_def';
 import { ElasticsearchAggregation } from './types';
 import { IQService } from 'angular';
-import { GrafanaRootScope } from 'app/routes/GrafanaCtrl';
-import { CoreEvents } from 'app/types';
 
 export class ElasticMetricAggCtrl {
   /** @ngInject */
-  constructor($scope: any, uiSegmentSrv: any, $q: IQService, $rootScope: GrafanaRootScope) {
+  constructor($scope: any, uiSegmentSrv: any, $q: IQService, $rootScope: any) {
     const metricAggs: ElasticsearchAggregation[] = $scope.target.metrics;
     $scope.metricAggTypes = queryDef.getMetricAggTypes($scope.esVersion);
     $scope.extendedStats = queryDef.extendedStats;
@@ -26,7 +24,7 @@ export class ElasticMetricAggCtrl {
     };
 
     $rootScope.onAppEvent(
-      CoreEvents.elasticQueryUpdated,
+      'elastic-query-updated',
       () => {
         $scope.index = _.indexOf(metricAggs, $scope.agg);
         $scope.updatePipelineAggOptions();

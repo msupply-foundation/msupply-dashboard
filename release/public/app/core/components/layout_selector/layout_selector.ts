@@ -1,7 +1,5 @@
 import store from 'app/core/store';
 import coreModule from 'app/core/core_module';
-import { GrafanaRootScope } from 'app/routes/GrafanaCtrl';
-import { CoreEvents } from 'app/types';
 
 const template = `
 <div class="layout-selector">
@@ -18,20 +16,20 @@ export class LayoutSelectorCtrl {
   mode: string;
 
   /** @ngInject */
-  constructor(private $rootScope: GrafanaRootScope) {
+  constructor(private $rootScope: any) {
     this.mode = store.get('grafana.list.layout.mode') || 'grid';
   }
 
   listView() {
     this.mode = 'list';
     store.set('grafana.list.layout.mode', 'list');
-    this.$rootScope.appEvent(CoreEvents.layoutModeChanged, 'list');
+    this.$rootScope.appEvent('layout-mode-changed', 'list');
   }
 
   gridView() {
     this.mode = 'grid';
     store.set('grafana.list.layout.mode', 'grid');
-    this.$rootScope.appEvent(CoreEvents.layoutModeChanged, 'grid');
+    this.$rootScope.appEvent('layout-mode-changed', 'grid');
   }
 }
 
@@ -48,7 +46,7 @@ export function layoutSelector() {
 }
 
 /** @ngInject */
-export function layoutMode($rootScope: GrafanaRootScope) {
+export function layoutMode($rootScope: any) {
   return {
     restrict: 'A',
     scope: {},
@@ -58,7 +56,7 @@ export function layoutMode($rootScope: GrafanaRootScope) {
       elem.addClass(className);
 
       $rootScope.onAppEvent(
-        CoreEvents.layoutModeChanged,
+        'layout-mode-changed',
         (evt: any, newLayout: any) => {
           elem.removeClass(className);
           className = 'card-list-layout-' + newLayout;

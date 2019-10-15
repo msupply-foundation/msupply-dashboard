@@ -2,7 +2,6 @@ import React, { FormEvent } from 'react';
 import classNames from 'classnames';
 import appEvents from 'app/core/app_events';
 import { NavModel, NavModelItem, NavModelBreadcrumb } from '@grafana/data';
-import { CoreEvents } from 'app/types';
 
 export interface Props {
   model: NavModel;
@@ -16,7 +15,7 @@ const SelectNav = ({ main, customCss }: { main: NavModelItem; customCss: string 
   const gotoUrl = (evt: FormEvent) => {
     const element = evt.target as HTMLSelectElement;
     const url = element.options[element.selectedIndex].value;
-    appEvents.emit(CoreEvents.locationChange, { href: url });
+    appEvents.emit('location-change', { href: url });
   };
 
   return (

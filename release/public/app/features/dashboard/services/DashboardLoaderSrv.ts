@@ -4,13 +4,12 @@ import moment from 'moment';
 import _ from 'lodash';
 import $ from 'jquery';
 import kbn from 'app/core/utils/kbn';
-import { dateMath, AppEvents } from '@grafana/data';
+import { dateMath } from '@grafana/data';
 import impressionSrv from 'app/core/services/impression_srv';
 import { BackendSrv } from 'app/core/services/backend_srv';
 import { DashboardSrv } from './DashboardSrv';
 import DatasourceSrv from 'app/features/plugins/datasource_srv';
 import { UrlQueryValue } from '@grafana/runtime';
-import { GrafanaRootScope } from 'app/routes/GrafanaCtrl';
 
 export class DashboardLoaderSrv {
   /** @ngInject */
@@ -23,7 +22,7 @@ export class DashboardLoaderSrv {
     private $timeout: any,
     contextSrv: any,
     private $routeParams: any,
-    private $rootScope: GrafanaRootScope
+    private $rootScope: any
   ) {}
 
   _dashboardLoadFailed(title: string, snapshot?: boolean) {
@@ -55,7 +54,7 @@ export class DashboardLoaderSrv {
         .getDashboardByUid(uid)
         .then((result: any) => {
           if (result.meta.isFolder) {
-            this.$rootScope.appEvent(AppEvents.alertError, ['Dashboard not found']);
+            this.$rootScope.appEvent('alert-error', ['Dashboard not found']);
             throw new Error('Dashboard not found');
           }
           return result;
@@ -95,7 +94,7 @@ export class DashboardLoaderSrv {
         },
         (err: any) => {
           console.log('Script dashboard error ' + err);
-          this.$rootScope.appEvent(AppEvents.alertError, [
+          this.$rootScope.appEvent('alert-error', [
             'Script Error',
             'Please make sure it exists and returns a valid dashboard',
           ]);

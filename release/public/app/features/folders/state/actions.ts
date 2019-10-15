@@ -13,7 +13,6 @@ import {
 import { updateNavIndex, updateLocation } from 'app/core/actions';
 import { buildNavModel } from './navModel';
 import appEvents from 'app/core/app_events';
-import { AppEvents } from '@grafana/data';
 
 export enum ActionTypes {
   LoadFolder = 'LOAD_FOLDER',
@@ -72,7 +71,7 @@ export function saveFolder(folder: FolderState): ThunkResult<void> {
     });
 
     // this should be redux action at some point
-    appEvents.emit(AppEvents.alertSuccess, ['Folder saved']);
+    appEvents.emit('alert-success', ['Folder saved']);
 
     dispatch(updateLocation({ path: `${res.url}/settings` }));
   };

@@ -92,7 +92,7 @@ export class PromQueryEditor extends PureComponent<Props, State> {
   };
 
   render() {
-    const { datasource, query, data } = this.props;
+    const { datasource, query, panelData, queryResponse } = this.props;
     const { formatOption, instant, interval, intervalFactorOption, legendFormat } = this.state;
 
     return (
@@ -103,7 +103,8 @@ export class PromQueryEditor extends PureComponent<Props, State> {
           onRunQuery={this.onRunQuery}
           onChange={this.onFieldChange}
           history={[]}
-          data={data}
+          panelData={panelData}
+          queryResponse={queryResponse}
           datasourceStatus={DataSourceStatus.Connected} // TODO: replace with real DataSourceStatus
         />
 
@@ -164,7 +165,7 @@ export class PromQueryEditor extends PureComponent<Props, State> {
               <PromLink
                 datasource={datasource}
                 query={this.query} // Use modified query
-                panelData={data}
+                panelData={panelData}
               />
             </FormLabel>
           </div>
