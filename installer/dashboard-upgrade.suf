@@ -6,9 +6,9 @@
 <ArchiveFiles>
 <FileData>
 <FldRef>1</FldRef>
-<FullName>C:\grafana\*.*</FullName>
+<FullName>C:\Users\Administrator\Documents\msupply-dashboard\release\*.*</FullName>
 <FileName>*.*</FileName>
-<Source>C:\grafana</Source>
+<Source>C:\Users\Administrator\Documents\msupply-dashboard\release</Source>
 <Ext>*</Ext>
 <RTSource>Archive</RTSource>
 <Desc/>
@@ -79,9 +79,9 @@
 </FileData>
 <FileData>
 <FldRef>1</FldRef>
-<FullName>C:\grafana\bin\*.*</FullName>
+<FullName>C:\Users\Administrator\Documents\msupply-dashboard\release\bin\*.*</FullName>
 <FileName>*.*</FileName>
-<Source>C:\grafana\bin</Source>
+<Source>C:\Users\Administrator\Documents\msupply-dashboard\release\bin</Source>
 <Ext>*</Ext>
 <RTSource>Archive</RTSource>
 <Desc/>
@@ -152,9 +152,9 @@
 </FileData>
 <FileData>
 <FldRef>1</FldRef>
-<FullName>C:\grafana\public\*.*</FullName>
+<FullName>C:\Users\Administrator\Documents\msupply-dashboard\release\public\*.*</FullName>
 <FileName>*.*</FileName>
-<Source>C:\grafana\public</Source>
+<Source>C:\Users\Administrator\Documents\msupply-dashboard\release\public</Source>
 <Ext>*</Ext>
 <RTSource>Archive</RTSource>
 <Desc/>
@@ -225,9 +225,9 @@
 </FileData>
 <FileData>
 <FldRef>1</FldRef>
-<FullName>C:\grafana\scripts\*.*</FullName>
+<FullName>C:\Users\Administrator\Documents\msupply-dashboard\release\scripts\*.*</FullName>
 <FileName>*.*</FileName>
-<Source>C:\grafana\scripts</Source>
+<Source>C:\Users\Administrator\Documents\msupply-dashboard\release\scripts</Source>
 <Ext>*</Ext>
 <RTSource>Archive</RTSource>
 <Desc/>
@@ -298,9 +298,9 @@
 </FileData>
 <FileData>
 <FldRef>1</FldRef>
-<FullName>C:\grafana\tools\*.*</FullName>
+<FullName>C:\Users\Administrator\Documents\msupply-dashboard\release\tools\*.*</FullName>
 <FileName>*.*</FileName>
-<Source>C:\grafana\tools</Source>
+<Source>C:\Users\Administrator\Documents\msupply-dashboard\release\tools</Source>
 <Ext>*</Ext>
 <RTSource>Archive</RTSource>
 <Desc/>
@@ -371,9 +371,9 @@
 </FileData>
 <FileData>
 <FldRef>1</FldRef>
-<FullName>C:\grafana\data\plugins\*.*</FullName>
+<FullName>C:\Users\Administrator\Documents\msupply-dashboard\release\data\plugins\*.*</FullName>
 <FileName>*.*</FileName>
-<Source>C:\grafana\data\plugins</Source>
+<Source>C:\Users\Administrator\Documents\msupply-dashboard\release\data\plugins</Source>
 <Ext>*</Ext>
 <RTSource>Archive</RTSource>
 <Desc/>
@@ -3140,7 +3140,7 @@ g_HandleSystemReboot();
 </SessionVar>
 <SessionVar>
 <Name>%ProductVer%</Name>
-<Value>6.2.2.1</Value>
+<Value>6.4.2.1</Value>
 <Type>1</Type>
 </SessionVar>
 <SessionVar>
@@ -3183,8 +3183,8 @@ g_HandleSystemReboot();
 <PostBuildProg/>
 <PostBuildCmdLine/>
 <PostBuildWait>0</PostBuildWait>
-<Filename>dashboard-upgrade-6.2.2.1.exe</Filename>
-<OutputFolder>C:\Users\Administrator\Documents\dashboard installer</OutputFolder>
+<Filename>dashboard-upgrade-6.4.2.1.exe</Filename>
+<OutputFolder>C:\Users\Administrator\Documents\msupply-dashboard\installer</OutputFolder>
 <SegmentSizeMode>0</SegmentSizeMode>
 <CustomSegSize>0</CustomSegSize>
 <CustomSegSizeMode>0</CustomSegSizeMode>

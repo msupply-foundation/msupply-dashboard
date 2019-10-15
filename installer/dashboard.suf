@@ -6,9 +6,9 @@
 <ArchiveFiles>
 <FileData>
 <FldRef>1</FldRef>
-<FullName/>
+<FullName>C:\Users\Administrator\Documents\msupply-dashboard\release\*.*</FullName>
 <FileName>*.*</FileName>
-<Source>C:\grafana</Source>
+<Source>C:\Users\Administrator\Documents\msupply-dashboard\release</Source>
 <Ext>*</Ext>
 <RTSource>Archive</RTSource>
 <Desc/>
@@ -3873,7 +3873,7 @@ g_HandleSystemReboot();
 </SessionVar>
 <SessionVar>
 <Name>%ProductVer%</Name>
-<Value>6.2.2.1</Value>
+<Value>6.4.2.1</Value>
 <Type>1</Type>
 </SessionVar>
 <SessionVar>
@@ -3941,8 +3941,8 @@ g_HandleSystemReboot();
 <PostBuildProg/>
 <PostBuildCmdLine/>
 <PostBuildWait>0</PostBuildWait>
-<Filename>dashboard-setup-6.2.2.1.exe</Filename>
-<OutputFolder>C:\Users\Administrator\Documents\dashboard installer</OutputFolder>
+<Filename>dashboard-setup-6.4.2.1.exe</Filename>
+<OutputFolder>C:\Users\Administrator\Documents\msupply-dashboard\installer</OutputFolder>
 <SegmentSizeMode>0</SegmentSizeMode>
 <CustomSegSize>0</CustomSegSize>
 <CustomSegSizeMode>0</CustomSegSizeMode>
