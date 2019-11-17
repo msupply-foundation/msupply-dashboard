@@ -4,12 +4,12 @@
   "description": "",
   "fontSize": "100%",
   "gridPos": {
-    "h": 10,
+    "h": 20,
     "w": 24,
     "x": 0,
     "y": 0
   },
-  "id": 2,
+  "id": 4,
   "links": [],
   "options": {},
   "pageSize": null,
@@ -73,13 +73,13 @@
       "colorMode": "cell",
       "colors": ["rgba(245, 54, 54, 0.9)", "rgba(237, 129, 40, 0.89)", "rgba(50, 172, 45, 0.97)"],
       "dateFormat": "YYYY-MM-DD HH:mm:ss",
-      "decimals": 2,
+      "decimals": 0,
       "link": false,
       "mappingType": 1,
-      "pattern": "/CIs .*/",
+      "pattern": "CIs in last month",
       "thresholds": ["0.21", "0.41"],
       "type": "number",
-      "unit": "short",
+      "unit": "percentunit",
       "valueMaps": []
     },
     {
@@ -99,7 +99,7 @@
       "group": [],
       "metricColumn": "none",
       "rawQuery": true,
-      "rawSql": "with records as \n(\n  select json_array_elements(json::json#>'{data,rows}') as data_array \n  from dashboard_report \n  where method_code like 'dashboardSyncSiteStatistics%' \n), \nheaders as \n( \n  select json_array_elements(json::json#>'{data,header}') as export_date \n  from dashboard_report \n  where method_code like 'dashboardSyncSiteStatistics%' \n), result as\n(\n  select data_array ->> 0 as \"Store\", \n    cast(data_array ->> 1 as int) as \"Days since last SYNC\", \n    cast(data_array ->> 2 as int) as \"# of Unfinalised Supplier Invoices\", \n    cast(data_array ->> 3 as int) as \"Days since Stocktake\", \n    cast(data_array ->> 4 as int) as \"Days since Requisition\", \n    (regexp_split_to_array(data_array ->> 5, '/'))[1]::real / (regexp_split_to_array(data_array ->> 5, '/'))[2]::real as \"CIs per day\", \n    --data_array ->> 5 as \"CIs (entry days/working days)\", \n    (select replace(cast(export_date as varchar), '\"', '') from headers limit 1) as \"Export Date\" \n  from records \n) \nselect * from result where \"Store\" in ($Sites)\n",
+      "rawSql": "with days as\n(\n    select dd, extract(DOW from dd) dw\n    from generate_series(current_date-interval '1 month', current_date, '1 day'::interval) dd\n), variables as\n(\n\tselect count(*)::real as weekday_count from days where dw not in (6,0)\n)\nselect max(s.name) as \"Store\",\n\tcurrent_date-max(sd.last_sync) as \"Days since last SYNC\",\n\tcount(distinct(si.id)) as \"# of Unfinalised Supplier Invoices\",\n\tcurrent_date-max(st.stock_take_date) \"Days since Stocktake\",\n\t--count(distinct(st.id)) as \"stocktakeCount\",\n\tcurrent_date-max(r.date_entered) \"Days since Requisition\",\n\t--count(distinct(r.id)) as \"requisitionCount\",\n\tcount(distinct(ci.entry_date)) / (select weekday_count from variables) as \"CIs in last month\"\nfrom store s \n  --left outer join sync_dates as sd on s.id=sd.store_id\n\tleft outer join transact as si \n\t\ton si.store_ID = s.ID \n\t\tand si.status <> 'fn' and si.type = 'si'\n\t\tand si.linked_transaction_id <> ''\n\t\tand si.entry_date >= current_date - interval '50 days'\n\tleft outer join stock_take st\n\t\ton s.id = st.store_id \n\t\tand st.status = 'fn'\n\t\tand st.stock_take_date >= current_date - interval '50 days'\n\tleft outer join requisition r\n\t\ton r.store_ID = s.ID\n\t\tand r.status = 'fn'\n\t\tand r.date_entered >= current_date - interval '50 days'\n\tleft outer join transact as ci \n\t\ton ci.store_ID = s.ID \n\t\tand ci.type = 'ci'\n\t\tand ci.entry_date >= current_date - interval '1 month'\nwhere s.sync_id_remote_site > 1\ngroup by s.id\n",
       "refId": "A",
       "select": [
         [
@@ -121,7 +121,7 @@
   ],
   "timeFrom": null,
   "timeShift": null,
-  "title": "State of synchronisation by site",
+  "title": "Etat de Synchro par Site",
   "transform": "table",
   "type": "table"
 }
