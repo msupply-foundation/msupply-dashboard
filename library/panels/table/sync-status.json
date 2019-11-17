@@ -1,0 +1,127 @@
+{
+  "datasource": null,
+  "columns": [],
+  "description": "",
+  "fontSize": "100%",
+  "gridPos": {
+    "h": 10,
+    "w": 24,
+    "x": 0,
+    "y": 0
+  },
+  "id": 2,
+  "links": [],
+  "options": {},
+  "pageSize": null,
+  "scroll": true,
+  "showHeader": true,
+  "sort": {
+    "col": 0,
+    "desc": false
+  },
+  "styles": [
+    {
+      "alias": "",
+      "colorMode": "cell",
+      "colors": ["rgba(50, 172, 45, 0.97)", "rgba(237, 129, 40, 0.89)", "rgba(245, 54, 54, 0.9)"],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 0,
+      "mappingType": 1,
+      "pattern": "Days since last SYNC",
+      "thresholds": ["6", "11"],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "",
+      "colorMode": "cell",
+      "colors": ["rgba(50, 172, 45, 0.97)", "rgba(237, 129, 40, 0.89)", "rgba(245, 54, 54, 0.9)"],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 0,
+      "mappingType": 1,
+      "pattern": "# of Unfinalised Supplier Invoices",
+      "thresholds": ["1", "6"],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "",
+      "colorMode": "cell",
+      "colors": ["rgba(50, 172, 45, 0.97)", "rgba(237, 129, 40, 0.89)", "rgba(245, 54, 54, 0.9)"],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 0,
+      "mappingType": 1,
+      "pattern": "Days since Stocktake",
+      "thresholds": ["31", "51"],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "",
+      "colorMode": "cell",
+      "colors": ["rgba(50, 172, 45, 0.97)", "rgba(237, 129, 40, 0.89)", "rgba(245, 54, 54, 0.9)"],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 0,
+      "mappingType": 1,
+      "pattern": "Days since Requisition",
+      "thresholds": ["31", "51"],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "",
+      "colorMode": "cell",
+      "colors": ["rgba(245, 54, 54, 0.9)", "rgba(237, 129, 40, 0.89)", "rgba(50, 172, 45, 0.97)"],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "link": false,
+      "mappingType": 1,
+      "pattern": "/CIs .*/",
+      "thresholds": ["0.21", "0.41"],
+      "type": "number",
+      "unit": "short",
+      "valueMaps": []
+    },
+    {
+      "alias": "",
+      "colorMode": null,
+      "colors": ["rgba(245, 54, 54, 0.9)", "rgba(237, 129, 40, 0.89)", "rgba(50, 172, 45, 0.97)"],
+      "decimals": 2,
+      "pattern": "/.*/",
+      "thresholds": [],
+      "type": "number",
+      "unit": "short"
+    }
+  ],
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "with records as \n(\n  select json_array_elements(json::json#>'{data,rows}') as data_array \n  from dashboard_report \n  where method_code like 'dashboardSyncSiteStatistics%' \n), \nheaders as \n( \n  select json_array_elements(json::json#>'{data,header}') as export_date \n  from dashboard_report \n  where method_code like 'dashboardSyncSiteStatistics%' \n), result as\n(\n  select data_array ->> 0 as \"Store\", \n    cast(data_array ->> 1 as int) as \"Days since last SYNC\", \n    cast(data_array ->> 2 as int) as \"# of Unfinalised Supplier Invoices\", \n    cast(data_array ->> 3 as int) as \"Days since Stocktake\", \n    cast(data_array ->> 4 as int) as \"Days since Requisition\", \n    (regexp_split_to_array(data_array ->> 5, '/'))[1]::real / (regexp_split_to_array(data_array ->> 5, '/'))[2]::real as \"CIs per day\", \n    --data_array ->> 5 as \"CIs (entry days/working days)\", \n    (select replace(cast(export_date as varchar), '\"', '') from headers limit 1) as \"Export Date\" \n  from records \n) \nselect * from result where \"Store\" in ($Sites)\n",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": ["value"],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "timeFrom": null,
+  "timeShift": null,
+  "title": "State of synchronisation by site",
+  "transform": "table",
+  "type": "table"
+}
