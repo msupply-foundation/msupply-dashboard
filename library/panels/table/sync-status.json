@@ -1,0 +1,127 @@
+{
+  "datasource": null,
+  "columns": [],
+  "description": "",
+  "fontSize": "100%",
+  "gridPos": {
+    "h": 20,
+    "w": 24,
+    "x": 0,
+    "y": 0
+  },
+  "id": 4,
+  "links": [],
+  "options": {},
+  "pageSize": null,
+  "scroll": true,
+  "showHeader": true,
+  "sort": {
+    "col": 0,
+    "desc": false
+  },
+  "styles": [
+    {
+      "alias": "",
+      "colorMode": "cell",
+      "colors": ["rgba(50, 172, 45, 0.97)", "rgba(237, 129, 40, 0.89)", "rgba(245, 54, 54, 0.9)"],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 0,
+      "mappingType": 1,
+      "pattern": "Days since last SYNC",
+      "thresholds": ["6", "11"],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "",
+      "colorMode": "cell",
+      "colors": ["rgba(50, 172, 45, 0.97)", "rgba(237, 129, 40, 0.89)", "rgba(245, 54, 54, 0.9)"],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 0,
+      "mappingType": 1,
+      "pattern": "# of Unfinalised Supplier Invoices",
+      "thresholds": ["1", "6"],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "",
+      "colorMode": "cell",
+      "colors": ["rgba(50, 172, 45, 0.97)", "rgba(237, 129, 40, 0.89)", "rgba(245, 54, 54, 0.9)"],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 0,
+      "mappingType": 1,
+      "pattern": "Days since Stocktake",
+      "thresholds": ["31", "51"],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "",
+      "colorMode": "cell",
+      "colors": ["rgba(50, 172, 45, 0.97)", "rgba(237, 129, 40, 0.89)", "rgba(245, 54, 54, 0.9)"],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 0,
+      "mappingType": 1,
+      "pattern": "Days since Requisition",
+      "thresholds": ["31", "51"],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "",
+      "colorMode": "cell",
+      "colors": ["rgba(245, 54, 54, 0.9)", "rgba(237, 129, 40, 0.89)", "rgba(50, 172, 45, 0.97)"],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 0,
+      "link": false,
+      "mappingType": 1,
+      "pattern": "CIs in last month",
+      "thresholds": ["0.21", "0.41"],
+      "type": "number",
+      "unit": "percentunit",
+      "valueMaps": []
+    },
+    {
+      "alias": "",
+      "colorMode": null,
+      "colors": ["rgba(245, 54, 54, 0.9)", "rgba(237, 129, 40, 0.89)", "rgba(50, 172, 45, 0.97)"],
+      "decimals": 2,
+      "pattern": "/.*/",
+      "thresholds": [],
+      "type": "number",
+      "unit": "short"
+    }
+  ],
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "with days as\n(\n    select dd, extract(DOW from dd) dw\n    from generate_series(current_date-interval '1 month', current_date, '1 day'::interval) dd\n), variables as\n(\n\tselect count(*)::real as weekday_count from days where dw not in (6,0)\n)\nselect max(s.name) as \"Store\",\n\tcurrent_date-max(sd.last_sync) as \"Days since last SYNC\",\n\tcount(distinct(si.id)) as \"# of Unfinalised Supplier Invoices\",\n\tcurrent_date-max(st.stock_take_date) \"Days since Stocktake\",\n\t--count(distinct(st.id)) as \"stocktakeCount\",\n\tcurrent_date-max(r.date_entered) \"Days since Requisition\",\n\t--count(distinct(r.id)) as \"requisitionCount\",\n\tcount(distinct(ci.entry_date)) / (select weekday_count from variables) as \"CIs in last month\"\nfrom store s \n  --left outer join sync_dates as sd on s.id=sd.store_id\n\tleft outer join transact as si \n\t\ton si.store_ID = s.ID \n\t\tand si.status <> 'fn' and si.type = 'si'\n\t\tand si.linked_transaction_id <> ''\n\t\tand si.entry_date >= current_date - interval '50 days'\n\tleft outer join stock_take st\n\t\ton s.id = st.store_id \n\t\tand st.status = 'fn'\n\t\tand st.stock_take_date >= current_date - interval '50 days'\n\tleft outer join requisition r\n\t\ton r.store_ID = s.ID\n\t\tand r.status = 'fn'\n\t\tand r.date_entered >= current_date - interval '50 days'\n\tleft outer join transact as ci \n\t\ton ci.store_ID = s.ID \n\t\tand ci.type = 'ci'\n\t\tand ci.entry_date >= current_date - interval '1 month'\nwhere s.sync_id_remote_site > 1\ngroup by s.id\n",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": ["value"],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "timeFrom": null,
+  "timeShift": null,
+  "title": "Etat de Synchro par Site",
+  "transform": "table",
+  "type": "table"
+}
