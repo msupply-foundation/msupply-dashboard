@@ -1,107 +1,226 @@
-import React from 'react';
-import Highlighter from 'react-highlight-words';
+import React, { createRef } from 'react';
+import ReactDOM from 'react-dom';
+import _ from 'lodash';
+import { FixedSizeList } from 'react-window';
 
-import { CompletionItem, CompletionItemGroup } from 'app/types/explore';
+import { Themeable, withTheme } from '@grafana/ui';
 
-function scrollIntoView(el: HTMLElement) {
-  if (!el || !el.offsetParent) {
-    return;
-  }
-  const container = el.offsetParent as HTMLElement;
-  if (el.offsetTop > container.scrollTop + container.offsetHeight || el.offsetTop < container.scrollTop) {
-    container.scrollTop = el.offsetTop - container.offsetTop;
-  }
-}
+import { CompletionItem, CompletionItemKind, CompletionItemGroup } from 'app/types/explore';
+import { TypeaheadItem } from './TypeaheadItem';
+import { TypeaheadInfo } from './TypeaheadInfo';
+import { flattenGroupItems, calculateLongestLabel, calculateListSizes } from './utils/typeahead';
 
-interface TypeaheadItemProps {
-  isSelected: boolean;
-  item: CompletionItem;
-  onClickItem: (Suggestion) => void;
-  prefix?: string;
-}
+const modulo = (a: number, n: number) => a - n * Math.floor(a / n);
 
-class TypeaheadItem extends React.PureComponent<TypeaheadItemProps> {
-  el: HTMLElement;
-
-  componentDidUpdate(prevProps) {
-    if (this.props.isSelected && !prevProps.isSelected) {
-      requestAnimationFrame(() => {
-        scrollIntoView(this.el);
-      });
-    }
-  }
-
-  getRef = el => {
-    this.el = el;
-  };
-
-  onClick = () => {
-    this.props.onClickItem(this.props.item);
-  };
-
-  render() {
-    const { isSelected, item, prefix } = this.props;
-    const className = isSelected ? 'typeahead-item typeahead-item__selected' : 'typeahead-item';
-    const label = item.label || '';
-    return (
-      <li ref={this.getRef} className={className} onClick={this.onClick}>
-        <Highlighter textToHighlight={label} searchWords={[prefix]} highlightClassName="typeahead-match" />
-        {item.documentation && isSelected ? <div className="typeahead-item-hint">{item.documentation}</div> : null}
-      </li>
-    );
-  }
-}
-
-interface TypeaheadGroupProps {
-  items: CompletionItem[];
-  label: string;
-  onClickItem: (suggestion: CompletionItem) => void;
-  selected: CompletionItem;
-  prefix?: string;
-}
-
-class TypeaheadGroup extends React.PureComponent<TypeaheadGroupProps> {
-  render() {
-    const { items, label, selected, onClickItem, prefix } = this.props;
-    return (
-      <li className="typeahead-group">
-        <div className="typeahead-group__title">{label}</div>
-        <ul className="typeahead-group__list">
-          {items.map(item => {
-            return (
-              <TypeaheadItem
-                key={item.label}
-                onClickItem={onClickItem}
-                isSelected={selected === item}
-                item={item}
-                prefix={prefix}
-              />
-            );
-          })}
-        </ul>
-      </li>
-    );
-  }
-}
-
-interface TypeaheadProps {
+interface Props extends Themeable {
+  origin: string;
   groupedItems: CompletionItemGroup[];
-  menuRef: any;
-  selectedItem: CompletionItem | null;
-  onClickItem: (Suggestion) => void;
   prefix?: string;
+  menuRef?: (el: Typeahead) => void;
+  onSelectSuggestion?: (suggestion: CompletionItem) => void;
+  isOpen?: boolean;
 }
-class Typeahead extends React.PureComponent<TypeaheadProps> {
+
+interface State {
+  allItems: CompletionItem[];
+  listWidth: number;
+  listHeight: number;
+  itemHeight: number;
+  hoveredItem: number;
+  typeaheadIndex: number;
+}
+
+export class Typeahead extends React.PureComponent<Props, State> {
+  listRef = createRef<FixedSizeList>();
+
+  constructor(props: Props) {
+    super(props);
+
+    const allItems = flattenGroupItems(props.groupedItems);
+    const longestLabel = calculateLongestLabel(allItems);
+    const { listWidth, listHeight, itemHeight } = calculateListSizes(props.theme, allItems, longestLabel);
+    this.state = { listWidth, listHeight, itemHeight, hoveredItem: null, typeaheadIndex: 1, allItems };
+  }
+
+  componentDidMount = () => {
+    this.props.menuRef(this);
+
+    document.addEventListener('selectionchange', this.handleSelectionChange);
+  };
+
+  componentWillUnmount = () => {
+    document.removeEventListener('selectionchange', this.handleSelectionChange);
+  };
+
+  handleSelectionChange = () => {
+    this.forceUpdate();
+  };
+
+  componentDidUpdate = (prevProps: Readonly<Props>, prevState: Readonly<State>) => {
+    if (prevState.typeaheadIndex !== this.state.typeaheadIndex && this.listRef && this.listRef.current) {
+      if (this.state.typeaheadIndex === 1) {
+        this.listRef.current.scrollToItem(0); // special case for handling the first group label
+        return;
+      }
+      this.listRef.current.scrollToItem(this.state.typeaheadIndex);
+    }
+
+    if (_.isEqual(prevProps.groupedItems, this.props.groupedItems) === false) {
+      const allItems = flattenGroupItems(this.props.groupedItems);
+      const longestLabel = calculateLongestLabel(allItems);
+      const { listWidth, listHeight, itemHeight } = calculateListSizes(this.props.theme, allItems, longestLabel);
+      this.setState({ listWidth, listHeight, itemHeight, allItems });
+    }
+  };
+
+  onMouseEnter = (index: number) => {
+    this.setState({
+      hoveredItem: index,
+    });
+  };
+
+  onMouseLeave = () => {
+    this.setState({
+      hoveredItem: null,
+    });
+  };
+
+  moveMenuIndex = (moveAmount: number) => {
+    const itemCount = this.state.allItems.length;
+    if (itemCount) {
+      // Select next suggestion
+      event.preventDefault();
+      let newTypeaheadIndex = modulo(this.state.typeaheadIndex + moveAmount, itemCount);
+
+      if (this.state.allItems[newTypeaheadIndex].kind === CompletionItemKind.GroupTitle) {
+        newTypeaheadIndex = modulo(newTypeaheadIndex + moveAmount, itemCount);
+      }
+
+      this.setState({
+        typeaheadIndex: newTypeaheadIndex,
+      });
+
+      return;
+    }
+  };
+
+  insertSuggestion = () => {
+    this.props.onSelectSuggestion(this.state.allItems[this.state.typeaheadIndex]);
+  };
+
+  get menuPosition(): string {
+    // Exit for unit tests
+    if (!window.getSelection) {
+      return '';
+    }
+
+    const selection = window.getSelection();
+    const node = selection.anchorNode;
+
+    // Align menu overlay to editor node
+    if (node) {
+      // Read from DOM
+      const rect = node.parentElement.getBoundingClientRect();
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
+
+      return `position: absolute; display: flex; top: ${rect.top + scrollY + rect.height + 6}px; left: ${rect.left +
+        scrollX -
+        2}px`;
+    }
+
+    return '';
+  }
+
   render() {
-    const { groupedItems, menuRef, selectedItem, onClickItem, prefix } = this.props;
+    const { prefix, theme, isOpen, origin } = this.props;
+    const { allItems, listWidth, listHeight, itemHeight, hoveredItem, typeaheadIndex } = this.state;
+
+    const showDocumentation = hoveredItem || typeaheadIndex;
+
     return (
-      <ul className="typeahead" ref={menuRef}>
-        {groupedItems.map(g => (
-          <TypeaheadGroup key={g.label} onClickItem={onClickItem} prefix={prefix} selected={selectedItem} {...g} />
-        ))}
-      </ul>
+      <Portal origin={origin} isOpen={isOpen} style={this.menuPosition}>
+        <ul className="typeahead">
+          <FixedSizeList
+            ref={this.listRef}
+            itemCount={allItems.length}
+            itemSize={itemHeight}
+            itemKey={index => {
+              const item = allItems && allItems[index];
+              const key = item ? `${index}-${item.label}` : `${index}`;
+              return key;
+            }}
+            width={listWidth}
+            height={listHeight}
+          >
+            {({ index, style }) => {
+              const item = allItems && allItems[index];
+              if (!item) {
+                return null;
+              }
+
+              return (
+                <TypeaheadItem
+                  onClickItem={() => this.props.onSelectSuggestion(item)}
+                  isSelected={allItems[typeaheadIndex] === item}
+                  item={item}
+                  prefix={prefix}
+                  style={style}
+                  onMouseEnter={() => this.onMouseEnter(index)}
+                  onMouseLeave={this.onMouseLeave}
+                />
+              );
+            }}
+          </FixedSizeList>
+        </ul>
+
+        {showDocumentation && (
+          <TypeaheadInfo
+            width={listWidth}
+            height={listHeight}
+            theme={theme}
+            item={allItems[hoveredItem ? hoveredItem : typeaheadIndex]}
+          />
+        )}
+      </Portal>
     );
   }
 }
 
-export default Typeahead;
+export const TypeaheadWithTheme = withTheme(Typeahead);
+
+interface PortalProps {
+  index?: number;
+  isOpen: boolean;
+  origin: string;
+  style: string;
+}
+
+class Portal extends React.PureComponent<PortalProps, {}> {
+  node: HTMLElement;
+
+  constructor(props: PortalProps) {
+    super(props);
+    const { index = 0, origin = 'query', style } = props;
+    this.node = document.createElement('div');
+    this.node.setAttribute('style', style);
+    this.node.classList.add(`slate-typeahead`, `slate-typeahead-${origin}-${index}`);
+    document.body.appendChild(this.node);
+  }
+
+  componentWillUnmount() {
+    document.body.removeChild(this.node);
+  }
+
+  render() {
+    if (this.props.isOpen) {
+      this.node.setAttribute('style', this.props.style);
+      this.node.classList.add(`slate-typeahead--open`);
+      return ReactDOM.createPortal(this.props.children, this.node);
+    } else {
+      this.node.classList.remove(`slate-typeahead--open`);
+    }
+
+    return null;
+  }
+}

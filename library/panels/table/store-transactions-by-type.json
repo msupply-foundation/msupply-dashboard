@@ -1,0 +1,205 @@
+{
+  "columns": [],
+  "fontSize": "100%",
+  "gridPos": {
+    "h": 8,
+    "w": 24,
+    "x": 0,
+    "y": 9
+  },
+  "id": 6,
+  "links": [],
+  "pageSize": null,
+  "scroll": true,
+  "showHeader": true,
+  "sort": {
+    "col": 0,
+    "desc": false
+  },
+  "styles": [
+    {
+      "alias": "Client invoices",
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "pattern": "cistore",
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "",
+      "colorMode": null,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
+      "pattern": "",
+      "thresholds": [],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "Client credits",
+      "colorMode": null,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "decimals": 2,
+      "pattern": "ccstore",
+      "thresholds": [],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "Prescriptions",
+      "colorMode": null,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
+      "pattern": "cidispensary",
+      "thresholds": [],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "Supplier payments",
+      "colorMode": null,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
+      "pattern": "psdispendary",
+      "thresholds": [],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "Cash receipts",
+      "colorMode": null,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
+      "pattern": "rcstore",
+      "thresholds": [],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "Supplier credits",
+      "colorMode": null,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
+      "pattern": "scstore",
+      "thresholds": [],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "Supplier invoices",
+      "colorMode": null,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
+      "pattern": "sistore",
+      "thresholds": [],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "Repacks",
+      "colorMode": null,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
+      "pattern": "srstore",
+      "thresholds": [],
+      "type": "number",
+      "unit": "short"
+    },
+    {
+      "alias": "Store",
+      "colorMode": null,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "decimals": 2,
+      "mappingType": 1,
+      "pattern": "name",
+      "thresholds": [],
+      "type": "number",
+      "unit": "short"
+    }
+  ],
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "SELECT * FROM crosstab( 'select name, concat(type, mode), count(type) from transact\njoin store on store.id = transact.store_ID\ngroup by store.name, concat(type, mode)\norder by 1, 2', 'select a from (values(''ccstore''), (''cidispensary''), (''cistore''), (''psdispendary''), (''rcstore''), (''scstore''), (''sistore''), (''srstore'')) s(a);') \nAS ct(name varchar, ccstore bigint, cidispensary bigint, cistore bigint, psdispendary bigint, rcstore bigint, scstore bigint, sistore bigint, srstore bigint);\n",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "timeFrom": null,
+  "timeShift": null,
+  "title": "Transactions by Store and Type",
+  "transform": "table",
+  "type": "table",
+  "options": {}
+}

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import LokiLanguageProvider from 'app/plugins/datasource/loki/language_provider';
 import Prism from 'prismjs';
+import { DataSourceStatus } from '@grafana/ui/src/types/datasource';
+import { AbsoluteTimeRange } from '@grafana/data';
+import LokiLanguageProvider from 'app/plugins/datasource/loki/language_provider';
 import { useLokiLabels } from 'app/plugins/datasource/loki/components/useLokiLabels';
 import { CascaderOption } from 'app/plugins/datasource/loki/components/LokiQueryFieldForm';
 import { useRefMounted } from 'app/core/hooks/useRefMounted';
@@ -12,7 +14,11 @@ const PRISM_SYNTAX = 'promql';
  * @param languageProvider
  * @description Initializes given language provider, exposes Loki syntax and enables loading label option values
  */
-export const useLokiSyntax = (languageProvider: LokiLanguageProvider) => {
+export const useLokiSyntax = (
+  languageProvider: LokiLanguageProvider,
+  datasourceStatus: DataSourceStatus,
+  absoluteRange: AbsoluteTimeRange
+) => {
   const mounted = useRefMounted();
   // State
   const [languageProviderInitialized, setLanguageProviderInitilized] = useState(false);
@@ -28,11 +34,14 @@ export const useLokiSyntax = (languageProvider: LokiLanguageProvider) => {
   const { logLabelOptions, setLogLabelOptions, refreshLabels } = useLokiLabels(
     languageProvider,
     languageProviderInitialized,
-    activeOption
+    activeOption,
+    absoluteRange,
+    datasourceStatus
   );
 
   // Async
   const initializeLanguageProvider = async () => {
+    languageProvider.initialRange = absoluteRange;
     await languageProvider.start();
     Prism.languages[PRISM_SYNTAX] = languageProvider.getSyntax();
     if (mounted.current) {

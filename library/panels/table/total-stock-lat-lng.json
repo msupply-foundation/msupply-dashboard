@@ -1,0 +1,75 @@
+{
+  "columns": [],
+  "fontSize": "100%",
+  "gridPos": {
+    "h": 21,
+    "w": 5,
+    "x": 0,
+    "y": 0
+  },
+  "id": 4,
+  "links": [],
+  "options": {},
+  "pageSize": null,
+  "scroll": true,
+  "showHeader": true,
+  "sort": {
+    "col": 0,
+    "desc": true
+  },
+  "styles": [
+    {
+      "alias": "Time",
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "pattern": "Time",
+      "type": "date"
+    },
+    {
+      "alias": "",
+      "colorMode": null,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "decimals": 2,
+      "pattern": "/.*/",
+      "thresholds": [],
+      "type": "number",
+      "unit": "locale"
+    }
+  ],
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "select store, n.latitude, n.longitude, SUM(quantity) as quantity\nfrom \n(\n  select item.item_name as \"item\", s.name as \"store\", item_line.quantity, s.name_id\n  from item\n  join item_line on item.ID = item_line.item_id\n  join store s on item_line.store_id = s.id\n  where item.type_of = 'general'\n  \t--and item_line.quantity>0\n  \tand item_line.ID <> ''\n  \tand s.disabled = false\n) as a\njoin name n ON a.name_id = n.id\nwhere a.item = [[item]] -- and store in ([[store]]) and n.latitude <> 0\ngroup by 1,2,3;",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "timeFrom": null,
+  "timeShift": null,
+  "title": "Total Stock",
+  "transform": "table",
+  "type": "table"
+}

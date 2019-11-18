@@ -1,0 +1,77 @@
+{
+  "columns": [],
+  "datasource": "PostgreSQL",
+  "fontSize": "100%",
+  "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 0,
+    "y": 13
+  },
+  "id": 4,
+  "links": [],
+  "pageSize": null,
+  "scroll": true,
+  "showHeader": true,
+  "sort": {
+    "col": 1,
+    "desc": false
+  },
+  "styles": [
+    {
+      "alias": "Time",
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "pattern": "Time",
+      "type": "date"
+    },
+    {
+      "alias": "",
+      "colorMode": "value",
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "decimals": 2,
+      "pattern": "/.*/",
+      "thresholds": [
+        "5",
+        "10"
+      ],
+      "type": "number",
+      "unit": "short"
+    }
+  ],
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "select \"store\", \"week\", \"month\" from store_transactions\nwhere \"store\" in ([[store]])\n\n\n",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "title": "Transactions by Store",
+  "transform": "table",
+  "type": "table",
+  "options": {}
+}

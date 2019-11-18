@@ -1,0 +1,74 @@
+{
+  "circleMaxSize": 30,
+  "circleMinSize": 2,
+  "colors": [
+    "rgba(245, 54, 54, 0.9)",
+    "rgba(237, 129, 40, 0.89)",
+    "#0a50a1",
+    "rgba(50, 172, 45, 0.97)"
+  ],
+  "decimals": 0,
+  "esMetric": "Count",
+  "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 0,
+    "y": 0
+  },
+  "hideEmpty": false,
+  "hideZero": false,
+  "id": 2,
+  "initialZoom": "5",
+  "links": [],
+  "locationData": "table",
+  "mapCenter": "custom",
+  "mapCenterLatitude": "-41.2141504",
+  "mapCenterLongitude": "173.9660801",
+  "maxDataPoints": 1,
+  "mouseWheelZoom": false,
+  "showLegend": true,
+  "stickyLabels": false,
+  "tableQueryOptions": {
+    "geojsonField": "geojson",
+    "labelField": "region",
+    "latitudeField": "latitude",
+    "longitudeField": "longitude",
+    "metricField": "value",
+    "queryType": "geojson"
+  },
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "select current_date as \"time\", store, item, value, region.description as \"region\", geojson.\"data\" as \"geojson\"\nfrom (\n\tselect store.name as store, item.item_name as item, store.id as store_id, item.id as item_id, store.name_id as name_id, avg(a.value) AS value\n\tfrom aggregator a\n\tjoin store on a.storeid = store.id and store.disabled = false\n\tjoin item on a.itemid = item.id\n\tjoin item_store_join isj on a.storeid = isj.store_id and a.itemid = isj.item_id and isj.inactive = false\n\twhere a.dataelement = 'mos' and item.ven_category in ([[ven]])\n\tgroup by 1,2,3,4,5\t\n) as a\n\tjoin \"name\" as n on name_id=n.id\n\tjoin name_category1 as region on n.category1_id = region.id\n\tjoin geojson on region.id = geojson.id\nwhere item = [[item]] and store in ([[store]])\norder by region.description;",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "thresholds": "0,6,12",
+  "title": "Stock Status by Item",
+  "type": "grafana-region-map-panel",
+  "unitPlural": "",
+  "unitSingle": "",
+  "valueName": "total",
+  "options": {}
+}

@@ -1,0 +1,95 @@
+{
+  "columns": [],
+  "fontSize": "100%",
+  "gridPos": {
+    "h": 19,
+    "w": 9,
+    "x": 5,
+    "y": 0
+  },
+  "id": 2,
+  "links": [],
+  "options": {},
+  "pageSize": null,
+  "scroll": true,
+  "showHeader": true,
+  "sort": {
+    "col": null,
+    "desc": false
+  },
+  "styles": [
+    {
+      "alias": "Time",
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "pattern": "Time",
+      "type": "date"
+    },
+    {
+      "alias": "",
+      "colorMode": "value",
+      "colors": [
+        "rgba(50, 172, 45, 0.97)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(245, 54, 54, 0.9)"
+      ],
+      "decimals": 1,
+      "pattern": "/Days since last sync/",
+      "thresholds": [
+        "2",
+        "8"
+      ],
+      "type": "number",
+      "unit": "short",
+      "link": false
+    },
+    {
+      "unit": "short",
+      "type": "number",
+      "alias": "",
+      "decimals": 0,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "colorMode": null,
+      "pattern": "/.*/",
+      "dateFormat": "YYYY-MM-DD HH:mm:ss",
+      "thresholds": [],
+      "mappingType": 1
+    }
+  ],
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "select s.name as \"Store\", count(*) as \"Sync Count\", current_date-max(date_created) as \"Days since last sync\"\nfrom sync_out\njoin store s on sync_out.store_ID=s.ID\ngroup by 1\norder by 1",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "timeFrom": null,
+  "timeShift": null,
+  "title": "Sync Status by Store",
+  "transform": "table",
+  "type": "table"
+}
