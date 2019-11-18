@@ -3140,7 +3140,7 @@ g_HandleSystemReboot();
 </SessionVar>
 <SessionVar>
 <Name>%ProductVer%</Name>
-<Value>6.4.2.2</Value>
+<Value>6.4.4</Value>
 <Type>1</Type>
 </SessionVar>
 <SessionVar>
@@ -3183,7 +3183,7 @@ g_HandleSystemReboot();
 <PostBuildProg/>
 <PostBuildCmdLine/>
 <PostBuildWait>0</PostBuildWait>
-<Filename>dashboard-upgrade-6.4.2.2.exe</Filename>
+<Filename>dashboard-upgrade-6.4.4.exe</Filename>
 <OutputFolder>C:\Users\Administrator\Documents\msupply-dashboard\installer</OutputFolder>
 <SegmentSizeMode>0</SegmentSizeMode>
 <CustomSegSize>0</CustomSegSize>
