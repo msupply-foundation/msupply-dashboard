@@ -586,6 +586,30 @@ begin
 end $procedure$
 ;
 
+CREATE OR REPLACE PROCEDURE public.aggregate_current_mos() 
+ LANGUAGE plpgsql 
+AS $procedure$ 
+begin 
+
+  delete from aggregator where dataElement = 'currentMOS'; 
+
+  insert into aggregator (storeID, itemID, value, dataElement) 
+    select item_line.store_id, item_line.item_id, 
+	       sum(item_line.available * item_line.pack_size) / max(aggregator.value), 'currentMOS' 
+	from item_line 
+	join aggregator on aggregator.itemID = item_line.item_id 
+	  and aggregator.storeID = item_line.store_id 
+	  and aggregator.dataElement = 'AMC' 
+	where item_line.available > 0 group by 1, 2 order by item_line.item_id, item_line.store_id; 
+
+  insert into aggregator (storeID, itemID, value, dataElement)
+    select zero_stock.store_id, zero_stock.item_id, value, 'currentMOS' from (
+      select item_line.store_id, item_line.item_id, sum(item_line.available * item_line.pack_size) as value 
+	  from item_line group by 1, 2) as zero_stock 
+	where zero_stock.value <= 0;
+
+end $procedure$
+;
 
 CREATE OR REPLACE PROCEDURE custom_aggregations()
  LANGUAGE plpgsql
@@ -594,6 +618,7 @@ begin
 
   perform setval('aggregator_id_seq', (select 1+max(id) from aggregator));
   call aggregate_total_stock();
+  call aggregate_current_mos(); 
   call public.aggregate_stock_status();
  
 end $$
