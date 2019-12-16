@@ -1,0 +1,107 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 7,
+  "links": [],
+  "panels": [
+    {
+      "datasource": null,
+      "gridPos": {
+        "h": 18,
+        "w": 19,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "mainChartTheme": "{\n  \"//\": \"spaceBetwenBars is not standard Victory Charts field\",\n  \"spaceBetweenBars\": 1,\n  \"chart\": {\n    \"width\": 600,\n    \"height\": 600,\n    \"padding\": {\n      \"left\": 250,\n      \"top\": 50,\n      \"right\": 50,\n      \"bottom\": 40\n    }\n  },\n  \"axis\": {\n    \"style\": {\n      \"axis\": {\n        \"fill\": \"transparent\",\n        \"stroke\": \"#90A4AE\",\n        \"strokeWidth\": 2,\n        \"strokeLinecap\": \"round\",\n        \"strokeLinejoin\": \"round\"\n      },\n      \"axisLabel\": {\n        \"textAnchor\": \"middle\",\n        \"fontFamily\": \"'Roboto', 'Helvetica Neue', Helvetica, sans-serif\",\n        \"fontSize\": 12,\n        \"letterSpacing\": \"normal\",\n        \"fill\": \"#455A64\",\n        \"stroke\": \"transparent\",\n        \"strokeWidth\": 0\n      },\n      \"grid\": {\n        \"fill\": \"none\",\n        \"stroke\": \"#ECEFF1\",\n        \"strokeDasharray\": \"10, 5\",\n        \"strokeLinecap\": \"round\",\n        \"strokeLinejoin\": \"round\",\n        \"pointerEvents\": \"painted\"\n      },\n      \"ticks\": {\n        \"fill\": \"transparent\",\n        \"size\": 5,\n        \"stroke\": \"#90A4AE\",\n        \"strokeWidth\": 1,\n        \"strokeLinecap\": \"round\",\n        \"strokeLinejoin\": \"round\"\n      },\n      \"tickLabels\": {\n        \"fontFamily\": \"'Roboto', 'Helvetica Neue', Helvetica, sans-serif\",\n        \"fontSize\": 12,\n        \"letterSpacing\": \"normal\",\n        \"fill\": \"#455A64\",\n        \"stroke\": \"transparent\",\n        \"strokeWidth\": 0\n      }\n    }\n  },\n  \"independentAxis\": {\n    \"style\": {\n      \"grid\": {\n        \"fill\": \"none\",\n        \"stroke\": \"none\"\n      }\n    }\n  },\n  \"bar\": {\n    \"style\": {\n      \"data\": {\n        \"fill\": \"#455A64\",\n        \"padding\": 8,\n        \"strokeWidth\": 0\n      },\n      \"labels\": {\n        \"fontFamily\": \"'Roboto', 'Helvetica Neue', Helvetica, sans-serif\",\n        \"fontSize\": 12,\n        \"letterSpacing\": \"normal\",\n        \"padding\": 8,\n        \"fill\": \"#455A64\",\n        \"stroke\": \"transparent\",\n        \"strokeWidth\": 0\n      }\n    }\n  }\n}",
+        "navigatorChartTheme": "{\n  \"//\": \"spaceBetwenBars and brushStyle are not standard Victory Chart fields\",\n  \"spaceBetweenBars\": 2,\n  \"chart\": {\n    \"brushStyle\": {\n      \"stroke\": \"transparent\",\n      \"fill\": \"orange\",\n      \"fillOpacity\": 0.7\n    },\n    \"handleStyle\": {\n      \"stroke\": \"transparent\",\n      \"fill\": \"none\"\n    },\n    \"width\": 200,\n    \"height\": 600,\n    \"padding\": {\n      \"left\": 0,\n      \"top\": 25,\n      \"right\": 0,\n      \"bottom\": 0\n    }\n  },\n  \"axis\": {\n    \"tickValues\": [],\n    \"style\": {\n      \"axis\": {\n        \"fill\": \"transparent\",\n        \"stroke\": \"none\"\n      },\n      \"grid\": {\n        \"fill\": \"none\",\n        \"stroke\": \"none\"\n      }\n    }\n  }\n}",
+        "otherSettings": "{\n  \"mapping\": [\n    {\n      \"x\": \"item_name\",\n      \"y\": \"value\",\n      \"threshold\": \"threshold\",\n      \"label\": \"item_name\"\n    }\n  ],\n  \"brushDomain\": {\n    \"minX\": 15,\n    \"maxX\": 40,\n    \"minY\": 10,\n    \"maxY\": 100\n  }\n}",
+        "text": "The default text!",
+        "thresholds": [
+          {
+            "color": "green",
+            "value": null
+          },
+          {
+            "color": "#EAB839",
+            "value": 1
+          },
+          {
+            "color": "#6ED0E0",
+            "value": 2
+          },
+          {
+            "color": "green",
+            "value": 3
+          },
+          {
+            "color": "#E24D42",
+            "value": 4
+          }
+        ]
+      },
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select item_name, random() * 4 as value, (random() * 3)::integer+1 as threshold from item limit 100 ",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": ["value"],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Panel Title",
+      "type": "msupply-horizontal-bar"
+    }
+  ],
+  "schemaVersion": 20,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+  },
+  "timezone": "",
+  "title": "Horizontal Bar Example",
+  "uid": "PnZsk-xWz",
+  "version": 2
+}

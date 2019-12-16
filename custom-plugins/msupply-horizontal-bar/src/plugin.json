@@ -1,0 +1,33 @@
+{
+  "type": "panel",
+  "name": "mSupply Horizontal Bar",
+  "id": "msupply-horizontal-bar",
+
+  "info": {
+    "description": "mSupply Horizontal Bar",
+    "author": {
+      "name": "Your Name"
+    },
+    "keywords": ["Simple"],
+    "logos": {
+      "small": "img/test.png",
+      "large": "img/test.png"
+    },
+    "links": [
+      {
+        "//": "TODO, change based on git repo",
+        "name": "Website",
+        "url": "https://github.com/openmsupply/msupply-horizontal-bar"
+      },
+      { "name": "License", "url": "msupply-horizontal-bar/blob/master/LICENSE" }
+    ],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+
+  "dependencies": {
+    "grafanaVersion": "6.4.x",
+    "plugins": []
+  }
+}
