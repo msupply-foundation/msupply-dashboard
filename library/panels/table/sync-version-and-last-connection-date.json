@@ -1,0 +1,78 @@
+{
+  "datasource": null,
+  "columns": [],
+  "fontSize": "100%",
+  "gridPos": {
+    "h": 16,
+    "w": 18,
+    "x": 0,
+    "y": 10
+  },
+  "id": 4,
+  "links": [],
+  "options": {},
+  "pageSize": null,
+  "scroll": true,
+  "showHeader": true,
+  "sort": {
+    "col": 3,
+    "desc": false
+  },
+  "styles": [
+    {
+      "alias": "Last Connection Date",
+      "dateFormat": "YYYY-MM-DD",
+      "pattern": "Last Connection Date",
+      "type": "date"
+    },
+    {
+      "alias": "",
+      "colorMode": null,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "dateFormat": "YYYY-MM-DD",
+      "decimals": 2,
+      "mappingType": 1,
+      "pattern": "Release Date",
+      "thresholds": [],
+      "type": "date",
+      "unit": "short"
+    }
+  ],
+  "targets": [
+    {
+      "format": "table",
+      "group": [],
+      "metricColumn": "none",
+      "rawQuery": true,
+      "rawSql": "with records as \n(\n  SELECT json_array_elements(cast(json as json)->'data'->'rows') as theresult \n  from dashboard_report WHERE  name = 'Sync sites last connection date'\n),\nparsed as\n(\n  select \n   theresult ->> 0 as \"Site\",\n   theresult ->> 1 as connectiondate,\n   regexp_split_to_array(theresult ->> 2, ' ') as version\n  from records\n)\nselect \"Site\", \nREGEXP_REPLACE(connectiondate, '(\\d{2})/(\\d{2})/(\\d{4})', '\\2/\\1/\\3') as \"Last Connection Date\", \n(Select regexp_matches(version[8], 'V\\d+-\\d+\\-\\d+'))[1] as \"Version\",\nREGEXP_REPLACE(version[5], '(\\d{2})/(\\d{2})/(\\d{4})', '\\2/\\1/\\3') as \"Release Date\" \nfrom parsed\norder by 1",
+      "refId": "A",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "column"
+          }
+        ]
+      ],
+      "timeColumn": "time",
+      "where": [
+        {
+          "name": "$__timeFilter",
+          "params": [],
+          "type": "macro"
+        }
+      ]
+    }
+  ],
+  "timeFrom": null,
+  "timeShift": null,
+  "title": "Version and Last Connection Date",
+  "transform": "table",
+  "type": "table"
+}

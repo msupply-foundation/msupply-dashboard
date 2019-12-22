@@ -671,13 +671,13 @@ SELECT min(confirm_date) AS date,
  $procedure$
 ;
 
--- TODO: the username should be changed by installer
-
+/*
 GRANT USAGE ON schema public TO dboard;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO dboard;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO dboard;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO dboard;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO dboard;
+*/
 
 /*
 ALTER DEFAULT PRIVILEGES IN SCHEMA PUBLIC GRANT INSERT ON TABLES TO dboard;
@@ -691,17 +691,4 @@ GRANT UPDATE ON ALL TABLES IN SCHEMA PUBLIC TO dboard;
 GRANT TRUNCATE ON ALL TABLES IN SCHEMA PUBLIC TO dboard;
 GRANT DELETE ON ALL TABLES IN SCHEMA PUBLIC TO dboard;
 **/
-    
--- ALTER TABLE public.transact ADD optionid varchar(255) NULL;
--- ALTER TABLE public.transact ADD insurancediscountrate float8 NULL;
--- ALTER TABLE public.transact ADD internaldata jsonb NULL;
--- ALTER TABLE public.transact ADD lastmodifiedat int8 NULL;
--- ALTER TABLE public.transact ADD lastmodifiedat int8 NULL;
--- ALTER TABLE public.transact ADD custom_data jsonb NULL;
--- ALTER TABLE public.requisition ADD lastmodifiedat int8 NULL;
--- ALTER TABLE public.requisition_line ADD cust_stock_issued real NULL;
--- ALTER TABLE public.trans_line ADD sentquantity float8 NULL;
--- ALTER TABLE public.trans_line ADD optionid varchar(255) NULL;
--- ALTER TABLE public.trans_line ADD isvvmpassed varchar(255) NULL;
--- ALTER TABLE public.trans_line ADD doses int4 NULL;
 
