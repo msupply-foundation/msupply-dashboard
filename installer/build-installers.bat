@@ -14,5 +14,5 @@ cd ..
 
 @ECHO.
 @ECHO ##### Creating installers #####
-rem start "" /wait "C:\Program Files (x86)\Setup Factory 9\SUFDesign.exe" /BUILD /LOG:installer\setup-factory.log "%installerWorkspace%\installer\dashboard.suf"
-rem start "" /wait "C:\Program Files (x86)\Setup Factory 9\SUFDesign.exe" /BUILD /LOG:installer\setup-factory.log "%installerWorkspace%\installer\dashboard-upgrade.suf"
+start "" /wait "C:\Program Files (x86)\Setup Factory 9\SUFDesign.exe" /BUILD /LOG:installer\setup-factory.log "%installerWorkspace%\installer\dashboard.suf"
+start "" /wait "C:\Program Files (x86)\Setup Factory 9\SUFDesign.exe" /BUILD /LOG:installer\setup-factory.log "%installerWorkspace%\installer\dashboard-upgrade.suf"
