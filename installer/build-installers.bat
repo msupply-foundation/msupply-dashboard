@@ -1,6 +1,6 @@
 @ECHO ##### Removing previous installers #####
-@del /q dashboard-setup-*.exe
-@del /q dashboard-upgrade-*.exe
+@del /q installer\dashboard-setup-*.exe
+@del /q installer\dashboard-upgrade-*.exe
 
 @ECHO.
 @ECHO ##### Adjusting SUFS #####
