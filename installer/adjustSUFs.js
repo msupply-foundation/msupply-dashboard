@@ -1,5 +1,6 @@
 const fs = require('fs');
-const installerFolder = process.env.installerFolder;
+const installerWorkspace = process.env.installerWorkspace;
+const installerFolder = `${installerWorkspace}\\installer`;
 const files = fs.readdirSync(installerFolder);
 
 files.forEach(fileName => {
@@ -16,7 +17,10 @@ function replaceVersion(fileContent) {
 
 function adjustOutputFolder(fileContent) {
   return fileContent.replace(
-    /<OutputFolder>.*<\/OutputFolder>/g,
-    `<OutputFolder>${installerFolder}</OutputFolder>`
+    /~~installer-folder~~/g,
+    `${installerFolder}`
+  ).replace(
+    /~~release-folder~~/g,
+    `${installerWorkspace}\\release`
   );
 }

@@ -6,9 +6,9 @@
 <ArchiveFiles>
 <FileData>
 <FldRef>1</FldRef>
-<FullName>C:\Users\Administrator\Documents\msupply-dashboard\release\*.*</FullName>
+<FullName>~~release_folder~~\*.*</FullName>
 <FileName>*.*</FileName>
-<Source>C:\Users\Administrator\Documents\msupply-dashboard\release</Source>
+<Source>~~release-folder~~</Source>
 <Ext>*</Ext>
 <RTSource>Archive</RTSource>
 <Desc/>
@@ -3942,7 +3942,7 @@ g_HandleSystemReboot();
 <PostBuildCmdLine/>
 <PostBuildWait>0</PostBuildWait>
 <Filename>dashboard-setup-~~version~~.exe</Filename>
-<OutputFolder>.*</OutputFolder>
+<OutputFolder>~~installer-folder~~</OutputFolder>
 <SegmentSizeMode>0</SegmentSizeMode>
 <CustomSegSize>0</CustomSegSize>
 <CustomSegSizeMode>0</CustomSegSizeMode>
@@ -3966,7 +3966,7 @@ g_HandleSystemReboot();
 <CodeSignDescription/>
 <CodeSignDescriptionURL/>
 <UseCustomIcon>1</UseCustomIcon>
-<CustomIconFile>C:\Users\Administrator\Documents\msupply-dashboard\installer\mSupply.ico</CustomIconFile>
+<CustomIconFile>~~installer-folder~~\mSupply.ico</CustomIconFile>
 <ResourceFileVersion>9.5.1.0</ResourceFileVersion>
 <ResourceProductVersion>9.5.1.0</ResourceProductVersion>
 <ResourceCompanyName>Indigo Rose Corporation</ResourceCompanyName>

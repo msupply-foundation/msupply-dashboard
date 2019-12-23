@@ -6,9 +6,9 @@
 <ArchiveFiles>
 <FileData>
 <FldRef>1</FldRef>
-<FullName>C:\Users\Administrator\Documents\msupply-dashboard\release\*.*</FullName>
+<FullName>~~release-folder~~\*.*</FullName>
 <FileName>*.*</FileName>
-<Source>C:\Users\Administrator\Documents\msupply-dashboard\release</Source>
+<Source>~~release-folder~~</Source>
 <Ext>*</Ext>
 <RTSource>Archive</RTSource>
 <Desc/>
@@ -79,9 +79,9 @@
 </FileData>
 <FileData>
 <FldRef>1</FldRef>
-<FullName>C:\Users\Administrator\Documents\msupply-dashboard\release\bin\*.*</FullName>
+<FullName>~~release-folder~~\bin\*.*</FullName>
 <FileName>*.*</FileName>
-<Source>C:\Users\Administrator\Documents\msupply-dashboard\release\bin</Source>
+<Source>~~release-folder~~\bin</Source>
 <Ext>*</Ext>
 <RTSource>Archive</RTSource>
 <Desc/>
@@ -152,9 +152,9 @@
 </FileData>
 <FileData>
 <FldRef>1</FldRef>
-<FullName>C:\Users\Administrator\Documents\msupply-dashboard\release\public\*.*</FullName>
+<FullName>~~release-folder~~\public\*.*</FullName>
 <FileName>*.*</FileName>
-<Source>C:\Users\Administrator\Documents\msupply-dashboard\release\public</Source>
+<Source>~~release-folder~~\public</Source>
 <Ext>*</Ext>
 <RTSource>Archive</RTSource>
 <Desc/>
@@ -225,9 +225,9 @@
 </FileData>
 <FileData>
 <FldRef>1</FldRef>
-<FullName>C:\Users\Administrator\Documents\msupply-dashboard\release\scripts\*.*</FullName>
+<FullName>~~release-folder~~\scripts\*.*</FullName>
 <FileName>*.*</FileName>
-<Source>C:\Users\Administrator\Documents\msupply-dashboard\release\scripts</Source>
+<Source>~~release-folder~~\scripts</Source>
 <Ext>*</Ext>
 <RTSource>Archive</RTSource>
 <Desc/>
@@ -298,9 +298,9 @@
 </FileData>
 <FileData>
 <FldRef>1</FldRef>
-<FullName>C:\Users\Administrator\Documents\msupply-dashboard\release\tools\*.*</FullName>
+<FullName>~~release-folder~~\tools\*.*</FullName>
 <FileName>*.*</FileName>
-<Source>C:\Users\Administrator\Documents\msupply-dashboard\release\tools</Source>
+<Source>~~release-folder~~\tools</Source>
 <Ext>*</Ext>
 <RTSource>Archive</RTSource>
 <Desc/>
@@ -371,9 +371,9 @@
 </FileData>
 <FileData>
 <FldRef>1</FldRef>
-<FullName>C:\Users\Administrator\Documents\msupply-dashboard\release\data\plugins\*.*</FullName>
+<FullName>~~release-folder~~\data\plugins\*.*</FullName>
 <FileName>*.*</FileName>
-<Source>C:\Users\Administrator\Documents\msupply-dashboard\release\data\plugins</Source>
+<Source>~~release-folder~~\data\plugins</Source>
 <Ext>*</Ext>
 <RTSource>Archive</RTSource>
 <Desc/>
@@ -3184,7 +3184,7 @@ g_HandleSystemReboot();
 <PostBuildCmdLine/>
 <PostBuildWait>0</PostBuildWait>
 <Filename>dashboard-upgrade-~~version~~.exe</Filename>
-<OutputFolder>.*</OutputFolder>
+<OutputFolder>~~installer-folder~~</OutputFolder>
 <SegmentSizeMode>0</SegmentSizeMode>
 <CustomSegSize>0</CustomSegSize>
 <CustomSegSizeMode>0</CustomSegSizeMode>
@@ -3208,7 +3208,7 @@ g_HandleSystemReboot();
 <CodeSignDescription/>
 <CodeSignDescriptionURL/>
 <UseCustomIcon>1</UseCustomIcon>
-<CustomIconFile>C:\Users\Administrator\Documents\msupply-dashboard\installer\mSupply.ico</CustomIconFile>
+<CustomIconFile>~~installer-folder~~\mSupply.ico</CustomIconFile>
 <ResourceFileVersion>9.5.1.0</ResourceFileVersion>
 <ResourceProductVersion>9.5.1.0</ResourceProductVersion>
 <ResourceCompanyName>Indigo Rose Corporation</ResourceCompanyName>
