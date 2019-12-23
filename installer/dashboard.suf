@@ -3873,7 +3873,7 @@ g_HandleSystemReboot();
 </SessionVar>
 <SessionVar>
 <Name>%ProductVer%</Name>
-<Value>6.4.4</Value>
+<Value>~~version~~</Value>
 <Type>1</Type>
 </SessionVar>
 <SessionVar>
@@ -3941,8 +3941,8 @@ g_HandleSystemReboot();
 <PostBuildProg/>
 <PostBuildCmdLine/>
 <PostBuildWait>0</PostBuildWait>
-<Filename>dashboard-setup-6.4.4.exe</Filename>
-<OutputFolder>C:\Users\Administrator\Documents\msupply-dashboard\installer</OutputFolder>
+<Filename>dashboard-setup-~~version~~.exe</Filename>
+<OutputFolder>.*</OutputFolder>
 <SegmentSizeMode>0</SegmentSizeMode>
 <CustomSegSize>0</CustomSegSize>
 <CustomSegSizeMode>0</CustomSegSizeMode>
