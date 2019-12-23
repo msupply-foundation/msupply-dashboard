@@ -9,7 +9,9 @@ SET installerFolder=%installerWorkspace%\installer
 FOR /F "delims=*" %%i in ('more version.txt') do SET versionTag=%%i
 @ECHO "current tag = %versionTag%"
 
+cd installer
 node "%installerFolder%\adjustSUFs.js"
+cd ..
 
 @ECHO.
 @ECHO ##### Creating installers #####
