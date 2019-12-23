@@ -13,5 +13,5 @@ node "%installerFolder%\adjustSUFs.js"
 
 @ECHO.
 @ECHO ##### Creating installers #####
-start "" /wait "C:\Program Files (x86)\Setup Factory 9\SUFDesign.exe" /BUILD /LOG:installers\setup-factory.log "%installerFolder%\dashboard.suf"
-start "" /wait "C:\Program Files (x86)\Setup Factory 9\SUFDesign.exe" /BUILD /LOG:installers\setup-factory.log "%installerFolder%\dashboard-upgrade.suf"
+start "" /wait "C:\Program Files (x86)\Setup Factory 9\SUFDesign.exe" /BUILD /LOG:installer\setup-factory.log "%installerFolder%\dashboard.suf"
+start "" /wait "C:\Program Files (x86)\Setup Factory 9\SUFDesign.exe" /BUILD /LOG:installer\setup-factory.log "%installerFolder%\dashboard-upgrade.suf"
