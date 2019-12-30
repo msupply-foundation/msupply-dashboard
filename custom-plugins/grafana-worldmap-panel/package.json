@@ -29,7 +29,7 @@
     "babel-jest": "^23.6.0",
     "babel-loader": "^8.0.4",
     "babel-preset-env": "^1.7.0",
-    "clean-webpack-plugin": "^1.0.0",
+    "clean-webpack-plugin": "3.0.0",
     "copy-webpack-plugin": "^4.6.0",
     "css-loader": "^1.0.1",
     "file-loader": "^3.0.1",
@@ -40,9 +40,9 @@
     "ts-jest": "^23.10.5",
     "ts-loader": "^5.3.0",
     "typescript": "^3.1.6",
-    "uglifyjs-webpack-plugin": "^2.1.1",
-    "webpack": "^4.26.0",
-    "webpack-cli": "^3.1.2"
+    "uglifyjs-webpack-plugin": "2.2.0",
+    "webpack": "4.41.5",
+    "webpack-cli": "3.3.10"
   },
   "dependencies": {
     "lodash": "^4.17.11"
