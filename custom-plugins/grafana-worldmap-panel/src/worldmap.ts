@@ -31,6 +31,8 @@ export default class WorldMap {
     this.ctrl = ctrl;
     this.mapContainer = mapContainer;
     this.circles = [];
+    // console.log('Constructing map...')
+    // console.log(this.ctrl.panel.linkedVariable);
   }
 
   createMap() {
@@ -138,6 +140,14 @@ export default class WorldMap {
   }
 
   updateCircles(data) {
+    console.log("Updating circles...");
+    console.log(this.ctrl.panel.linkedVariable);
+    
+    const selectedFacilityName = _.find(this.ctrl.vars, elem => {
+      return elem.name === this.ctrl.panel.linkedVariable;
+    }).current.value;
+    console.log(selectedFacilityName);
+    
     data.forEach(dataPoint => {
       if (!dataPoint.locationName) {
         return;
@@ -150,7 +160,12 @@ export default class WorldMap {
       if (circle) {
         circle.setRadius(this.calcCircleSize(dataPoint.value || 0));
         circle.setStyle({
-          color: this.getColor(dataPoint.value),
+          radius:
+            selectedFacilityName === dataPoint.locationName
+              ? this.calcCircleSize(dataPoint.value || 0) * 1.5
+              : this.calcCircleSize(dataPoint.value || 0),
+          weight: selectedFacilityName === dataPoint.locationName ? 5 : 0.5,
+          color: selectedFacilityName === dataPoint.locationName ? 'grey' : this.getColor(dataPoint.value),
           fillColor: this.getColor(dataPoint.value),
           fillOpacity: 0.5,
           location: dataPoint.key,
@@ -162,15 +177,33 @@ export default class WorldMap {
   }
 
   createCircle(dataPoint) {
+    const selectedFacility = _.find(this.ctrl.vars, elem => {
+      return elem.name === this.ctrl.panel.linkedVariable;
+    });
+    const selectedFacilityName = selectedFacility.current.value;
     const circle = (<any>window).L.circleMarker([dataPoint.locationLatitude, dataPoint.locationLongitude], {
-      radius: this.calcCircleSize(dataPoint.value || 0),
-      color: this.getColor(dataPoint.value),
+      radius: selectedFacilityName === dataPoint.locationName
+      ? this.calcCircleSize(dataPoint.value || 0) * 1.5
+      : this.calcCircleSize(dataPoint.value || 0),
+      weight: selectedFacilityName === dataPoint.locationName ? 5 : 0.5,
+      color: selectedFacilityName === dataPoint.locationName ? 'grey' : this.getColor(dataPoint.value),
       fillColor: this.getColor(dataPoint.value),
       fillOpacity: 0.5,
       location: dataPoint.key,
     });
 
     this.createPopup(circle, dataPoint.locationName, dataPoint.valueRounded);
+
+
+    const ctrl = this.ctrl;
+    circle.on('click', () => {
+      ctrl.variableSrv.setOptionAsCurrent(selectedFacility, {
+        text: dataPoint.locationName,
+        value: dataPoint.locationName,
+      });
+      ctrl.variableSrv.variableUpdated(selectedFacility, true);
+    });
+
     return circle;
   }
 
@@ -263,4 +296,5 @@ export default class WorldMap {
     }
     this.map.remove();
   }
+
 }

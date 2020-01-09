@@ -40,7 +40,8 @@ const panelDefaults = {
     latitudeField: "latitude",
     longitudeField: "longitude",
     metricField: "metric"
-  }
+  },
+  linkedVariable: 'singleFacility' //Name of variable to update when circles are clicked
 };
 
 const mapCenters = {
@@ -63,10 +64,19 @@ export default class WorldmapCtrl extends MetricsPanelCtrl {
   series: any;
   data: any;
   mapCenterMoved: boolean;
+  vars: any;
+  varNames: string[];
+  variableSrv: any;
+  scope: any;
+  linkedVariable: string;
 
   /** @ngInject **/
-  constructor($scope, $injector, contextSrv) {
+  constructor($scope, $injector, contextSrv, variableSrv) {
     super($scope, $injector);
+    this.vars = variableSrv.variables;
+    this.varNames = this.vars.map(v => v.name);
+    this.variableSrv = variableSrv;
+    this.scope = $scope;
 
     this.setMapProvider(contextSrv);
     _.defaults(this.panel, panelDefaults);
@@ -77,6 +87,10 @@ export default class WorldmapCtrl extends MetricsPanelCtrl {
     this.events.on("data-received", this.onDataReceived.bind(this));
     this.events.on("panel-teardown", this.onPanelTeardown.bind(this));
     this.events.on("data-snapshot-load", this.onDataSnapshotLoad.bind(this));
+    this.panel.linkedVariable = panelDefaults.linkedVariable;
+    // this.panel.initialZoom = this.vars[0].current.value;
+    // this.panel.mapCenterLatitude = this.vars[1].current.value;
+    // this.panel.mapCenterLongitude = this.vars[2].current.value;
 
     this.loadLocationDataFromFile();
   }
@@ -297,6 +311,12 @@ export default class WorldmapCtrl extends MetricsPanelCtrl {
     if (this.panel.locationData === "geohash") {
       this.render();
     }
+  }
+
+  changeLinkedVariable() {
+    console.log("Updating linked variable...");
+    console.log(this.panel.linkedVariable);
+    // console.log(typeof(this.panel.linkedVariable));
   }
 
   link(scope, elem, attrs, ctrl) {
