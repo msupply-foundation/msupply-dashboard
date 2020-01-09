@@ -189,13 +189,10 @@ export class HorizontalBar extends Component<Props, State> {
     super(props);
     // const variableSrv = props.injector.get('variableSrv');
     // this.variableSrv = variableSrv;
-
     // this.state = {};
-    // console.log('Initial state', this.state);
     this.requestId = '';
     this.state = this.getStateFromProps(props);
     this.updateDomainFromSelectors = this.updateDomainFromSelectors.bind(this);
-    // console.log('State after Props', this.state);
   }
 
   getBarFill = (type: any) => {
@@ -243,7 +240,7 @@ export class HorizontalBar extends Component<Props, State> {
     this.updateData(props.data, mapping);
     // console.log('Generating graphdata...');
     const { mappedData: graphData, highestValue } = this;
-    console.log('graphData = ', graphData);
+    // console.log('graphData = ', graphData);
     if (!this.brushDomain.minY) {
       this.brushDomain.minY = highestValue;
     }
@@ -320,19 +317,16 @@ export class HorizontalBar extends Component<Props, State> {
   // }
 
   handleBrush(domain: any, props: any) {
-    console.log('Brushing');
     this.setState({ zoomDomain: domain });
   }
 
   handleBrushEnd(domain: any, props: any) {
-    console.log('Brush end');
     this.setState({ selectedDomain: domain });
   }
 
   updateDomainFromSelectors(event: any) {
     if (event.target.id === 'show-navigator') {
       this.setState({ showNavigator: !this.state.showNavigator });
-      console.log('Updated Navigator');
       return;
     }
 
@@ -379,7 +373,6 @@ export class HorizontalBar extends Component<Props, State> {
         newChartHeight,
         this.state.mainChartTheme.spaceBetweenBars
       );
-      // console.log('New Bar Width: ', newBarWidth );
       newDomain = {
         x: [this.state.selectedDomain.x[0], this.state.selectedDomain.x[0] + newChartHeight],
         y: this.state.selectedDomain.y,
@@ -388,12 +381,8 @@ export class HorizontalBar extends Component<Props, State> {
 
     //Don't go outside boundaries of data
     if (newDomain.x[1] > this.state.graphData[0].length || newDomain.x[0] < 0) {
-      // console.log("Ooops!")
       newDomain.x = [this.state.graphData[0].length + 0.5 - newChartHeight, this.state.graphData[0].length + 0.5];
     }
-
-    // console.log('Current domain: ', this.state.selectedDomain.x);
-    // console.log('New domain: ', newDomain.x);
 
     //Update Domain
     this.setState({
@@ -459,10 +448,6 @@ export class HorizontalBar extends Component<Props, State> {
             <VictoryAxis dependentAxis offsetY={25} />
             <VictoryStack>
               {this.state.graphData.map((dataRows: any, index: any) => {
-                // console.log('Rendering Main Stack...');
-                // console.log(index);
-                // console.log(this.state.graphData);
-                // console.log(dataRows);
                 return (
                   <VictoryBar
                     key={index}
@@ -539,7 +524,7 @@ export class HorizontalBar extends Component<Props, State> {
             >
               <VictoryStack>
                 {this.state.graphData.map((dataRows: any, index: any) => {
-                  console.log('Rendering Navigator Stack...');
+                  // console.log('Rendering Navigator Stack...');
                   return (
                     <VictoryBar
                       key={index}
