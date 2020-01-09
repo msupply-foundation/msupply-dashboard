@@ -314,9 +314,10 @@ export default class WorldmapCtrl extends MetricsPanelCtrl {
   }
 
   changeLinkedVariable() {
-    console.log("Updating linked variable...");
-    console.log(this.panel.linkedVariable);
-    // console.log(typeof(this.panel.linkedVariable));
+    //Not currently implemented
+    //Called when Linked Variabled is selected in editor
+    //Need to implement saving correctly, but is okay for now as '$singleFacility' is the only
+    //reasonable choice
   }
 
   link(scope, elem, attrs, ctrl) {

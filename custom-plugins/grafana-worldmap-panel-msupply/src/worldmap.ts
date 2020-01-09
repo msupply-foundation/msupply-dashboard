@@ -31,8 +31,6 @@ export default class WorldMap {
     this.ctrl = ctrl;
     this.mapContainer = mapContainer;
     this.circles = [];
-    // console.log('Constructing map...')
-    // console.log(this.ctrl.panel.linkedVariable);
   }
 
   createMap() {
@@ -140,13 +138,9 @@ export default class WorldMap {
   }
 
   updateCircles(data) {
-    console.log("Updating circles...");
-    console.log(this.ctrl.panel.linkedVariable);
-    
     const selectedFacilityName = _.find(this.ctrl.vars, elem => {
       return elem.name === this.ctrl.panel.linkedVariable;
     }).current.value;
-    console.log(selectedFacilityName);
     
     data.forEach(dataPoint => {
       if (!dataPoint.locationName) {
