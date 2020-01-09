@@ -1,12 +1,12 @@
 {
   "type": "panel",
-  "name": "Worldmap Panel",
-  "id": "grafana-worldmap-panel",
+  "name": "Worldmap Panel (Custom)",
+  "id": "msupply-worldmap-panel",
 
   "info": {
     "description": "World Map panel for Grafana. Displays time series data or geohash data from Elasticsearch overlaid on a world map.",
     "author": {
-      "name": "Grafana Labs",
+      "name": "Grafana Labs/Sustainable Solutions",
       "url": "https://grafana.com"
     },
     "keywords": ["worldmap", "panel"],
@@ -23,8 +23,8 @@
       {"name": "USA", "path": "images/worldmap-usa.png"},
       {"name": "Light Theme", "path": "images/worldmap-light-theme.png"}
     ],
-    "version": "%VERSION%",
-    "updated": "%TODAY%"
+    "version": "1.0.1",
+    "updated": "2020-01-09"
   },
 
   "dependencies": {
