@@ -132,8 +132,10 @@ class PaginateSelector extends React.Component<PaginateProps, StateProps> {
   render() {
     //STYLING FOR THIS SECTION NEEDS IMPROVEMENT IF ITS TO BE IMPLEMENTED
     return (
-      <div>
-        <span style={{ marginLeft: 10, marginRight: 10 }}>Jump to: </span>
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <label className="gf-form-label template-variable" style={{ marginLeft: 10, marginRight: 10 }}>
+          Jump to:{' '}
+        </label>
         <select id="letter-select" style={{ width: 50 }} value={this.state.selectedLetter} onChange={this.handleChange}>
           {this.letters.map((letter: string, index: number) => (
             <option value={letter} key={index}>
@@ -141,23 +143,30 @@ class PaginateSelector extends React.Component<PaginateProps, StateProps> {
             </option>
           ))}
         </select>
-        <button id="jump-up" style={{ marginLeft: 10, marginRight: 10 }} onClick={this.handleClick}>
+        <button id="jump-up" className="btn btn-primary" style={{ marginLeft: 10, marginRight: 10 }} onClick={this.handleClick}>
           Up
         </button>
-        <button id="jump-down" style={{ marginLeft: 10, marginRight: 10 }} onClick={this.handleClick}>
+        <button id="jump-down" className="btn btn-primary" style={{ marginLeft: 10, marginRight: 10 }} onClick={this.handleClick}>
           Down
         </button>
-        <span style={{ marginLeft: 10, marginRight: 10 }}>Items to show: </span>
-        <select id="item-display-select" style={{ width: 50 }} value={this.state.selectedItemsCount} onChange={this.handleChange}>
+        <label className="gf-form-label template-variable">Items to show: </label>
+        <select
+          className="browser-default custom-select"
+          id="item-display-select"
+          style={{ width: 50 }}
+          value={this.state.selectedItemsCount}
+          onChange={this.handleChange}
+        >
           <option value={10}>10</option>
           <option value={15}>15</option>
           <option value={20}>20</option>
           <option value={30}>30</option>
           <option value={40}>40</option>
           <option value={50}>50</option>
+          <option value={100}>100</option>
         </select>
-        <span style={{ marginLeft: 30, marginRight: 10 }}>Show Navigator</span>
-        <input id="show-navigator" type="checkbox" checked={this.state.showNavigator} onChange={this.handleChange} />
+        {/* <span style={{ marginLeft: 30, marginRight: 10 }}>Show Navigator</span>
+        <input id="show-navigator" type="checkbox" checked={this.state.showNavigator} onChange={this.handleChange} /> */}
       </div>
     );
   }
