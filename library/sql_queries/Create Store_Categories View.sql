@@ -1,7 +1,6 @@
 -- This query should be run to create views summarising store names and categories for the filters within Dashboards.
 -- This view greatly simplifies SQL queries for these filters.
 
-
 DROP VIEW IF EXISTS store_categories;
 CREATE VIEW store_categories AS (
     SELECT
