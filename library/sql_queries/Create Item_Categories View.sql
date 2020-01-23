@@ -12,7 +12,7 @@ CREATE VIEW item_categories AS (
 SELECT
 	item.id,
     item.item_name, 
-	CASE WHEN item_category.description IS NULL THEN 'NONE' ELSE item_category.description END AS category, 
+	COALESCE (item_category.description, 'NONE') AS category, 
 	CASE WHEN item_category_level2.description IS NULL THEN 'NONE' ELSE item_category_level2.description END AS category_level2, 
 	CASE WHEN item_category_level1.description IS NULL THEN 'NONE' ELSE item_category_level1.description END AS category_level1, 
 	CASE WHEN item_category2.description IS NULL THEN 'NONE' ELSE item_category2.description END AS category2, 
