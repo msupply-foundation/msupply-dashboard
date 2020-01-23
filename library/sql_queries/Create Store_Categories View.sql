@@ -2,21 +2,21 @@
 -- This view greatly simplifies SQL queries for these filters.
 
 
-VIEW IF EXISTS store_categories;
+DROP VIEW IF EXISTS store_categories;
 CREATE VIEW store_categories AS (
     SELECT
-    	store.id AS storeid,
+		store.id AS storeid,
 		store.name, 
 		store.code, 
 		CASE WHEN store.organisation_name = '' THEN 'NONE' ELSE store.organisation_name END AS organisation, 
-		CASE WHEN name_category1 IS NULL THEN 'NONE' ELSE name_category1.description END AS category1, 
-		CASE WHEN name_category1_level2.description IS NULL THEN 'NONE' ELSE name_category1_level2.description END AS category1_level2, 
-		CASE WHEN name_category1_level1.description IS NULL THEN 'NONE' ELSE name_category1_level1.description END AS category1_level1, 
-		CASE WHEN name_category2 IS NULL THEN 'NONE' ELSE name_category2.description END AS category2, 
-		CASE WHEN name_category3 IS NULL THEN 'NONE' ELSE name_category3.description END AS category3, 
-		CASE WHEN name_category4 IS NULL THEN 'NONE' ELSE name_category4.description END AS category4, 
-		CASE WHEN name_category5 IS NULL THEN 'NONE' ELSE name_category5.description END AS category5, 
-		CASE WHEN name_category6 IS NULL THEN 'NONE' ELSE name_category6.description END AS category6, 
+		COALESCE (name_category1.description, 'NONE') AS category1,  --Replaces NULL with 'NONE'
+		COALESCE (name_category1_level2.description, 'NONE') AS category1_level2, 
+		COALESCE (name_category1_level1.description, 'NONE') AS category1_level1, 
+		COALESCE (name_category2.description, 'NONE') AS category2, 
+		COALESCE (name_category3.description, 'NONE') AS category3, 
+		COALESCE (name_category4.description, 'NONE') AS category4, 
+		COALESCE (name_category5.description, 'NONE') AS category5, 
+		COALESCE (name_category6.description, 'NONE') AS category6, 
 		store.store_mode AS MODE, 
 		store.disabled 
 	FROM 
