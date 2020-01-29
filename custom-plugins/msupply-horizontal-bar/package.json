@@ -1,6 +1,6 @@
 {
   "name": "msupply-horizontal-bar",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "mSupply Horizontal Bar",
   "scripts": {
     "build": "grafana-toolkit plugin:build",

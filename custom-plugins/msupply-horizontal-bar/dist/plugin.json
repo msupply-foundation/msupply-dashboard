@@ -6,7 +6,7 @@
   "info": {
     "description": "mSupply Horizontal Bar",
     "author": {
-      "name": "Your Name"
+      "name": "Sustainable Solutions"
     },
     "keywords": ["Simple"],
     "logos": {
@@ -22,8 +22,8 @@
       { "name": "License", "url": "msupply-horizontal-bar/blob/master/LICENSE" }
     ],
     "screenshots": [],
-    "version": "1.0.0",
-    "updated": "2019-12-16"
+    "version": "1.0.2",
+    "updated": "2020-01-09"
   },
 
   "dependencies": {
