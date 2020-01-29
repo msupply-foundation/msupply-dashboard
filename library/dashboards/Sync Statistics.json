@@ -1,0 +1,855 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "",
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 13,
+  "iteration": 1578609257517,
+  "links": [
+    {
+      "icon": "external link",
+      "tags": [
+        "mSupply"
+      ],
+      "type": "dashboards"
+    }
+  ],
+  "panels": [
+    {
+      "columns": [],
+      "datasource": "PostgreSQL",
+      "description": "",
+      "fontSize": "100%",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "links": [],
+      "options": {},
+      "pageSize": null,
+      "scroll": true,
+      "showHeader": true,
+      "sort": {
+        "col": 1,
+        "desc": false
+      },
+      "styles": [
+        {
+          "alias": "",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(50, 172, 45, 0.97)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(245, 54, 54, 0.9)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "mappingType": 1,
+          "pattern": "Days since last SYNC",
+          "thresholds": [
+            "6",
+            "11"
+          ],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "alias": "",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(50, 172, 45, 0.97)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(245, 54, 54, 0.9)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "mappingType": 1,
+          "pattern": "# of Unfinalised Supplier Invoices",
+          "thresholds": [
+            "1",
+            "6"
+          ],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "alias": "",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(50, 172, 45, 0.97)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(245, 54, 54, 0.9)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "mappingType": 1,
+          "pattern": "Days since Stocktake",
+          "thresholds": [
+            "31",
+            "51"
+          ],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "alias": "",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(50, 172, 45, 0.97)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(245, 54, 54, 0.9)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "mappingType": 1,
+          "pattern": "Days since Requisition",
+          "thresholds": [
+            "31",
+            "51"
+          ],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "alias": "",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "link": false,
+          "mappingType": 1,
+          "pattern": "/CIs .*/",
+          "thresholds": [
+            "0.21",
+            "0.41"
+          ],
+          "type": "number",
+          "unit": "short",
+          "valueMaps": []
+        },
+        {
+          "alias": "",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "decimals": 2,
+          "pattern": "/.*/",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "with records as \n(\n  select json_array_elements(json::json#>'{data,rows}') as data_array \n  from dashboard_report \n  where method_code like 'dashboardSyncSiteStatistics%' \n), \nheaders as \n( \n  select json_array_elements(json::json#>'{data,header}') as export_date \n  from dashboard_report \n  where method_code like 'dashboardSyncSiteStatistics%' \n), result as\n(\n  select data_array ->> 0 as \"Store\", \n    cast(data_array ->> 1 as int) as \"Days since last SYNC\", \n    cast(data_array ->> 2 as int) as \"# of Unfinalised Supplier Invoices\", \n    cast(data_array ->> 3 as int) as \"Days since Stocktake\", \n    cast(data_array ->> 4 as int) as \"Days since Requisition\", \n    (regexp_split_to_array(data_array ->> 5, '/'))[1]::real / (regexp_split_to_array(data_array ->> 5, '/'))[2]::real as \"CIs per day\", \n    --data_array ->> 5 as \"CIs (entry days/working days)\", \n    (select replace(cast(export_date as varchar), '\"', '') from headers limit 1) as \"Export Date\" \n  from records \n) \nselect * from result where \"Store\" in ($multiFacility)\n",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "State of synchronisation by site — showing $facilityCount facilities",
+      "transform": "table",
+      "type": "table"
+    },
+    {
+      "columns": [],
+      "datasource": null,
+      "fontSize": "100%",
+      "gridPos": {
+        "h": 16,
+        "w": 18,
+        "x": 0,
+        "y": 10
+      },
+      "id": 4,
+      "links": [],
+      "options": {},
+      "pageSize": null,
+      "scroll": true,
+      "showHeader": true,
+      "sort": {
+        "col": null,
+        "desc": false
+      },
+      "styles": [
+        {
+          "alias": "Time",
+          "dateFormat": "YYYY-MM-DD",
+          "pattern": "/.*Date/",
+          "type": "date"
+        },
+        {
+          "alias": "",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "decimals": 2,
+          "pattern": "/.*/",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "with records as \n(\n  SELECT json_array_elements(cast(json as json)->'data'->'rows') as theresult \n  from dashboard_report WHERE  name = 'Sync sites last connection date'\n),\nparsed as\n(\n  select \n   theresult ->> 0 as \"Site\",\n   theresult ->> 1 as connectiondate,\n   regexp_split_to_array(theresult ->> 2, ' ') as version\n  from records\n)\nselect \"Site\", \nREGEXP_REPLACE(connectiondate, '(\\d{2})/(\\d{2})/(\\d{4})', '\\2/\\1/\\3') as \"Last Connection Date\", \n(Select regexp_matches(version[8], 'V\\d+-\\d+\\-\\d+'))[1] as \"Version\",\nREGEXP_REPLACE(version[5], '(\\d{2})/(\\d{2})/(\\d{4})', '\\2/\\1/\\3') as \"Release Date\" \nfrom parsed\norder by 1",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Sync sites",
+      "transform": "table",
+      "type": "table"
+    }
+  ],
+  "schemaVersion": 21,
+  "style": "dark",
+  "tags": [
+    "mSupply"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "selected": true,
+          "text": "AMS",
+          "value": "AMS"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "Subset",
+        "multi": false,
+        "name": "Subset",
+        "options": [
+          {
+            "selected": false,
+            "text": "%",
+            "value": "%"
+          },
+          {
+            "selected": true,
+            "text": "AMS",
+            "value": "AMS"
+          },
+          {
+            "selected": false,
+            "text": "Malaria",
+            "value": "Malaria"
+          },
+          {
+            "selected": false,
+            "text": "TB",
+            "value": "TB"
+          },
+          {
+            "selected": false,
+            "text": "HIV",
+            "value": "HIV"
+          },
+          {
+            "selected": false,
+            "text": "Morobe",
+            "value": "Morobe"
+          }
+        ],
+        "query": "%,AMS,Malaria,TB,HIV,Morobe",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "select name from store where sync_id_remote_site > 0 and disabled = false and name not like '%Lab%' and name not like '%Dispensary%' and name like '%$Subset%' and code like '$codeStart%' order by name",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Sites",
+        "multi": true,
+        "name": "Sites",
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "$__all"
+          }
+        ],
+        "query": "select name from store where sync_id_remote_site > 0 and disabled = false and name not like '%Lab%' and name not like '%Dispensary%' and name like '%$Subset%' and code like '$codeStart%' order by name",
+        "refresh": 0,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "select name from ",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "label": "Facility Filter",
+        "name": "facilityFilter",
+        "options": [
+          {
+            "selected": false,
+            "text": "",
+            "value": ""
+          }
+        ],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT \n    NAME \nFROM \n\t$storeTableName \nWHERE \n\tLOWER(NAME) LIKE LOWER('%$facilityFilter%')\n\tAND code IN ($code)\n\tAND category1 IN ($nameCategory1)\n\tAND category1_level2 IN ($nameCategory1Level2)\n\tAND category1_level1 IN ($nameCategory1Level1)\n\tAND category2 IN ($nameCategory2)\n\tAND category3 IN ($nameCategory3)\n\tAND category4 IN ($nameCategory4)\n\tAND category5 IN ($nameCategory5)\n\tAND category6 IN ($nameCategory6)\n\tAND organisation in ($organisation)\n\tAND mode in ($mode)\n\tAND disabled in ($disabled)\n\t\n",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Multi Facility",
+        "multi": true,
+        "name": "multiFacility",
+        "options": [],
+        "query": "SELECT \n    NAME \nFROM \n\t$storeTableName \nWHERE \n\tLOWER(NAME) LIKE LOWER('%$facilityFilter%')\n\tAND code IN ($code)\n\tAND category1 IN ($nameCategory1)\n\tAND category1_level2 IN ($nameCategory1Level2)\n\tAND category1_level1 IN ($nameCategory1Level1)\n\tAND category2 IN ($nameCategory2)\n\tAND category3 IN ($nameCategory3)\n\tAND category4 IN ($nameCategory4)\n\tAND category5 IN ($nameCategory5)\n\tAND category6 IN ($nameCategory6)\n\tAND organisation in ($organisation)\n\tAND mode in ($mode)\n\tAND disabled in ($disabled)\n\t\n",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "12",
+          "value": "12"
+        },
+        "hide": 0,
+        "label": "Code Starts With",
+        "name": "codeStart",
+        "options": [
+          {
+            "selected": false,
+            "text": "12",
+            "value": "12"
+          }
+        ],
+        "query": "12",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT code FROM $storeTableName WHERE LOWER(code) LIKE LOWER('$codeStart%')",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Code",
+        "multi": true,
+        "name": "code",
+        "options": [],
+        "query": "SELECT code FROM $storeTableName WHERE LOWER(code) LIKE LOWER('$codeStart%')",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 5,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category1 FROM $storeTableName\nORDER BY category1 = '$nullString' desc, category1",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 1",
+        "multi": true,
+        "name": "nameCategory1",
+        "options": [],
+        "query": "SELECT category1 FROM $storeTableName\nORDER BY category1 = '$nullString' desc, category1",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category1_level2 FROM $storeTableName\nORDER BY category1_level2 = '$nullString' desc, category1_level2",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 1 Level 2",
+        "multi": true,
+        "name": "nameCategory1Level2",
+        "options": [],
+        "query": "SELECT category1_level2 FROM $storeTableName\nORDER BY category1_level2 = '$nullString' desc, category1_level2",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category1_level1 FROM $storeTableName\nORDER BY category1_level1 = '$nullString' desc, category1_level1",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 1 Level 1",
+        "multi": true,
+        "name": "nameCategory1Level1",
+        "options": [],
+        "query": "SELECT category1_level1 FROM $storeTableName\nORDER BY category1_level1 = '$nullString' desc, category1_level1",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category2 FROM $storeTableName\nORDER BY category2 = '$nullString' desc, category2",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 2",
+        "multi": true,
+        "name": "nameCategory2",
+        "options": [],
+        "query": "SELECT category2 FROM $storeTableName\nORDER BY category2 = '$nullString' desc, category2",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category3 FROM $storeTableName\nORDER BY category3 = '$nullString' desc, category3",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 3",
+        "multi": true,
+        "name": "nameCategory3",
+        "options": [],
+        "query": "SELECT category3 FROM $storeTableName\nORDER BY category3 = '$nullString' desc, category3",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category4 FROM $storeTableName\nORDER BY category4 = '$nullString' desc, category4",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 4",
+        "multi": true,
+        "name": "nameCategory4",
+        "options": [],
+        "query": "SELECT category4 FROM $storeTableName\nORDER BY category4 = '$nullString' desc, category4",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category5 FROM $storeTableName\nORDER BY category5 = '$nullString' desc, category5",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 5",
+        "multi": true,
+        "name": "nameCategory5",
+        "options": [],
+        "query": "SELECT category5 FROM $storeTableName\nORDER BY category5 = '$nullString' desc, category5",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category6 FROM $storeTableName\nORDER BY category6 = '$nullString' desc, category6",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 6",
+        "multi": true,
+        "name": "nameCategory6",
+        "options": [],
+        "query": "SELECT category6 FROM $storeTableName\nORDER BY category6 = '$nullString' desc, category6",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT organisation FROM $storeTableName\nORDER BY organisation = '$nullString' desc, organisation",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Organisation",
+        "multi": true,
+        "name": "organisation",
+        "options": [],
+        "query": "SELECT organisation FROM $storeTableName\nORDER BY organisation = '$nullString' desc, organisation",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT mode FROM $storeTableName",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Mode",
+        "multi": true,
+        "name": "mode",
+        "options": [],
+        "query": "SELECT mode FROM $storeTableName",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT disabled FROM $storeTableName",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Disabled",
+        "multi": true,
+        "name": "disabled",
+        "options": [],
+        "query": "SELECT disabled FROM $storeTableName",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "NONE",
+          "value": "NONE"
+        },
+        "hide": 2,
+        "label": null,
+        "name": "nullString",
+        "options": [
+          {
+            "selected": true,
+            "text": "NONE",
+            "value": "NONE"
+          }
+        ],
+        "query": "NONE",
+        "skipUrlSync": false,
+        "type": "constant"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "store_categories",
+          "value": "store_categories"
+        },
+        "hide": 2,
+        "label": "Store Table Name",
+        "name": "storeTableName",
+        "options": [
+          {
+            "selected": true,
+            "text": "store_categories",
+            "value": "store_categories"
+          }
+        ],
+        "query": "store_categories",
+        "skipUrlSync": false,
+        "type": "constant"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "66",
+          "value": "66"
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT \n    COUNT(name) \nFROM \n\t$storeTableName \nWHERE \n\tname in ($multiFacility)",
+        "hide": 2,
+        "includeAll": false,
+        "label": "Count",
+        "multi": false,
+        "name": "facilityCount",
+        "options": [],
+        "query": "SELECT \n    COUNT(name) \nFROM \n\t$storeTableName \nWHERE \n\tname in ($multiFacility)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ]
+  },
+  "timezone": "",
+  "title": "Sync Statistics",
+  "uid": "n9KswfJWz",
+  "version": 28
+}

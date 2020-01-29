@@ -1,0 +1,1945 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 12,
+  "iteration": 1578603897991,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "tags": [
+        "mSupply"
+      ],
+      "type": "dashboards"
+    }
+  ],
+  "panels": [
+    {
+      "content": "\n### Dashboard notes\n\nThe variables (above) above have been implemented to: \n- allow easy filtering/cusomisation of views for users  \n- provide maximum flexibility/generalisation while keeping the invididual panel queries as simple as possible.\n\nThere are more variables than those shown here. See `Dashboard Settings -> Variables` for full variable list.\n\n(Note: these variables require additional Postgres views `store_categories` and `item_categories` to be created)\n\nThe idea is that any possible filtering options are available via variables, but most will be preset and hidden, depending on the user.\nThis way, we can use the same Dashboard layout everywhere but simply change the (hidden) variable settings to customise for each user's requirements.\n\n\n\n",
+      "datasource": null,
+      "gridPos": {
+        "h": 7,
+        "w": 20,
+        "x": 0,
+        "y": 0
+      },
+      "id": 33,
+      "mode": "markdown",
+      "options": {},
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "id": 25,
+      "panels": [],
+      "title": "Summary",
+      "type": "row"
+    },
+    {
+      "circleMaxSize": "20",
+      "circleMinSize": "20",
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)",
+        "#3274D9"
+      ],
+      "datasource": null,
+      "decimals": 0,
+      "description": "",
+      "esMetric": "Count",
+      "gridPos": {
+        "h": 17,
+        "w": 11,
+        "x": 0,
+        "y": 8
+      },
+      "hideEmpty": false,
+      "hideZero": false,
+      "id": 2,
+      "initialZoom": "6",
+      "linkedVariable": "singleFacility",
+      "links": [],
+      "locationData": "table",
+      "mapCenter": "custom",
+      "mapCenterLatitude": "-7.016399",
+      "mapCenterLongitude": "146.625696",
+      "maxDataPoints": 1,
+      "mouseWheelZoom": true,
+      "options": {},
+      "showLegend": true,
+      "stickyLabels": false,
+      "tableQueryOptions": {
+        "geohashField": "geohash",
+        "labelField": "metric",
+        "latitudeField": "latitude",
+        "longitudeField": "longitude",
+        "metricField": "value",
+        "queryType": "coordinates"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select latitude, longitude, name.name as metric, case when aggregator.value is null then 0 else aggregator.value end\nfrom store join name on name.id = store.name_id \nleft join aggregator on aggregator.storeID = store.id and aggregator.itemID = (select id from item where item_name = '$singleItem') and aggregator.dataElement = 'currentMOS'\nwhere latitude <> 0 and store.name in ($multiFacility)",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "thresholds": "3,6,24",
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Multi Store MOS for Single Item: $singleItem",
+      "type": "grafana-worldmap-panel-msupply",
+      "unitPlural": "",
+      "unitSingle": "",
+      "valueName": "current"
+    },
+    {
+      "datasource": null,
+      "gridPos": {
+        "h": 17,
+        "w": 11,
+        "x": 11,
+        "y": 8
+      },
+      "id": 6,
+      "options": {
+        "mainChartTheme": "{\n  \"//\": \"spaceBetwenBars is not standard Victory Charts field\",\n  \"spaceBetweenBars\": 1,\n  \"chart\": {\n    \"width\": 600,\n    \"height\": 600,\n    \"padding\": {\n      \"left\": 250,\n      \"top\": 50,\n      \"right\": 50,\n      \"bottom\": 40\n    }\n  },\n  \"axis\": {\n    \"style\": {\n      \"axis\": {\n        \"fill\": \"transparent\",\n        \"stroke\": \"#90A4AE\",\n        \"strokeWidth\": 2,\n        \"strokeLinecap\": \"round\",\n        \"strokeLinejoin\": \"round\"\n      },\n      \"axisLabel\": {\n        \"textAnchor\": \"middle\",\n        \"fontFamily\": \"'Roboto', 'Helvetica Neue', Helvetica, sans-serif\",\n        \"fontSize\": 12,\n        \"letterSpacing\": \"normal\",\n        \"fill\": \"#455A64\",\n        \"stroke\": \"transparent\",\n        \"strokeWidth\": 0\n      },\n      \"grid\": {\n        \"fill\": \"none\",\n        \"stroke\": \"#ECEFF1\",\n        \"strokeDasharray\": \"10, 5\",\n        \"strokeLinecap\": \"round\",\n        \"strokeLinejoin\": \"round\",\n        \"pointerEvents\": \"painted\"\n      },\n      \"ticks\": {\n        \"fill\": \"transparent\",\n        \"size\": 5,\n        \"stroke\": \"#90A4AE\",\n        \"strokeWidth\": 1,\n        \"strokeLinecap\": \"round\",\n        \"strokeLinejoin\": \"round\"\n      },\n      \"tickLabels\": {\n        \"fontFamily\": \"'Roboto', 'Helvetica Neue', Helvetica, sans-serif\",\n        \"fontSize\": 12,\n        \"letterSpacing\": \"normal\",\n        \"fill\": \"#455A64\",\n        \"stroke\": \"transparent\",\n        \"strokeWidth\": 0\n      }\n    }\n  },\n  \"independentAxis\": {\n    \"style\": {\n      \"grid\": {\n        \"fill\": \"none\",\n        \"stroke\": \"none\"\n      }\n    }\n  },\n  \"bar\": {\n    \"style\": {\n      \"data\": {\n        \"fill\": \"#455A64\",\n        \"padding\": 8,\n        \"strokeWidth\": 0\n      },\n      \"labels\": {\n        \"fontFamily\": \"'Roboto', 'Helvetica Neue', Helvetica, sans-serif\",\n        \"fontSize\": 12,\n        \"letterSpacing\": \"normal\",\n        \"padding\": 8,\n        \"fill\": \"#455A64\",\n        \"stroke\": \"transparent\",\n        \"strokeWidth\": 0\n      }\n    }\n  }\n}",
+        "mapping": "[\n  {\n    \"x\": \"item_name\",\n    \"y\": \"criticalcount\",\n    \"threshold\": \"criticalthreshold\",\n    \"label\": \"criticallabel\"\n  },\n  {\n    \"x\": \"item_name\",\n    \"y\": \"lowcount\",\n    \"threshold\": \"lowthreshold\",\n    \"label\": \"lowlabel\"\n  },\n  {\n    \"x\": \"item_name\",\n    \"y\": \"normalcount\",\n    \"threshold\": \"normalthreshold\",\n    \"label\": \"normallabel\"\n  },\n  {\n    \"x\": \"item_name\",\n    \"y\": \"overcount\",\n    \"threshold\": \"overthreshold\",\n    \"label\": \"overlabel\"\n  }\n]",
+        "navigatorChartTheme": "{\n  \"//\": \"spaceBetwenBars and brushStyle are not standard Victory Chart fields\",\n  \"spaceBetweenBars\": 2,\n  \"chart\": {\n    \"brushStyle\": {\n      \"stroke\": \"transparent\",\n      \"fill\": \"orange\",\n      \"fillOpacity\": 0.7\n    },\n    \"handleStyle\": {\n      \"stroke\": \"transparent\",\n      \"fill\": \"none\"\n    },\n    \"width\": 200,\n    \"height\": 600,\n    \"padding\": {\n      \"left\": 0,\n      \"top\": 25,\n      \"right\": 0,\n      \"bottom\": 0\n    }\n  },\n  \"axis\": {\n    \"tickValues\": [],\n    \"style\": {\n      \"axis\": {\n        \"fill\": \"transparent\",\n        \"stroke\": \"none\"\n      },\n      \"grid\": {\n        \"fill\": \"none\",\n        \"stroke\": \"none\"\n      }\n    }\n  }\n}",
+        "otherSettings": "{\n  \"mapping\": [\n    {\n      \"x\": \"item_name\",\n      \"y\": \"criticalcount\",\n      \"threshold\": \"criticalthreshold\",\n      \"label\": \"criticallabel\"\n    },\n    {\n      \"x\": \"item_name\",\n      \"y\": \"lowcount\",\n      \"threshold\": \"lowthreshold\",\n      \"label\": \"lowlabel\"\n    },\n    {\n      \"x\": \"item_name\",\n      \"y\": \"normalcount\",\n      \"threshold\": \"normalthreshold\",\n      \"label\": \"normallabel\"\n    },\n    {\n      \"x\": \"item_name\",\n      \"y\": \"overcount\",\n      \"threshold\": \"overthreshold\",\n      \"label\": \"overlabel\"\n    }\n  ],\n  \"brushDomain\": {\n    \"minX\": 15,\n    \"maxX\": 40\n  }\n}",
+        "text": "The default text!",
+        "thresholds": [
+          {
+            "color": "green",
+            "value": null
+          },
+          {
+            "color": "red",
+            "value": 1
+          },
+          {
+            "color": "orange",
+            "value": 2
+          },
+          {
+            "color": "green",
+            "value": 3
+          },
+          {
+            "color": "blue",
+            "value": 4
+          }
+        ]
+      },
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "with\nstocklevels as\n(\n\tselect itemID,\n\tcase when value <= 3 then 1 else null end as stockLevelCritical,\n\tcase when value > 3 and value <= 6 then 1 else null end as stockLevelLow,\n\tcase when value > 6 and value <= 24 then 1 else null end as stockLevelNormal,\n\tcase when value > 24 then 1 else null end as stockLevelOverStock,\n\tcase \n\t\twhen value < 3 then 'Out of Stock'\n\t\twhen value < 6 then 'Low Stock'\n\t\twhen value < 24 then 'Good Stock'\n\t\telse 'Over Stock'\n\t\tend stockLevel\n\tfrom aggregator \n\t  join item_categories on itemid=item_categories.id \n\twhere dataElement = 'currentMOS' \n\t\tand storeID in (select id from store where name in ($multiFacility)) \n\t\tand item_categories.stock_type IN ($stockType)\n)\nselect item_name, count(*), \n\tcount(stockLevelCritical) as criticalcount, \n\tcount(stockLevelLow) as lowcount, \n\tcount(stockLevelNormal) as normalcount,\n\tcount(stockLevelOverStock) as overcount,\n\t1 as criticalthreshold,\n\t2 as lowthreshold,\n\t3 as normalthreshold,\n\t4 as overthreshold,\n\tcount(stockLevelLow) || ' facilitie/s low stock' as lowlabel,\n\tcount(stockLevelCritical) || ' facilitie/s out of stock' as criticallabel,\n\tcount(stockLevelNormal) || ' facilitie/s normal stock' as normallabel,\n\tcount(stockLevelOverStock) || ' facilitie/s over stock' as overlabel\nfrom item \nJOIN stocklevels ON item.id = itemID\n  \nwhere stocklevels.stockLevel in ($stockLevel)\nAND item_name IN ($multiItem)\ngroup by 1 \norder by item_name = '$singleItem', item_name desc",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Stock Levels for $itemCount items across $facilityCount facilities",
+      "type": "msupply-horizontal-bar"
+    },
+    {
+      "columns": [],
+      "datasource": null,
+      "description": "",
+      "fontSize": "90%",
+      "gridPos": {
+        "h": 16,
+        "w": 14,
+        "x": 0,
+        "y": 25
+      },
+      "id": 15,
+      "links": [],
+      "options": {},
+      "pageSize": 10000,
+      "showHeader": true,
+      "sort": {
+        "col": null,
+        "desc": false
+      },
+      "styles": [
+        {
+          "alias": "Critical",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(12, 12, 12, 0)",
+            "rgba(224, 47, 68, 0.26)",
+            "rgb(173, 22, 41)"
+          ],
+          "decimals": 0,
+          "link": false,
+          "linkTooltip": "This is the tooltip",
+          "linkUrl": "",
+          "pattern": "Critical Stock",
+          "thresholds": [
+            "1",
+            " 3"
+          ],
+          "type": "number",
+          "unit": "none"
+        },
+        {
+          "alias": "Low",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(245, 54, 54, 0)",
+            "#FFB357",
+            "#FA6400"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "mappingType": 1,
+          "pattern": "Low Stock",
+          "thresholds": [
+            "1",
+            "3"
+          ],
+          "type": "number",
+          "unit": "none"
+        },
+        {
+          "alias": "Normal",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(245, 54, 54, 0)",
+            "#96D98D",
+            "#37872D"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "mappingType": 1,
+          "pattern": "Normal Stock",
+          "thresholds": [
+            "1",
+            "3"
+          ],
+          "type": "number",
+          "unit": "none"
+        },
+        {
+          "alias": "Over",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(245, 54, 54, 0)",
+            "#8AB8FF",
+            "#1F60C4"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "mappingType": 1,
+          "pattern": "Over stock",
+          "thresholds": [
+            "1",
+            "3"
+          ],
+          "type": "number",
+          "unit": "none"
+        },
+        {
+          "alias": "",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "link": true,
+          "linkTooltip": "Select $__cell_0",
+          "linkUrl": "/d/vS1FdrbZz/mos-testing-for-filters/?orgId=1&var-singleItem=$__cell_0",
+          "mappingType": 1,
+          "pattern": "Item",
+          "preserveFormat": false,
+          "sanitize": false,
+          "thresholds": [],
+          "type": "string",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "with\nstocklevels as\n(\n\tselect itemID,\n\tcase when value <= 3 then 1 else null end as stockLevelCritical,\n\tcase when value > 3 and value <= 6 then 1 else null end as stockLevelLow,\n\tcase when value > 6 and value <= 24 then 1 else null end as stockLevelNormal,\n\tcase when value > 24 then 1 else null end as stockLevelOverStock,\n\tcase \n\t\twhen value < 3 then 'Out of Stock'\n\t\twhen value < 6 then 'Low Stock'\n\t\twhen value < 24 then 'Good Stock'\n\t\telse 'Over Stock'\n\t\tend stockLevel\n\tfrom aggregator \n\t  join item_categories on itemid=item_categories.id \n\twhere dataElement = 'currentMOS' \n\t\tand storeID in (select id from store where name in ($multiFacility)) \n\t\tand item_categories.stock_type IN ($stockType)\n)\nselect item_name as \"Item\",\n  count(stockLevelCritical)  as \"Critical Stock\",\n\tcount(stockLevelLow)  as \"Low Stock\",\n\tcount(stockLevelNormal)  as \"Normal Stock\",\n\tcount(stockLevelOverStock)  as \"Over stock\"\nfrom item \n  join stocklevels on item.id=itemID\ngroup by 1 \norder by item_name",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Stock Status — $itemCount items across $facilityCount facilites",
+      "transform": "table",
+      "type": "table"
+    },
+    {
+      "content": "# ☜\n\nThis panel (left) shows the same information as the above (right) graph, but in a simpler tabular form. However it is much more responsive, easily navigable, and will work with Drill-down (eventually)\n\n\n",
+      "datasource": null,
+      "description": "",
+      "gridPos": {
+        "h": 16,
+        "w": 7,
+        "x": 14,
+        "y": 25
+      },
+      "id": 27,
+      "mode": "markdown",
+      "options": {},
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "columns": [],
+      "datasource": "PostgreSQL",
+      "description": "",
+      "fontSize": "100%",
+      "gridPos": {
+        "h": 15,
+        "w": 15,
+        "x": 0,
+        "y": 41
+      },
+      "id": 13,
+      "options": {},
+      "pageSize": null,
+      "showHeader": true,
+      "sort": {
+        "col": 0,
+        "desc": false
+      },
+      "styles": [
+        {
+          "alias": "",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)",
+            "rgba(28, 73, 232, 0.9)"
+          ],
+          "decimals": 1,
+          "link": false,
+          "pattern": "/AMS/",
+          "thresholds": [
+            "3",
+            "6",
+            "24"
+          ],
+          "type": "number",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT * FROM crosstab(\n\t'SELECT item_name, name, value FROM aggregator \njoin store on storeid = store.id\njoin item on itemid = item.id\nwhere dataelement = ''currentMOS''\nAND name in (''Badili AMS'',''Hagen AMS'',''Kokopo AMS'',''Lae AMS'',''Wewak AMS'')\nand item_name in (''Adrenaline Injection, 1:1000, 1ml'',''Albendazole Tablets, 200mg'',''Aluminium Hydroxide Gel Compound Tablets, 500mg'',''Aminophylline Tablets, 100mg'',''Amoxycillin 500mg + Clavulanic Acid 125mg Tablets'',''Amoxycillin Capsules, 500mg'',''Amoxycillin Syrup, 125mg/5ml, 100ml'',''Amoxycillin Tablets, 250mg'',''Antibiotic Compound Eye Drops, 10ml (Gramicidin/Neomycin Sulph/Polymix B Sulph)'',''Artemether 20 mg+Lumefantrine 120mg Tablets, 15-24kg, blister 12x1'',''Artemether 20 mg+Lumefantrine 120mg Tablets, 25-34kg, blister 18x1'',''Artemether 20 mg+Lumefantrine 120mg Tablets, 35+ kg, blister 24x1'',''Artemether 20 mg+Lumefantrine 120mg Tablets, 5-14kg, blister 6x1'',''Artemether Injection, 40mg/ml in 1ml'',''Artemether Injection, 80mg/ml in 1ml'',''Artesunate Injection, 60mg/6ml, powder for injection + solvent'',''Atracurium Besylate Injection, 10mg/ml, 5ml'',''Azithromycin Tablets, 500mg'',''Bleomycin injection, 15mg in vial'',''Bupivacaine Injection, 0.5% Heavy, 4 ml '',''Bupivacaine Injection, 0.5%, 10ml '',''Calcium Gluconate Injection, 100mg/ml, 10ml'',''Calcium Sodium Edetate Injection, 200mg/ml, 5ml'',''Cefaclor Capsules, 250mg'',''Cefaclor Suspension, 125mg/5ml, 100ml'',''Ceftriaxone Injection, 1g'',''Charcoal Activated Solution, 50g/300ml'',''Chlorhexidine 1%, Chlorhexidine Gluconate (in a pourable water-miscible base)'',''Chlorhexidine Gluconate Solution, 5%, 1000ml'',''Ciprofloxacin Tablets, 250mg'',''Clotrimazole Vaginal Cream, 1%, 20g'',''Co-trimoxazole Paediatric Suspension, 40mg + 200mg, 100ml'',''Co-trimoxazole Tablets, 160mg + 800mg'',''Co-trimoxazole Tablets, 80mg + 400mg'',''Codeine Phosphate Tablets, 30mg'',''Contraceptive Injection (Medroxyprogesterone Acetate), 150mg/ml, 1ml'',''Contraceptive Oral Tablets (Ethinyloestradiol 30mcg&Levonorgestrel 150mcg),Pk/28'',''Contraceptive Oral Tablets (Levonorgestrel 30mcg),Pkt/28'',''Dexamethasone Phosphate Injection, 4mg in 1ml'',''Diazepam Injection, 5mg/ml, 2ml'',''Diclofenac Tablets, 25mg'',''Dihydroartemisinin-piperaquine Tablets 20mg+160mg'',''Dihydroartemisinin-piperaquine Tablets 40mg+320mg'',''Docusate with Senna Tablets, 50mg/8mg'',''Dopamine Injection, 40mg/ml, 5ml'',''Doxycycline Tablets, 100mg'',''Enalapril Tablets, 10mg'',''Enalapril Tablets, 5mg'',''Ergometrine Maleate Injection, 0.5mg in 1ml'',''Erythromycin  Suspension, 125mg/5ml, 100ml'',''Erythromycin Tablets, 250mg'',''Fentanyl Citrate Injection, 50mcg/ml,  2ml'',''Ferrous Sulphate Tablets, 60mg'',''Flucloxacillin Capsule, 500mg'',''Flucloxacillin Capsules, 250mg'',''Flucloxacillin Injection, 500mg in vial'',''Flucloxacillin Suspension, 125mg/5ml, 100ml'',''Folic Acid Tablets, 5mg'',''Frusemide Injection, 20mg in 2ml'',''Frusemide Tablets, 40mg'',''Gamma Benzene Hexachloride, Lindane 1%, Bot/2L'',''Gentamicin Injection, 80mg in 2ml'',''Gentamicin Injection, Paediatric, 20mg in 2ml'',''Gliclazide Tablets 80mg'',''Hydrocortisone Sodium Succinate Injection, 100mg with diluent'',''Hyoscine Butylbromide Injection, 20mg in 1ml'',''Hyoscine Butylbromide Tablets, 10mg'',''IV Fluid, Dextrose Injection, 50%, 50ml'',''IV Fluid, Dextrose, 10%, 500ml'',''IV Fluid, Dextrose, 2.5% in Half Strength Darrow''''s Solution, 500ml'',''IV Fluid, Dextrose, 4.3% in 0.18% Sodium Chloride, 1L'',''IV Fluid, Dextrose, 5%, 1L'',''IV Fluid, Sodium Chloride Injection, 0.9%, 10ml'',''IV Fluid, Sodium Chloride Injection, 0.9%, 1L'',''IV Fluid, Sodium Lactate, Compound Solution, Hartmann''''s Solution, 1L'',''Irrigation Solution, Sodium Chloride, 0.9%, 500ml with screw top'',''Isoprenaline Injection, 1:5000, 1ml'',''Levodopa 100mg + Carbidopa 10mg Tablets'',''Lignocaine 1% with Adrenaline 1:100,000'',''Lignocaine 2% with Adrenaline 1:80,000'',''Lignocaine Injection, Plain, 1%, 20ml'',''Lignocaine Injection, Plain, 2%, 20ml'',''Lignocaine, 100mg/5ml (Xylocard 100)'',''Magnesium Sulphate Injection, 500mg/ml, 10ml'',''Metformin Tablets, 500mg'',''Methyldopa Tablets, 250mg'',''Metoclopramide Injection, 5 mg/ml, 2ml'',''Metoclopramide Tablets, 10mg'',''Metronidazole I.V. Injection, 500mg/100ml'',''Metronidazole Suppository, 500mg, Box/10'',''Metronidazole Tablets, 200mg'',''Misoprostol Tablets, 200mcg'',''Morphine Sulphate Injection, 10mg/ml'',''Morphine Sulphate, SR Tablets, (MS Contin)  30mg'',''Multivitamin, Liquid, 50ml'',''Nystatin Oral Suspension, 100,000 IU/ml, 50ml'',''Omeprazole Tablets, 20mg'',''Oral Rehydration Solution, Powder Form, (O.R.S.), Sachet'',''Oxytocin Injection, 10 IU in 1ml'',''Paracetamol Elixir, 120mg/5ml, 100ml'',''Paracetamol Tablets, 500mg'',''Paraldehyde I.M. Injection, 1g/ml, 5ml'',''Penicillin, Benzyl Injection, 600mg (1 million IU)'',''Pethidine Injection, 50mg/ml, in 1ml'',''Phenytoin Sodium Capsules/Tablets, 100mg'',''Phenytoin Sodium Paediatric Suspension, 30mg/5ml, 500ml'',''Phytomenadione Injection, 1mg/ml, 1ml'',''Potassium Chloride Injection, (10ml), 2g in 8ml'',''Potassium Chloride SR Tablets, 600mg'',''Potassium Permanganate, 1:10,000'',''Povidone Iodine Solution, 10%, 500ml'',''Povidone Iodine Surgical Scrub Solution, 7.5%, 500ml'',''Prednisolone Tablets, 5mg'',''Primaquine Tablets, 7.5mg'',''Probenecid Tablets, 500mg'',''Promethazine Tablets, 25mg'',''Quinine Dihydrochloride Injection, 600mg in 2ml'',''Quinine Tablets, 300mg'',''Ranitidine Hydrochloride Tablets, 150mg'',''Salbutamol Aerosol, 100mcg, 200 doses, Complete'',''Salbutamol Injection, 0.5mg in 1ml'',''Salbutamol Nebulizer Ampoules, 2.5mg/2.5ml'',''Salbutamol Respirator Solution, 5mg/ml, 30ml'',''Salbutamol Tablets, 4mg'',''Silver Sulfadiazine Cream, 1%, 500g'',''Skin Swab, Alcohol, Sterile, Pkt/100'',''Soda Lime, 3kg          '',''Sulphadoxine 500mg + Pyrimethamine 25mg Tablets'',''Tetracycline Eye Ointment, 1%, 5g'',''Tinidazole Tablets,  500mg'',''Tuberculin, Diluted,  5 IU/0.1ml, 10ml'',''Vitamin A Concentrate Capsules, 100,000 IU'',''Vitamin C (Ascorbic Acid) Tablets, 50mg'',''Warfarin Sodium Tablets, 5mg'',''Water for Injection, 10ml'',''Zinc Sulphate Tablets, 20 mg'')\nORDER by 1, 2'\n)\nAS\n(\"Item\" character varying,\n\"Badili AMS\" float,\n\"Hagen AMS\" float,\n\"Kokopo AMS\" float,\n\"Lae AMS\" float,\n\"Wewak AMS\" float\n) ",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "MOS Levels for $itemCount items across 5 AMS facilities",
+      "transform": "table",
+      "type": "table"
+    },
+    {
+      "content": "# ☜\n\nThis panel (left) shows stock information per store. However, the query is a complicated CrossTab query, so these store names are hard-coded currently. Not sure how we'd go about creating it so the columns update dynamically.",
+      "datasource": null,
+      "description": "",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 15,
+        "y": 41
+      },
+      "id": 28,
+      "mode": "markdown",
+      "options": {},
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
+      "id": 23,
+      "panels": [],
+      "title": "Single Facility/Item",
+      "type": "row"
+    },
+    {
+      "datasource": null,
+      "gridPos": {
+        "h": 18,
+        "w": 11,
+        "x": 0,
+        "y": 57
+      },
+      "id": 7,
+      "options": {
+        "mainChartTheme": "{\n  \"//\": \"spaceBetwenBars is not standard Victory Charts field\",\n  \"spaceBetweenBars\": 1,\n  \"chart\": {\n    \"width\": 600,\n    \"height\": 600,\n    \"padding\": {\n      \"left\": 250,\n      \"top\": 50,\n      \"right\": 50,\n      \"bottom\": 40\n    }\n  },\n  \"axis\": {\n    \"style\": {\n      \"axis\": {\n        \"fill\": \"transparent\",\n        \"stroke\": \"#90A4AE\",\n        \"strokeWidth\": 2,\n        \"strokeLinecap\": \"round\",\n        \"strokeLinejoin\": \"round\"\n      },\n      \"axisLabel\": {\n        \"textAnchor\": \"middle\",\n        \"fontFamily\": \"'Roboto', 'Helvetica Neue', Helvetica, sans-serif\",\n        \"fontSize\": 12,\n        \"letterSpacing\": \"normal\",\n        \"fill\": \"#455A64\",\n        \"stroke\": \"transparent\",\n        \"strokeWidth\": 0\n      },\n      \"grid\": {\n        \"fill\": \"none\",\n        \"stroke\": \"#ECEFF1\",\n        \"strokeDasharray\": \"10, 5\",\n        \"strokeLinecap\": \"round\",\n        \"strokeLinejoin\": \"round\",\n        \"pointerEvents\": \"painted\"\n      },\n      \"ticks\": {\n        \"fill\": \"transparent\",\n        \"size\": 5,\n        \"stroke\": \"#90A4AE\",\n        \"strokeWidth\": 1,\n        \"strokeLinecap\": \"round\",\n        \"strokeLinejoin\": \"round\"\n      },\n      \"tickLabels\": {\n        \"fontFamily\": \"'Roboto', 'Helvetica Neue', Helvetica, sans-serif\",\n        \"fontSize\": 12,\n        \"letterSpacing\": \"normal\",\n        \"fill\": \"#455A64\",\n        \"stroke\": \"transparent\",\n        \"strokeWidth\": 0\n      }\n    }\n  },\n  \"independentAxis\": {\n    \"style\": {\n      \"grid\": {\n        \"fill\": \"none\",\n        \"stroke\": \"none\"\n      }\n    }\n  },\n  \"bar\": {\n    \"style\": {\n      \"data\": {\n        \"fill\": \"#455A64\",\n        \"padding\": 8,\n        \"strokeWidth\": 0\n      },\n      \"labels\": {\n        \"fontFamily\": \"'Roboto', 'Helvetica Neue', Helvetica, sans-serif\",\n        \"fontSize\": 12,\n        \"letterSpacing\": \"normal\",\n        \"padding\": 8,\n        \"fill\": \"#455A64\",\n        \"stroke\": \"transparent\",\n        \"strokeWidth\": 0\n      }\n    }\n  }\n}",
+        "mapping": "{\n  \"mapping\": [\n    {\n      \"x\": \"item_name\",\n      \"y\": \"mos\",\n      \"threshold\": \"threshold\",\n      \"label\": \"mos\"\n    }\n  ]\n}",
+        "navigatorChartTheme": "{\n  \"//\": \"spaceBetwenBars and brushStyle are not standard Victory Chart fields\",\n  \"spaceBetweenBars\": 2,\n  \"chart\": {\n    \"brushStyle\": {\n      \"stroke\": \"transparent\",\n      \"fill\": \"orange\",\n      \"fillOpacity\": 0.7\n    },\n    \"handleStyle\": {\n      \"stroke\": \"transparent\",\n      \"fill\": \"none\"\n    },\n    \"width\": 200,\n    \"height\": 600,\n    \"padding\": {\n      \"left\": 0,\n      \"top\": 25,\n      \"right\": 0,\n      \"bottom\": 0\n    }\n  },\n  \"axis\": {\n    \"tickValues\": [],\n    \"style\": {\n      \"axis\": {\n        \"fill\": \"transparent\",\n        \"stroke\": \"none\"\n      },\n      \"grid\": {\n        \"fill\": \"none\",\n        \"stroke\": \"none\"\n      }\n    }\n  }\n}",
+        "otherSettings": "{\n  \"mapping\": [\n    {\n      \"x\": \"storename\",\n      \"y\": \"mos\",\n      \"threshold\": \"threshold\",\n      \"label\": \"mos\"\n    }\n  ],\n  \"brushDomain\": {\n    \"minX\": 15,\n    \"maxX\": 40\n  }\n}",
+        "text": "The default text!",
+        "thresholds": [
+          {
+            "color": "green",
+            "value": null
+          },
+          {
+            "color": "red",
+            "value": 1
+          },
+          {
+            "color": "orange",
+            "value": 2
+          },
+          {
+            "color": "green",
+            "value": 3
+          },
+          {
+            "color": "blue",
+            "value": 4
+          }
+        ]
+      },
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select name.name as storeName, case when aggregator.value is null then 0 else round(aggregator.value::numeric, 1) end as mos,\ncase\nwhen value < 3 then 1\nwhen value < 6 then 2\nwhen value < 24 then 3\nelse 4\nend as threshold\nfrom store join name on name.id = store.name_id \nleft join aggregator on aggregator.storeID = store.id and aggregator.itemID = (select id from item where item_name = '$singleItem') and aggregator.dataElement = 'currentMOS'\nwhere latitude <> 0 and store.name in ($multiFacility)",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Multi Store MOS for Single Item: $singleItem",
+      "type": "msupply-horizontal-bar"
+    },
+    {
+      "datasource": null,
+      "gridPos": {
+        "h": 18,
+        "w": 11,
+        "x": 11,
+        "y": 57
+      },
+      "id": 4,
+      "options": {
+        "mainChartTheme": "{\n  \"//\": \"spaceBetwenBars is not standard Victory Charts field\",\n  \"spaceBetweenBars\": 1,\n  \"chart\": {\n    \"width\": 600,\n    \"height\": 600,\n    \"padding\": {\n      \"left\": 250,\n      \"top\": 50,\n      \"right\": 50,\n      \"bottom\": 40\n    }\n  },\n  \"axis\": {\n    \"style\": {\n      \"axis\": {\n        \"fill\": \"transparent\",\n        \"stroke\": \"#90A4AE\",\n        \"strokeWidth\": 2,\n        \"strokeLinecap\": \"round\",\n        \"strokeLinejoin\": \"round\"\n      },\n      \"axisLabel\": {\n        \"textAnchor\": \"middle\",\n        \"fontFamily\": \"'Roboto', 'Helvetica Neue', Helvetica, sans-serif\",\n        \"fontSize\": 12,\n        \"letterSpacing\": \"normal\",\n        \"fill\": \"#455A64\",\n        \"stroke\": \"transparent\",\n        \"strokeWidth\": 0\n      },\n      \"grid\": {\n        \"fill\": \"none\",\n        \"stroke\": \"#ECEFF1\",\n        \"strokeDasharray\": \"10, 5\",\n        \"strokeLinecap\": \"round\",\n        \"strokeLinejoin\": \"round\",\n        \"pointerEvents\": \"painted\"\n      },\n      \"ticks\": {\n        \"fill\": \"transparent\",\n        \"size\": 5,\n        \"stroke\": \"#90A4AE\",\n        \"strokeWidth\": 1,\n        \"strokeLinecap\": \"round\",\n        \"strokeLinejoin\": \"round\"\n      },\n      \"tickLabels\": {\n        \"fontFamily\": \"'Roboto', 'Helvetica Neue', Helvetica, sans-serif\",\n        \"fontSize\": 12,\n        \"letterSpacing\": \"normal\",\n        \"fill\": \"#455A64\",\n        \"stroke\": \"transparent\",\n        \"strokeWidth\": 0\n      }\n    }\n  },\n  \"independentAxis\": {\n    \"style\": {\n      \"grid\": {\n        \"fill\": \"none\",\n        \"stroke\": \"none\"\n      }\n    }\n  },\n  \"bar\": {\n    \"style\": {\n      \"data\": {\n        \"fill\": \"#455A64\",\n        \"padding\": 8,\n        \"strokeWidth\": 0\n      },\n      \"labels\": {\n        \"fontFamily\": \"'Roboto', 'Helvetica Neue', Helvetica, sans-serif\",\n        \"fontSize\": 12,\n        \"letterSpacing\": \"normal\",\n        \"padding\": 8,\n        \"fill\": \"#455A64\",\n        \"stroke\": \"transparent\",\n        \"strokeWidth\": 0\n      }\n    }\n  }\n}",
+        "mapping": "{\n  \"mapping\": [\n    {\n      \"x\": \"item_name\",\n      \"y\": \"mos\",\n      \"threshold\": \"threshold\",\n      \"label\": \"mos\"\n    }\n  ]\n}",
+        "navigatorChartTheme": "{\n  \"//\": \"spaceBetwenBars and brushStyle are not standard Victory Chart fields\",\n  \"spaceBetweenBars\": 2,\n  \"chart\": {\n    \"brushStyle\": {\n      \"stroke\": \"transparent\",\n      \"fill\": \"orange\",\n      \"fillOpacity\": 0.7\n    },\n    \"handleStyle\": {\n      \"stroke\": \"transparent\",\n      \"fill\": \"none\"\n    },\n    \"width\": 200,\n    \"height\": 600,\n    \"padding\": {\n      \"left\": 0,\n      \"top\": 25,\n      \"right\": 0,\n      \"bottom\": 0\n    }\n  },\n  \"axis\": {\n    \"tickValues\": [],\n    \"style\": {\n      \"axis\": {\n        \"fill\": \"transparent\",\n        \"stroke\": \"none\"\n      },\n      \"grid\": {\n        \"fill\": \"none\",\n        \"stroke\": \"none\"\n      }\n    }\n  }\n}",
+        "otherSettings": "{\n  \"mapping\": [\n    {\n      \"x\": \"item_name\",\n      \"y\": \"mos\",\n      \"threshold\": \"threshold\",\n      \"label\": \"mos\"\n    }\n  ],\n  \"brushDomain\": {\n    \"minX\": 15,\n    \"maxX\": 40,\n    \"minY\": 10,\n    \"maxY\": 100\n  }\n}",
+        "text": "The default text!",
+        "thresholds": [
+          {
+            "color": "green",
+            "value": null
+          },
+          {
+            "color": "red",
+            "value": 1
+          },
+          {
+            "color": "orange",
+            "value": 2
+          },
+          {
+            "color": "green",
+            "value": 3
+          },
+          {
+            "color": "blue",
+            "value": 4
+          }
+        ]
+      },
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select item_name, \ncase when value > 48 then 48 else ROUND(value::numeric, 1) end as mos,\nstockLevelNumber as threshold, \"stockLevel\" from \n\titem left join (\n\tselect itemID, value,\n\tcase\n\twhen value < 3 then 1\n\twhen value < 6 then 2\n\twhen value < 24 then 3\n\telse 4\n\tend as stockLevelNumber,\n\tcase \n\twhen value < 3 then 'Out of Stock'\n\twhen value < 6 then 'Low Stock'\n\twhen value < 24 then 'Good Stock'\n\telse 'Over Stock'\n\tend \"stockLevel\"\n\tfrom aggregator \n\twhere dataElement = 'currentMOS' and storeID = (select id from store where name ='$singleFacility')) \n\tas sl on sl.itemID = item.id\n\twhere \"stockLevel\" in ($stockLevel) \nand item_name in ($multiItem)  \norder by item_name = '$singleItem', item_name desc",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Multi Item MOS for Single Store: $singleFacility",
+      "type": "msupply-horizontal-bar"
+    },
+    {
+      "content": "The same information as the above, but using different displays (Bar Gauge). \n\nThe bar gauge panels are vastly superior when displaying only a few items (<20) but quickly become unwieldy.\n\n\n\n",
+      "datasource": null,
+      "gridPos": {
+        "h": 2,
+        "w": 22,
+        "x": 0,
+        "y": 75
+      },
+      "id": 30,
+      "mode": "markdown",
+      "options": {},
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "datasource": null,
+      "description": "",
+      "gridPos": {
+        "h": 14,
+        "w": 11,
+        "x": 0,
+        "y": 77
+      },
+      "id": 17,
+      "options": {
+        "displayMode": "basic",
+        "fieldOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "defaults": {
+            "links": [
+              {
+                "title": "",
+                "url": ""
+              }
+            ],
+            "mappings": [],
+            "max": 24,
+            "min": 0,
+            "thresholds": [
+              {
+                "color": "dark-red",
+                "value": null
+              },
+              {
+                "color": "semi-dark-orange",
+                "value": 3
+              },
+              {
+                "color": "dark-green",
+                "value": 6
+              },
+              {
+                "color": "semi-dark-blue",
+                "value": 24
+              }
+            ],
+            "title": "$__cell_0"
+          },
+          "override": {},
+          "values": true
+        },
+        "orientation": "horizontal"
+      },
+      "pluginVersion": "6.5.2",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT store.name as \"Store\", value as \"MOS\" FROM public.aggregator\nJOIN store ON storeid = store.id\nJOIN item on itemid = item.id\nWHERE dataelement = 'currentMOS'\nAND name IN ($multiFacility)\nAND item_name = '$singleItem'",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Multi-Store MOS for Single Item: $singleItem",
+      "type": "bargauge"
+    },
+    {
+      "datasource": null,
+      "description": "",
+      "gridPos": {
+        "h": 14,
+        "w": 11,
+        "x": 11,
+        "y": 77
+      },
+      "id": 18,
+      "options": {
+        "displayMode": "basic",
+        "fieldOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "defaults": {
+            "links": [
+              {
+                "title": "Test links",
+                "url": "http://localhost:3000/d/vS1FdrbZz/mos-testing-for-filters?orgId=1&$var-singleFacility=${__field.name}"
+              }
+            ],
+            "mappings": [],
+            "max": 24,
+            "min": 0,
+            "thresholds": [
+              {
+                "color": "dark-red",
+                "value": null
+              },
+              {
+                "color": "semi-dark-orange",
+                "value": 3
+              },
+              {
+                "color": "dark-green",
+                "value": 6
+              },
+              {
+                "color": "semi-dark-blue",
+                "value": 24
+              }
+            ],
+            "title": "$__cell_0"
+          },
+          "limit": 20,
+          "override": {},
+          "values": true
+        },
+        "orientation": "horizontal"
+      },
+      "pluginVersion": "6.5.2",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "with stocklevels as\n(\nSELECT \n    item_name AS \"Item\", \n\tVALUE AS \"MOS\", \n\tCASE WHEN VALUE < 3 THEN 'Out of Stock' WHEN VALUE < 6 THEN 'Low Stock' WHEN VALUE < 24 THEN 'Good Stock' ELSE 'Over Stock' END as stocklevel \nFROM \n\taggregator \n\tJOIN store ON storeid = store.id \n\tJOIN item ON itemid = item.id \nWHERE \n\tdataelement = 'currentMOS' \n\tAND NAME = '$singleFacility' \n\tAND item_name IN ($multiItem)\n)\nselect \"Item\", \"MOS\"\nfrom stocklevels\nWHERE stocklevel IN ($stockLevel)\nORDER BY \n\t\"Item\" = '$singleItem' DESC, \n\t\"Item\"",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Multi-Store MOS for Single Facility: $singleFacility",
+      "type": "bargauge"
+    },
+    {
+      "content": "Same again, but using a histogram (Facilities) and a simple table (Items).\n\nThe histogram becomes useless when the columns get too close together. The table is quite effective, clearly shows all information, but is not as visually impressive as the (sparse) bar gauges (above).\n\n\n",
+      "datasource": null,
+      "gridPos": {
+        "h": 2,
+        "w": 22,
+        "x": 0,
+        "y": 91
+      },
+      "id": 31,
+      "mode": "markdown",
+      "options": {},
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "aliasColors": {},
+      "bars": true,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 11,
+        "x": 0,
+        "y": 93
+      },
+      "hiddenSeries": false,
+      "id": 21,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": false,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "format": "time_series",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT current_timestamp as time, store.name as metric, value as \"MOS\" FROM public.aggregator\nJOIN store ON storeid = store.id\nJOIN item on itemid = item.id\nWHERE dataelement = 'currentMOS'\nAND name IN ($multiFacility)\nAND item_name = '$singleItem'",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Multi-Store MOS for Single Item: $singleItem",
+      "tooltip": {
+        "shared": false,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "series",
+        "name": null,
+        "show": true,
+        "values": [
+          "total"
+        ]
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": false
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "columns": [],
+      "datasource": null,
+      "description": "",
+      "fontSize": "100%",
+      "gridPos": {
+        "h": 14,
+        "w": 11,
+        "x": 11,
+        "y": 93
+      },
+      "id": 19,
+      "options": {},
+      "pageSize": 1000,
+      "pluginVersion": "6.5.2",
+      "showHeader": true,
+      "sort": {
+        "col": null,
+        "desc": false
+      },
+      "styles": [
+        {
+          "alias": "",
+          "colorMode": "row",
+          "colors": [
+            "rgba(173, 37, 37, 0.9)",
+            "rgba(250, 100, 0, 0.79)",
+            "rgba(55, 135, 45, 0.8)",
+            "rgba(5, 116, 209, 0.85)"
+          ],
+          "decimals": 1,
+          "pattern": "MOS",
+          "thresholds": [
+            "3",
+            "6",
+            "24"
+          ],
+          "type": "number",
+          "unit": "none"
+        },
+        {
+          "alias": "",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "link": true,
+          "linkTargetBlank": false,
+          "linkTooltip": "Select $__cell_0",
+          "linkUrl": "/d/vS1FdrbZz/mos-testing-for-filters?orgId=1&var-singleItem=$__cell_0",
+          "mappingType": 1,
+          "pattern": "Item",
+          "thresholds": [],
+          "type": "string",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "with stocklevels as\n(\nSELECT \n    item_name AS \"Item\", \n\tVALUE AS \"MOS\", \n\tCASE WHEN VALUE < 3 THEN 'Out of Stock' WHEN VALUE < 6 THEN 'Low Stock' WHEN VALUE < 24 THEN 'Good Stock' ELSE 'Over Stock' END as stocklevel \nFROM \n\taggregator \n\tJOIN store ON storeid = store.id \n\tJOIN item ON itemid = item.id \nWHERE \n\tdataelement = 'currentMOS' \n\tAND NAME = '$singleFacility' \n\tAND item_name IN ($multiItem)\n)\nselect \"Item\", \"MOS\"\nfrom stocklevels\nWHERE stocklevel IN ($stockLevel)\nORDER BY \n\t\"Item\" = '$singleItem' DESC, \n\t\"Item\"",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "MOS ($stockLevel) for Single Facility: $singleFacility",
+      "transform": "table",
+      "type": "table"
+    }
+  ],
+  "refresh": false,
+  "schemaVersion": 21,
+  "style": "dark",
+  "tags": [
+    "mSupply"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT \n    NAME \nFROM \n\t$storeTableName \nWHERE \n\tLOWER(NAME) LIKE LOWER('%$facilityFilter%')\n\tAND code IN ($code)\n\tAND category1 IN ($nameCategory1)\n\tAND category1_level2 IN ($nameCategory1Level2)\n\tAND category1_level1 IN ($nameCategory1Level1)\n\tAND category2 IN ($nameCategory2)\n\tAND category3 IN ($nameCategory3)\n\tAND category4 IN ($nameCategory4)\n\tAND category5 IN ($nameCategory5)\n\tAND category6 IN ($nameCategory6)\n\tAND organisation in ($organisation)\n\tAND mode in ($mode)\n\tAND disabled in ($disabled)\n\t\n",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Multi Facility",
+        "multi": true,
+        "name": "multiFacility",
+        "options": [],
+        "query": "SELECT \n    NAME \nFROM \n\t$storeTableName \nWHERE \n\tLOWER(NAME) LIKE LOWER('%$facilityFilter%')\n\tAND code IN ($code)\n\tAND category1 IN ($nameCategory1)\n\tAND category1_level2 IN ($nameCategory1Level2)\n\tAND category1_level1 IN ($nameCategory1Level1)\n\tAND category2 IN ($nameCategory2)\n\tAND category3 IN ($nameCategory3)\n\tAND category4 IN ($nameCategory4)\n\tAND category5 IN ($nameCategory5)\n\tAND category6 IN ($nameCategory6)\n\tAND organisation in ($organisation)\n\tAND mode in ($mode)\n\tAND disabled in ($disabled)\n\t\n",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "label": "Facility Filter",
+        "name": "facilityFilter",
+        "options": [
+          {
+            "selected": true,
+            "text": "",
+            "value": ""
+          }
+        ],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "label": "Code starts with",
+        "name": "codeStart",
+        "options": [
+          {
+            "selected": true,
+            "text": "",
+            "value": ""
+          }
+        ],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT code FROM $storeTableName",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Code",
+        "multi": true,
+        "name": "code",
+        "options": [],
+        "query": "SELECT code FROM $storeTableName",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 5,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category1 FROM $storeTableName\nORDER BY category1 = '$nullString' desc, category1",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 1",
+        "multi": true,
+        "name": "nameCategory1",
+        "options": [],
+        "query": "SELECT category1 FROM $storeTableName\nORDER BY category1 = '$nullString' desc, category1",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category1_level2 FROM $storeTableName\nORDER BY category1_level2 = '$nullString' desc, category1_level2",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 1 Level 2",
+        "multi": true,
+        "name": "nameCategory1Level2",
+        "options": [],
+        "query": "SELECT category1_level2 FROM $storeTableName\nORDER BY category1_level2 = '$nullString' desc, category1_level2",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category1_level1 FROM $storeTableName\nORDER BY category1_level1 = '$nullString' desc, category1_level1",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 1 Level 1",
+        "multi": true,
+        "name": "nameCategory1Level1",
+        "options": [],
+        "query": "SELECT category1_level1 FROM $storeTableName\nORDER BY category1_level1 = '$nullString' desc, category1_level1",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "Area Medical Store",
+          "value": [
+            "Area Medical Store"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category2 FROM $storeTableName\nORDER BY category2 = '$nullString' desc, category2",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Category 2",
+        "multi": true,
+        "name": "nameCategory2",
+        "options": [],
+        "query": "SELECT category2 FROM $storeTableName\nORDER BY category2 = '$nullString' desc, category2",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category3 FROM $storeTableName\nORDER BY category3 = '$nullString' desc, category3",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 3",
+        "multi": true,
+        "name": "nameCategory3",
+        "options": [],
+        "query": "SELECT category3 FROM $storeTableName\nORDER BY category3 = '$nullString' desc, category3",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category4 FROM $storeTableName\nORDER BY category4 = '$nullString' desc, category4",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 4",
+        "multi": true,
+        "name": "nameCategory4",
+        "options": [],
+        "query": "SELECT category4 FROM $storeTableName\nORDER BY category4 = '$nullString' desc, category4",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category5 FROM $storeTableName\nORDER BY category5 = '$nullString' desc, category5",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 5",
+        "multi": true,
+        "name": "nameCategory5",
+        "options": [],
+        "query": "SELECT category5 FROM $storeTableName\nORDER BY category5 = '$nullString' desc, category5",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category6 FROM $storeTableName\nORDER BY category6 = '$nullString' desc, category6",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Category 6",
+        "multi": true,
+        "name": "nameCategory6",
+        "options": [],
+        "query": "SELECT category6 FROM $storeTableName\nORDER BY category6 = '$nullString' desc, category6",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT organisation FROM $storeTableName\nORDER BY organisation = '$nullString' desc, organisation",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Organisation",
+        "multi": true,
+        "name": "organisation",
+        "options": [],
+        "query": "SELECT organisation FROM $storeTableName\nORDER BY organisation = '$nullString' desc, organisation",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT mode FROM $storeTableName",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Mode",
+        "multi": true,
+        "name": "mode",
+        "options": [],
+        "query": "SELECT mode FROM $storeTableName",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "false",
+          "value": [
+            false
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT disabled FROM $storeTableName",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Disabled",
+        "multi": true,
+        "name": "disabled",
+        "options": [],
+        "query": "SELECT disabled FROM $storeTableName",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "Lae AMS",
+          "value": "Lae AMS"
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT name FROM $storeTableName\nWHERE name in ($multiFacility)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Single Facility",
+        "multi": false,
+        "name": "singleFacility",
+        "options": [],
+        "query": "SELECT name FROM $storeTableName\nWHERE name in ($multiFacility)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category \nFROM $itemTableName \nORDER BY category = '$nullString' DESC, category",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Item Category",
+        "multi": true,
+        "name": "itemCategory",
+        "options": [],
+        "query": "SELECT category \nFROM $itemTableName \nORDER BY category = '$nullString' DESC, category",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category_level2\nFROM $itemTableName \nORDER BY category_level2 = '$nullString' DESC, category_level2",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Item Category Level 2",
+        "multi": true,
+        "name": "itemCategoryLevel2",
+        "options": [],
+        "query": "SELECT category_level2\nFROM $itemTableName \nORDER BY category_level2 = '$nullString' DESC, category_level2",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category_level1\nFROM $itemTableName \nORDER BY category_level1 = '$nullString' DESC, category_level1",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Item Category Level 1",
+        "multi": true,
+        "name": "itemCategoryLevel1",
+        "options": [],
+        "query": "SELECT category_level1\nFROM $itemTableName \nORDER BY category_level1 = '$nullString' DESC, category_level1",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category2\nFROM $itemTableName \nORDER BY category2 = '$nullString' DESC, category2",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Item Category 2",
+        "multi": true,
+        "name": "itemCategory2",
+        "options": [],
+        "query": "SELECT category2\nFROM $itemTableName \nORDER BY category2 = '$nullString' DESC, category2",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT category3\nFROM $itemTableName \nORDER BY category3 = '$nullString' DESC, category3",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Item Category 3",
+        "multi": true,
+        "name": "itemCategory3",
+        "options": [],
+        "query": "SELECT category3\nFROM $itemTableName \nORDER BY category3 = '$nullString' DESC, category3",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT ven_category\nFROM $itemTableName \nORDER BY ven_category = '$nullString' DESC , ven_category DESC",
+        "hide": 0,
+        "includeAll": true,
+        "label": "VEN",
+        "multi": true,
+        "name": "venCategory",
+        "options": [],
+        "query": "SELECT ven_category\nFROM $itemTableName \nORDER BY ven_category = '$nullString' DESC , ven_category DESC",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "On essential drug list",
+          "value": [
+            "On essential drug list"
+          ]
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Stock Type",
+        "multi": true,
+        "name": "stockType",
+        "options": [
+          {
+            "selected": true,
+            "text": "On essential drug list",
+            "value": "On essential drug list"
+          },
+          {
+            "selected": false,
+            "text": "Critical stock",
+            "value": "Critical stock"
+          },
+          {
+            "selected": false,
+            "text": "Normal stock",
+            "value": "Normal stock"
+          },
+          {
+            "selected": false,
+            "text": "NONE",
+            "value": "NONE"
+          }
+        ],
+        "query": "On essential drug list, Critical stock, Normal stock, NONE",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "allValue": "",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Stock Level",
+        "multi": true,
+        "name": "stockLevel",
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "$__all"
+          },
+          {
+            "selected": false,
+            "text": "Out of Stock",
+            "value": "Out of Stock"
+          },
+          {
+            "selected": false,
+            "text": "Low Stock",
+            "value": "Low Stock"
+          },
+          {
+            "selected": false,
+            "text": "Good Stock",
+            "value": "Good Stock"
+          },
+          {
+            "selected": false,
+            "text": "Over Stock",
+            "value": "Over Stock"
+          }
+        ],
+        "query": "Out of Stock, Low Stock, Good Stock, Over Stock",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "label": "Item Filter",
+        "name": "itemFilter",
+        "options": [
+          {
+            "selected": true,
+            "text": "",
+            "value": ""
+          }
+        ],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT item_name\nFROM $itemTableName\nWHERE\nLOWER(item_name) LIKE LOWER( '%$itemFilter%')\nAND category IN ($itemCategory)\nAND category_level2 IN ($itemCategoryLevel2)\nAND category_level1 IN ($itemCategoryLevel1)\nAND category2 IN ($itemCategory2) \nAND category3 IN ($itemCategory3)\nAND ven_category IN ($venCategory) \nAND stock_type IN ($stockType)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Multi Item",
+        "multi": true,
+        "name": "multiItem",
+        "options": [],
+        "query": "SELECT item_name\nFROM $itemTableName\nWHERE\nLOWER(item_name) LIKE LOWER( '%$itemFilter%')\nAND category IN ($itemCategory)\nAND category_level2 IN ($itemCategoryLevel2)\nAND category_level1 IN ($itemCategoryLevel1)\nAND category2 IN ($itemCategory2) \nAND category3 IN ($itemCategory3)\nAND ven_category IN ($venCategory) \nAND stock_type IN ($stockType)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "Amoxycillin Tablets, 250mg",
+          "value": "Amoxycillin Tablets, 250mg"
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT item_name\nFROM item_categories\nWHERE item_name IN ($multiItem)\n",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Single Item",
+        "multi": false,
+        "name": "singleItem",
+        "options": [],
+        "query": "SELECT item_name\nFROM item_categories\nWHERE item_name IN ($multiItem)\n",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "NONE",
+          "value": "NONE"
+        },
+        "hide": 2,
+        "label": "nullString",
+        "name": "nullString",
+        "options": [
+          {
+            "selected": true,
+            "text": "NONE",
+            "value": "NONE"
+          }
+        ],
+        "query": "NONE",
+        "skipUrlSync": false,
+        "type": "constant"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "store_categories",
+          "value": "store_categories"
+        },
+        "hide": 2,
+        "label": "Store Table Name",
+        "name": "storeTableName",
+        "options": [
+          {
+            "selected": true,
+            "text": "store_categories",
+            "value": "store_categories"
+          }
+        ],
+        "query": "store_categories",
+        "skipUrlSync": false,
+        "type": "constant"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "item_categories",
+          "value": "item_categories"
+        },
+        "hide": 2,
+        "label": "Item Table Name",
+        "name": "itemTableName",
+        "options": [
+          {
+            "selected": true,
+            "text": "item_categories",
+            "value": "item_categories"
+          }
+        ],
+        "query": "item_categories",
+        "skipUrlSync": false,
+        "type": "constant"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "5",
+          "value": "5"
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT \n    COUNT(name) \nFROM \n\t$storeTableName \nWHERE \n\tname in ($multiFacility)",
+        "hide": 2,
+        "includeAll": false,
+        "label": "Count",
+        "multi": false,
+        "name": "facilityCount",
+        "options": [],
+        "query": "SELECT \n    COUNT(name) \nFROM \n\t$storeTableName \nWHERE \n\tname in ($multiFacility)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "136",
+          "value": "136"
+        },
+        "datasource": "PostgreSQL",
+        "definition": "SELECT \n    COUNT(item_name) \nFROM \n\t$itemTableName \nWHERE \n\titem_name in ($multiItem)",
+        "hide": 2,
+        "includeAll": false,
+        "label": "ItemCount",
+        "multi": false,
+        "name": "itemCount",
+        "options": [],
+        "query": "SELECT \n    COUNT(item_name) \nFROM \n\t$itemTableName \nWHERE \n\titem_name in ($multiItem)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "SQL Restriction",
+        "name": "sqlRestriction",
+        "options": [
+          {
+            "selected": false,
+            "text": "1=1",
+            "value": "1=1"
+          }
+        ],
+        "query": "1=1",
+        "skipUrlSync": false,
+        "type": "constant"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true,
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "",
+  "title": "MOS Dashboard with Filters",
+  "uid": "vS1FdrbZz",
+  "version": 189
+}
