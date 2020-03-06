@@ -1,34 +1,8 @@
-diff --git a/public/app/core/components/sidemenu/SideMenu.tsx b/public/app/core/components/sidemenu/SideMenu.tsx
-index 1428ae181f..0e5b6ec7cf 100644
---- a/public/app/core/components/sidemenu/SideMenu.tsx
-+++ b/public/app/core/components/sidemenu/SideMenu.tsx
-@@ -24,7 +24,7 @@ export class SideMenu extends PureComponent {
-   render() {
-     return [
-       <div className="sidemenu__logo" onClick={this.toggleSideMenu} key="logo">
--        <img src="public/img/grafana_icon.svg" alt="Grafana" />
-+        <img src="public/img/msupply_light_icon.svg" alt="Grafana" />
-       </div>,
-       <div className="sidemenu__logo_small_breakpoint" onClick={this.toggleSideMenuSmallBreakpoint} key="hamburger">
-         <i className="fa fa-bars" />
-diff --git a/public/app/core/components/sidemenu/__snapshots__/SideMenu.test.tsx.snap b/public/app/core/components/sidemenu/__snapshots__/SideMenu.test.tsx.snap
-index ec2fa845c6..a6f8f30e97 100644
---- a/public/app/core/components/sidemenu/__snapshots__/SideMenu.test.tsx.snap
-+++ b/public/app/core/components/sidemenu/__snapshots__/SideMenu.test.tsx.snap
-@@ -9,7 +9,7 @@ Array [
-   >
-     <img
-       alt="Grafana"
--      src="public/img/grafana_icon.svg"
-+      src="public/img/msupply_light_icon.svg"
-     />
-   </div>,
-   <div
-diff --git a/public/app/core/utils/rangeutil.ts b/public/app/core/utils/rangeutil.ts
-index 310c8ab853..10d8b45ed5 100644
---- a/public/app/core/utils/rangeutil.ts
-+++ b/public/app/core/utils/rangeutil.ts
-@@ -16,8 +16,10 @@ const spans = {
+diff --git a/packages/grafana-data/src/datetime/rangeutil.ts b/packages/grafana-data/src/datetime/rangeutil.ts
+index fcf55b37f4..057a1676c7 100644
+--- a/packages/grafana-data/src/datetime/rangeutil.ts
++++ b/packages/grafana-data/src/datetime/rangeutil.ts
+@@ -17,8 +17,10 @@ const spans: { [key: string]: { display: string; section?: number } } = {
  };
  
  const rangeOptions = [
@@ -39,7 +13,7 @@ index 310c8ab853..10d8b45ed5 100644
    { from: 'now/w', to: 'now/w', display: 'This week', section: 2 },
    { from: 'now/w', to: 'now', display: 'This week so far', section: 2 },
    { from: 'now/M', to: 'now/M', display: 'This month', section: 2 },
-@@ -41,7 +43,7 @@ const rangeOptions = [
+@@ -42,7 +44,7 @@ const rangeOptions = [
    { from: 'now-1w/w', to: 'now-1w/w', display: 'Previous week', section: 1 },
    { from: 'now-1M/M', to: 'now-1M/M', display: 'Previous month', section: 1 },
    { from: 'now-1y/y', to: 'now-1y/y', display: 'Previous year', section: 1 },
@@ -48,49 +22,71 @@ index 310c8ab853..10d8b45ed5 100644
    { from: 'now-5m', to: 'now', display: 'Last 5 minutes', section: 3 },
    { from: 'now-15m', to: 'now', display: 'Last 15 minutes', section: 3 },
    { from: 'now-30m', to: 'now', display: 'Last 30 minutes', section: 3 },
-@@ -50,7 +52,7 @@ const rangeOptions = [
+@@ -51,6 +53,7 @@ const rangeOptions = [
    { from: 'now-6h', to: 'now', display: 'Last 6 hours', section: 3 },
    { from: 'now-12h', to: 'now', display: 'Last 12 hours', section: 3 },
    { from: 'now-24h', to: 'now', display: 'Last 24 hours', section: 3 },
--
-+*/
++  */
    { from: 'now-2d', to: 'now', display: 'Last 2 days', section: 0 },
    { from: 'now-7d', to: 'now', display: 'Last 7 days', section: 0 },
    { from: 'now-30d', to: 'now', display: 'Last 30 days', section: 0 },
-diff --git a/public/app/features/plugins/partials/plugin_edit.html b/public/app/features/plugins/partials/plugin_edit.html
-index 16cdfc1d1b..c67cb9c187 100644
---- a/public/app/features/plugins/partials/plugin_edit.html
-+++ b/public/app/features/plugins/partials/plugin_edit.html
-@@ -45,7 +45,7 @@
-           <h5>Dependencies</h4>
-           <ul class="ui-list plugin-info-list">
-             <li class="plugin-info-list-item">
--              <img src="public/img/grafana_icon.svg"></img>
-+              <img src="public/img/msupply_light_icon.svg"></img>
-               Grafana {{ctrl.model.dependencies.grafanaVersion}}
-             </li>
-             <li ng-repeat="plugDep in ctrl.model.dependencies.plugins" class="plugin-info-list-item">
-diff --git a/public/app/partials/login.html b/public/app/partials/login.html
-index 674c9581ce..da3caa3a8f 100644
---- a/public/app/partials/login.html
-+++ b/public/app/partials/login.html
-@@ -1,7 +1,7 @@
- <div class="login container">
-   <div class="login-content">
-     <div class="login-branding">
--      <img class="logo-icon" src="public/img/grafana_icon.svg" alt="Grafana" />
-+      <img class="logo-icon" src="public/img/msupply_icon.svg" alt="Grafana" />
-       <div class="logo-wordmark" />
-     </div>
-     <div class="login-outer-box">
-diff --git a/public/img/fav32.png b/public/img/fav32.png
-index 6f5f809d9c..dd25a73c62 100644
-Binary files a/public/img/fav32.png and b/public/img/fav32.png differ
+diff --git a/public/app/core/components/Login/LoginPage.tsx b/public/app/core/components/Login/LoginPage.tsx
+index 610dace71b..88813b8abd 100644
+--- a/public/app/core/components/Login/LoginPage.tsx
++++ b/public/app/core/components/Login/LoginPage.tsx
+@@ -11,7 +11,7 @@ export const LoginPage: FC = () => {
+     <div className="login container">
+       <div className="login-content">
+         <div className="login-branding">
+-          <img className="logo-icon" src="public/img/grafana_icon.svg" alt="Grafana" />
++          <img className="logo-icon" src="public/img/msupply_icon.svg" alt="Grafana" />
+           <div className="logo-wordmark" />
+         </div>
+         <LoginCtrl>
+diff --git a/public/app/core/components/sidemenu/SideMenu.tsx b/public/app/core/components/sidemenu/SideMenu.tsx
+index 632b200438..688afbd3ac 100644
+--- a/public/app/core/components/sidemenu/SideMenu.tsx
++++ b/public/app/core/components/sidemenu/SideMenu.tsx
+@@ -15,7 +15,7 @@ export class SideMenu extends PureComponent {
+   render() {
+     return [
+       <a href={homeUrl} className="sidemenu__logo" key="logo">
+-        <img src="public/img/grafana_icon.svg" alt="Grafana" />
++        <img src="public/img/msupply_light_icon.svg" alt="mSupply Dashboard" />
+       </a>,
+       <div className="sidemenu__logo_small_breakpoint" onClick={this.toggleSideMenuSmallBreakpoint} key="hamburger">
+         <i className="fa fa-bars" />
+diff --git a/public/app/core/components/sidemenu/__snapshots__/SideMenu.test.tsx.snap b/public/app/core/components/sidemenu/__snapshots__/SideMenu.test.tsx.snap
+index 8d23cdc156..0e363c4447 100644
+--- a/public/app/core/components/sidemenu/__snapshots__/SideMenu.test.tsx.snap
++++ b/public/app/core/components/sidemenu/__snapshots__/SideMenu.test.tsx.snap
+@@ -9,7 +9,7 @@ Array [
+   >
+     <img
+       alt="Grafana"
+-      src="public/img/grafana_icon.svg"
++      src="public/img/msupply_light_icon.svg"
+     />
+   </a>,
+   <div
+diff --git a/public/app/features/plugins/PluginPage.tsx b/public/app/features/plugins/PluginPage.tsx
+index bc79a835ac..88bf7fb830 100644
+--- a/public/app/features/plugins/PluginPage.tsx
++++ b/public/app/features/plugins/PluginPage.tsx
+@@ -251,7 +251,7 @@ class PluginPage extends PureComponent<Props, State> {
+         <h4>Dependencies</h4>
+         <ul className="ui-list plugin-info-list">
+           <li className="plugin-info-list-item">
+-            <img src="public/img/grafana_icon.svg" />
++            <img src="public/img/msupply_light_icon.svg" />
+             Grafana {dependencies.grafanaVersion}
+           </li>
+           {dependencies.plugins &&
 diff --git a/public/sass/base/_icons.scss b/public/sass/base/_icons.scss
-index 8d171673f6..a9e74a2e7f 100644
+index f99821efa1..5f743b683f 100644
 --- a/public/sass/base/_icons.scss
 +++ b/public/sass/base/_icons.scss
-@@ -89,7 +89,7 @@
+@@ -93,7 +93,7 @@
  }
  
  .gicon-branding {
@@ -100,10 +96,10 @@ index 8d171673f6..a9e74a2e7f 100644
  
  .gicon-cog {
 diff --git a/public/views/index-template.html b/public/views/index-template.html
-index 895b0e4ae1..fba4a209cd 100644
+index c67d9b8c80..47a0a9ec13 100644
 --- a/public/views/index-template.html
 +++ b/public/views/index-template.html
-@@ -59,7 +59,7 @@
+@@ -60,7 +60,7 @@
        height: 60px;
        background-repeat: no-repeat;
        background-size: contain;
