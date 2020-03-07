@@ -36,7 +36,7 @@ describe('CloudWatchDatasource', () => {
   } as any;
 
   beforeEach(() => {
-    ctx.ds = new CloudWatchDatasource(instanceSettings, {} as any, backendSrv, templateSrv, timeSrv);
+    ctx.ds = new CloudWatchDatasource(instanceSettings, backendSrv, templateSrv, timeSrv);
   });
 
   describe('When performing CloudWatch query', () => {
@@ -67,11 +67,15 @@ describe('CloudWatchDatasource', () => {
         A: {
           error: '',
           refId: 'A',
-          meta: {},
+          meta: { gmdMeta: [] },
           series: [
             {
               name: 'CPUUtilization_Average',
-              points: [[1, 1483228800000], [2, 1483229100000], [5, 1483229700000]],
+              points: [
+                [1, 1483228800000],
+                [2, 1483229100000],
+                [5, 1483229700000],
+              ],
               tags: {
                 InstanceId: 'i-12345678',
               },
@@ -177,7 +181,7 @@ describe('CloudWatchDatasource', () => {
       });
 
       it('should be built correctly if theres one search expressions returned in meta for a given query row', done => {
-        response.results['A'].meta.gmdMeta = [{ Expression: `REMOVE_EMPTY(SEARCH('some expression'))` }];
+        response.results['A'].meta.gmdMeta = [{ Expression: `REMOVE_EMPTY(SEARCH('some expression'))`, Period: '300' }];
         ctx.ds.query(query).then((result: any) => {
           expect(result.data[0].name).toBe(response.results.A.series[0].name);
           expect(result.data[0].fields[0].config.links[0].title).toBe('View in CloudWatch console');
@@ -204,7 +208,7 @@ describe('CloudWatchDatasource', () => {
       });
 
       it('should be built correctly if the query is a metric stat query', done => {
-        response.results['A'].meta.gmdMeta = [];
+        response.results['A'].meta.gmdMeta = [{ Period: '300' }];
         ctx.ds.query(query).then((result: any) => {
           expect(result.data[0].name).toBe(response.results.A.series[0].name);
           expect(result.data[0].fields[0].config.links[0].title).toBe('View in CloudWatch console');
@@ -285,7 +289,7 @@ describe('CloudWatchDatasource', () => {
       beforeEach(() => {
         redux.setStore({
           dispatch: jest.fn(),
-        });
+        } as any);
 
         ctx.backendSrv.datasourceRequest = jest.fn(() => {
           return Promise.reject(backendErrorResponse);
@@ -300,6 +304,39 @@ describe('CloudWatchDatasource', () => {
           expect(memoizedDebounceSpy).toHaveBeenCalledWith('TestDatasource', 'eu-north-1');
           expect(memoizedDebounceSpy).toBeCalledTimes(3);
           done();
+        });
+      });
+    });
+
+    describe('when regions query is used', () => {
+      beforeEach(() => {
+        ctx.backendSrv.datasourceRequest = jest.fn(() => {
+          return Promise.resolve({});
+        });
+        ctx.ds = new CloudWatchDatasource(instanceSettings, backendSrv, templateSrv, timeSrv);
+        ctx.ds.doMetricQueryRequest = jest.fn(() => []);
+      });
+      describe('and region param is left out', () => {
+        it('should use the default region', done => {
+          ctx.ds.metricFindQuery('metrics(testNamespace)').then(() => {
+            expect(ctx.ds.doMetricQueryRequest).toHaveBeenCalledWith('metrics', {
+              namespace: 'testNamespace',
+              region: instanceSettings.jsonData.defaultRegion,
+            });
+            done();
+          });
+        });
+      });
+
+      describe('and region param is defined by user', () => {
+        it('should use the user defined region', done => {
+          ctx.ds.metricFindQuery('metrics(testNamespace2, custom-region)').then(() => {
+            expect(ctx.ds.doMetricQueryRequest).toHaveBeenCalledWith('metrics', {
+              namespace: 'testNamespace2',
+              region: 'custom-region',
+            });
+            done();
+          });
         });
       });
     });
@@ -378,11 +415,21 @@ describe('CloudWatchDatasource', () => {
         A: {
           error: '',
           refId: 'A',
-          meta: {},
+          meta: {
+            gmdMeta: [
+              {
+                Period: 300,
+              },
+            ],
+          },
           series: [
             {
               name: 'TargetResponseTime_p90.00',
-              points: [[1, 1483228800000], [2, 1483229100000], [5, 1483229700000]],
+              points: [
+                [1, 1483228800000],
+                [2, 1483229100000],
+                [5, 1483229700000],
+              ],
               tags: {
                 LoadBalancer: 'lb',
                 TargetGroup: 'tg',
@@ -748,97 +795,4 @@ describe('CloudWatchDatasource', () => {
       });
     }
   );
-
-  it('should caclculate the correct period', () => {
-    const hourSec = 60 * 60;
-    const daySec = hourSec * 24;
-    const start = 1483196400 * 1000;
-    const testData: any[] = [
-      [
-        { period: '60s', namespace: 'AWS/EC2' },
-        { range: { from: new Date(start), to: new Date(start + 3600 * 1000) } },
-        hourSec * 3,
-        60,
-      ],
-      [
-        { period: null, namespace: 'AWS/EC2' },
-        { range: { from: new Date(start), to: new Date(start + 3600 * 1000) } },
-        hourSec * 3,
-        300,
-      ],
-      [
-        { period: '60s', namespace: 'AWS/ELB' },
-        { range: { from: new Date(start), to: new Date(start + 3600 * 1000) } },
-        hourSec * 3,
-        60,
-      ],
-      [
-        { period: null, namespace: 'AWS/ELB' },
-        { range: { from: new Date(start), to: new Date(start + 3600 * 1000) } },
-        hourSec * 3,
-        60,
-      ],
-      [
-        { period: '1', namespace: 'CustomMetricsNamespace' },
-        {
-          range: {
-            from: new Date(start),
-            to: new Date(start + (1440 - 1) * 1000),
-          },
-        },
-        hourSec * 3 - 1,
-        1,
-      ],
-      [
-        { period: '1', namespace: 'CustomMetricsNamespace' },
-        { range: { from: new Date(start), to: new Date(start + 3600 * 1000) } },
-        hourSec * 3 - 1,
-        1,
-      ],
-      [
-        { period: '60s', namespace: 'CustomMetricsNamespace' },
-        { range: { from: new Date(start), to: new Date(start + 3600 * 1000) } },
-        hourSec * 3,
-        60,
-      ],
-      [
-        { period: null, namespace: 'CustomMetricsNamespace' },
-        { range: { from: new Date(start), to: new Date(start + 3600 * 1000) } },
-        hourSec * 3 - 1,
-        60,
-      ],
-      [
-        { period: null, namespace: 'CustomMetricsNamespace' },
-        { range: { from: new Date(start), to: new Date(start + 3600 * 1000) } },
-        hourSec * 3,
-        60,
-      ],
-      [
-        { period: null, namespace: 'CustomMetricsNamespace' },
-        { range: { from: new Date(start), to: new Date(start + 3600 * 1000) } },
-        daySec * 15,
-        60,
-      ],
-      [
-        { period: null, namespace: 'CustomMetricsNamespace' },
-        { range: { from: new Date(start), to: new Date(start + 3600 * 1000) } },
-        daySec * 63,
-        300,
-      ],
-      [
-        { period: null, namespace: 'CustomMetricsNamespace' },
-        { range: { from: new Date(start), to: new Date(start + 3600 * 1000) } },
-        daySec * 455,
-        3600,
-      ],
-    ];
-    for (const t of testData) {
-      const target = t[0];
-      const options = t[1];
-      const now = new Date(options.range.from.valueOf() + t[2] * 1000);
-      const expected = t[3];
-      const actual = ctx.ds.getPeriod(target, options, now);
-      expect(actual).toBe(expected);
-    }
-  });
 });
