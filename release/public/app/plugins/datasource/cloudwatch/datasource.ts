@@ -1,5 +1,5 @@
 import React from 'react';
-import angular, { IQService } from 'angular';
+import angular from 'angular';
 import _ from 'lodash';
 import { notifyApp } from 'app/core/actions';
 import { createErrorNotification } from 'app/core/copy/appNotification';
@@ -48,7 +48,6 @@ export default class CloudWatchDatasource extends DataSourceApi<CloudWatchQuery,
   /** @ngInject */
   constructor(
     instanceSettings: DataSourceInstanceSettings<CloudWatchJsonData>,
-    private $q: IQService,
     private backendSrv: BackendSrv,
     private templateSrv: TemplateSrv,
     private timeSrv: TimeSrv
@@ -79,8 +78,8 @@ export default class CloudWatchDatasource extends DataSourceApi<CloudWatchQuery,
       item.dimensions = this.convertDimensionFormat(item.dimensions, options.scopedVars);
       item.statistics = item.statistics.map(stat => this.replace(stat, options.scopedVars, true, 'statistics'));
       item.period = String(this.getPeriod(item, options)); // use string format for period in graph query, and alerting
-      item.id = this.replace(item.id, options.scopedVars, true, 'id');
-      item.expression = this.replace(item.expression, options.scopedVars, true, 'expression');
+      item.id = this.templateSrv.replace(item.id, options.scopedVars);
+      item.expression = this.templateSrv.replace(item.expression, options.scopedVars);
 
       // valid ExtendedStatistics is like p90.00, check the pattern
       const hasInvalidStatistics = item.statistics.some(s => {
@@ -110,9 +109,7 @@ export default class CloudWatchDatasource extends DataSourceApi<CloudWatchQuery,
 
     // No valid targets, return the empty result to save a round trip.
     if (_.isEmpty(queries)) {
-      const d = this.$q.defer();
-      d.resolve({ data: [] });
-      return d.promise;
+      return Promise.resolve({ data: [] });
     }
 
     const request = {
@@ -128,52 +125,29 @@ export default class CloudWatchDatasource extends DataSourceApi<CloudWatchQuery,
     return this.templateSrv.variables.map(v => `$${v.name}`);
   }
 
-  getPeriod(target: any, options: any, now?: number) {
-    const start = this.convertToCloudWatchTime(options.range.from, false);
-    now = Math.round((now || Date.now()) / 1000);
-
-    let period;
-    const hourSec = 60 * 60;
-    const daySec = hourSec * 24;
-    if (!target.period) {
-      if (now - start <= daySec * 15) {
-        // until 15 days ago
-        if (target.namespace === 'AWS/EC2') {
-          period = 300;
-        } else {
-          period = 60;
-        }
-      } else if (now - start <= daySec * 63) {
-        // until 63 days ago
-        period = 60 * 5;
-      } else if (now - start <= daySec * 455) {
-        // until 455 days ago
-        period = 60 * 60;
-      } else {
-        // over 455 days, should return error, but try to long period
-        period = 60 * 60;
-      }
-    } else {
-      period = this.templateSrv.replace(target.period, options.scopedVars);
+  getPeriod(target: any, options: any) {
+    let period = this.templateSrv.replace(target.period, options.scopedVars);
+    if (period && period.toLowerCase() !== 'auto') {
       if (/^\d+$/.test(period)) {
         period = parseInt(period, 10);
       } else {
         period = kbn.interval_to_seconds(period);
       }
-    }
-    if (period < 1) {
-      period = 1;
+
+      if (period < 1) {
+        period = 1;
+      }
     }
 
-    return period;
+    return period || '';
   }
 
   buildCloudwatchConsoleUrl(
-    { region, namespace, metricName, dimensions, statistics, period, expression }: CloudWatchQuery,
+    { region, namespace, metricName, dimensions, statistics, expression }: CloudWatchQuery,
     start: string,
     end: string,
     title: string,
-    gmdMeta: Array<{ Expression: string }>
+    gmdMeta: Array<{ Expression: string; Period: string }>
   ) {
     region = this.getActualRegion(region);
     let conf = {
@@ -207,7 +181,7 @@ export default class CloudWatchDatasource extends DataSourceApi<CloudWatchQuery,
             ...Object.entries(dimensions).reduce((acc, [key, value]) => [...acc, key, value[0]], []),
             {
               stat,
-              period,
+              period: gmdMeta.length ? gmdMeta[0].Period : 60,
             },
           ]),
         ],
@@ -334,8 +308,8 @@ export default class CloudWatchDatasource extends DataSourceApi<CloudWatchQuery,
     return this.doMetricQueryRequest('namespaces', null);
   }
 
-  async getMetrics(namespace: string, region: string) {
-    if (!namespace || !region) {
+  async getMetrics(namespace: string, region?: string) {
+    if (!namespace) {
       return [];
     }
 
@@ -375,7 +349,7 @@ export default class CloudWatchDatasource extends DataSourceApi<CloudWatchQuery,
       dimensions: this.convertDimensionFormat(filterDimensions, {}),
     });
 
-    return values.length ? [{ value: '*', text: '*', label: '*' }, ...values] : values;
+    return values;
   }
 
   getEbsVolumeIds(region: string, instanceId: string) {
@@ -475,7 +449,7 @@ export default class CloudWatchDatasource extends DataSourceApi<CloudWatchQuery,
       return this.standardStatistics.map((s: string) => ({ value: s, label: s, text: s }));
     }
 
-    return this.$q.when([]);
+    return Promise.resolve([]);
   }
 
   annotationQuery(options: any) {
