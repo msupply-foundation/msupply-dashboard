@@ -631,7 +631,7 @@ AS SELECT CURRENT_DATE AS "time",
   ORDER BY region.description;
   
 CREATE OR REPLACE VIEW public.store_mos
-AS SELECT CURRENT_DATE AS "current_date",
+AS SELECT (CURRENT_DATE - interval '1 day')::date AS "current_date",
     name.name AS store,
     a.value,
     name.latitude,
