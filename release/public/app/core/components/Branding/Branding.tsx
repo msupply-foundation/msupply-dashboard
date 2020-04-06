@@ -29,11 +29,14 @@ export const LoginBackground: FC<BrandComponentProps> = ({ className, children }
 };
 
 export const MenuLogo: FC<BrandComponentProps> = ({ className }) => {
-  return <img className={className} src="public/img/msupply_light_icon" alt="Grafana" />;
+  return <img className={className} src="public/img/msupply_light_icon.svg" alt="Grafana" />;
 };
+
+export const AppTitle = 'Grafana';
 
 export class Branding {
   static LoginLogo = LoginLogo;
   static LoginBackground = LoginBackground;
   static MenuLogo = MenuLogo;
+  static AppTitle = AppTitle;
 }

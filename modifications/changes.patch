@@ -1,5 +1,37 @@
+diff --git a/packages/grafana-data/src/datetime/rangeutil.ts b/packages/grafana-data/src/datetime/rangeutil.ts
+index 799893371e..dd0ae4e0ff 100644
+--- a/packages/grafana-data/src/datetime/rangeutil.ts
++++ b/packages/grafana-data/src/datetime/rangeutil.ts
+@@ -19,8 +19,10 @@ export namespace rangeUtil {
+   };
+ 
+   const rangeOptions = [
++    /*
+     { from: 'now/d', to: 'now/d', display: 'Today', section: 2 },
+     { from: 'now/d', to: 'now', display: 'Today so far', section: 2 },
++    */
+     { from: 'now/w', to: 'now/w', display: 'This week', section: 2 },
+     { from: 'now/w', to: 'now', display: 'This week so far', section: 2 },
+     { from: 'now/M', to: 'now/M', display: 'This month', section: 2 },
+@@ -44,7 +46,7 @@ export namespace rangeUtil {
+     { from: 'now-1w/w', to: 'now-1w/w', display: 'Previous week', section: 1 },
+     { from: 'now-1M/M', to: 'now-1M/M', display: 'Previous month', section: 1 },
+     { from: 'now-1y/y', to: 'now-1y/y', display: 'Previous year', section: 1 },
+-
++    /*
+     { from: 'now-5m', to: 'now', display: 'Last 5 minutes', section: 3 },
+     { from: 'now-15m', to: 'now', display: 'Last 15 minutes', section: 3 },
+     { from: 'now-30m', to: 'now', display: 'Last 30 minutes', section: 3 },
+@@ -53,6 +55,7 @@ export namespace rangeUtil {
+     { from: 'now-6h', to: 'now', display: 'Last 6 hours', section: 3 },
+     { from: 'now-12h', to: 'now', display: 'Last 12 hours', section: 3 },
+     { from: 'now-24h', to: 'now', display: 'Last 24 hours', section: 3 },
++    */
+     { from: 'now-2d', to: 'now', display: 'Last 2 days', section: 0 },
+     { from: 'now-7d', to: 'now', display: 'Last 7 days', section: 0 },
+     { from: 'now-30d', to: 'now', display: 'Last 30 days', section: 0 },
 diff --git a/public/app/core/components/Branding/Branding.tsx b/public/app/core/components/Branding/Branding.tsx
-index 73cd15e3a3..a3011020f1 100644
+index aa41fbc502..12e3125c7e 100644
 --- a/public/app/core/components/Branding/Branding.tsx
 +++ b/public/app/core/components/Branding/Branding.tsx
 @@ -13,7 +13,7 @@ export const LoginLogo: FC<BrandComponentProps> = ({ className }) => {
@@ -16,15 +48,18 @@ index 73cd15e3a3..a3011020f1 100644
  
  export const MenuLogo: FC<BrandComponentProps> = ({ className }) => {
 -  return <img className={className} src="public/img/grafana_icon.svg" alt="Grafana" />;
-+  return <img className={className} src="public/img/msupply_light_icon" alt="Grafana" />;
++  return <img className={className} src="public/img/msupply_light_icon.svg" alt="Grafana" />;
  };
  
- export class Branding {
+ export const AppTitle = 'Grafana';
+diff --git a/public/img/fav32.png b/public/img/fav32.png
+index 6f5f809d9c..dd25a73c62 100644
+Binary files a/public/img/fav32.png and b/public/img/fav32.png differ
 diff --git a/public/sass/base/_icons.scss b/public/sass/base/_icons.scss
-index f99821efa1..5f743b683f 100644
+index 112e6d9e87..e03b47ce01 100644
 --- a/public/sass/base/_icons.scss
 +++ b/public/sass/base/_icons.scss
-@@ -93,7 +93,7 @@
+@@ -105,7 +105,7 @@
  }
  
  .gicon-branding {
@@ -34,7 +69,7 @@ index f99821efa1..5f743b683f 100644
  
  .gicon-cog {
 diff --git a/public/views/index-template.html b/public/views/index-template.html
-index bf88f9c941..0990d7a788 100644
+index e4f7206620..aabbef0084 100644
 --- a/public/views/index-template.html
 +++ b/public/views/index-template.html
 @@ -80,7 +80,7 @@
