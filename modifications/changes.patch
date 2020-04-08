@@ -1,35 +1,31 @@
-diff --git a/packages/grafana-data/src/datetime/rangeutil.ts b/packages/grafana-data/src/datetime/rangeutil.ts
-index 799893371e..dd0ae4e0ff 100644
---- a/packages/grafana-data/src/datetime/rangeutil.ts
-+++ b/packages/grafana-data/src/datetime/rangeutil.ts
-@@ -19,8 +19,10 @@ export namespace rangeUtil {
-   };
+diff --git a/packages/grafana-ui/src/components/TimePicker/TimePicker.tsx b/packages/grafana-ui/src/components/TimePicker/TimePicker.tsx
+index 5e16255a54..ccb74cb1d0 100644
+--- a/packages/grafana-ui/src/components/TimePicker/TimePicker.tsx
++++ b/packages/grafana-ui/src/components/TimePicker/TimePicker.tsx
+@@ -17,14 +17,6 @@ import { TimeRange, TimeOption, TimeZone, dateMath } from '@grafana/data';
+ import { Themeable } from '../../types';
  
-   const rangeOptions = [
-+    /*
-     { from: 'now/d', to: 'now/d', display: 'Today', section: 2 },
-     { from: 'now/d', to: 'now', display: 'Today so far', section: 2 },
-+    */
-     { from: 'now/w', to: 'now/w', display: 'This week', section: 2 },
-     { from: 'now/w', to: 'now', display: 'This week so far', section: 2 },
-     { from: 'now/M', to: 'now/M', display: 'This month', section: 2 },
-@@ -44,7 +46,7 @@ export namespace rangeUtil {
-     { from: 'now-1w/w', to: 'now-1w/w', display: 'Previous week', section: 1 },
-     { from: 'now-1M/M', to: 'now-1M/M', display: 'Previous month', section: 1 },
-     { from: 'now-1y/y', to: 'now-1y/y', display: 'Previous year', section: 1 },
--
-+    /*
-     { from: 'now-5m', to: 'now', display: 'Last 5 minutes', section: 3 },
-     { from: 'now-15m', to: 'now', display: 'Last 15 minutes', section: 3 },
-     { from: 'now-30m', to: 'now', display: 'Last 30 minutes', section: 3 },
-@@ -53,6 +55,7 @@ export namespace rangeUtil {
-     { from: 'now-6h', to: 'now', display: 'Last 6 hours', section: 3 },
-     { from: 'now-12h', to: 'now', display: 'Last 12 hours', section: 3 },
-     { from: 'now-24h', to: 'now', display: 'Last 24 hours', section: 3 },
-+    */
-     { from: 'now-2d', to: 'now', display: 'Last 2 days', section: 0 },
-     { from: 'now-7d', to: 'now', display: 'Last 7 days', section: 0 },
-     { from: 'now-30d', to: 'now', display: 'Last 30 days', section: 0 },
+ const quickOptions: TimeOption[] = [
+-  { from: 'now-5m', to: 'now', display: 'Last 5 minutes', section: 3 },
+-  { from: 'now-15m', to: 'now', display: 'Last 15 minutes', section: 3 },
+-  { from: 'now-30m', to: 'now', display: 'Last 30 minutes', section: 3 },
+-  { from: 'now-1h', to: 'now', display: 'Last 1 hour', section: 3 },
+-  { from: 'now-3h', to: 'now', display: 'Last 3 hours', section: 3 },
+-  { from: 'now-6h', to: 'now', display: 'Last 6 hours', section: 3 },
+-  { from: 'now-12h', to: 'now', display: 'Last 12 hours', section: 3 },
+-  { from: 'now-24h', to: 'now', display: 'Last 24 hours', section: 3 },
+   { from: 'now-2d', to: 'now', display: 'Last 2 days', section: 3 },
+   { from: 'now-7d', to: 'now', display: 'Last 7 days', section: 3 },
+   { from: 'now-30d', to: 'now', display: 'Last 30 days', section: 3 },
+@@ -42,8 +34,6 @@ const otherOptions: TimeOption[] = [
+   { from: 'now-1w/w', to: 'now-1w/w', display: 'Previous week', section: 3 },
+   { from: 'now-1M/M', to: 'now-1M/M', display: 'Previous month', section: 3 },
+   { from: 'now-1y/y', to: 'now-1y/y', display: 'Previous year', section: 3 },
+-  { from: 'now/d', to: 'now/d', display: 'Today', section: 3 },
+-  { from: 'now/d', to: 'now', display: 'Today so far', section: 3 },
+   { from: 'now/w', to: 'now/w', display: 'This week', section: 3 },
+   { from: 'now/w', to: 'now', display: 'This week so far', section: 3 },
+   { from: 'now/M', to: 'now/M', display: 'This month', section: 3 },
 diff --git a/public/app/core/components/Branding/Branding.tsx b/public/app/core/components/Branding/Branding.tsx
 index aa41fbc502..12e3125c7e 100644
 --- a/public/app/core/components/Branding/Branding.tsx
