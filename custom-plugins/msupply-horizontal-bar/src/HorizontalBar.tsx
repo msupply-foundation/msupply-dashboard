@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { PanelProps } from '@grafana/ui';
-import { VictoryChart, VictoryTooltip, VictoryStack, VictoryBar, VictoryAxis, VictoryBrushContainer, VictoryContainer } from 'victory';
+import { VictoryChart, VictoryStack, VictoryBar, VictoryAxis, VictoryContainer } from 'victory';
+import { VictoryTooltipEx, VictoryBrushContainerEx } from 'types';
 
 interface Props extends PanelProps {}
 interface State {
@@ -452,7 +453,7 @@ export class HorizontalBar extends Component<Props, State> {
                   <VictoryBar
                     key={index}
                     labelComponent={
-                      <VictoryTooltip
+                      <VictoryTooltipEx
                         pointerLength={0}
                         constrainToVisibleArea
                         text={({ datum }) => this.stockLabelString(datum.x, datum.threshold, datum.y)}
@@ -510,7 +511,7 @@ export class HorizontalBar extends Component<Props, State> {
             <VictoryChart
               theme={this.state.navigatorChartTheme}
               containerComponent={
-                <VictoryBrushContainer
+                <VictoryBrushContainerEx
                   responsive={false}
                   brushDomain={this.state.zoomDomain}
                   defaultBrushArea="disable"
