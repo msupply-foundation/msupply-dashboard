@@ -303,11 +303,7 @@ export default class WorldMap {
   createGeoJSONLayer = (data: any) => (this.geoJSONLayer = this.addGeoJSON(data));
   clearGeoJSONLayer = () => {
     if (this.geoJSONLayer) {
-      //      console.warn('clearing geojson layers');
-      this.geoJSONLayer.clearLayers();
-      //    console.warn('removing geojson layers');
       this.removeGeoJSON();
-      //  console.warn('done');
     }
   };
 }
