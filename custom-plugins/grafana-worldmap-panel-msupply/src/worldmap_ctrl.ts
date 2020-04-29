@@ -310,7 +310,6 @@ export default class WorldmapCtrl extends MetricsPanelCtrl {
   }
 
   renderGeoJsonLayer = () => {
-    console.warn('render geojson', this.panel.outlineGeoJson);
     if (!this.panel.outlineGeoJson) {
       return;
     }
@@ -362,7 +361,7 @@ export default class WorldmapCtrl extends MetricsPanelCtrl {
       }
 
       ctrl.map.drawCircles();
-      this.renderGeoJsonLayer();
+      ctrl.renderGeoJsonLayer();
     }
   }
 }
