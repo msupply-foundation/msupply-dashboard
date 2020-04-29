@@ -26,6 +26,7 @@ export default class WorldMap {
   map: any;
   legend: any;
   circlesLayer: any;
+  geoJSONLayer: any;
 
   constructor(ctrl, mapContainer) {
     this.ctrl = ctrl;
@@ -141,7 +142,7 @@ export default class WorldMap {
     const selectedFacilityName = _.find(this.ctrl.vars, elem => {
       return elem.name === this.ctrl.panel.linkedVariable;
     }).current.value;
-    
+
     data.forEach(dataPoint => {
       if (!dataPoint.locationName) {
         return;
@@ -176,9 +177,10 @@ export default class WorldMap {
     });
     const selectedFacilityName = selectedFacility.current.value;
     const circle = (<any>window).L.circleMarker([dataPoint.locationLatitude, dataPoint.locationLongitude], {
-      radius: selectedFacilityName === dataPoint.locationName
-      ? this.calcCircleSize(dataPoint.value || 0) * 1.5
-      : this.calcCircleSize(dataPoint.value || 0),
+      radius:
+        selectedFacilityName === dataPoint.locationName
+          ? this.calcCircleSize(dataPoint.value || 0) * 1.5
+          : this.calcCircleSize(dataPoint.value || 0),
       weight: selectedFacilityName === dataPoint.locationName ? 5 : 0.5,
       color: selectedFacilityName === dataPoint.locationName ? 'grey' : this.getColor(dataPoint.value),
       fillColor: this.getColor(dataPoint.value),
@@ -187,7 +189,6 @@ export default class WorldMap {
     });
 
     this.createPopup(circle, dataPoint.locationName, dataPoint.valueRounded);
-
 
     const ctrl = this.ctrl;
     circle.on('click', () => {
@@ -291,4 +292,22 @@ export default class WorldMap {
     this.map.remove();
   }
 
+  addGeoJSON = ({ geoJSON, colour }) =>
+    (<any>window).L.geoJSON(geoJSON, {
+      style: () => {
+        return { color: colour, fill: false };
+      },
+    }).addTo(this.map);
+  removeGeoJSON = () => this.map.removeLayer(this.geoJSONLayer);
+
+  createGeoJSONLayer = (data: any) => (this.geoJSONLayer = this.addGeoJSON(data));
+  clearGeoJSONLayer = () => {
+    if (this.geoJSONLayer) {
+      //      console.warn('clearing geojson layers');
+      this.geoJSONLayer.clearLayers();
+      //    console.warn('removing geojson layers');
+      this.removeGeoJSON();
+      //  console.warn('done');
+    }
+  };
 }
