@@ -4,8 +4,8 @@
 	 width="150px" height="150px" viewBox="0 0 150 150" style="enable-background:new 0 0 150 150;" xml:space="preserve">
 <style type="text/css">
 	.st0{fill:none;}
-	.st1{fill:#3BB0C9;}
-	.st2{fill:#205E66;}
+	.st1{fill:#f8a06e;}
+	.st2{fill:#f26532;}
 	.st3{fill:url(#SVGID_1_);}
 </style>
 <g>
@@ -162,14 +162,14 @@
 		 M130.7,110.4c-0.9,0-1.6-0.7-1.6-1.6c0-0.9,0.7-1.6,1.6-1.6s1.6,0.7,1.6,1.6C132.3,109.7,131.6,110.4,130.7,110.4z M130.7,66.6
 		c-0.9,0-1.6-0.7-1.6-1.6s0.7-1.6,1.6-1.6s1.6,0.7,1.6,1.6S131.6,66.6,130.7,66.6z"/>
 	<linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="75" y1="70.3636" x2="75" y2="-9.9134">
-		<stop  offset="0" style="stop-color:#FFF33B"/>
-		<stop  offset="5.948725e-02" style="stop-color:#FFE029"/>
-		<stop  offset="0.1303" style="stop-color:#FFD218"/>
-		<stop  offset="0.2032" style="stop-color:#FEC90F"/>
-		<stop  offset="0.2809" style="stop-color:#FDC70C"/>
-		<stop  offset="0.6685" style="stop-color:#F3903F"/>
-		<stop  offset="0.8876" style="stop-color:#ED683C"/>
-		<stop  offset="1" style="stop-color:#E93E3A"/>
+		<stop  offset="0" style="stop-color:#90D7E8"/>
+		<stop  offset="5.948725e-02" style="stop-color:#8FD8E9"/>
+		<stop  offset="0.1303" style="stop-color:#60BFD6"/>
+		<stop  offset="0.2032" style="stop-color:#3AABC4"/>
+		<stop  offset="0.2809" style="stop-color:#3CAAC4"/>
+		<stop  offset="0.6685" style="stop-color:#1B9BB9"/>
+		<stop  offset="0.8876" style="stop-color:#0483A1"/>
+		<stop  offset="1" style="stop-color:#047C98"/>
 	</linearGradient>
 	<path class="st3" d="M71.3,59.6L71.3,59.6l3.7,3.9l3.7-3.9h0l13.6-14.3c4.8-5,7.4-11.7,7.4-18.8C99.8,11.9,88.7,0,75,0
 		C61.3,0,50.2,11.9,50.2,26.4c0,7.1,2.6,13.8,7.4,18.8L71.3,59.6z M65.8,22.3c0.8-3.5,3.6-6.2,7-7c0.7-0.2,1.5-0.2,2.2-0.2
