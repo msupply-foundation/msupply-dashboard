@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 19,
-  "iteration": 1588294465236,
+  "iteration": 1588309097425,
   "links": [
     {
       "icon": "external link",
@@ -216,10 +216,12 @@
     },
     {
       "aliasColors": {
+        "3-6 months": "#FF9830",
         "normal": "#7ED321",
         "over": "#22C7FC",
         "under": "#F5A623",
-        "zero": "#D80206"
+        "under 3 months": "#F2495C",
+        "zero": "#C4162A"
       },
       "breakPoint": "50%",
       "cacheTimeout": null,
@@ -741,9 +743,8 @@
       {
         "allValue": null,
         "current": {
-          "tags": [],
-          "text": "Heretaunga Clinic",
-          "value": ["Heretaunga Clinic"]
+          "text": "All",
+          "value": ["$__all"]
         },
         "datasource": "PostgreSQL",
         "definition": "select distinct name from store where disabled=false and store_mode in ('store', 'dispensary');",
@@ -768,7 +769,6 @@
         "allValue": "item",
         "current": {
           "selected": false,
-          "tags": [],
           "text": "All",
           "value": "$__all"
         },
@@ -920,5 +920,5 @@
   "timezone": "",
   "title": "Overview",
   "uid": "ZJy2aDTZz",
-  "version": 12
+  "version": 13
 }
