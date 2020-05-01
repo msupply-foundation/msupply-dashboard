@@ -45,6 +45,11 @@
     </div>
     <gf-form-switch class="gf-form" label="Show Legend" label-class="width-10" checked="ctrl.panel.showLegend" on-change="ctrl.toggleLegend()"></gf-form-switch>
     <gf-form-switch class="gf-form" label="Mouse Wheel Zoom" label-class="width-10" checked="ctrl.panel.mouseWheelZoom" on-change="ctrl.toggleMouseWheelZoom()"></gf-form-switch>
+    <div class="gf-form">
+      <label class="gf-form-label width-10">Label template</label>
+      <textarea class="input-small gf-form-input width-25" rows="2"ng-model="ctrl.panel.labelTemplate" placeholder="${name}: ${value} ${unit}" 
+        ng-change="ctrl.render()" ng-model-onblur ></textarea>
+    </div>
   </div>
   <div class="section gf-form-group">
     <h5 class="section-heading">Map Data Options</h5>
@@ -87,18 +92,14 @@
           ng-model-onblur />
       </div>
       <div class="gf-form">
-        <label class="gf-form-label width-12">geo JSON Outline</label>
-        <div class="gf-form-select-wrapper max-width-10">
-          <input type="text" class="input-small gf-form-input width-10" ng-model="ctrl.panel.outlineGeoJson" ng-change="ctrl.changeOutlineGeoJson()"
-           ng-model-onblur /> 
-        </div>
+        <label class="gf-form-label width-12">geo JSON Outline Colour</label>
+        <input type="text" class="input-small gf-form-input width-10" ng-model="ctrl.panel.outlineGeoJsonColour" ng-change="ctrl.changeOutlineGeoJsonColour()"
+         ng-model-onblur />  
       </div>
       <div class="gf-form">
-        <label class="gf-form-label width-12">geo JSON Outline Colour</label>
-        <div class="gf-form-select-wrapper max-width-10">
-          <input type="text" class="input-small gf-form-input width-10" ng-model="ctrl.panel.outlineGeoJsonColour" ng-change="ctrl.changeOutlineGeoJsonColour()"
-         ng-model-onblur />  
-       </div>
+        <label class="gf-form-label width-12">geo JSON Outline</label>
+        <textarea class="input-small gf-form-input" ng-model="ctrl.panel.outlineGeoJson" ng-change="ctrl.changeOutlineGeoJson()"
+          ng-model-onblur rows="3"></textarea>
       </div>
     </div>
     <div class="grafana-info-box max-width-28" ng-show="ctrl.panel.locationData ==='countries'">

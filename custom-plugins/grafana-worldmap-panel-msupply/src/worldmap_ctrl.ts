@@ -35,11 +35,11 @@ const panelDefaults = {
     geohashField: 'geohash',
     latitudeField: 'latitude',
     longitudeField: 'longitude',
-    metricField: 'metric',
+    metricField: 'metric'
   },
   linkedVariable: 'singleFacility', //Name of variable to update when circles are clicked
   outlineGeoJson: '', // optional geojson layer to display
-  outlineGeoJsonColour: '#f26532',
+  outlineGeoJsonColour: '#f26532'
 };
 
 const mapCenters = {
@@ -48,7 +48,7 @@ const mapCenters = {
   Europe: { mapCenterLatitude: 46, mapCenterLongitude: 14 },
   'West Asia': { mapCenterLatitude: 26, mapCenterLongitude: 53 },
   'SE Asia': { mapCenterLatitude: 10, mapCenterLongitude: 106 },
-  'Last GeoHash': { mapCenterLatitude: 0, mapCenterLongitude: 0 },
+  'Last GeoHash': { mapCenterLatitude: 0, mapCenterLongitude: 0 }
 };
 
 export default class WorldmapCtrl extends MetricsPanelCtrl {
@@ -133,7 +133,7 @@ export default class WorldmapCtrl extends MetricsPanelCtrl {
         success: res => {
           this.locations = res;
           this.render();
-        },
+        }
       });
     } else if (this.panel.locationData === 'json endpoint') {
       if (!this.panel.jsonUrl) {
@@ -228,7 +228,7 @@ export default class WorldmapCtrl extends MetricsPanelCtrl {
   seriesHandler(seriesData) {
     const series = new TimeSeries({
       datapoints: seriesData.datapoints,
-      alias: seriesData.target,
+      alias: seriesData.target
     });
 
     series.flotpairs = series.getFlotPairs(this.panel.nullPointMode);
@@ -315,6 +315,7 @@ export default class WorldmapCtrl extends MetricsPanelCtrl {
     }
 
     const data = { geoJSON: JSON.parse(this.panel.outlineGeoJson), colour: this.panel.outlineGeoJsonColour };
+    this.map.clearGeoJSONLayer();
     this.map.createGeoJSONLayer(data);
   };
 
