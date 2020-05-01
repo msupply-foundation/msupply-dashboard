@@ -293,11 +293,7 @@ export default class WorldMap {
   }
 
   addGeoJSON = ({ geoJSON, colour }) =>
-    (<any>window).L.geoJSON(geoJSON, {
-      style: () => {
-        return { color: colour }; //, fill: false };
-      }
-    }).addTo(this.map);
+    (<any>window).L.geoJSON(geoJSON, { style: () => ({ color: colour }) }).addTo(this.map);
   removeGeoJSON = () => this.map.removeLayer(this.geoJSONLayer);
 
   createGeoJSONLayer = (data: any) => (this.geoJSONLayer = this.addGeoJSON(data));
