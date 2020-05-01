@@ -8,15 +8,15 @@ const tileServers = {
     attribution:
       '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
       '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
-    subdomains: 'abcd',
+    subdomains: 'abcd'
   },
   'CartoDB Dark': {
     url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
     attribution:
       '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
       '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
-    subdomains: 'abcd',
-  },
+    subdomains: 'abcd'
+  }
 };
 
 export default class WorldMap {
@@ -26,6 +26,7 @@ export default class WorldMap {
   map: any;
   legend: any;
   circlesLayer: any;
+  geoJSONLayer: any;
 
   constructor(ctrl, mapContainer) {
     this.ctrl = ctrl;
@@ -42,7 +43,7 @@ export default class WorldMap {
       worldCopyJump: true,
       preferCanvas: true,
       center: mapCenter,
-      zoom: parseInt(this.ctrl.panel.initialZoom, 10) || 1,
+      zoom: parseInt(this.ctrl.panel.initialZoom, 10) || 1
     });
     this.setMouseWheelZoom();
 
@@ -52,7 +53,7 @@ export default class WorldMap {
       subdomains: selectedTileServer.subdomains,
       reuseTiles: true,
       detectRetina: true,
-      attribution: selectedTileServer.attribution,
+      attribution: selectedTileServer.attribution
     }).addTo(this.map);
   }
 
@@ -141,7 +142,7 @@ export default class WorldMap {
     const selectedFacilityName = _.find(this.ctrl.vars, elem => {
       return elem.name === this.ctrl.panel.linkedVariable;
     }).current.value;
-    
+
     data.forEach(dataPoint => {
       if (!dataPoint.locationName) {
         return;
@@ -162,7 +163,7 @@ export default class WorldMap {
           color: selectedFacilityName === dataPoint.locationName ? 'grey' : this.getColor(dataPoint.value),
           fillColor: this.getColor(dataPoint.value),
           fillOpacity: 0.5,
-          location: dataPoint.key,
+          location: dataPoint.key
         });
         circle.unbindPopup();
         this.createPopup(circle, dataPoint.locationName, dataPoint.valueRounded);
@@ -176,24 +177,24 @@ export default class WorldMap {
     });
     const selectedFacilityName = selectedFacility.current.value;
     const circle = (<any>window).L.circleMarker([dataPoint.locationLatitude, dataPoint.locationLongitude], {
-      radius: selectedFacilityName === dataPoint.locationName
-      ? this.calcCircleSize(dataPoint.value || 0) * 1.5
-      : this.calcCircleSize(dataPoint.value || 0),
+      radius:
+        selectedFacilityName === dataPoint.locationName
+          ? this.calcCircleSize(dataPoint.value || 0) * 1.5
+          : this.calcCircleSize(dataPoint.value || 0),
       weight: selectedFacilityName === dataPoint.locationName ? 5 : 0.5,
       color: selectedFacilityName === dataPoint.locationName ? 'grey' : this.getColor(dataPoint.value),
       fillColor: this.getColor(dataPoint.value),
       fillOpacity: 0.5,
-      location: dataPoint.key,
+      location: dataPoint.key
     });
 
     this.createPopup(circle, dataPoint.locationName, dataPoint.valueRounded);
-
 
     const ctrl = this.ctrl;
     circle.on('click', () => {
       ctrl.variableSrv.setOptionAsCurrent(selectedFacility, {
         text: dataPoint.locationName,
-        value: dataPoint.locationName,
+        value: dataPoint.locationName
       });
       ctrl.variableSrv.variableUpdated(selectedFacility, true);
     });
@@ -221,7 +222,7 @@ export default class WorldMap {
     circle.bindPopup(label, {
       offset: (<any>window).L.point(0, -2),
       className: 'worldmap-popup',
-      closeButton: this.ctrl.panel.stickyLabels,
+      closeButton: this.ctrl.panel.stickyLabels
     });
 
     circle.on('mouseover', function onMouseOver(evt) {
@@ -291,4 +292,18 @@ export default class WorldMap {
     this.map.remove();
   }
 
+  addGeoJSON = ({ geoJSON, colour }) =>
+    (<any>window).L.geoJSON(geoJSON, {
+      style: () => {
+        return { color: colour }; //, fill: false };
+      }
+    }).addTo(this.map);
+  removeGeoJSON = () => this.map.removeLayer(this.geoJSONLayer);
+
+  createGeoJSONLayer = (data: any) => (this.geoJSONLayer = this.addGeoJSON(data));
+  clearGeoJSONLayer = () => {
+    if (this.geoJSONLayer) {
+      this.removeGeoJSON();
+    }
+  };
 }
