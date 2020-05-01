@@ -15,14 +15,12 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 13,
-  "iteration": 1563236890973,
+  "id": 19,
+  "iteration": 1588294465236,
   "links": [
     {
       "icon": "external link",
-      "tags": [
-        "mSupply"
-      ],
+      "tags": ["mSupply"],
       "type": "dashboards"
     }
   ],
@@ -31,11 +29,7 @@
       "cacheTimeout": null,
       "colorBackground": false,
       "colorValue": false,
-      "colors": [
-        "#299c46",
-        "rgba(237, 129, 40, 0.89)",
-        "#d44a3a"
-      ],
+      "colors": ["#299c46", "rgba(237, 129, 40, 0.89)", "#d44a3a"],
       "datasource": "PostgreSQL",
       "decimals": null,
       "format": "currencyUSD",
@@ -89,7 +83,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": false
       },
-      "tableColumn": "time",
+      "tableColumn": "",
       "targets": [
         {
           "format": "time_series",
@@ -101,9 +95,7 @@
           "select": [
             [
               {
-                "params": [
-                  "value"
-                ],
+                "params": ["value"],
                 "type": "column"
               }
             ]
@@ -140,7 +132,9 @@
         "#0a50a1",
         "rgba(50, 172, 45, 0.97)"
       ],
+      "datasource": null,
       "decimals": 0,
+      "description": "",
       "esMetric": "Count",
       "gridPos": {
         "h": 11,
@@ -176,10 +170,7 @@
           "format": "table",
           "group": [
             {
-              "params": [
-                "$__interval",
-                "none"
-              ],
+              "params": ["$__interval", "none"],
               "type": "time"
             }
           ],
@@ -191,21 +182,15 @@
           "select": [
             [
               {
-                "params": [
-                  "value"
-                ],
+                "params": ["value"],
                 "type": "column"
               },
               {
-                "params": [
-                  "sum"
-                ],
+                "params": ["sum"],
                 "type": "aggregate"
               },
               {
-                "params": [
-                  "value"
-                ],
+                "params": ["value"],
                 "type": "alias"
               }
             ]
@@ -242,9 +227,10 @@
         "label": "Others",
         "threshold": 0
       },
+      "datasource": null,
       "decimals": null,
       "fontSize": "80%",
-      "format": "short",
+      "format": "locale",
       "gridPos": {
         "h": 9,
         "w": 5,
@@ -257,6 +243,7 @@
         "header": "",
         "percentage": false,
         "show": true,
+        "sortDesc": false,
         "values": true
       },
       "legendType": "Under graph",
@@ -272,14 +259,12 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "select CURRENT_DATE AS \"time\", case when value = 0 then 'zero' when value > 2 then 'over' when value < 1 then 'under' else 'normal' end as metric, count(*) as count \nfrom\n(\nselect avg(value) as value\nfrom\n(\n   SELECT item.item_name AS item, mos.value\n   FROM aggregator mos\n    JOIN store ON mos.storeid = store.id \n    join item on mos.itemid = item.id\n  WHERE mos.dataelement = 'mos'\n  AND store.name IN ($store)\n  GROUP BY store.name, item.item_name, value\n) as a\n  WHERE item = $item\ngroup by item\n) as b\ngroup by 2;",
+          "rawSql": "with items as\n(\n  select i.item_name as item, mos.value\n  from aggregator mos\n    join store s on mos.storeid = s.id \n    join item i on mos.itemid = i.id\n  where s.name IN ($store)\n    and mos.dataelement = 'currentMOS'\n), stock_status as\n(\n  select item, value as sort,\n    case when value = 0 then 0 when value > 12 then 4 when value > 6 then 3 when value < 3 then 2 else 1 end as metric\n  from items\n  where item in ($item)\n  order by value\n)\nselect CURRENT_DATE AS \"time\", count(*) as \"count\",\n    case when metric = 0 then 'zero'\n      when metric = 4 then '  over 12 months'\n      when metric = 3 then ' 6-12 months'\n      when metric = 2 then 'under 3 months'\n      else '3-6 months'\n    end as metric\nfrom stock_status\ngroup by metric\norder by metric asc",
           "refId": "A",
           "select": [
             [
               {
-                "params": [
-                  "value"
-                ],
+                "params": ["value"],
                 "type": "column"
               }
             ]
@@ -307,6 +292,7 @@
         "label": "Others",
         "threshold": 0
       },
+      "datasource": null,
       "fontSize": "80%",
       "format": "currencyUSD",
       "gridPos": {
@@ -336,15 +322,11 @@
           "format": "time_series",
           "group": [
             {
-              "params": [
-                "store"
-              ],
+              "params": ["store"],
               "type": "column"
             },
             {
-              "params": [
-                "date"
-              ],
+              "params": ["date"],
               "type": "column"
             }
           ],
@@ -356,21 +338,15 @@
           "select": [
             [
               {
-                "params": [
-                  "value"
-                ],
+                "params": ["value"],
                 "type": "column"
               },
               {
-                "params": [
-                  "avg"
-                ],
+                "params": ["avg"],
                 "type": "aggregate"
               },
               {
-                "params": [
-                  "value"
-                ],
+                "params": ["value"],
                 "type": "alias"
               }
             ]
@@ -387,11 +363,7 @@
             {
               "datatype": "varchar",
               "name": "",
-              "params": [
-                "store",
-                "IN",
-                "($store)"
-              ],
+              "params": ["store", "IN", "($store)"],
               "type": "expression"
             }
           ]
@@ -402,165 +374,20 @@
       "valueName": "current"
     },
     {
-      "columns": [],
-      "datasource": "PostgreSQL",
-      "fontSize": "100%",
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 0,
-        "y": 11
-      },
-      "id": 4,
-      "links": [],
-      "options": {},
-      "pageSize": null,
-      "scroll": true,
-      "showHeader": true,
-      "sort": {
-        "col": 0,
-        "desc": false
-      },
-      "styles": [
-        {
-          "alias": "Time",
-          "dateFormat": "YYYY-MM-DD HH:mm:ss",
-          "pattern": "Time",
-          "type": "date"
-        },
-        {
-          "alias": "",
-          "colorMode": null,
-          "colors": [
-            "rgba(245, 54, 54, 0.9)",
-            "rgba(237, 129, 40, 0.89)",
-            "rgba(50, 172, 45, 0.97)"
-          ],
-          "decimals": 2,
-          "pattern": "/.*/",
-          "thresholds": [],
-          "type": "number",
-          "unit": "short"
-        }
-      ],
-      "targets": [
-        {
-          "format": "table",
-          "group": [],
-          "metricColumn": "none",
-          "rawQuery": true,
-          "rawSql": "select \"store\", \"week\", \"month\" from store_transactions\nwhere \"store\" in ([[store]])\n\n\n",
-          "refId": "A",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "column"
-              }
-            ]
-          ],
-          "timeColumn": "time",
-          "where": [
-            {
-              "name": "$__timeFilter",
-              "params": [],
-              "type": "macro"
-            }
-          ]
-        }
-      ],
-      "title": "Transactions per Store",
-      "transform": "table",
-      "type": "table"
-    },
-    {
-      "columns": [],
-      "datasource": "PostgreSQL",
-      "fontSize": "100%",
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 11
-      },
-      "id": 23,
-      "links": [],
-      "options": {},
-      "pageSize": null,
-      "scroll": true,
-      "showHeader": true,
-      "sort": {
-        "col": 0,
-        "desc": false
-      },
-      "styles": [
-        {
-          "alias": "Time",
-          "dateFormat": "YYYY-MM-DD HH:mm:ss",
-          "pattern": "Time",
-          "type": "date"
-        },
-        {
-          "alias": "",
-          "colorMode": null,
-          "colors": [
-            "rgba(245, 54, 54, 0.9)",
-            "rgba(237, 129, 40, 0.89)",
-            "rgba(50, 172, 45, 0.97)"
-          ],
-          "decimals": 2,
-          "pattern": "/.*/",
-          "thresholds": [],
-          "type": "number",
-          "unit": "short"
-        }
-      ],
-      "targets": [
-        {
-          "format": "table",
-          "group": [],
-          "metricColumn": "none",
-          "rawQuery": true,
-          "rawSql": "select \"store\", \"week\", \"month\" from store_transactions\nwhere \"store\" in ([[store]])\n\n\n",
-          "refId": "A",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "column"
-              }
-            ]
-          ],
-          "timeColumn": "time",
-          "where": [
-            {
-              "name": "$__timeFilter",
-              "params": [],
-              "type": "macro"
-            }
-          ]
-        }
-      ],
-      "title": "Transactions per Store",
-      "transform": "table",
-      "type": "table"
-    },
-    {
       "aliasColors": {},
       "bars": false,
       "dashLength": 10,
       "dashes": false,
+      "datasource": null,
       "fill": 1,
+      "fillGradient": 0,
       "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 20
+        "h": 12,
+        "w": 11,
+        "x": 1,
+        "y": 11
       },
+      "hiddenSeries": false,
       "id": 22,
       "legend": {
         "alignAsTable": true,
@@ -577,7 +404,9 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
-      "options": {},
+      "options": {
+        "dataLinks": []
+      },
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -597,9 +426,7 @@
           "select": [
             [
               {
-                "params": [
-                  "value"
-                ],
+                "params": ["value"],
                 "type": "column"
               }
             ]
@@ -658,24 +485,21 @@
     {
       "circleMaxSize": 30,
       "circleMinSize": 2,
-      "colors": [
-        "rgba(245, 54, 54, 0.9)",
-        "rgba(237, 129, 40, 0.89)",
-        "#0a50a1",
-        "rgba(50, 172, 45, 0.97)"
-      ],
+      "colors": ["rgba(245, 54, 54, 0.9)", "rgba(237, 129, 40, 0.89)", "rgba(50, 172, 45, 0.97)"],
+      "datasource": null,
       "decimals": 0,
       "esMetric": "Count",
       "gridPos": {
-        "h": 9,
+        "h": 12,
         "w": 12,
         "x": 12,
-        "y": 29
+        "y": 11
       },
       "hideEmpty": false,
       "hideZero": false,
       "id": 10,
       "initialZoom": "5",
+      "linkedVariable": "singleFacility",
       "links": [],
       "locationData": "table",
       "mapCenter": "custom",
@@ -688,86 +512,65 @@
       "stickyLabels": false,
       "tableQueryOptions": {
         "geohashField": "geohash",
-        "labelField": "metric",
         "latitudeField": "latitude",
         "longitudeField": "longitude",
-        "metricField": "value",
-        "queryType": "coordinates"
+        "metricField": "metric",
+        "queryType": "geohash"
       },
       "targets": [
         {
           "format": "table",
           "group": [
             {
-              "params": [
-                "store"
-              ],
+              "params": ["store"],
               "type": "column"
             }
           ],
           "hide": false,
           "metricColumn": "store",
-          "rawQuery": false,
-          "rawSql": "SELECT\n  current_date AS \"time\",\n  store AS metric,\n  max(latitude) AS \"latitude\",\n  max(longitude) AS \"longitude\",\n  avg(value) AS \"value\"\nFROM store_mos\nWHERE\n  $__timeFilter(current_date)\nGROUP BY store,2\nORDER BY 1,2",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  current_date AS \"time\",\n  store AS metric,\n  max(latitude) AS \"latitude\",\n  max(longitude) AS \"longitude\",\n  avg(value) AS \"value\"\nFROM store_mos\nGROUP BY store,2\nORDER BY 1,2",
           "refId": "A",
           "select": [
             [
               {
-                "params": [
-                  "latitude"
-                ],
+                "params": ["latitude"],
                 "type": "column"
               },
               {
-                "params": [
-                  "max"
-                ],
+                "params": ["max"],
                 "type": "aggregate"
               },
               {
-                "params": [
-                  "latitude"
-                ],
+                "params": ["latitude"],
                 "type": "alias"
               }
             ],
             [
               {
-                "params": [
-                  "longitude"
-                ],
+                "params": ["longitude"],
                 "type": "column"
               },
               {
-                "params": [
-                  "max"
-                ],
+                "params": ["max"],
                 "type": "aggregate"
               },
               {
-                "params": [
-                  "longitude"
-                ],
+                "params": ["longitude"],
                 "type": "alias"
               }
             ],
             [
               {
-                "params": [
-                  "value"
-                ],
+                "params": ["value"],
                 "type": "column"
               },
               {
-                "params": [
-                  "avg"
-                ],
+                "params": ["avg"],
                 "type": "aggregate"
               },
               {
-                "params": [
-                  "value"
-                ],
+                "params": ["value"],
                 "type": "alias"
               }
             ]
@@ -775,6 +578,75 @@
           "table": "store_mos",
           "timeColumn": "current_date",
           "timeColumnType": "date",
+          "where": []
+        }
+      ],
+      "thresholds": "0,10",
+      "title": "Months of stock by Store",
+      "type": "grafana-worldmap-panel-msupply",
+      "unitPlural": "",
+      "unitSingle": "",
+      "valueName": "total"
+    },
+    {
+      "columns": [],
+      "datasource": "PostgreSQL",
+      "fontSize": "100%",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 23
+      },
+      "id": 4,
+      "links": [],
+      "options": {},
+      "pageSize": null,
+      "scroll": true,
+      "showHeader": true,
+      "sort": {
+        "col": 0,
+        "desc": false
+      },
+      "styles": [
+        {
+          "alias": "Time",
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "pattern": "Time",
+          "type": "date"
+        },
+        {
+          "alias": "",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "decimals": 2,
+          "pattern": "/.*/",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select \"store\", \"week\", \"month\" from store_transactions\nwhere \"store\" in ([[store]])\n\n\n",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": ["value"],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
           "where": [
             {
               "name": "$__timeFilter",
@@ -784,28 +656,94 @@
           ]
         }
       ],
-      "thresholds": "0,6,12",
-      "title": "Months of stock by Store",
-      "type": "grafana-worldmap-panel",
-      "unitPlural": "",
-      "unitSingle": "",
-      "valueName": "total"
+      "title": "Transactions per Store",
+      "transform": "table",
+      "type": "table"
+    },
+    {
+      "columns": [],
+      "datasource": "PostgreSQL",
+      "fontSize": "100%",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 23
+      },
+      "id": 23,
+      "links": [],
+      "options": {},
+      "pageSize": null,
+      "scroll": true,
+      "showHeader": true,
+      "sort": {
+        "col": 0,
+        "desc": false
+      },
+      "styles": [
+        {
+          "alias": "Time",
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "pattern": "Time",
+          "type": "date"
+        },
+        {
+          "alias": "",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "decimals": 2,
+          "pattern": "/.*/",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select \"store\", \"week\", \"month\" from store_transactions\nwhere \"store\" in ([[store]])\n\n\n",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": ["value"],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Transactions per Store",
+      "transform": "table",
+      "type": "table"
     }
   ],
-  "schemaVersion": 18,
+  "schemaVersion": 21,
   "style": "dark",
-  "tags": [
-    "mSupply"
-  ],
+  "tags": ["mSupply"],
   "templating": {
     "list": [
       {
         "allValue": null,
         "current": {
-          "text": "All",
-          "value": [
-            "$__all"
-          ]
+          "tags": [],
+          "text": "Heretaunga Clinic",
+          "value": ["Heretaunga Clinic"]
         },
         "datasource": "PostgreSQL",
         "definition": "select distinct name from store where disabled=false and store_mode in ('store', 'dispensary');",
@@ -829,6 +767,8 @@
       {
         "allValue": "item",
         "current": {
+          "selected": false,
+          "tags": [],
           "text": "All",
           "value": "$__all"
         },
@@ -970,36 +910,15 @@
     ]
   },
   "time": {
-    "from": "now/y",
-    "to": "now/y"
+    "from": "now-2y",
+    "to": "now"
   },
   "timepicker": {
-    "refresh_intervals": [
-      "5s",
-      "10s",
-      "30s",
-      "1m",
-      "5m",
-      "15m",
-      "30m",
-      "1h",
-      "2h",
-      "1d"
-    ],
-    "time_options": [
-      "5m",
-      "15m",
-      "1h",
-      "6h",
-      "12h",
-      "24h",
-      "2d",
-      "7d",
-      "30d"
-    ]
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"],
+    "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
   },
   "timezone": "",
   "title": "Overview",
-  "uid": "jquMpWPik",
-  "version": 3
+  "uid": "ZJy2aDTZz",
+  "version": 12
 }
