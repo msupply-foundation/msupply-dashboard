@@ -1,4 +1,5 @@
 {
+  "datasource": null,
   "aliasColors": {
     "normal": "#7ED321",
     "over": "#22C7FC",
@@ -11,9 +12,10 @@
     "label": "Others",
     "threshold": 0
   },
-  "decimals": null,
+  "decimals": 0,
+  "description": "Stock coverage based on past monthly consumption",
   "fontSize": "80%",
-  "format": "short",
+  "format": "locale",
   "gridPos": {
     "h": 9,
     "w": 5,
@@ -23,15 +25,18 @@
   "id": 16,
   "interval": null,
   "legend": {
-    "header": "",
-    "percentage": false,
+    "header": "No. of Items",
+    "percentage": true,
     "show": true,
+    "sort": null,
+    "sortDesc": null,
     "values": true
   },
-  "legendType": "Under graph",
+  "legendType": "Right side",
   "links": [],
   "maxDataPoints": 3,
   "nullPointMode": "connected",
+  "options": {},
   "pieType": "donut",
   "strokeWidth": 1,
   "targets": [
@@ -40,14 +45,12 @@
       "group": [],
       "metricColumn": "none",
       "rawQuery": true,
-      "rawSql": "select CURRENT_DATE AS \"time\", case when value = 0 then 'zero' when value > 2 then 'over' when value < 1 then 'under' else 'normal' end as metric, count(*) as count \nfrom\n(\nselect avg(value) as value\nfrom\n(\n   SELECT item.item_name AS item, mos.value\n   FROM aggregator mos\n    JOIN store ON mos.storeid = store.id \n    join item on mos.itemid = item.id\n  WHERE mos.dataelement = 'mos'\n  AND store.name IN ($store)\n  GROUP BY store.name, item.item_name, value\n) as a\n  WHERE item = $item\ngroup by item\n) as b\ngroup by 2;\n",
+      "rawSql": "with items as\n(\n  select i.item_name as item, mos.value\n  from aggregator mos\n    join store s on mos.storeid = s.id \n    join item i on mos.itemid = i.id\n  where s.name IN ($store)\n    and mos.dataelement = 'currentMOS'\n), stock_status as\n(\n  select item, value as sort,\n    case when value = 0 then 0 when value > 12 then 4 when value > 6 then 3 when value < 3 then 2 else 1 end as metric\n  from items\n  where item in ($item)\n  order by value\n)\nselect CURRENT_DATE AS \"time\", count(*) as \"count\",\n    case when metric = 0 then 'zero'\n      when metric = 4 then '  over 12 months'\n      when metric = 3 then ' 6-12 months'\n      when metric = 2 then 'under 3 months'\n      else '3-6 months'\n    end as metric\nfrom stock_status\ngroup by metric\norder by metric asc",
       "refId": "A",
       "select": [
         [
           {
-            "params": [
-              "value"
-            ],
+            "params": ["value"],
             "type": "column"
           }
         ]
@@ -65,6 +68,5 @@
   "title": "Stock Status",
   "transparent": true,
   "type": "grafana-piechart-panel",
-  "valueName": "current",
-  "options": {}
+  "valueName": "current"
 }
