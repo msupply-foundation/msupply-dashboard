@@ -1,10 +1,12 @@
 {
   "datasource": null,
   "aliasColors": {
+    "3-6 months": "#FF9830",
     "normal": "#7ED321",
     "over": "#22C7FC",
     "under": "#F5A623",
-    "zero": "#D80206"
+    "under 3 months": "#F2495C",
+    "zero": "#C4162A"
   },
   "breakPoint": "50%",
   "cacheTimeout": null,
@@ -12,27 +14,24 @@
     "label": "Others",
     "threshold": 0
   },
-  "decimals": 0,
-  "description": "Stock coverage based on past monthly consumption",
+  "decimals": null,
   "fontSize": "80%",
-  "format": "locale",
+  "format": "short",
   "gridPos": {
     "h": 9,
     "w": 5,
     "x": 1,
     "y": 2
   },
-  "id": 16,
+  "id": 32,
   "interval": null,
   "legend": {
-    "header": "No. of Items",
-    "percentage": true,
+    "header": "",
+    "percentage": false,
     "show": true,
-    "sort": null,
-    "sortDesc": null,
     "values": true
   },
-  "legendType": "Right side",
+  "legendType": "Under graph",
   "links": [],
   "maxDataPoints": 3,
   "nullPointMode": "connected",
@@ -45,7 +44,7 @@
       "group": [],
       "metricColumn": "none",
       "rawQuery": true,
-      "rawSql": "with items as\n(\n  select i.item_name as item, mos.value\n  from aggregator mos\n    join store s on mos.storeid = s.id \n    join item i on mos.itemid = i.id\n  where s.name IN ($store)\n    and mos.dataelement = 'currentMOS'\n), stock_status as\n(\n  select item, value as sort,\n    case when value = 0 then 0 when value > 12 then 4 when value > 6 then 3 when value < 3 then 2 else 1 end as metric\n  from items\n  where item in ($item)\n  order by value\n)\nselect CURRENT_DATE AS \"time\", count(*) as \"count\",\n    case when metric = 0 then 'zero'\n      when metric = 4 then '  over 12 months'\n      when metric = 3 then ' 6-12 months'\n      when metric = 2 then 'under 3 months'\n      else '3-6 months'\n    end as metric\nfrom stock_status\ngroup by metric\norder by metric asc",
+      "rawSql": "with items as\n(\n  select i.item_name as item, mos.value\n  from aggregator mos\n    join store s on mos.storeid = s.id \n    join item i on mos.itemid = i.id\n  where s.name IN ($store)\n    and mos.dataelement = 'currentMOS'\n), stock_status as\n(\n  select item, value as sort,\n    case when value = 0 then 0 when value > 12 then 4 when value > 6 then 3 when value < 3 then 1 else 2 end as metric\n  from items\n  where item in ($item)\n  order by value\n)\nselect CURRENT_DATE AS \"time\", count(*) as \"count\",\n    case when metric = 0 then 'zero'\n      when metric = 4 then '  over 12 months'\n      when metric = 3 then ' 6-12 months'\n      when metric = 2 then '3-6 months'\n      when metric = 1 then 'under 3 months'\n      else '3-6 months'\n    end as metric\nfrom stock_status\ngroup by metric\norder by metric asc",
       "refId": "A",
       "select": [
         [
