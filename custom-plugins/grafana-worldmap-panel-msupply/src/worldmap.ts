@@ -141,17 +141,14 @@ export default class WorldMap {
   updateCircles(data) {
     const selectedFacilityName = _.find(this.ctrl.vars, elem => {
       return elem.name === this.ctrl.panel.linkedVariable;
-    }).current.value;
-
+    })?.current.value;
     data.forEach(dataPoint => {
       if (!dataPoint.locationName) {
         return;
       }
-
       const circle = _.find(this.circles, cir => {
-        return cir.options.location === dataPoint.key;
+        return cir?.options?.location === dataPoint.key;
       });
-
       if (circle) {
         circle.setRadius(this.calcCircleSize(dataPoint.value || 0));
         circle.setStyle({
@@ -175,7 +172,7 @@ export default class WorldMap {
     const selectedFacility = _.find(this.ctrl.vars, elem => {
       return elem.name === this.ctrl.panel.linkedVariable;
     });
-    const selectedFacilityName = selectedFacility.current.value;
+    const selectedFacilityName = selectedFacility?.current.value;
     const circle = (<any>window).L.circleMarker([dataPoint.locationLatitude, dataPoint.locationLongitude], {
       radius:
         selectedFacilityName === dataPoint.locationName
@@ -293,7 +290,7 @@ export default class WorldMap {
   }
 
   addGeoJSON = ({ geoJSON, colour }) =>
-    (<any>window).L.geoJSON(geoJSON, { style: () => ({ color: colour }) }).addTo(this.map);
+    (<any>window).L.geoJSON(geoJSON, { pane: 'tilePane', style: () => ({ color: colour }) }).addTo(this.map);
   removeGeoJSON = () => this.map.removeLayer(this.geoJSONLayer);
 
   createGeoJSONLayer = (data: any) => (this.geoJSONLayer = this.addGeoJSON(data));
