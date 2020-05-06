@@ -3,7 +3,8 @@
   "version": "1.0.2",
   "description": "mSupply Horizontal Bar",
   "scripts": {
-    "build": "grafana-toolkit plugin:build",
+    "copy": "rsync -rP --exclude=node_modules ./ ~/GitHub/msupply-dashboard/custom-plugins/msupply-horizontal-bar/",
+    "build": "grafana-toolkit plugin:build && yarn copy",
     "test": "grafana-toolkit plugin:test",
     "dev": "grafana-toolkit plugin:dev",
     "watch": "grafana-toolkit plugin:dev --watch"
