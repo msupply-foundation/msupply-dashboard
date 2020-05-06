@@ -5,7 +5,8 @@
   "main": "src/module.js",
   "scripts": {
     "copy": "rsync -rP --exclude=node_modules ./ ~/GitHub/msupply-dashboard/custom-plugins/grafana-region-map-panel/",
-    "build": "node --max-old-space-size=8192 ./node_modules/.bin/webpack --config webpack.config.prod.js && yarn copy",
+    "get": "rsync -rP --exclude=node_modules ~/GitHub/msupply-dashboard/custom-plugins/grafana-region-map-panel/ ./",
+    "build": "node --max-old-space-size=8192 ./node_modules/.bin/webpack --config webpack.config.prod.js",
     "dev": "webpack --mode development",
     "watch": "webpack --mode development --watch",
     "test": "jest --config jest.config.js"

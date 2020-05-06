@@ -4,7 +4,8 @@
   "description": "mSupply Horizontal Bar",
   "scripts": {
     "copy": "rsync -rP --exclude=node_modules ./ ~/GitHub/msupply-dashboard/custom-plugins/msupply-horizontal-bar/",
-    "build": "grafana-toolkit plugin:build && yarn copy",
+    "get": "rsync -rP --exclude=node_modules ~/Github/msupply-dashboard/custom-plugins/msupply-horizontal-bar/ ./",
+    "build": "grafana-toolkit plugin:build",
     "test": "grafana-toolkit plugin:test",
     "dev": "grafana-toolkit plugin:dev",
     "watch": "grafana-toolkit plugin:dev --watch"
