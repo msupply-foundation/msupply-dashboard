@@ -186,6 +186,7 @@ export default class RegionMap {
         selectedVariableName === dataPoint.locationName
           ? 'grey'
           : this.getColor(dataPoint.value),
+      weight: 2,
       fillColor: this.getColor(dataPoint.value),
       fillOpacity: 0.5,
       location: dataPoint.key,

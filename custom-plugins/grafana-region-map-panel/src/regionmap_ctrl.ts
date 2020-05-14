@@ -250,6 +250,13 @@ export default class RegionMapCtrl extends MetricsPanelCtrl {
     this.loadLocationDataFromFile(true);
   };
 
+  changeLinkedVariable() {
+    //Not currently implemented
+    //Called when Linked Variabled is selected in editor
+    //Need to implement saving correctly, but is okay for now as '$singleFacility' is the only
+    //reasonable choice
+  }
+
   link = (scope: any, elem: any, attrs: any, ctrl: any) => {
     ctrl.events.on('render', () => {
       render();
