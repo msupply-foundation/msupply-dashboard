@@ -14661,15 +14661,15 @@ var L = _interopRequireWildcard(_leaflet);
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
 
 var tileServers = {
-  "CartoDB Positron": {
-    url: "https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png",
+  'CartoDB Positron': {
+    url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> ' + '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
-    subdomains: "abcd"
+    subdomains: 'abcd'
   },
-  "CartoDB Dark": {
-    url: "https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png",
+  'CartoDB Dark': {
+    url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> ' + '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
-    subdomains: "abcd"
+    subdomains: 'abcd'
   }
 };
 
@@ -14702,11 +14702,11 @@ function () {
 
     this.createLegend = function () {
       _this.legend = window.L.control({
-        position: "bottomleft"
+        position: 'bottomleft'
       });
 
       _this.legend.onAdd = function () {
-        _this.legend._div = window.L.DomUtil.create("div", "info legend");
+        _this.legend._div = window.L.DomUtil.create('div', 'info legend');
 
         _this.legend.update();
 
@@ -14715,29 +14715,18 @@ function () {
 
       _this.legend.update = function () {
         var thresholds = _this.ctrl.data.thresholds;
-        var legendHtml = "";
-        legendHtml += '<div class="legend-item"><i style="background:' + _this.ctrl.panel.colors[0] + '"></i> ' + "&lt; " + thresholds[0] + "</div>";
+        var legendHtml = '';
+        legendHtml += '<div class="legend-item"><i style="background:' + _this.ctrl.panel.colors[0] + '"></i> ' + '&lt; ' + thresholds[0] + '</div>';
 
         for (var index = 0; index < thresholds.length; index += 1) {
-          legendHtml += '<div class="legend-item"><i style="background:' + _this.ctrl.panel.colors[index + 1] + '"></i> ' + thresholds[index] + (thresholds[index + 1] ? "&ndash;" + thresholds[index + 1] + "</div>" : "+");
+          legendHtml += '<div class="legend-item"><i style="background:' + _this.ctrl.panel.colors[index + 1] + '"></i> ' + thresholds[index] + (thresholds[index + 1] ? '&ndash;' + thresholds[index + 1] + '</div>' : '+');
         }
 
         _this.legend._div.innerHTML = legendHtml;
       };
 
       _this.legend.addTo(_this.map);
-    }; // needToRedrawPolygons = (data: any) => {
-    //   if (this.polygons.length === 0 && data.length > 0) {
-    //     return true;
-    //   }
-    //   if (this.polygons.length !== data.length) {
-    //     return true;
-    //   }
-    //   const locations = _.map(_.map(this.polygons, "options"), "location").sort();
-    //   const dataPoints = _.map(data, "key").sort();
-    //   return !_.isEqual(locations, dataPoints);
-    // };
-
+    };
 
     this.needToRedrawGeoJSONs = function (data) {
       if (_this.geoJSONs.length === 0 && data.length > 0) {
@@ -14748,9 +14737,9 @@ function () {
         return true;
       }
 
-      var locations = _.map(_.map(_this.geoJSONs, "options"), "location").sort();
+      var locations = _.map(_.map(_this.geoJSONs, 'options'), 'location').sort();
 
-      var dataPoints = _.map(data, "key").sort();
+      var dataPoints = _.map(data, 'key').sort();
 
       return !_.isEqual(locations, dataPoints);
     };
@@ -14759,14 +14748,7 @@ function () {
       return _.filter(data, function (o) {
         return !(_this.ctrl.panel.hideEmpty && _.isNil(o.value)) && !(_this.ctrl.panel.hideZero && o.value === 0);
       });
-    }; // clearPolygons = () => {
-    //   if (this.polygonsLayer) {
-    //     this.polygonsLayer.clearLayers();
-    //     this.removePolygons();
-    //     this.polygons = [];
-    //   }
-    // };
-
+    };
 
     this.clearGeoJSONs = function () {
       if (_this.geoJSONLayer) {
@@ -14776,16 +14758,7 @@ function () {
 
         _this.geoJSONs = [];
       }
-    }; // drawPolygons = () => {
-    //   const data = this.filterEmptyAndZeroValues(this.ctrl.data);
-    //   if (this.needToRedrawPolygons(data)) {
-    //     this.clearPolygons();
-    //     this.createPolygons(data);
-    //   } else {
-    //     this.updatePolygons(data);
-    //   }
-    // };
-
+    };
 
     this.drawGeoJSONs = function () {
       var data = _this.filterEmptyAndZeroValues(_this.ctrl.data);
@@ -14807,52 +14780,29 @@ function () {
       });
       _this.geoJSONLayer = _this.addGeoJSONs(geoJSONs);
       _this.geoJSONs = geoJSONs;
-    }; // createPolygons = (data: any) => {
-    //   const polygons: any[] = [];
-    //   data.forEach((dataPoint) => {
-    //     if (!dataPoint.locationName) {
-    //       return;
-    //     }
-    //     const coordinates = dataPoint.geojson.features.map((feature) => feature.geometry.coordinates);
-    //     polygons.push(this.createPolygon(dataPoint, coordinates));
-    //   });
-    //   this.polygonsLayer = this.addPolygons(polygons);
-    //   this.polygons = polygons;
-    // };
-    // updatePolygons = (data: any) => {
-    //   data.forEach((dataPoint) => {
-    //     if (!dataPoint.locationName) {
-    //       return;
-    //     }
-    //     const polygon = _.find(this.polygons, (poly) => {
-    //       return poly.options.name === dataPoint.key;
-    //     });
-    //     if (polygon) {
-    //       // TODO: coordinates?
-    //       polygon.setStyle({
-    //         color: this.getColor(dataPoint.value),
-    //         fillColor: this.getColor(dataPoint.value),
-    //       });
-    //       polygon.unbindPopup();
-    //       this.createPopup(polygon, dataPoint.locationName, dataPoint.valueRounded);
-    //     }
-    //   });
-    // };
-
+    };
 
     this.updateGeoJSONs = function (data) {
+      var _a;
+
+      var selectedVariableName = (_a = _.find(_this.ctrl.vars, function (elem) {
+        return elem.name === _this.ctrl.panel.linkedVariable;
+      })) === null || _a === void 0 ? void 0 : _a.current.value;
       data.forEach(function (dataPoint) {
         if (!dataPoint.locationName) {
           return;
         }
 
         var layer = _.find(_this.geoJSONs, function (geojson) {
-          return geojson.options.name === dataPoint.key;
+          return geojson.options.location === dataPoint.key;
         });
+
+        console.log('Layers layer layers...');
+        console.log('GeoJSONs', _this.geoJSONs);
 
         if (layer) {
           layer.setStyle({
-            color: _this.getColor(dataPoint.value),
+            color: selectedVariableName === dataPoint.locationName ? 'grey' : _this.getColor(dataPoint.value),
             fillColor: _this.getColor(dataPoint.value)
           });
           layer.unbindPopup();
@@ -14865,13 +14815,13 @@ function () {
     this.createGeoJSON = function (dataPoint) {
       var _a;
 
-      var selectedFacility = _.find(_this.ctrl.vars, function (elem) {
+      var selectedVariable = _.find(_this.ctrl.vars, function (elem) {
         return elem.name === _this.ctrl.panel.linkedVariable;
       });
 
-      var selectedFacilityName = (_a = selectedFacility) === null || _a === void 0 ? void 0 : _a.current.value;
+      var selectedVariableName = (_a = selectedVariable) === null || _a === void 0 ? void 0 : _a.current.value;
       var geoJSON = window.L.geoJSON(dataPoint.geojson, {
-        color: selectedFacilityName === dataPoint.locationName ? "grey" : _this.getColor(dataPoint.value),
+        color: selectedVariableName === dataPoint.locationName ? 'grey' : _this.getColor(dataPoint.value),
         fillColor: _this.getColor(dataPoint.value),
         fillOpacity: 0.5,
         location: dataPoint.key
@@ -14880,43 +14830,32 @@ function () {
       _this.createPopup(geoJSON, dataPoint.locationName, dataPoint.valueRounded);
 
       var ctrl = _this.ctrl;
-      geoJSON.on("click", function () {
-        ctrl.variableSrv.setOptionAsCurrent(selectedFacility, {
+      geoJSON.on('click', function () {
+        ctrl.variableSrv.setOptionAsCurrent(selectedVariable, {
           text: dataPoint.locationName,
           value: dataPoint.locationName
         });
-        ctrl.variableSrv.variableUpdated(selectedFacility, true);
-        console.log("Clicked region....");
+        ctrl.variableSrv.variableUpdated(selectedVariable, true); // console.log('Clicked district....');
       });
       return geoJSON;
-    }; // createPolygon = (dataPoint: any, coordinates: any) => {
-    //   const polygon = (<any>window).L.polygon(coordinates, {
-    //     color: this.getColor(dataPoint.value),
-    //     fillColor: this.getColor(dataPoint.value),
-    //     fillOpacity: 0.5,
-    //     location: dataPoint.key,
-    //   });
-    //   this.createPopup(polygon, dataPoint.locationName, dataPoint.valueRounded);
-    //   return polygon;
-    // };
-
+    };
 
     this.createPopup = function (region, locationName, value) {
       var unit = value && value === 1 ? _this.ctrl.panel.unitSingular : _this.ctrl.panel.unitPlural;
-      var label = (locationName + ": " + value + " " + (unit || "")).trim();
+      var label = (locationName + ': ' + value + ' ' + (unit || '')).trim();
       region.bindPopup(label, {
         offset: window.L.point(0, -2),
-        className: "worldmap-popup",
+        className: 'worldmap-popup',
         closeButton: _this.ctrl.panel.stickyLabels
       });
-      region.on("mouseover", function onMouseOver(evt) {
+      region.on('mouseover', function onMouseOver(evt) {
         var layer = evt.target;
         layer.bringToFront();
         this.openPopup();
       });
 
       if (!_this.ctrl.panel.stickyLabels) {
-        region.on("mouseout", function onMouseOut() {
+        region.on('mouseout', function onMouseOut() {
           region.closePopup();
         });
       }
@@ -14954,13 +14893,7 @@ function () {
       } else {
         _this.map.scrollWheelZoom.enable();
       }
-    }; // addPolygons = (polygons: any) => {
-    //   return (<any>window).L.layerGroup(polygons).addTo(this.map);
-    // };
-    // removePolygons = () => {
-    //   this.map.removeLayer(this.polygonsLayer);
-    // };
-
+    };
 
     this.addGeoJSONs = function (geoJSONs) {
       return window.L.layerGroup(geoJSONs).addTo(_this.map);
@@ -15069,40 +15002,40 @@ var __extends = undefined && undefined.__extends || function () {
 
 var panelDefaults = {
   maxDataPoints: 1,
-  mapCenter: "(0°, 0°)",
+  mapCenter: '(0°, 0°)',
   mapCenterLatitude: 0,
   mapCenterLongitude: 0,
   initialZoom: 1,
-  valueName: "total",
+  valueName: 'total',
   circleMinSize: 2,
   circleMaxSize: 30,
-  locationData: "countries",
-  thresholds: "0,10",
-  colors: ["rgba(245, 54, 54, 0.9)", "rgba(237, 129, 40, 0.89)", "rgba(50, 172, 45, 0.97)"],
-  unitSingle: "",
-  unitPlural: "",
+  locationData: 'countries',
+  thresholds: '0,10',
+  colors: ['rgba(245, 54, 54, 0.9)', 'rgba(237, 129, 40, 0.89)', 'rgba(50, 172, 45, 0.97)'],
+  unitSingle: '',
+  unitPlural: '',
   showLegend: true,
   mouseWheelZoom: false,
-  esMetric: "Count",
+  esMetric: 'Count',
   decimals: 0,
   hideEmpty: false,
   hideZero: false,
   stickyLabels: false,
   tableQueryOptions: {
-    queryType: "geojson",
-    geojsonField: "geojson",
-    latitudeField: "latitude",
-    longitudeField: "longitude",
-    metricField: "metric"
+    queryType: 'geojson',
+    geojsonField: 'geojson',
+    latitudeField: 'latitude',
+    longitudeField: 'longitude',
+    metricField: 'metric'
   },
-  linkedVariable: "district"
+  linkedVariable: 'district'
 };
 var mapCenters = {
-  "(0°, 0°)": {
+  '(0°, 0°)': {
     mapCenterLatitude: 0,
     mapCenterLongitude: 0
   },
-  "North America": {
+  'North America': {
     mapCenterLatitude: 40,
     mapCenterLongitude: -100
   },
@@ -15110,15 +15043,15 @@ var mapCenters = {
     mapCenterLatitude: 46,
     mapCenterLongitude: 14
   },
-  "West Asia": {
+  'West Asia': {
     mapCenterLatitude: 26,
     mapCenterLongitude: 53
   },
-  "SE Asia": {
+  'SE Asia': {
     mapCenterLatitude: 10,
     mapCenterLongitude: 106
   },
-  "Last GeoHash": {
+  'Last GeoHash': {
     mapCenterLatitude: 0,
     mapCenterLongitude: 0
   }
@@ -15135,16 +15068,16 @@ function (_super) {
     var _this = _super.call(this, $scope, $injector) || this;
 
     _this.setMapProvider = function (contextSrv) {
-      _this.tileServer = contextSrv.user.lightTheme ? "CartoDB Positron" : "CartoDB Dark";
+      _this.tileServer = contextSrv.user.lightTheme ? 'CartoDB Positron' : 'CartoDB Dark';
 
       _this.setMapSaturationClass();
     };
 
     _this.setMapSaturationClass = function () {
-      if (_this.tileServer === "CartoDB Dark") {
-        _this.saturationClass = "map-darken";
+      if (_this.tileServer === 'CartoDB Dark') {
+        _this.saturationClass = 'map-darken';
       } else {
-        _this.saturationClass = "";
+        _this.saturationClass = '';
       }
     };
 
@@ -15158,8 +15091,8 @@ function (_super) {
         return;
       }
 
-      if (_this.panel.locationData !== "table") {
-        _jquery2.default.getJSON("public/plugins/grafana-region-map-panel/data/" + _this.panel.locationData + ".json").then(_this.reloadLocations.bind(_this));
+      if (_this.panel.locationData !== 'table') {
+        _jquery2.default.getJSON('public/plugins/grafana-region-map-panel/data/' + _this.panel.locationData + '.json').then(_this.reloadLocations.bind(_this));
       }
     };
 
@@ -15170,11 +15103,11 @@ function (_super) {
     };
 
     _this.showTableGeojsonOptions = function () {
-      return _this.panel.locationData === "table" && _this.panel.tableQueryOptions.queryType === "geojson";
+      return _this.panel.locationData === 'table' && _this.panel.tableQueryOptions.queryType === 'geojson';
     };
 
     _this.showTableCoordinateOptions = function () {
-      return _this.panel.locationData === "table" && _this.panel.tableQueryOptions.queryType === "coordinates";
+      return _this.panel.locationData === 'table' && _this.panel.tableQueryOptions.queryType === 'coordinates';
     };
 
     _this.onPanelTeardown = function () {
@@ -15184,7 +15117,7 @@ function (_super) {
     };
 
     _this.onInitEditMode = function () {
-      _this.addEditorTab("RegionMap", "public/plugins/grafana-region-map-panel/partials/editor.html", 2);
+      _this.addEditorTab('RegionMap', 'public/plugins/grafana-region-map-panel/partials/editor.html', 2);
     };
 
     _this.onDataReceived = function (dataList) {
@@ -15198,7 +15131,7 @@ function (_super) {
 
       var data = [];
 
-      if (_this.panel.locationData === "table") {
+      if (_this.panel.locationData === 'table') {
         var tableData = dataList.map(_data_formatter2.default.tableHandler.bind(_this));
 
         _this.dataFormatter.setTableValues(tableData, data);
@@ -15208,7 +15141,7 @@ function (_super) {
 
       _this.updateThresholdData();
 
-      if (_this.data.length && _this.panel.mapCenter === "Last GeoHash") {
+      if (_this.data.length && _this.panel.mapCenter === 'Last GeoHash') {
         _this.centerOnLastGeoHash();
       } else {
         _this.render();
@@ -15229,7 +15162,7 @@ function (_super) {
     };
 
     _this.setNewMapCenter = function () {
-      if (_this.panel.mapCenter !== "custom") {
+      if (_this.panel.mapCenter !== 'custom') {
         _this.panel.mapCenterLatitude = mapCenters[_this.panel.mapCenter].mapCenterLatitude;
         _this.panel.mapCenterLongitude = mapCenters[_this.panel.mapCenter].mapCenterLongitude;
       }
@@ -15272,7 +15205,7 @@ function (_super) {
     };
 
     _this.updateThresholdData = function () {
-      _this.data.thresholds = _this.panel.thresholds.split(",").map(function (strValue) {
+      _this.data.thresholds = _this.panel.thresholds.split(',').map(function (strValue) {
         return Number(strValue.trim());
       });
 
@@ -15283,7 +15216,7 @@ function (_super) {
 
       while (_.size(_this.panel.colors) < _.size(_this.data.thresholds) + 1) {
         // not enough colors. add one.
-        var newColor = "rgba(50, 172, 45, 0.97)";
+        var newColor = 'rgba(50, 172, 45, 0.97)';
 
         _this.panel.colors.push(newColor);
       }
@@ -15294,7 +15227,7 @@ function (_super) {
     };
 
     _this.link = function (scope, elem, attrs, ctrl) {
-      ctrl.events.on("render", function () {
+      ctrl.events.on('render', function () {
         render();
         ctrl.renderingCompleted();
       });
@@ -15304,9 +15237,9 @@ function (_super) {
           return;
         }
 
-        var mapContainer = elem.find(".mapcontainer");
+        var mapContainer = elem.find('.mapcontainer');
 
-        if (mapContainer[0].id.indexOf("{{") > -1) {
+        if (mapContainer[0].id.indexOf('{{') > -1) {
           return;
         }
 
@@ -15346,20 +15279,20 @@ function (_super) {
 
     _this.dataFormatter = new _data_formatter2.default(_this);
 
-    _this.events.on("init-edit-mode", _this.onInitEditMode.bind(_this));
+    _this.events.on('init-edit-mode', _this.onInitEditMode.bind(_this));
 
-    _this.events.on("data-received", _this.onDataReceived.bind(_this));
+    _this.events.on('data-received', _this.onDataReceived.bind(_this));
 
-    _this.events.on("panel-teardown", _this.onPanelTeardown.bind(_this));
+    _this.events.on('panel-teardown', _this.onPanelTeardown.bind(_this));
 
-    _this.events.on("data-snapshot-load", _this.onDataSnapshotLoad.bind(_this));
+    _this.events.on('data-snapshot-load', _this.onDataSnapshotLoad.bind(_this));
 
     _this.loadLocationDataFromFile();
 
     return _this;
   }
 
-  RegionMapCtrl.templateUrl = "partials/module.html";
+  RegionMapCtrl.templateUrl = 'partials/module.html';
   return RegionMapCtrl;
 }(_sdk.MetricsPanelCtrl);
 

@@ -128,7 +128,6 @@ export default class RegionMap {
 
   drawGeoJSONs = () => {
     const data = this.filterEmptyAndZeroValues(this.ctrl.data);
-
     if (this.needToRedrawGeoJSONs(data)) {
       this.clearGeoJSONs();
       this.createGeoJSONs(data);
@@ -150,6 +149,9 @@ export default class RegionMap {
   };
 
   updateGeoJSONs = (data: any) => {
+    const selectedVariableName = _.find(this.ctrl.vars, (elem) => {
+      return elem.name === this.ctrl.panel.linkedVariable;
+    })?.current.value;
     data.forEach((dataPoint) => {
       if (!dataPoint.locationName) {
         return;
@@ -157,12 +159,15 @@ export default class RegionMap {
 
       const layer = _.find(
         this.geoJSONs,
-        (geojson) => geojson.options.name === dataPoint.key
+        (geojson) => geojson.options.location === dataPoint.key
       );
 
       if (layer) {
         layer.setStyle({
-          color: this.getColor(dataPoint.value),
+          color:
+            selectedVariableName === dataPoint.locationName
+              ? 'grey'
+              : this.getColor(dataPoint.value),
           fillColor: this.getColor(dataPoint.value),
         });
         layer.unbindPopup();
@@ -172,13 +177,13 @@ export default class RegionMap {
   };
 
   createGeoJSON = (dataPoint: any) => {
-    const selectedFacility = _.find(this.ctrl.vars, (elem) => {
+    const selectedVariable = _.find(this.ctrl.vars, (elem) => {
       return elem.name === this.ctrl.panel.linkedVariable;
     });
-    const selectedFacilityName = selectedFacility?.current.value;
+    const selectedVariableName = selectedVariable?.current.value;
     const geoJSON = (<any>window).L.geoJSON(dataPoint.geojson, {
       color:
-        selectedFacilityName === dataPoint.locationName
+        selectedVariableName === dataPoint.locationName
           ? 'grey'
           : this.getColor(dataPoint.value),
       fillColor: this.getColor(dataPoint.value),
@@ -190,12 +195,11 @@ export default class RegionMap {
 
     const ctrl = this.ctrl;
     geoJSON.on('click', () => {
-      ctrl.variableSrv.setOptionAsCurrent(selectedFacility, {
+      ctrl.variableSrv.setOptionAsCurrent(selectedVariable, {
         text: dataPoint.locationName,
         value: dataPoint.locationName,
       });
-      ctrl.variableSrv.variableUpdated(selectedFacility, true);
-      console.log('Clicked region....');
+      ctrl.variableSrv.variableUpdated(selectedVariable, true);
     });
 
     return geoJSON;
