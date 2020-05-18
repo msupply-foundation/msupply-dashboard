@@ -211,7 +211,12 @@ export default class RegionMap {
       value && value === 1
         ? this.ctrl.panel.unitSingular
         : this.ctrl.panel.unitPlural;
-    const label = (locationName + ': ' + value + ' ' + (unit || '')).trim();
+    const label = !!this.ctrl.panel.labelTemplate
+      ? this.ctrl.panel.labelTemplate
+          .replace('${name}', locationName)
+          .replace('${value}', value)
+          .replace('${unit}', unit)
+      : (locationName + ': ' + value + ' ' + (unit || '')).trim();
     region.bindPopup(label, {
       offset: (<any>window).L.point(0, -2),
       className: 'worldmap-popup',
