@@ -215,7 +215,13 @@ export default class WorldMap {
 
   createPopup(circle, locationName, value) {
     const unit = value && value === 1 ? this.ctrl.panel.unitSingular : this.ctrl.panel.unitPlural;
-    const label = (locationName + ': ' + value + ' ' + (unit || '')).trim();
+    const useTemplate = !!this.ctrl.panel.labelTemplate;
+    const label = useTemplate
+      ? this.ctrl.panel.labelTemplate
+          .replace('${name}', locationName)
+          .replace('${value}', value)
+          .replace('${unit}', unit)
+      : (locationName + ': ' + value + ' ' + (unit || '')).trim();
     circle.bindPopup(label, {
       offset: (<any>window).L.point(0, -2),
       className: 'worldmap-popup',
