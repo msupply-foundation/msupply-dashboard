@@ -917,16 +917,22 @@ describe('ElasticResponse', () => {
         expect(r._id).toEqual(response.responses[0].hits.hits[i]._id);
         expect(r._type).toEqual(response.responses[0].hits.hits[i]._type);
         expect(r._index).toEqual(response.responses[0].hits.hits[i]._index);
-        expect(r._source).toEqual(flatten(response.responses[0].hits.hits[i]._source, null));
+        expect(r._source).toEqual(
+          flatten(
+            response.responses[0].hits.hits[i]._source,
+            (null as unknown) as { delimiter?: any; maxDepth?: any; safe?: any }
+          )
+        );
       }
 
       // Make a map from the histogram results
       const hist: KeyValue<number> = {};
       const histogramResults = new MutableDataFrame(result.data[1]);
       rows = new DataFrameView(histogramResults);
+
       for (let i = 0; i < rows.length; i++) {
         const row = rows.get(i);
-        hist[row.Time] = row.Count;
+        hist[row.Time] = row.Value;
       }
 
       response.responses[0].aggregations['2'].buckets.forEach((bucket: any) => {
@@ -938,14 +944,14 @@ describe('ElasticResponse', () => {
       const result = new ElasticResponse(targets, response).getLogs(undefined, 'level');
       const fieldCache = new FieldCache(result.data[0]);
       const field = fieldCache.getFieldByName('level');
-      expect(field.values.toArray()).toEqual(['debug', 'error']);
+      expect(field?.values.toArray()).toEqual(['debug', 'error']);
     });
 
     it('should re map levels field to new field', () => {
       const result = new ElasticResponse(targets, response).getLogs(undefined, 'fields.lvl');
       const fieldCache = new FieldCache(result.data[0]);
       const field = fieldCache.getFieldByName('level');
-      expect(field.values.toArray()).toEqual(['debug', 'info']);
+      expect(field?.values.toArray()).toEqual(['debug', 'info']);
     });
   });
 });
