@@ -4,14 +4,16 @@ import RegionMapCtrl from './regionmap_ctrl';
 
 const tileServers = {
   'CartoDB Positron': {
-    url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+    url:
+      'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
     attribution:
       '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
       '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
     subdomains: 'abcd',
   },
   'CartoDB Dark': {
-    url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
+    url:
+      'https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
     attribution:
       '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
       '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
@@ -83,25 +85,13 @@ export default class RegionMap {
           this.ctrl.panel.colors[index + 1] +
           '"></i> ' +
           thresholds[index] +
-          (thresholds[index + 1] ? '&ndash;' + thresholds[index + 1] + '</div>' : '+');
+          (thresholds[index + 1]
+            ? '&ndash;' + thresholds[index + 1] + '</div>'
+            : '+');
       }
       this.legend._div.innerHTML = legendHtml;
     };
     this.legend.addTo(this.map);
-  };
-
-  needToRedrawPolygons = (data: any) => {
-    if (this.polygons.length === 0 && data.length > 0) {
-      return true;
-    }
-
-    if (this.polygons.length !== data.length) {
-      return true;
-    }
-
-    const locations = _.map(_.map(this.polygons, 'options'), 'location').sort();
-    const dataPoints = _.map(data, 'key').sort();
-    return !_.isEqual(locations, dataPoints);
   };
 
   needToRedrawGeoJSONs = (data: any) => {
@@ -120,7 +110,7 @@ export default class RegionMap {
   };
 
   filterEmptyAndZeroValues = (data: any) => {
-    return _.filter(data, o => {
+    return _.filter(data, (o) => {
       return (
         !(this.ctrl.panel.hideEmpty && _.isNil(o.value)) &&
         !(this.ctrl.panel.hideZero && o.value === 0)
@@ -128,38 +118,16 @@ export default class RegionMap {
     });
   };
 
-  clearPolygons = () => {
-    if (this.polygonsLayer) {
-      this.polygonsLayer.clearLayers();
-      this.removePolygons();
-      this.polygons = [];
-    }
-  };
-
   clearGeoJSONs = () => {
     if (this.geoJSONLayer) {
-      //      console.warn('clearing geojson layers');
       this.geoJSONLayer.clearLayers();
-      //    console.warn('removing geojson layers');
       this.removeGeoJSONs();
-      //  console.warn('done');
       this.geoJSONs = [];
-    }
-  };
-
-  drawPolygons = () => {
-    const data = this.filterEmptyAndZeroValues(this.ctrl.data);
-    if (this.needToRedrawPolygons(data)) {
-      this.clearPolygons();
-      this.createPolygons(data);
-    } else {
-      this.updatePolygons(data);
     }
   };
 
   drawGeoJSONs = () => {
     const data = this.filterEmptyAndZeroValues(this.ctrl.data);
-
     if (this.needToRedrawGeoJSONs(data)) {
       this.clearGeoJSONs();
       this.createGeoJSONs(data);
@@ -170,7 +138,7 @@ export default class RegionMap {
 
   createGeoJSONs = (data: any) => {
     const geoJSONs: any[] = [];
-    data.forEach(dataPoint => {
+    data.forEach((dataPoint) => {
       if (!dataPoint.locationName || !dataPoint.geojson) return;
 
       geoJSONs.push(this.createGeoJSON(dataPoint));
@@ -180,52 +148,26 @@ export default class RegionMap {
     this.geoJSONs = geoJSONs;
   };
 
-  createPolygons = (data: any) => {
-    const polygons: any[] = [];
-    data.forEach(dataPoint => {
-      if (!dataPoint.locationName) {
-        return;
-      }
-      const coordinates = dataPoint.geojson.features.map(feature => feature.geometry.coordinates);
-      polygons.push(this.createPolygon(dataPoint, coordinates));
-    });
-
-    this.polygonsLayer = this.addPolygons(polygons);
-    this.polygons = polygons;
-  };
-
-  updatePolygons = (data: any) => {
-    data.forEach(dataPoint => {
-      if (!dataPoint.locationName) {
-        return;
-      }
-
-      const polygon = _.find(this.polygons, poly => {
-        return poly.options.name === dataPoint.key;
-      });
-
-      if (polygon) {
-        // TODO: coordinates?
-        polygon.setStyle({
-          color: this.getColor(dataPoint.value),
-          fillColor: this.getColor(dataPoint.value),
-        });
-        polygon.unbindPopup();
-        this.createPopup(polygon, dataPoint.locationName, dataPoint.valueRounded);
-      }
-    });
-  };
   updateGeoJSONs = (data: any) => {
-    data.forEach(dataPoint => {
+    const selectedVariableName = _.find(this.ctrl.vars, (elem) => {
+      return elem.name === this.ctrl.panel.linkedVariable;
+    })?.current.value;
+    data.forEach((dataPoint) => {
       if (!dataPoint.locationName) {
         return;
       }
 
-      const layer = _.find(this.geoJSONs, geojson => geojson.options.name === dataPoint.key);
+      const layer = _.find(
+        this.geoJSONs,
+        (geojson) => geojson.options.location === dataPoint.key
+      );
 
       if (layer) {
         layer.setStyle({
-          color: this.getColor(dataPoint.value),
+          color:
+            selectedVariableName === dataPoint.locationName
+              ? 'grey'
+              : this.getColor(dataPoint.value),
           fillColor: this.getColor(dataPoint.value),
         });
         layer.unbindPopup();
@@ -235,32 +177,46 @@ export default class RegionMap {
   };
 
   createGeoJSON = (dataPoint: any) => {
+    const selectedVariable = _.find(this.ctrl.vars, (elem) => {
+      return elem.name === this.ctrl.panel.linkedVariable;
+    });
+    const selectedVariableName = selectedVariable?.current.value;
     const geoJSON = (<any>window).L.geoJSON(dataPoint.geojson, {
-      color: this.getColor(dataPoint.value),
+      color:
+        selectedVariableName === dataPoint.locationName
+          ? 'grey'
+          : this.getColor(dataPoint.value),
+      weight: 2,
       fillColor: this.getColor(dataPoint.value),
       fillOpacity: 0.5,
       location: dataPoint.key,
     });
 
     this.createPopup(geoJSON, dataPoint.locationName, dataPoint.valueRounded);
+
+    const ctrl = this.ctrl;
+    geoJSON.on('click', () => {
+      ctrl.variableSrv.setOptionAsCurrent(selectedVariable, {
+        text: dataPoint.locationName,
+        value: dataPoint.locationName,
+      });
+      ctrl.variableSrv.variableUpdated(selectedVariable, true);
+    });
+
     return geoJSON;
   };
 
-  createPolygon = (dataPoint: any, coordinates: any) => {
-    const polygon = (<any>window).L.polygon(coordinates, {
-      color: this.getColor(dataPoint.value),
-      fillColor: this.getColor(dataPoint.value),
-      fillOpacity: 0.5,
-      location: dataPoint.key,
-    });
-
-    this.createPopup(polygon, dataPoint.locationName, dataPoint.valueRounded);
-    return polygon;
-  };
-
   createPopup = (region: any, locationName: string, value: number) => {
-    const unit = value && value === 1 ? this.ctrl.panel.unitSingular : this.ctrl.panel.unitPlural;
-    const label = (locationName + ': ' + value + ' ' + (unit || '')).trim();
+    const unit =
+      value && value === 1
+        ? this.ctrl.panel.unitSingular
+        : this.ctrl.panel.unitPlural;
+    const label = !!this.ctrl.panel.labelTemplate
+      ? this.ctrl.panel.labelTemplate
+          .replace('${name}', locationName)
+          .replace('${value}', value)
+          .replace('${unit}', unit)
+      : (locationName + ': ' + value + ' ' + (unit || '')).trim();
     region.bindPopup(label, {
       offset: (<any>window).L.point(0, -2),
       className: 'worldmap-popup',
@@ -314,15 +270,8 @@ export default class RegionMap {
     }
   };
 
-  addPolygons = (polygons: any) => {
-    return (<any>window).L.layerGroup(polygons).addTo(this.map);
-  };
-
-  removePolygons = () => {
-    this.map.removeLayer(this.polygonsLayer);
-  };
-
-  addGeoJSONs = (geoJSONs: Array<any>) => (<any>window).L.layerGroup(geoJSONs).addTo(this.map);
+  addGeoJSONs = (geoJSONs: Array<any>) =>
+    (<any>window).L.layerGroup(geoJSONs).addTo(this.map);
   removeGeoJSONs = () => this.map.removeLayer(this.geoJSONLayer);
 
   setZoom = (zoomFactor: any) => this.map.setZoom(parseInt(zoomFactor, 10));
@@ -330,7 +279,7 @@ export default class RegionMap {
   remove = () => {
     this.polygons = [];
     if (this.polygonsLayer) {
-      this.removePolygons();
+      this.removeGeoJSONs();
     }
     if (this.legend) {
       this.removeLegend();

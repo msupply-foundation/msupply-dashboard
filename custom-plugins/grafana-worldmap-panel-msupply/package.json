@@ -4,6 +4,8 @@
   "description": "Worldmap Panel Plugin for Grafana",
   "main": "src/module.js",
   "scripts": {
+    "copy": "rsync -rP --exclude=node_modules ./ ~/GitHub/msupply-dashboard/custom-plugins/grafana-worldmap-panel-msupply/",
+    "get": "rsync -rP --exclude=node_modules ~/Github/msupply-dashboard/custom-plugins/grafana-worldmap-panel-msupply/ ./",
     "build": "node --max-old-space-size=8192 ./node_modules/.bin/webpack --config webpack.config.prod.js",
     "dev": "webpack --mode development",
     "watch": "webpack --mode development --watch",
