@@ -604,6 +604,23 @@ AS $$
 	END;
 $$
 
+CREATE OR REPLACE FUNCTION public.checkstockondate(patdate date, pstoreid text, pitemid text)
+	RETURNS int4
+	LANGUAGE plpgsql
+AS $function$
+	DECLARE result integer;
+	BEGIN
+	        SELECT  "value" INTO result
+	        FROM    aggregator 
+			WHERE storeID = $2 and itemID = $3
+			and fullDate <= $1 
+	        and dataElement = 'stockHistory'
+	        order by fullDate desc limit 1;
+	
+	        RETURN GREATEST(0, result);
+	END
+$function$
+;
 
 CREATE OR REPLACE PROCEDURE custom_aggregations()
  LANGUAGE plpgsql
