@@ -604,6 +604,85 @@ AS $$
 	END;
 $$
 
+CREATE OR REPLACE PROCEDURE public.aggregate_stock_value_movement()
+	LANGUAGE plpgsql
+AS $procedure$
+	BEGIN
+		delete from aggregator where dataElement = 'stockValueMovement';
+		create temporary table temp_movement
+		(
+			storeid text,
+			itemid text,
+			fulldate date,
+			stockin integer default 0,
+			stockout integer default 0
+		)
+		on commit drop;
+	
+		insert into temp_movement (storeid, itemid, fulldate, stockout)
+		select t.store_ID, tl.item_ID, t.confirm_date, sum(tl.quantity * cost_price )
+		from trans_line tl
+			join transact t on tl.transaction_ID = t.ID
+		where t."type" in('ci', 'sc') 
+			and t.status in('fn', 'cn')
+			and tl.type in('stock_out') -- add 'placeholder' to include placeholder lines
+			and t.confirm_date >= (current_date - date_part('day', current_date)::integer + 1 - interval '12 month')
+		group by 1,2,3;
+	
+		insert into temp_movement (storeid, itemid, fulldate, stockin)
+		select t.store_ID, tl.item_ID, t.confirm_date, sum(tl.quantity * cost_price )
+		from trans_line tl
+			join transact t on tl.transaction_ID = t.ID
+		where t."type" in ('si') 
+			and t.status in('fn', 'cn')
+			and tl.type in('stock_in') -- add 'placeholder' to include placeholder lines
+			and t.confirm_date >= (current_date - date_part('day', current_date)::integer + 1 - interval '12 month')
+		group by 1,2,3;
+	
+		insert into aggregator(storeID, itemID, fullDate, dataElement, value)
+		(
+			select storeID, itemID, fullDate, 'stockValueMovement', sum(stockin)-sum(stockout)
+			from temp_movement
+			group by 1,2,3,4
+		);
+		drop table temp_movement;
+	END;
+$procedure$
+
+CREATE OR REPLACE PROCEDURE public.aggregate_stock_value_history()
+	LANGUAGE plpgsql
+AS $procedure$
+	BEGIN
+		delete from aggregator where dataelement = 'stockValueHistory';
+
+		with stock_value_current as 
+		-- get the current stock value
+		(
+			select store_id storeid, item_id itemid, current_date - date_part('day', current_date)::integer + 1 - interval '12 months' fulldate, sum(cost_price * quantity) as value
+			from item_line where quantity <> 0
+			group by 1,2
+		), movements as
+		-- get all transition dates for a given store/item combination 
+		(
+			select storeid, itemid, fulldate, value
+			from aggregator
+			where dataelement = 'stockValueMovement' and fulldate >  current_date - date_part('day', current_date)::integer + 1 - interval '12 months'
+			union
+			select storeid, itemid, fulldate, 0
+			from stock_value_current
+		)
+		insert into aggregator (storeID, itemID, fullDate, dataElement, value)
+		select m.storeid, m.itemid, m.fulldate, 'stockValueHistory', svc.value-sum(coalesce(m_sum.value,0))
+		from movements m
+			left join movements m_sum on m.storeid = m_sum.storeid and m.itemid = m_sum.itemid and m_sum.fulldate >m.fulldate
+			join stock_value_current svc on m.storeid = svc.storeid and m.itemid = svc.itemid
+		group by 1,2,3,4,svc.value
+		union
+		select storeid, itemid, current_date, 'stockValueHistory', value 
+		from stock_value_current;
+	END;
+$procedure$
+
 CREATE OR REPLACE FUNCTION public.checkstockondate(patdate date, pstoreid text, pitemid text)
 	RETURNS int4
 	LANGUAGE plpgsql
@@ -631,6 +710,8 @@ begin
   call aggregate_total_stock();
   call aggregate_stock_status();
   call aggregate_current_mos();
+  call aggregate_stock_value_movement();
+  call aggregate_stock_value_history();
  
 end $$
 ;
