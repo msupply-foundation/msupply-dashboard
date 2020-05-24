@@ -601,8 +601,8 @@ AS $$
 		select item_line.store_id, item_line.item_id, sum(item_line.available * item_line.pack_size) as value from
 		item_line  group by 1, 2) as ag
 		where ag.value <= 0;
-	END;
-$$
+	END $$
+;
 
 CREATE OR REPLACE PROCEDURE public.aggregate_stock_value_movement()
 	LANGUAGE plpgsql
@@ -646,8 +646,8 @@ AS $procedure$
 			group by 1,2,3,4
 		);
 		drop table temp_movement;
-	END;
-$procedure$
+	END $procedure$
+;
 
 CREATE OR REPLACE PROCEDURE public.aggregate_stock_value_history()
 	LANGUAGE plpgsql
@@ -680,8 +680,8 @@ AS $procedure$
 		union
 		select storeid, itemid, current_date, 'stockValueHistory', value 
 		from stock_value_current;
-	END;
-$procedure$
+	END $procedure$
+;
 
 CREATE OR REPLACE FUNCTION public.checkstockondate(patdate date, pstoreid text, pitemid text)
 	RETURNS int4
