@@ -169,17 +169,19 @@ export default class WorldMap {
   }
 
   createCircle(dataPoint) {
-    const selectedFacility = _.find(this.ctrl.vars, elem => {
-      return elem.name === this.ctrl.panel.linkedVariable;
+    const ctrl = this.ctrl;
+    const vars = this.ctrl.dashboard.getVariables();
+    const selectedFacility = _.find(vars, v => {
+      return v.id === ctrl.panel.linkedVariable;
     });
     const selectedFacilityName = selectedFacility?.current.value;
+    const isSelectedFacility = selectedFacilityName === dataPoint.locationName;
     const circle = (<any>window).L.circleMarker([dataPoint.locationLatitude, dataPoint.locationLongitude], {
-      radius:
-        selectedFacilityName === dataPoint.locationName
-          ? this.calcCircleSize(dataPoint.value || 0) * 1.5
-          : this.calcCircleSize(dataPoint.value || 0),
-      weight: selectedFacilityName === dataPoint.locationName ? 5 : 0.5,
-      color: selectedFacilityName === dataPoint.locationName ? 'grey' : this.getColor(dataPoint.value),
+      radius: isSelectedFacility
+        ? this.calcCircleSize(dataPoint.value || 0) * 1.5
+        : this.calcCircleSize(dataPoint.value || 0),
+      weight: isSelectedFacility ? 5 : 0.5,
+      color: isSelectedFacility ? 'grey' : this.getColor(dataPoint.value),
       fillColor: this.getColor(dataPoint.value),
       fillOpacity: 0.5,
       location: dataPoint.key
@@ -187,8 +189,9 @@ export default class WorldMap {
 
     this.createPopup(circle, dataPoint.locationName, dataPoint.valueRounded);
 
-    const ctrl = this.ctrl;
     circle.on('click', () => {
+      ctrl.variableSrv.init(ctrl.dashboard);
+      selectedFacility.options = [];
       ctrl.variableSrv.setOptionAsCurrent(selectedFacility, {
         text: dataPoint.locationName,
         value: dataPoint.locationName
