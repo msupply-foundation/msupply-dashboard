@@ -138,10 +138,30 @@ export default class WorldMap {
     this.circles = circles;
   }
 
+  getSelectedFacility = () => {
+    const vars = this.ctrl.dashboard.getVariables();
+    return _.find(vars, v => v.id === this.ctrl.panel.linkedVariable);
+  };
+
+  getSelectedFacilityName = (selectedFacility: any) => selectedFacility?.current.value;
+
+  getCircleStyle = (dataPoint: any, selectedFacility: any) => {
+    const selectedFacilityName = this.getSelectedFacilityName(selectedFacility);
+    const isSelectedFacility = selectedFacilityName === dataPoint.locationName;
+    return {
+      radius: isSelectedFacility
+        ? this.calcCircleSize(dataPoint.value || 0) * 1.5
+        : this.calcCircleSize(dataPoint.value || 0),
+      weight: isSelectedFacility ? 5 : 0.5,
+      color: isSelectedFacility ? 'grey' : this.getColor(dataPoint.value),
+      fillColor: this.getColor(dataPoint.value),
+      fillOpacity: 0.5,
+      location: dataPoint.key
+    };
+  };
+
   updateCircles(data) {
-    const selectedFacilityName = _.find(this.ctrl.vars, elem => {
-      return elem.name === this.ctrl.panel.linkedVariable;
-    })?.current.value;
+    const selectedFacility = this.getSelectedFacility();
     data.forEach(dataPoint => {
       if (!dataPoint.locationName) {
         return;
@@ -151,17 +171,7 @@ export default class WorldMap {
       });
       if (circle) {
         circle.setRadius(this.calcCircleSize(dataPoint.value || 0));
-        circle.setStyle({
-          radius:
-            selectedFacilityName === dataPoint.locationName
-              ? this.calcCircleSize(dataPoint.value || 0) * 1.5
-              : this.calcCircleSize(dataPoint.value || 0),
-          weight: selectedFacilityName === dataPoint.locationName ? 5 : 0.5,
-          color: selectedFacilityName === dataPoint.locationName ? 'grey' : this.getColor(dataPoint.value),
-          fillColor: this.getColor(dataPoint.value),
-          fillOpacity: 0.5,
-          location: dataPoint.key
-        });
+        circle.setStyle(this.getCircleStyle(dataPoint, selectedFacility));
         circle.unbindPopup();
         this.createPopup(circle, dataPoint.locationName, dataPoint.valueRounded);
       }
@@ -169,34 +179,24 @@ export default class WorldMap {
   }
 
   createCircle(dataPoint) {
-    const ctrl = this.ctrl;
-    const vars = this.ctrl.dashboard.getVariables();
-    const selectedFacility = _.find(vars, v => {
-      return v.id === ctrl.panel.linkedVariable;
-    });
-    const selectedFacilityName = selectedFacility?.current.value;
-    const isSelectedFacility = selectedFacilityName === dataPoint.locationName;
-    const circle = (<any>window).L.circleMarker([dataPoint.locationLatitude, dataPoint.locationLongitude], {
-      radius: isSelectedFacility
-        ? this.calcCircleSize(dataPoint.value || 0) * 1.5
-        : this.calcCircleSize(dataPoint.value || 0),
-      weight: isSelectedFacility ? 5 : 0.5,
-      color: isSelectedFacility ? 'grey' : this.getColor(dataPoint.value),
-      fillColor: this.getColor(dataPoint.value),
-      fillOpacity: 0.5,
-      location: dataPoint.key
-    });
-
+    const selectedFacility = this.getSelectedFacility();
+    const circleStyle = this.getCircleStyle(dataPoint, selectedFacility);
+    const circle = (<any>window).L.circleMarker([dataPoint.locationLatitude, dataPoint.locationLongitude], circleStyle);
     this.createPopup(circle, dataPoint.locationName, dataPoint.valueRounded);
 
     circle.on('click', () => {
-      ctrl.variableSrv.init(ctrl.dashboard);
-      selectedFacility.options = [];
-      ctrl.variableSrv.setOptionAsCurrent(selectedFacility, {
+      if (!selectedFacility) {
+        return;
+      }
+
+      const { variableSrv, dashboard } = this.ctrl;
+
+      variableSrv.init(dashboard);
+      variableSrv.setOptionAsCurrent(selectedFacility, {
         text: dataPoint.locationName,
         value: dataPoint.locationName
       });
-      ctrl.variableSrv.variableUpdated(selectedFacility, true);
+      variableSrv.variableUpdated(selectedFacility, true);
     });
 
     return circle;
