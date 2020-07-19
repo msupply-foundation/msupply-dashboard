@@ -48,6 +48,6 @@
     "webpack-cli": "3.3.10"
   },
   "dependencies": {
-    "lodash": "^4.17.13"
+    "lodash": "^4.17.19"
   }
 }
