@@ -1,8 +1,10 @@
 import React from 'react';
-import { CircleMarker, MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
+import { CircleMarker, MapContainer, Tooltip, TileLayer } from 'react-leaflet';
 import { PanelProps } from '@grafana/data';
-import { IDataPoint, WorldMapOptions } from 'types';
+import { getLocationSrv } from '@grafana/runtime';
+import { WorldMapOptions } from 'types';
 
+import { DataPoints } from './DataPoints';
 import { useTheme } from '@grafana/ui';
 import { LatLngTuple } from 'leaflet';
 
@@ -36,7 +38,7 @@ export const WorldMap: React.FC<Props> = ({ options, data, width, height }) => {
     },
   };
 
-  const { initialZoom, mouseWheelZoom } = options;
+  const { initialZoom, linkedVariable, mouseWheelZoom } = options;
   const centre: LatLngTuple = [0, 0];
   options.centre.split(',').forEach((value, index) => {
     const l = parseFloat(value);
@@ -45,39 +47,42 @@ export const WorldMap: React.FC<Props> = ({ options, data, width, height }) => {
     centre[index] = l;
   });
 
-  const dataPoints: IDataPoint[] = [];
-  data.series.forEach(series => {
-    const metricField = series.fields.find(x => x.name === 'metric'); // TODO: take from options
-    const latitudeField = series.fields.find(x => x.name === 'latitude'); // TODO: take from options
-    const longitudeField = series.fields.find(x => x.name === 'longitude'); // TODO: take from options
-    const nameField = series.fields.find(x => x.name === 'name'); // TODO: take from options
-    const fieldLength = metricField?.values?.length || 0;
-    for (let index = 0; index < fieldLength; index++) {
-      const name: string = nameField?.values?.get(index) || '';
-      const latitude: number = latitudeField?.values?.get(index) || 0;
-      const longitude: number = longitudeField?.values?.get(index) || 0;
-      const metric: number = metricField?.values?.get(index) || '';
+  const setVariable = (value: string) => {
+    if (!linkedVariable) return;
+    getLocationSrv().update({
+      query: {
+        [`var-${linkedVariable}`]: value,
+      },
+      partial: true,
+      replace: true,
+    });
+  };
 
-      if (!latitude || !longitude) continue;
+  // const label = useTemplate
+  //     ? this.ctrl.panel.labelTemplate
+  //         .replace('${name}', locationName)
+  //         .replace('${value}', value)
+  //         .replace('${unit}', unit)
+  //     : (locationName + ': ' + value + ' ' + (unit || '')).trim();
 
-      const dataPoint: IDataPoint = {
-        key: index.toString(),
-        name,
-        marker: {
-          center: [latitude, longitude],
-          radius: metric,
-        },
-      };
-      dataPoints.push(dataPoint);
-    }
-  });
+  // TODO: memoize
+  // TODO: set weight if selectedFacility
+  // TODO: set colour if selectedFacility
+  const dataPoints = new DataPoints(data.series, options);
 
   return (
     <MapContainer center={centre} zoom={initialZoom} scrollWheelZoom={mouseWheelZoom} style={{ height, width }}>
       <TileLayer {...(theme.isLight ? tileServers.light : tileServers.dark)} />
-      {dataPoints.map(dataPoint => (
-        <CircleMarker {...dataPoint.marker}>
-          <Popup>{dataPoint.name}</Popup>
+      {dataPoints.values.map(dataPoint => (
+        <CircleMarker
+          {...dataPoint.marker}
+          eventHandlers={{
+            click: () => setVariable(dataPoint.name),
+          }}
+        >
+          <Tooltip>
+            {dataPoint.name}: {dataPoint.value}
+          </Tooltip>
         </CircleMarker>
       ))}
     </MapContainer>
