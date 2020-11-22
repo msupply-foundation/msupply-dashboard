@@ -1,4 +1,4 @@
-import { DataFrame } from '@grafana/data';
+import { DataFrame, VariableModel } from '@grafana/data';
 import { IDataPoint, WorldMapOptions } from './types';
 import { DataPoint } from './DataPoint';
 
@@ -15,8 +15,9 @@ export class DataPoints {
   readonly _latitudeFieldName: string;
   readonly _longitudeFieldName: string;
   readonly _nameFieldName: string;
+  readonly _selectedLinkedVariable?: VariableModel;
 
-  constructor(series: DataFrame[], options: WorldMapOptions) {
+  constructor(series: DataFrame[], options: WorldMapOptions, selectedLinkedVariable?: VariableModel) {
     const { latitudeField, longitudeField, maxCircleSize, metricField, minCircleSize, nameField } = options;
     this._latitudeFieldName = latitudeField || 'latitude';
     this._longitudeFieldName = longitudeField || 'longitude';
@@ -24,6 +25,8 @@ export class DataPoints {
     this._metricFieldName = metricField || 'metric';
     this._minCircleSize = minCircleSize || 2;
     this._nameFieldName = nameField || 'name';
+    this._selectedLinkedVariable = selectedLinkedVariable;
+
     this._dataPoints = this.parseFrames(series);
   }
   private parseFrames = (series: DataFrame[]): IDataPoint[] => {
@@ -44,7 +47,17 @@ export class DataPoints {
         const name: string = nameField?.values?.get(index) || '';
         const metric: number = metricField?.values?.get(index) || 0;
         const radius = this.calculateRadius(metric, limits);
-        const dataPoint = new DataPoint(index.toString(), name, latitude, longitude, radius, metric, metricField);
+        const isSelected = this._selectedLinkedVariable?.text === name;
+        const dataPoint = new DataPoint(
+          index.toString(),
+          name,
+          latitude,
+          longitude,
+          radius,
+          metric,
+          metricField,
+          isSelected
+        );
 
         dataPoints.push(dataPoint);
       }

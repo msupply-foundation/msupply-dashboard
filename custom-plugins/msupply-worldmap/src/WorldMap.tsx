@@ -1,7 +1,7 @@
 import React from 'react';
 import { CircleMarker, MapContainer, Tooltip, TileLayer } from 'react-leaflet';
 import { PanelProps } from '@grafana/data';
-import { getLocationSrv } from '@grafana/runtime';
+import { getLocationSrv, getTemplateSrv } from '@grafana/runtime';
 import { IDataPoint, WorldMapOptions } from 'types';
 
 import { DataPoints } from './DataPoints';
@@ -63,10 +63,10 @@ export const WorldMap: React.FC<Props> = ({ options, data, width, height }) => {
           .replace('${unit}', suffix)
       : `${prefix}${name}: ${displayValue}${suffix}`.trim();
   };
-  // TODO: memoize
-  // TODO: set weight if selectedFacility
-  // TODO: set colour if selectedFacility
-  const dataPoints = new DataPoints(data.series, options);
+
+  const variables = getTemplateSrv().getVariables();
+  const selectedLinkedVariable = variables.find(v => v.name === linkedVariable)?.options.find(o => o.selected);
+  const dataPoints = new DataPoints(data.series, options, selectedLinkedVariable);
 
   return (
     <MapContainer center={centre} zoom={initialZoom} scrollWheelZoom={mouseWheelZoom} style={{ height, width }}>

@@ -15,15 +15,18 @@ export class DataPoint implements IDataPoint {
     name: string,
     latitude: number,
     longitude: number,
-    metric: number,
+    radius: number,
     value: number,
-    dataField?: Field<any, Vector<any>>
+    dataField?: Field<any, Vector<any>>,
+    isSelected?: boolean
   ) {
     const displayField = dataField?.display && dataField?.display(value);
-    const pathOptions = this.getPathOptions(displayField);
+    const pathOptions = this.getPathOptions(displayField, isSelected);
+    const adjustedRadius = isSelected ? radius * 1.5 : radius;
+
     this._key = key;
     this._name = name;
-    this._marker = this.createMarker(latitude, longitude, metric, pathOptions);
+    this._marker = this.createMarker(latitude, longitude, adjustedRadius, pathOptions);
     this._prefix = displayField?.prefix;
     this._suffix = displayField?.suffix;
     this._value = value;
@@ -56,9 +59,14 @@ export class DataPoint implements IDataPoint {
     return { center: [latitude, longitude], radius, pathOptions };
   }
 
-  private getPathOptions(displayValue?: DisplayValue): PathOptions {
+  private getPathOptions(displayValue?: DisplayValue, isSelected?: boolean): PathOptions {
     if (!displayValue) return {};
 
-    return { color: displayValue.color };
+    const color = isSelected ? 'grey' : displayValue.color;
+    const fillColor = displayValue.color;
+    const fillOpacity = isSelected ? 0.5 : 0.2;
+    const weight = isSelected ? 5 : 3;
+
+    return { color, fillColor, fillOpacity, weight };
   }
 }
