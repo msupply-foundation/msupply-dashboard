@@ -17,12 +17,13 @@ export class DataPoints {
   readonly _nameFieldName: string;
 
   constructor(series: DataFrame[], options: WorldMapOptions) {
-    this._latitudeFieldName = 'latitude';
-    this._longitudeFieldName = 'longitude';
-    this._maxCircleSize = options.maxCircleSize || 30;
-    this._metricFieldName = 'metric';
-    this._minCircleSize = options.minCircleSize || 2;
-    this._nameFieldName = 'name';
+    const { latitudeField, longitudeField, maxCircleSize, metricField, minCircleSize, nameField } = options;
+    this._latitudeFieldName = latitudeField || 'latitude';
+    this._longitudeFieldName = longitudeField || 'longitude';
+    this._maxCircleSize = maxCircleSize || 30;
+    this._metricFieldName = metricField || 'metric';
+    this._minCircleSize = minCircleSize || 2;
+    this._nameFieldName = nameField || 'name';
     this._dataPoints = this.parseFrames(series);
   }
   private parseFrames = (series: DataFrame[]): IDataPoint[] => {

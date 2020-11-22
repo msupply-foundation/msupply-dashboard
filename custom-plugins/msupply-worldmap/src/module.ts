@@ -45,11 +45,6 @@ export const plugin = new PanelPlugin<WorldMapOptions>(WorldMap)
         settings: { min: 0 },
       })
       .addBooleanSwitch({
-        path: 'stickyLabels',
-        name: 'Sticky Labels',
-        defaultValue: false,
-      })
-      .addBooleanSwitch({
         path: 'showLegend',
         name: 'Show Legend',
         defaultValue: true,
@@ -79,6 +74,35 @@ export const plugin = new PanelPlugin<WorldMapOptions>(WorldMap)
         path: 'linkedVariable',
         name: 'Linked Variable',
         description: 'Specify the name of a variable to update when an item on the map is clicked',
+      })
+      .addNumberInput({
+        path: 'decimals',
+        name: 'Decimals',
+        description: 'The number of decimal places to show for values',
+        settings: {
+          min: 0,
+        },
+        defaultValue: 0,
+      })
+      .addTextInput({
+        path: 'latitudeField',
+        name: 'Latitude Field',
+        defaultValue: 'latitude',
+      })
+      .addTextInput({
+        path: 'longitudeField',
+        name: 'Longitude Field',
+        defaultValue: 'longitude',
+      })
+      .addTextInput({
+        path: 'metricField',
+        name: 'Metric Field',
+        defaultValue: 'metric',
+      })
+      .addTextInput({
+        path: 'nameField',
+        name: 'Location Name Field',
+        defaultValue: 'name',
       });
   })
   .useFieldConfig({

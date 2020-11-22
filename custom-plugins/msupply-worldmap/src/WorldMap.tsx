@@ -14,7 +14,7 @@ import './css/worldmap-panel.css';
 interface Props extends PanelProps<WorldMapOptions> {}
 
 export const WorldMap: React.FC<Props> = ({ options, data, width, height }) => {
-  const { initialZoom, labelTemplate, linkedVariable, mouseWheelZoom } = options;
+  const { decimals, initialZoom, labelTemplate, linkedVariable, mouseWheelZoom } = options;
   const theme = useTheme();
   const tileServers = {
     light: {
@@ -54,13 +54,14 @@ export const WorldMap: React.FC<Props> = ({ options, data, width, height }) => {
 
   const renderLabel = (dataPoint: IDataPoint) => {
     const { name, prefix = '', suffix = '', value } = dataPoint;
+    const displayValue = value.toFixed(decimals);
 
     return !!labelTemplate
       ? labelTemplate
           .replace('${name}', name)
-          .replace('${value}', value.toString())
+          .replace('${value}', displayValue)
           .replace('${unit}', suffix)
-      : `${prefix}${name}: ${value}${suffix}`.trim();
+      : `${prefix}${name}: ${displayValue}${suffix}`.trim();
   };
   // TODO: memoize
   // TODO: set weight if selectedFacility
