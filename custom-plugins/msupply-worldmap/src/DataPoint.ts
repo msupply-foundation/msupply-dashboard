@@ -1,3 +1,4 @@
+import { DisplayValue, Field, Vector } from '@grafana/data';
 import { PathOptions } from 'leaflet';
 import { IDataPoint, IMarker } from './types';
 
@@ -5,6 +6,8 @@ export class DataPoint implements IDataPoint {
   readonly _key: string;
   readonly _name: string;
   readonly _marker: IMarker;
+  readonly _prefix?: string;
+  readonly _suffix?: string;
   readonly _value: number;
 
   constructor(
@@ -14,11 +17,15 @@ export class DataPoint implements IDataPoint {
     longitude: number,
     metric: number,
     value: number,
-    pathOptions: PathOptions
+    dataField?: Field<any, Vector<any>>
   ) {
+    const displayField = dataField?.display && dataField?.display(value);
+    const pathOptions = this.getPathOptions(displayField);
     this._key = key;
     this._name = name;
     this._marker = this.createMarker(latitude, longitude, metric, pathOptions);
+    this._prefix = displayField?.prefix;
+    this._suffix = displayField?.suffix;
     this._value = value;
   }
 
@@ -26,19 +33,32 @@ export class DataPoint implements IDataPoint {
     return this._key;
   }
 
+  get marker(): IMarker {
+    return this._marker;
+  }
   get name(): string {
     return this._name;
   }
 
-  get marker(): IMarker {
-    return this._marker;
+  get prefix(): string {
+    return this._prefix || '';
+  }
+
+  get suffix(): string {
+    return this._suffix || '';
   }
 
   get value(): number {
-      return this._value;
+    return this._value;
   }
 
   private createMarker(latitude: number, longitude: number, radius: number, pathOptions: PathOptions): IMarker {
     return { center: [latitude, longitude], radius, pathOptions };
+  }
+
+  private getPathOptions(displayValue?: DisplayValue): PathOptions {
+    if (!displayValue) return {};
+
+    return { color: displayValue.color };
   }
 }

@@ -1,7 +1,6 @@
-import { DataFrame, Field } from '@grafana/data';
+import { DataFrame } from '@grafana/data';
 import { IDataPoint, WorldMapOptions } from './types';
 import { DataPoint } from './DataPoint';
-import { PathOptions } from 'leaflet';
 
 interface ILimits {
   max: number;
@@ -44,8 +43,7 @@ export class DataPoints {
         const name: string = nameField?.values?.get(index) || '';
         const metric: number = metricField?.values?.get(index) || 0;
         const radius = this.calculateRadius(metric, limits);
-        const pathOptions = this.getPathOptions(metric, metricField);
-        const dataPoint = new DataPoint(index.toString(), name, latitude, longitude, radius, metric, pathOptions);
+        const dataPoint = new DataPoint(index.toString(), name, latitude, longitude, radius, metric, metricField);
 
         dataPoints.push(dataPoint);
       }
@@ -79,12 +77,5 @@ export class DataPoints {
       }),
       { min: 0, max: 0 }
     );
-  }
-
-  private getPathOptions(value: number, metricField?: Field): PathOptions {
-    const displayField = metricField?.display && metricField?.display(value);
-    if (!displayField) return {};
-
-    return { color: displayField.color };
   }
 }

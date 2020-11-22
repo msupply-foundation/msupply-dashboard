@@ -82,5 +82,5 @@ export const plugin = new PanelPlugin<WorldMapOptions>(WorldMap)
       });
   })
   .useFieldConfig({
-    standardOptions: [FieldConfigProperty.Thresholds, FieldConfigProperty.Links],
+    standardOptions: [FieldConfigProperty.Thresholds, FieldConfigProperty.Links, FieldConfigProperty.Unit],
   });

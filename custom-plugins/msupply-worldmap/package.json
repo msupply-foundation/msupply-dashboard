@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@grafana/data": "7.3.3",
+    "@grafana/runtime": "^7.3.3",
     "@grafana/toolkit": "7.3.3",
     "@grafana/ui": "7.3.3",
     "@types/leaflet": "^1.5.19",
