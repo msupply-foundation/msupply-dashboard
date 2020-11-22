@@ -61,7 +61,7 @@ export const plugin = new PanelPlugin<WorldMapOptions>(WorldMap)
         settings: { placeholder: '${name: ${value} ${unit}' },
       })
       .addTextInput({
-        path: 'geoJson',
+        path: 'geoJSON',
         name: 'Geo JSON',
         description: 'Enter GeoJSON as text to display on the map if required - for example a country outline',
         settings: { useTextarea: true, rows: 3 },

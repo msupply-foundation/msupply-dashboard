@@ -1,4 +1,4 @@
-import { DataFrame, VariableModel } from '@grafana/data';
+import { DataFrame, ScopedVar } from '@grafana/data';
 import { IDataPoint, WorldMapOptions } from './types';
 import { DataPoint } from './DataPoint';
 
@@ -15,9 +15,9 @@ export class DataPoints {
   readonly _latitudeFieldName: string;
   readonly _longitudeFieldName: string;
   readonly _nameFieldName: string;
-  readonly _selectedLinkedVariable?: VariableModel;
+  readonly _selectedLinkedVariable?: ScopedVar;
 
-  constructor(series: DataFrame[], options: WorldMapOptions, selectedLinkedVariable?: VariableModel) {
+  constructor(series: DataFrame[], options: WorldMapOptions, selectedLinkedVariable?: ScopedVar) {
     const { latitudeField, longitudeField, maxCircleSize, metricField, minCircleSize, nameField } = options;
     this._latitudeFieldName = latitudeField || 'latitude';
     this._longitudeFieldName = longitudeField || 'longitude';

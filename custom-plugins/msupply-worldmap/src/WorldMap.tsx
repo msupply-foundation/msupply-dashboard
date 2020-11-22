@@ -1,12 +1,12 @@
 import React from 'react';
-import { CircleMarker, MapContainer, Tooltip, TileLayer } from 'react-leaflet';
+import { CircleMarker, GeoJSON, MapContainer, Tooltip, TileLayer } from 'react-leaflet';
 import { PanelProps } from '@grafana/data';
 import { getLocationSrv, getTemplateSrv } from '@grafana/runtime';
 import { IDataPoint, WorldMapOptions } from 'types';
 
 import { DataPoints } from './DataPoints';
 import { useTheme } from '@grafana/ui';
-import { LatLngTuple } from 'leaflet';
+import { LatLngTuple, PathOptions } from 'leaflet';
 
 import './css/leaflet.css';
 import './css/worldmap-panel.css';
@@ -14,7 +14,15 @@ import './css/worldmap-panel.css';
 interface Props extends PanelProps<WorldMapOptions> {}
 
 export const WorldMap: React.FC<Props> = ({ options, data, width, height }) => {
-  const { decimals, initialZoom, labelTemplate, linkedVariable, mouseWheelZoom } = options;
+  const {
+    decimals,
+    geoJSON,
+    geoJSONOutlineColour,
+    initialZoom,
+    labelTemplate,
+    linkedVariable,
+    mouseWheelZoom,
+  } = options;
   const theme = useTheme();
   const tileServers = {
     light: {
@@ -64,6 +72,14 @@ export const WorldMap: React.FC<Props> = ({ options, data, width, height }) => {
       : `${prefix}${name}: ${displayValue}${suffix}`.trim();
   };
 
+  const renderGeoJSONLayer = () => {
+    if (!geoJSON) return null;
+    const geoJSONData = JSON.parse(geoJSON);
+    const pathOptions = !!geoJSONOutlineColour ? ({ color: geoJSONOutlineColour } as PathOptions) : undefined;
+
+    return <GeoJSON data={geoJSONData} pathOptions={pathOptions} />;
+  };
+
   const variables = getTemplateSrv().getVariables();
   const selectedLinkedVariable = variables.find(v => v.name === linkedVariable)?.options.find(o => o.selected);
   const dataPoints = new DataPoints(data.series, options, selectedLinkedVariable);
@@ -71,6 +87,7 @@ export const WorldMap: React.FC<Props> = ({ options, data, width, height }) => {
   return (
     <MapContainer center={centre} zoom={initialZoom} scrollWheelZoom={mouseWheelZoom} style={{ height, width }}>
       <TileLayer {...(theme.isLight ? tileServers.light : tileServers.dark)} />
+      {renderGeoJSONLayer()}
       {dataPoints.values.map(dataPoint => (
         <CircleMarker
           {...dataPoint.marker}
