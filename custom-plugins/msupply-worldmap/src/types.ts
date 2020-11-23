@@ -26,7 +26,7 @@ export interface Imarker {
 
 export interface IdataPoint {
   key: string;
-  marker: IMarker;
+  marker: Imarker;
   name: string;
   prefix?: string;
   suffix?: string;

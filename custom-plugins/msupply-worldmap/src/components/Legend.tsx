@@ -1,4 +1,4 @@
-import { FieldConfigSource } from '@grafana/data';
+import { FieldConfigSource, Threshold } from '@grafana/data';
 import React from 'react';
 
 const POSITION_CLASSES = {
@@ -9,7 +9,7 @@ const POSITION_CLASSES = {
 };
 
 interface LegendProps {
-  fieldConfig: FieldConfigSource<any>;
+  fieldConfig: FieldConfigSource;
   position?: 'bottomleft' | 'bottomright' | 'topleft' | 'topright';
   visible?: boolean;
 }
@@ -17,7 +17,7 @@ interface LegendProps {
 export const Legend: React.FC<LegendProps> = ({ fieldConfig, position = 'bottomleft', visible = true }) => {
   const steps = fieldConfig.defaults?.thresholds?.steps || [];
   const positionClass = (position && POSITION_CLASSES[position]) || POSITION_CLASSES.bottomleft;
-  const renderLabel = (step: any, index: number) => {
+  const renderLabel = (step: Threshold, index: number) => {
     const nextStep = steps[index + 1];
 
     switch (index) {

@@ -2,7 +2,7 @@ import React from 'react';
 import { CircleMarker, Tooltip } from 'react-leaflet';
 import { PanelData, ScopedVar, VariableModel } from '@grafana/data';
 import { getLocationSrv, getTemplateSrv } from '@grafana/runtime';
-import { IDataPoint, WorldMapOptions } from '../types';
+import { IdataPoint, WorldMapOptions } from '../types';
 
 import { DataPoints } from '../classes/DataPoints';
 
@@ -30,7 +30,7 @@ export const DataPointLayer: React.FC<DataPointLayerProps> = ({ options, data })
     });
   };
 
-  const renderLabel = (dataPoint: IDataPoint) => {
+  const renderLabel = (dataPoint: IdataPoint) => {
     const { name, prefix = '', suffix = '', value } = dataPoint;
     const displayValue = value.toFixed(decimals);
 

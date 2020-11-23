@@ -1,5 +1,5 @@
 import { DataFrame, Field, ScopedVar, Vector } from '@grafana/data';
-import { IDataPoint, WorldMapOptions } from '../types';
+import { IdataPoint, WorldMapOptions } from '../types';
 import { DataPoint } from './DataPoint';
 
 interface Ilimits {
@@ -8,7 +8,7 @@ interface Ilimits {
 }
 
 export class DataPoints {
-  readonly _dataPoints: IDataPoint[];
+  readonly _dataPoints: IdataPoint[];
   readonly _maxCircleSize: number;
   readonly _metricFieldName: string;
   readonly _minCircleSize: number;
@@ -29,8 +29,8 @@ export class DataPoints {
 
     this._dataPoints = this.parseFrames(series);
   }
-  private parseFrames = (series: DataFrame[]): IDataPoint[] => {
-    const dataPoints: IDataPoint[] = [];
+  private parseFrames = (series: DataFrame[]): IdataPoint[] => {
+    const dataPoints: IdataPoint[] = [];
 
     series.forEach(series => {
       const metricField = series.fields.find(x => x.name === this._metricFieldName);
@@ -67,7 +67,7 @@ export class DataPoints {
     return dataPoints;
   };
 
-  get values(): IDataPoint[] {
+  get values(): IdataPoint[] {
     return this._dataPoints;
   }
 
