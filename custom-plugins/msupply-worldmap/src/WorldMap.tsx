@@ -3,7 +3,7 @@ import { MapContainer, TileLayer } from 'react-leaflet';
 import { PanelProps } from '@grafana/data';
 import { WorldMapOptions } from 'types';
 
-import { DataPointLayer, GeoJSONLayer } from './components';
+import { DataPointLayer, GeoJSONLayer, Legend } from './components';
 import { useTheme } from '@grafana/ui';
 import { LatLngTuple } from 'leaflet';
 
@@ -12,8 +12,8 @@ import './css/worldmap-panel.css';
 
 interface Props extends PanelProps<WorldMapOptions> {}
 
-export const WorldMap: React.FC<Props> = ({ options, data, width, height }) => {
-  const { geoJSON, geoJSONOutlineColour, initialZoom, mouseWheelZoom } = options;
+export const WorldMap: React.FC<Props> = ({ options, data, fieldConfig, height, width }) => {
+  const { geoJSON, geoJSONOutlineColour, initialZoom, mouseWheelZoom, showLegend } = options;
   const theme = useTheme();
   const tileServers = {
     light: {
@@ -43,6 +43,7 @@ export const WorldMap: React.FC<Props> = ({ options, data, width, height }) => {
   return (
     <MapContainer center={centre} zoom={initialZoom} scrollWheelZoom={mouseWheelZoom} style={{ height, width }}>
       <TileLayer {...(theme.isLight ? tileServers.light : tileServers.dark)} />
+      <Legend fieldConfig={fieldConfig} visible={showLegend} />
       <GeoJSONLayer geoJSON={geoJSON} color={geoJSONOutlineColour} />
       <DataPointLayer options={options} data={data} />
     </MapContainer>

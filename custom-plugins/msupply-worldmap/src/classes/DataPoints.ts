@@ -1,4 +1,4 @@
-import { DataFrame, ScopedVar } from '@grafana/data';
+import { DataFrame, Field, ScopedVar, Vector } from '@grafana/data';
 import { IDataPoint, WorldMapOptions } from '../types';
 import { DataPoint } from './DataPoint';
 
@@ -37,7 +37,7 @@ export class DataPoints {
       const latitudeField = series.fields.find(x => x.name === this._latitudeFieldName);
       const longitudeField = series.fields.find(x => x.name === this._longitudeFieldName);
       const nameField = series.fields.find(x => x.name === this._nameFieldName);
-      const limits = this.getLimits(metricField?.values?.toArray() || []);
+      const limits = this.getLimits(metricField);
 
       for (let index = 0; index < series.length; index++) {
         const latitude: number = latitudeField?.values?.get(index) || 0;
@@ -83,13 +83,10 @@ export class DataPoints {
     return radiusSizeRange * dataFactor + radiusMinimum;
   }
 
-  private getLimits(values: number[]): ILimits {
-    return values.reduce(
-      (acc, value) => ({
-        max: Math.max(value, acc.max),
-        min: Math.min(value, acc.min),
-      }),
-      { min: 0, max: 0 }
-    );
+  private getLimits(metricField?: Field<any, Vector<any>>): ILimits {
+    return {
+      min: metricField?.state?.calcs?.min || 0,
+      max: metricField?.state?.calcs?.max || 0,
+    };
   }
 }
