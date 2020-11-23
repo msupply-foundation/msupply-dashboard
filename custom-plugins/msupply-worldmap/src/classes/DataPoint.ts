@@ -1,6 +1,6 @@
 import { DisplayValue, Field, Vector } from '@grafana/data';
 import { PathOptions } from 'leaflet';
-import { IDataPoint, IMarker } from './types';
+import { IDataPoint, IMarker } from '../types';
 
 export class DataPoint implements IDataPoint {
   readonly _key: string;

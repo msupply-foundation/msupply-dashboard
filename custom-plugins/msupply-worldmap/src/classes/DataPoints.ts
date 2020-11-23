@@ -1,5 +1,5 @@
 import { DataFrame, ScopedVar } from '@grafana/data';
-import { IDataPoint, WorldMapOptions } from './types';
+import { IDataPoint, WorldMapOptions } from '../types';
 import { DataPoint } from './DataPoint';
 
 interface ILimits {
