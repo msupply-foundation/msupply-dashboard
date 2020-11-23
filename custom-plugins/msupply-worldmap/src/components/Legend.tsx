@@ -30,7 +30,9 @@ export const Legend: React.FC<LegendProps> = ({ fieldConfig, position = 'bottoml
     }
   };
 
-  if (!visible) return null;
+  if (!visible) {
+    return null;
+  }
 
   return (
     <div className={positionClass}>

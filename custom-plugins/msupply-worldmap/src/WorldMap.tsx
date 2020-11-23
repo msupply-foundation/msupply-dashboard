@@ -35,8 +35,12 @@ export const WorldMap: React.FC<Props> = ({ options, data, fieldConfig, height, 
   const centre: LatLngTuple = [0, 0];
   options.centre.split(',').forEach((value, index) => {
     const l = parseFloat(value);
-    if (isNaN(l)) return;
-    if (index > 1) return;
+    if (isNaN(l)) {
+      return;
+    }
+    if (index > 1) {
+      return;
+    }
     centre[index] = l;
   });
 

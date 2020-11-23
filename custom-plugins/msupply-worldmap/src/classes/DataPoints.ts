@@ -2,7 +2,7 @@ import { DataFrame, Field, ScopedVar, Vector } from '@grafana/data';
 import { IDataPoint, WorldMapOptions } from '../types';
 import { DataPoint } from './DataPoint';
 
-interface ILimits {
+interface Ilimits {
   max: number;
   min: number;
 }
@@ -43,7 +43,9 @@ export class DataPoints {
         const latitude: number = latitudeField?.values?.get(index) || 0;
         const longitude: number = longitudeField?.values?.get(index) || 0;
 
-        if (!latitude || !longitude) continue;
+        if (!latitude || !longitude) {
+          continue;
+        }
         const name: string = nameField?.values?.get(index) || '';
         const metric: number = metricField?.values?.get(index) || 0;
         const radius = this.calculateRadius(metric, limits);
@@ -69,7 +71,7 @@ export class DataPoints {
     return this._dataPoints;
   }
 
-  private calculateRadius(value: number, limits: ILimits): number {
+  private calculateRadius(value: number, limits: Ilimits): number {
     const radiusMinimum = this._minCircleSize;
     const radiusMaximum = this._maxCircleSize;
 
@@ -83,7 +85,7 @@ export class DataPoints {
     return radiusSizeRange * dataFactor + radiusMinimum;
   }
 
-  private getLimits(metricField?: Field<any, Vector<any>>): ILimits {
+  private getLimits(metricField?: Field<any, Vector<any>>): Ilimits {
     return {
       min: metricField?.state?.calcs?.min || 0,
       max: metricField?.state?.calcs?.max || 0,

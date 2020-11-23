@@ -8,7 +8,9 @@ export interface GeoJSONLayerProps {
 }
 
 export const GeoJSONLayer: React.FC<GeoJSONLayerProps> = ({ geoJSON, color }) => {
-  if (!geoJSON) return null;
+  if (!geoJSON) {
+    return null;
+  }
 
   const geoJSONData = JSON.parse(geoJSON);
   const pathOptions = !!color ? ({ color } as PathOptions) : undefined;

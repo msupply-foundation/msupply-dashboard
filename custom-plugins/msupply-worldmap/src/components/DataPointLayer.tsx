@@ -1,6 +1,6 @@
 import React from 'react';
 import { CircleMarker, Tooltip } from 'react-leaflet';
-import { PanelData } from '@grafana/data';
+import { PanelData, ScopedVar, VariableModel } from '@grafana/data';
 import { getLocationSrv, getTemplateSrv } from '@grafana/runtime';
 import { IDataPoint, WorldMapOptions } from '../types';
 
@@ -11,11 +11,16 @@ interface DataPointLayerProps {
   options: WorldMapOptions;
 }
 
+interface ScopedVariable extends VariableModel {
+  options: ScopedVar[];
+}
 export const DataPointLayer: React.FC<DataPointLayerProps> = ({ options, data }) => {
   const { decimals, labelTemplate, linkedVariable } = options;
 
   const setVariable = (value: string) => {
-    if (!linkedVariable) return;
+    if (!linkedVariable) {
+      return;
+    }
     getLocationSrv().update({
       query: {
         [`var-${linkedVariable}`]: value,
@@ -37,7 +42,7 @@ export const DataPointLayer: React.FC<DataPointLayerProps> = ({ options, data })
       : `${prefix}${name}: ${displayValue}${suffix}`.trim();
   };
 
-  const variables = getTemplateSrv().getVariables();
+  const variables = getTemplateSrv().getVariables() as ScopedVariable[];
   const selectedLinkedVariable = variables.find(v => v.name === linkedVariable)?.options.find(o => o.selected);
   const dataPoints = new DataPoints(data.series, options, selectedLinkedVariable);
 

@@ -1,11 +1,11 @@
 import { DisplayValue, Field, Vector } from '@grafana/data';
 import { PathOptions } from 'leaflet';
-import { IDataPoint, IMarker } from '../types';
+import { IdataPoint, Imarker } from '../types';
 
-export class DataPoint implements IDataPoint {
+export class DataPoint implements IdataPoint {
   readonly _key: string;
   readonly _name: string;
-  readonly _marker: IMarker;
+  readonly _marker: Imarker;
   readonly _prefix?: string;
   readonly _suffix?: string;
   readonly _value: number;
@@ -36,7 +36,7 @@ export class DataPoint implements IDataPoint {
     return this._key;
   }
 
-  get marker(): IMarker {
+  get marker(): Imarker {
     return this._marker;
   }
   get name(): string {
@@ -55,12 +55,14 @@ export class DataPoint implements IDataPoint {
     return this._value;
   }
 
-  private createMarker(latitude: number, longitude: number, radius: number, pathOptions: PathOptions): IMarker {
+  private createMarker(latitude: number, longitude: number, radius: number, pathOptions: PathOptions): Imarker {
     return { center: [latitude, longitude], radius, pathOptions };
   }
 
   private getPathOptions(displayValue?: DisplayValue, isSelected?: boolean): PathOptions {
-    if (!displayValue) return {};
+    if (!displayValue) {
+      return {};
+    }
 
     const color = isSelected ? 'grey' : displayValue.color;
     const fillColor = displayValue.color;

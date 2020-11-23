@@ -18,13 +18,13 @@ export interface WorldMapOptions {
   nameField: string;
   showLegend: boolean;
 }
-export interface IMarker {
+export interface Imarker {
   center: LatLngTuple;
   pathOptions?: PathOptions;
   radius: number;
 }
 
-export interface IDataPoint {
+export interface IdataPoint {
   key: string;
   marker: IMarker;
   name: string;
