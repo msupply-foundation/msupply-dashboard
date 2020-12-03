@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapContainer, TileLayer } from 'react-leaflet';
+import { MapContainer, Pane, TileLayer } from 'react-leaflet';
 import { PanelProps } from '@grafana/data';
 import { WorldMapOptions } from 'types';
 
@@ -46,10 +46,12 @@ export const WorldMap: React.FC<Props> = ({ options, data, fieldConfig, height, 
 
   return (
     <MapContainer center={centre} zoom={initialZoom} scrollWheelZoom={mouseWheelZoom} style={{ height, width }}>
-      <TileLayer {...(theme.isLight ? tileServers.light : tileServers.dark)} />
       <Legend fieldConfig={fieldConfig} visible={showLegend} />
-      <GeoJSONLayer geoJSON={geoJSON} color={geoJSONOutlineColour} />
       <DataPointLayer options={options} data={data} />
+      <Pane name="background-pane" style={{ zIndex: 1 }}>
+        <TileLayer {...(theme.isLight ? tileServers.light : tileServers.dark)} />
+        <GeoJSONLayer geoJSON={geoJSON} color={geoJSONOutlineColour} />
+      </Pane>
     </MapContainer>
   );
 };
