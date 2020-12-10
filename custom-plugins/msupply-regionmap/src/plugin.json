@@ -1,0 +1,34 @@
+{
+  "type": "panel",
+  "name": "msupply-regionmap",
+  "id": "m-supply-foundation-msupply-regionmap",
+  "info": {
+    "description": "Display regions on a world map",
+    "author": {
+      "name": "The mSupply Foundation",
+      "url": "https://www.msupply.foundation"
+    },
+    "keywords": [],
+    "logos": {
+      "small": "images/logo.svg",
+      "large": "images/logo.svg"
+    },
+    "links": [
+      {
+        "name": "Website",
+        "url": "https://github.com/grafana/simple-react-panel"
+      },
+      {
+        "name": "License",
+        "url": "https://github.com/grafana/simple-react-panel/blob/master/LICENSE"
+      }
+    ],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaVersion": "7.0.x",
+    "plugins": []
+  }
+}
