@@ -16,11 +16,11 @@
     "links": [
       {
         "name": "Website",
-        "url": "https://github.com/grafana/simple-react-panel"
+        "url": "https://github.com/openmsupply/msupply-dashboard/"
       },
       {
         "name": "License",
-        "url": "https://github.com/grafana/simple-react-panel/blob/master/LICENSE"
+        "url": "https://github.com/openmsupply/msupply-dashboard/blob/master/LICENSE"
       }
     ],
     "screenshots": [],
