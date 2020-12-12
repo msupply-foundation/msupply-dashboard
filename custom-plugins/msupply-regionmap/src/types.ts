@@ -11,9 +11,7 @@ export interface RegionMapOptions {
   latitudeField: string;
   linkedVariable: string;
   longitudeField: string;
-  maxCircleSize: number;
   metricField: string;
-  minCircleSize: number;
   mouseWheelZoom: boolean;
   nameField: string;
   showLegend: boolean;

@@ -30,20 +30,6 @@ export const plugin = new PanelPlugin<RegionMapOptions>(RegionMap)
         },
         defaultValue: 4,
       })
-      .addNumberInput({
-        path: 'minCircleSize',
-        name: 'Min Circle Size',
-        description: 'Minimum circle size',
-        defaultValue: 2,
-        settings: { min: 0 },
-      })
-      .addNumberInput({
-        path: 'maxCircleSize',
-        name: 'Max Circle Size',
-        description: 'Maximum circle size',
-        defaultValue: 30,
-        settings: { min: 0 },
-      })
       .addBooleanSwitch({
         path: 'showLegend',
         name: 'Show Legend',

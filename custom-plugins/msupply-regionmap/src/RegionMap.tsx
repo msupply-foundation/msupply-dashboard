@@ -1,9 +1,9 @@
 import React from 'react';
-import { MapContainer, Pane, TileLayer } from 'react-leaflet';
+import { MapContainer, TileLayer } from 'react-leaflet';
 import { PanelProps } from '@grafana/data';
 import { RegionMapOptions } from 'types';
 
-import { DataPointLayer, GeoJSONLayer, Legend } from './components';
+import { GeoJSONLayer, Legend } from './components';
 import { useTheme } from '@grafana/ui';
 import { LatLngTuple } from 'leaflet';
 
@@ -47,11 +47,11 @@ export const RegionMap: React.FC<Props> = ({ options, data, fieldConfig, height,
   return (
     <MapContainer center={centre} zoom={initialZoom} scrollWheelZoom={mouseWheelZoom} style={{ height, width }}>
       <Legend fieldConfig={fieldConfig} visible={showLegend} />
-      <DataPointLayer options={options} data={data} />
-      <Pane name="background-pane" style={{ zIndex: 1 }}>
+      
+      
         <TileLayer {...(theme.isLight ? tileServers.light : tileServers.dark)} />
         <GeoJSONLayer geoJSON={geoJSON} color={geoJSONOutlineColour} />
-      </Pane>
+      
     </MapContainer>
   );
 };
