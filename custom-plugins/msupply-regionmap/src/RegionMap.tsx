@@ -3,7 +3,7 @@ import { MapContainer, TileLayer } from 'react-leaflet';
 import { PanelProps } from '@grafana/data';
 import { RegionMapOptions } from 'types';
 
-import { GeoJSONLayer, Legend } from './components';
+import { Legend, RegionLayer } from './components';
 import { useTheme } from '@grafana/ui';
 import { LatLngTuple } from 'leaflet';
 
@@ -13,7 +13,7 @@ import './css/regionmap-panel.css';
 interface Props extends PanelProps<RegionMapOptions> {}
 
 export const RegionMap: React.FC<Props> = ({ options, data, fieldConfig, height, width }) => {
-  const { geoJSON, geoJSONOutlineColour, initialZoom, mouseWheelZoom, showLegend } = options;
+  const { initialZoom, mouseWheelZoom, showLegend } = options;
   const theme = useTheme();
   const tileServers = {
     light: {
@@ -47,11 +47,8 @@ export const RegionMap: React.FC<Props> = ({ options, data, fieldConfig, height,
   return (
     <MapContainer center={centre} zoom={initialZoom} scrollWheelZoom={mouseWheelZoom} style={{ height, width }}>
       <Legend fieldConfig={fieldConfig} visible={showLegend} />
-      
-      
-        <TileLayer {...(theme.isLight ? tileServers.light : tileServers.dark)} />
-        <GeoJSONLayer geoJSON={geoJSON} color={geoJSONOutlineColour} />
-      
+      <RegionLayer options={options} data={data} /> 
+      <TileLayer {...(theme.isLight ? tileServers.light : tileServers.dark)} />      
     </MapContainer>
   );
 };

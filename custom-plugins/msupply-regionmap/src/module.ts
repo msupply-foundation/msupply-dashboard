@@ -47,16 +47,6 @@ export const plugin = new PanelPlugin<RegionMapOptions>(RegionMap)
         settings: { placeholder: '${name: ${value} ${unit}' },
       })
       .addTextInput({
-        path: 'geoJSON',
-        name: 'Geo JSON',
-        description: 'Enter GeoJSON as text to display on the map if required - for example a country outline',
-        settings: { useTextarea: true, rows: 3 },
-      })
-      .addColorPicker({
-        path: 'geoJSONOutlineColour',
-        name: 'Geo JSON Outline Colour',
-      })
-      .addTextInput({
         path: 'linkedVariable',
         name: 'Linked Variable',
         description: 'Specify the name of a variable to update when an item on the map is clicked',
@@ -71,14 +61,9 @@ export const plugin = new PanelPlugin<RegionMapOptions>(RegionMap)
         defaultValue: 0,
       })
       .addTextInput({
-        path: 'latitudeField',
-        name: 'Latitude Field',
-        defaultValue: 'latitude',
-      })
-      .addTextInput({
-        path: 'longitudeField',
-        name: 'Longitude Field',
-        defaultValue: 'longitude',
+        path: 'geoJSONField',
+        name: 'geoJSON Field',
+        defaultValue: 'geojson',
       })
       .addTextInput({
         path: 'metricField',

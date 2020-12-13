@@ -1,2 +1,2 @@
-export * from './GeoJsonLayer';
+export * from './RegionLayer';
 export * from './Legend';
