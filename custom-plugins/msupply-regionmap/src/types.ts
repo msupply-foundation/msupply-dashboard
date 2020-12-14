@@ -1,4 +1,4 @@
-import { GeoJsonObject} from 'geojson';
+import { GeoJsonObject } from 'geojson';
 import { PathOptions } from 'leaflet';
 
 export interface RegionMapOptions {

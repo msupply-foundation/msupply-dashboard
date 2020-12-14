@@ -44,7 +44,7 @@ export const plugin = new PanelPlugin<RegionMapOptions>(RegionMap)
         path: 'labelTemplate',
         name: 'Label Template',
         description: 'An optional template to use for the label',
-        settings: { placeholder: '${name: ${value} ${unit}' },
+        settings: { placeholder: '${name}: ${value} ${unit}' },
       })
       .addTextInput({
         path: 'linkedVariable',

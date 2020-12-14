@@ -4,7 +4,7 @@ import { GeoJSON } from 'geojson';
 import { Iregion } from '../types';
 
 export class Region implements Iregion {
-    readonly _data: GeoJSON;
+  readonly _data: GeoJSON;
   readonly _key: string;
   readonly _name: string;
   readonly _pathOptions: PathOptions;
@@ -32,7 +32,7 @@ export class Region implements Iregion {
   }
 
   get data(): GeoJSON {
-      return this._data;
+    return this._data;
   }
 
   get key(): string {

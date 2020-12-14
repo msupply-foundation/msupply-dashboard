@@ -47,8 +47,8 @@ export const RegionMap: React.FC<Props> = ({ options, data, fieldConfig, height,
   return (
     <MapContainer center={centre} zoom={initialZoom} scrollWheelZoom={mouseWheelZoom} style={{ height, width }}>
       <Legend fieldConfig={fieldConfig} visible={showLegend} />
-      <RegionLayer options={options} data={data} /> 
-      <TileLayer {...(theme.isLight ? tileServers.light : tileServers.dark)} />      
+      <RegionLayer options={options} data={data} />
+      <TileLayer {...(theme.isLight ? tileServers.light : tileServers.dark)} />
     </MapContainer>
   );
 };

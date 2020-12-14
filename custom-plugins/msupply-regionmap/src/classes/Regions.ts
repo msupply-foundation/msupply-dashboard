@@ -1,8 +1,7 @@
-import { DataFrame,  ScopedVar } from '@grafana/data';
+import { DataFrame, ScopedVar } from '@grafana/data';
 import { GeoJSON } from 'geojson';
 import { Iregion, RegionMapOptions } from '../types';
 import { Region } from './Region';
-
 
 export class Regions {
   readonly _values: Iregion[];
@@ -30,7 +29,7 @@ export class Regions {
 
       for (let index = 0; index < series.length; index++) {
         const data: GeoJSON = JSON.parse(dataField?.values?.get(index)) || {};
-        
+
         if (!data) {
           continue;
         }
@@ -38,14 +37,7 @@ export class Regions {
         const name: string = nameField?.values?.get(index) || '';
         const metric: number = metricField?.values?.get(index) || 0;
         const isSelected = this._selectedLinkedVariable?.text === name;
-        const region = new Region(
-          index.toString(),
-          name,
-          metric,
-          data,
-          metricField,
-          isSelected
-        );
+        const region = new Region(index.toString(), name, metric, data, metricField, isSelected);
 
         regions.push(region);
       }
