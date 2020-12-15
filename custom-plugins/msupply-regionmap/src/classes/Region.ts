@@ -63,11 +63,10 @@ export class Region implements Iregion {
     if (!displayValue) {
       return {};
     }
-
-    const color = isSelected ? 'grey' : displayValue.color;
+    const color = displayValue.color;
     const fillColor = displayValue.color;
     const fillOpacity = isSelected ? 0.5 : 0.2;
-    const weight = isSelected ? 5 : 3;
+    const weight = isSelected ? 3 : 1;
 
     return { color, fillColor, fillOpacity, weight };
   }
