@@ -1,0 +1,33 @@
+{
+  "type": "panel",
+  "name": "mSupply Table",
+  "id": "msupply-table",
+
+  "info": {
+    "description": "Table Panel for Grafana",
+    "author": {
+      "name": "mSupply Foundation",
+      "url": "https://msupply.foundation"
+    },
+    "logos": {
+      "small": "img/msupply-table-panel.svg",
+      "large": "img/msupply-table-panel.svg"
+    },
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "links": [
+    {
+      "name": "Website",
+      "url": "https://github.com/openmsupply/msupply-dashboard/"
+    },
+    {
+      "name": "License",
+      "url": "https://github.com/openmsupply/msupply-dashboard/blob/master/LICENSE"
+    }
+  ],
+  "dependencies": {
+    "grafanaVersion": "7.0.x",
+    "plugins": []
+  }
+}
