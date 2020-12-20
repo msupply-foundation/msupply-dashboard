@@ -66,24 +66,6 @@ export class TablePanel extends Component<Props> {
     this.forceUpdate();
   };
 
-  onCellFilterAdded = (filter: any) => {
-    //FilterItem) => {
-    //const { key, value, operator } = filter;
-    // const panelModel = getDashboardSrv()
-    //   .getCurrent()
-    //   .getPanelById(this.props.id);
-    // const datasource = panelModel?.datasource;
-    // if (!datasource) {
-    //   return;
-    // }
-    // dispatch(applyFilterFromTable({ datasource, key, operator, value }));
-  };
-
-  onCellClicked = (e: any) => {
-    /* eslint no-console: ["error", { allow: ["info"] }] */
-    console.info(' *** click *** ', e);
-  };
-
   renderTable(frame: DataFrame, width: number, height: number) {
     const { options } = this.props;
 
@@ -97,8 +79,6 @@ export class TablePanel extends Component<Props> {
         initialSortBy={options.sortBy}
         onSortByChange={this.onSortByChange}
         onColumnResize={this.onColumnResize}
-        onCellFilterAdded={this.onCellFilterAdded}
-        onCellClicked={this.onCellClicked}
       />
     );
   }

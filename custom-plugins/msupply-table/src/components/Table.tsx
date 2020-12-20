@@ -1,9 +1,10 @@
 import React, { FC, memo, useCallback, useMemo } from 'react';
-import { DataFrame, Field, getFieldDisplayName } from '@grafana/data';
+import { DataFrame, Field, getFieldDisplayName, Vector } from '@grafana/data';
 import {
   Cell,
   Column,
   HeaderGroup,
+  Row,
   useAbsoluteLayout,
   useFilters,
   UseFiltersState,
@@ -28,6 +29,7 @@ import { getColumns } from '../utils';
 import { TableCell } from './TableCell';
 
 const COLUMN_MIN_WIDTH = 150;
+type FieldAction = (row: Row<object>) => void;
 
 export interface TableProps {
   ariaLabel?: string;
@@ -41,7 +43,6 @@ export interface TableProps {
   initialSortBy?: TableSortByFieldState[];
   onColumnResize?: TableColumnResizeActionCallback;
   onSortByChange?: TableSortByActionCallback;
-  onCellClicked?: React.MouseEventHandler<HTMLElement>;
   onCellFilterAdded?: TableFilterActionCallback;
 }
 
@@ -114,16 +115,7 @@ function getInitialState(props: TableProps, columns: Column[]): Partial<ReactTab
 }
 
 export const Table: FC<TableProps> = memo((props: TableProps) => {
-  const {
-    ariaLabel,
-    data,
-    height,
-    onCellClicked,
-    width,
-    columnMinWidth = COLUMN_MIN_WIDTH,
-    noHeader,
-    resizable = true,
-  } = props;
+  const { ariaLabel, data, height, width, columnMinWidth = COLUMN_MIN_WIDTH, noHeader, resizable = true } = props;
   const theme = useTheme();
   const tableStyles = getTableStyles(theme);
 
@@ -164,13 +156,16 @@ export const Table: FC<TableProps> = memo((props: TableProps) => {
     useResizeColumns
   );
 
-  const setVariable = (value: string) => {
-    // if (!linkedVariable) {
-    //   return;
-    // }
+  const setVariable = (value: string | number, field: Field<any, Vector>) => {
+    const linkedVariable = field.config?.custom?.linkedVariable;
+
+    if (!linkedVariable || !value) {
+      return;
+    }
+
     getLocationSrv().update({
       query: {
-        [`var-store`]: value,
+        [`var-${linkedVariable}`]: value,
       },
       partial: true,
       replace: true,
@@ -182,26 +177,25 @@ export const Table: FC<TableProps> = memo((props: TableProps) => {
       const row = rows[index];
       prepareRow(row);
       return (
-        <div
-          {...row.getRowProps({ style })}
-          className={tableStyles.row}
-          onClick={() => setVariable(row.cells[0].value)}
-        >
-          {row.cells.map((cell: Cell, index: number) => (
-            <TableCell
-              key={index}
-              field={data.fields[index]}
-              tableStyles={tableStyles}
-              cell={cell}
-              row={row}
-              column={cell.column}
-              onCellClicked={onCellClicked}
-            />
-          ))}
+        <div {...row.getRowProps({ style })} className={tableStyles.row}>
+          {row.cells.map((cell: Cell, index: number) => {
+            const field = data.fields[index];
+            return (
+              <TableCell
+                key={index}
+                field={field}
+                tableStyles={tableStyles}
+                cell={cell}
+                row={row}
+                column={cell.column}
+                onClick={() => setVariable(cell.value, field)}
+              />
+            );
+          })}
         </div>
       );
     },
-    [prepareRow, rows, data.fields, onCellClicked, tableStyles]
+    [prepareRow, rows, data.fields, tableStyles]
   );
 
   const headerHeight = noHeader ? 0 : tableStyles.cellHeight;

@@ -5,25 +5,34 @@ import { TableStyles } from '@grafana/ui/components/Table/styles';
 
 export interface TableCellProps {
   cell: Cell;
-  cellProps?: { style?: CSSProperties; onClick?: () => null };
+  cellProps?: CellProps;
   column: ColumnInstance<any>;
   field: Field;
   row: Row<any>;
   tableStyles: TableStyles;
   onClick?: React.MouseEventHandler<HTMLElement>;
-  onCellClicked?: React.MouseEventHandler<HTMLElement>;
 }
 
-export const TableCell: FC<TableCellProps> = ({ cell, field, tableStyles, onCellClicked }) => {
-  const cellProps = cell.getCellProps();
+interface CellProps {
+  style?: CSSProperties;
+  onClick?: React.MouseEventHandler<HTMLElement>;
+}
 
+export const TableCell: FC<TableCellProps> = ({ cell, field, onClick, tableStyles }) => {
   if (!field.display) {
     return null;
   }
+  const cellProps: CellProps = { ...cell.getCellProps(), onClick };
 
   if (cellProps.style) {
     cellProps.style.minWidth = cellProps.style.width;
     cellProps.style.justifyContent = (cell.column as any).justifyContent;
+  }
+
+  if (cellProps.onClick) {
+    if (field.config?.custom?.linkedVariable) {
+      cellProps.style = { ...cellProps.style, cursor: 'pointer' };
+    }
   }
 
   return (
@@ -32,8 +41,6 @@ export const TableCell: FC<TableCellProps> = ({ cell, field, tableStyles, onCell
         field,
         tableStyles,
         cellProps,
-        onCellClicked,
-        onClick: () => console.warn('click'),
       })}
     </>
   );
