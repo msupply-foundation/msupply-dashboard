@@ -6,11 +6,11 @@ import { RegionMap } from './RegionMap';
 
 export const plugin = new PanelPlugin<RegionMapOptions>(RegionMap)
   .setPanelOptions(builder => {
-    const cssPath = 'plugins/grafana-RegionMap-panel-msupply/css/';
+    const cssPath = 'plugins/m-supply-foundation-msupply-regionmap/static/';
 
     loadPluginCss({
-      light: `${cssPath}/RegionMap.light.css`,
-      dark: `${cssPath}/RegionMap.dark.css`,
+      light: `${cssPath}regionmap.light.css`,
+      dark: `${cssPath}regionmap.dark.css`,
     });
 
     return builder
