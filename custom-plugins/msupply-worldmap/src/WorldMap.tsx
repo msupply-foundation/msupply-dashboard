@@ -7,8 +7,8 @@ import { DataPointLayer, GeoJSONLayer, Legend } from './components';
 import { useTheme } from '@grafana/ui';
 import { LatLngTuple } from 'leaflet';
 
-import './css/leaflet.css';
-import './css/worldmap-panel.css';
+import './static/leaflet.css';
+import './static/worldmap-panel.css';
 
 interface Props extends PanelProps<WorldMapOptions> {}
 

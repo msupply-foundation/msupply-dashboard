@@ -6,7 +6,7 @@ import { WorldMap } from './WorldMap';
 
 export const plugin = new PanelPlugin<WorldMapOptions>(WorldMap)
   .setPanelOptions(builder => {
-    const cssPath = 'plugins/grafana-worldmap-panel-msupply/css/';
+    const cssPath = 'plugins/m-supply-foundation-msupply-worldmap/static';
 
     loadPluginCss({
       light: `${cssPath}/worldmap.light.css`,
