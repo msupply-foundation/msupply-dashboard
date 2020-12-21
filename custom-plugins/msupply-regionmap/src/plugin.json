@@ -1,6 +1,6 @@
 {
   "type": "panel",
-  "name": "msupply-regionmap",
+  "name": "mSupply Region Map",
   "id": "m-supply-foundation-msupply-regionmap",
   "info": {
     "description": "Display regions on a world map",
