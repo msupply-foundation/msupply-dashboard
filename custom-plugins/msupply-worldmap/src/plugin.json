@@ -1,6 +1,6 @@
 {
   "type": "panel",
-  "name": "msupply-worldmap",
+  "name": "mSupply World Map",
   "id": "m-supply-foundation-msupply-worldmap",
   "info": {
     "description": "Display locations on a world map",
