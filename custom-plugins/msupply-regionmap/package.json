@@ -1,0 +1,34 @@
+{
+  "name": "m-supply-foundation-msupply-regionmap",
+  "version": "1.0.0",
+  "description": "Display regions on a world map",
+  "scripts": {
+    "build": "grafana-toolkit plugin:build",
+    "test": "grafana-toolkit plugin:test",
+    "dev": "grafana-toolkit plugin:dev",
+    "watch": "grafana-toolkit plugin:dev --watch",
+    "sign": "rm ./dist/.DS_Store & grafana-toolkit plugin:sign --signatureType private --rootUrls http://demo-board.msupply.org"
+  },
+  "repository": "github:openmsupply/msupply-dashboard",
+  "author": "The mSupply Foundation",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/openmsupply/msupply-dashboard/issues",
+    "email": "support@msupply.foundation"
+  },
+  "devDependencies": {
+    "@grafana/data": "7.3.3",
+    "@grafana/runtime": "^7.3.3",
+    "@grafana/toolkit": "7.3.3",
+    "@grafana/ui": "7.3.3",
+    "@types/leaflet": "^1.5.19",
+    "emotion": "10.0.27"
+  },
+  "engines": {
+    "node": ">=12 <13"
+  },
+  "dependencies": {
+    "leaflet": "^1.7.1",
+    "react-leaflet": "^3.0.2"
+  }
+}
