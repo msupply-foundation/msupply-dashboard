@@ -4,7 +4,6 @@ import {
   Cell,
   Column,
   HeaderGroup,
-  Row,
   useAbsoluteLayout,
   useFilters,
   UseFiltersState,
@@ -29,7 +28,6 @@ import { getColumns } from '../utils';
 import { TableCell } from './TableCell';
 
 const COLUMN_MIN_WIDTH = 150;
-type FieldAction = (row: Row<object>) => void;
 
 export interface TableProps {
   ariaLabel?: string;
