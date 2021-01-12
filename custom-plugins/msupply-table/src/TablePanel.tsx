@@ -71,7 +71,7 @@ export class TablePanel extends Component<Props> {
     this.forceUpdate();
   };
 
-  renderTable(frame: DataFrame, width: number, height: number, request?: any) {
+  renderTable(frame: DataFrame, width: number, height: number, request?: DataQueryRequest<DataQuery>) {
     const { options } = this.props;
 
     return (
@@ -86,9 +86,16 @@ export class TablePanel extends Component<Props> {
           onSortByChange={this.onSortByChange}
           onColumnResize={this.onColumnResize}
         />
-        <div className={tableStyles.buttonWrapper}>
-          <ExportButton dashboardId={request?.dashboardId} panelId={request?.panelId} />
-        </div>
+        {options.showExport && (
+          <div className={tableStyles.buttonWrapper}>
+            <ExportButton
+              dashboardId={request?.dashboardId}
+              options={options}
+              panelId={request?.panelId}
+              query={frame.meta?.executedQueryString}
+            />
+          </div>
+        )}
       </div>
     );
   }
@@ -100,7 +107,7 @@ export class TablePanel extends Component<Props> {
   }
 
   render() {
-    const { data, height, width } = this.props;
+    const { data, height, options, width } = this.props;
     const count = data.series?.length;
     const hasFields = data.series[0]?.fields.length;
 
@@ -110,7 +117,7 @@ export class TablePanel extends Component<Props> {
 
     if (count > 1) {
       const inputHeight = config.theme.spacing.formInputHeight;
-      const padding = 8 * 2;
+      const padding = options.showExport ? 8 * 2 : 46;
       const currentIndex = this.getCurrentFrameIndex();
       const names = data.series.map((frame, index) => {
         return {
@@ -129,7 +136,9 @@ export class TablePanel extends Component<Props> {
       );
     }
 
-    return this.renderTable(data.series[0], width, height - 42, data.request);
+    const tableHeight = height - (options.showExport ? 42 : 12);
+
+    return this.renderTable(data.series[0], width, tableHeight, data.request);
   }
 }
 

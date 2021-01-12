@@ -5,10 +5,11 @@ export type DashboardMeta = {
   uid: string;
 };
 
-export const exportPanel = (dashboardID: string, panelID: number) => {
+export const exportPanel = (dashboardID: string, panelID: number, query: string) => {
   const params = {
     dashboardID,
     panelID,
+    query,
   };
   return getBackendSrv().post('api/plugins/msupply-datasource/resources/export-panel', params);
 };
