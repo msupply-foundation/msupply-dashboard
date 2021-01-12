@@ -71,7 +71,7 @@ export class TablePanel extends Component<Props> {
     this.forceUpdate();
   };
 
-  renderTable(frame: DataFrame, width: number, height: number, request?: DataQueryRequest<DataQuery>) {
+  renderTable(frame: DataFrame, width: number, height: number, request?: any) {
     const { options } = this.props;
 
     return (
@@ -87,7 +87,7 @@ export class TablePanel extends Component<Props> {
           onColumnResize={this.onColumnResize}
         />
         <div className={tableStyles.buttonWrapper}>
-          <ExportButton panelId={request?.panelId} />
+          <ExportButton dashboardId={request?.dashboardId} panelId={request?.panelId} />
         </div>
       </div>
     );
@@ -101,7 +101,6 @@ export class TablePanel extends Component<Props> {
 
   render() {
     const { data, height, width } = this.props;
-
     const count = data.series?.length;
     const hasFields = data.series[0]?.fields.length;
 
@@ -130,7 +129,7 @@ export class TablePanel extends Component<Props> {
       );
     }
 
-    return this.renderTable(data.series[0], width, height - 42);
+    return this.renderTable(data.series[0], width, height - 42, data.request);
   }
 }
 
