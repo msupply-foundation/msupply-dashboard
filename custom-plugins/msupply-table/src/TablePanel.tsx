@@ -1,15 +1,20 @@
 import React, { Component } from 'react';
 
 import { Select } from '@grafana/ui';
-import { DataFrame, FieldMatcherID, getFrameDisplayName, PanelProps, SelectableValue } from '@grafana/data';
+import {
+  DataFrame,
+  DataQuery,
+  DataQueryRequest,
+  FieldMatcherID,
+  getFrameDisplayName,
+  PanelProps,
+  SelectableValue,
+} from '@grafana/data';
 import { Options } from './types';
 import { css } from 'emotion';
 import { config } from '@grafana/runtime';
-import { /*FilterItem,*/ TableSortByFieldState } from '@grafana/ui';
-import { Table } from './components/Table';
-//import { dispatch } from '../../../store/store';
-//import { applyFilterFromTable } from '../../../features/variables/adhoc/actions';
-// import { getDashboardSrv } from '@grafana/runtime/services' // '../../../features/dashboard/services/DashboardSrv';
+import { TableSortByFieldState } from '@grafana/ui';
+import { ExportButton, Table } from './components';
 
 interface Props extends PanelProps<Options> {}
 
@@ -66,20 +71,25 @@ export class TablePanel extends Component<Props> {
     this.forceUpdate();
   };
 
-  renderTable(frame: DataFrame, width: number, height: number) {
+  renderTable(frame: DataFrame, width: number, height: number, request?: DataQueryRequest<DataQuery>) {
     const { options } = this.props;
 
     return (
-      <Table
-        height={height}
-        width={width}
-        data={frame}
-        noHeader={!options.showHeader}
-        resizable={true}
-        initialSortBy={options.sortBy}
-        onSortByChange={this.onSortByChange}
-        onColumnResize={this.onColumnResize}
-      />
+      <div>
+        <Table
+          height={height}
+          width={width}
+          data={frame}
+          noHeader={!options.showHeader}
+          resizable={true}
+          initialSortBy={options.sortBy}
+          onSortByChange={this.onSortByChange}
+          onColumnResize={this.onColumnResize}
+        />
+        <div className={tableStyles.buttonWrapper}>
+          <ExportButton panelId={request?.panelId} />
+        </div>
+      </div>
     );
   }
 
@@ -112,7 +122,7 @@ export class TablePanel extends Component<Props> {
 
       return (
         <div className={tableStyles.wrapper}>
-          {this.renderTable(data.series[currentIndex], width, height - inputHeight - padding)}
+          {this.renderTable(data.series[currentIndex], width, height - inputHeight - padding, data.request)}
           <div className={tableStyles.selectWrapper}>
             <Select options={names} value={names[currentIndex]} onChange={this.onChangeTableSelection} />
           </div>
@@ -120,7 +130,7 @@ export class TablePanel extends Component<Props> {
       );
     }
 
-    return this.renderTable(data.series[0], width, height - 12);
+    return this.renderTable(data.series[0], width, height - 42);
   }
 }
 
@@ -130,6 +140,11 @@ const tableStyles = {
     flex-direction: column;
     justify-content: space-between;
     height: 100%;
+  `,
+  buttonWrapper: css`
+    padding-right: 10px;
+    text-align: right;
+    width: 100%;
   `,
   selectWrapper: css`
     padding: 8px;
