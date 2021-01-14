@@ -15,6 +15,7 @@ import { css } from 'emotion';
 import { config } from '@grafana/runtime';
 import { TableSortByFieldState } from '@grafana/ui';
 import { ExportButton, Table } from './components';
+import { parseTitle } from './utils';
 
 interface Props extends PanelProps<Options> {}
 
@@ -93,6 +94,7 @@ export class TablePanel extends Component<Props> {
               options={options}
               panelId={request?.panelId}
               query={frame.meta?.executedQueryString}
+              title={parseTitle(this.props)}
             />
           </div>
         )}

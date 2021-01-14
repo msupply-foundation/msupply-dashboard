@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 
 import { Button } from '@grafana/ui';
-import { exportPanel, searchForDashboards } from '../api';
+import { getTemplateSrv } from '@grafana/runtime';
+import { exportPanel, ScopedVariable, searchForDashboards } from '../api';
 
 export interface ExportButtonProps {
   dashboardId?: number;
   options?: any;
   panelId?: number;
   query?: string;
+  title?: string;
 }
 
 export const ExportButton = (props: ExportButtonProps) => {
@@ -15,7 +17,7 @@ export const ExportButton = (props: ExportButtonProps) => {
   const [fileName, setFileName] = useState('');
   const [anchorRef, setAnchorRef] = useState(null as HTMLAnchorElement | null);
   const [exporting, setExporting] = useState(false);
-  const { options = {}, dashboardId = '', panelId = 1, query = '' } = props;
+  const { options = {}, dashboardId = '', panelId = 1, query = '', title = '' } = props;
   const { exportTitle } = options;
 
   const handleError = () => {
@@ -32,7 +34,7 @@ export const ExportButton = (props: ExportButtonProps) => {
         return;
       }
 
-      exportPanel(dashboard.uid, panelId, query).then((filename: string) => {
+      exportPanel(dashboard.uid, panelId, query, title).then((filename: string) => {
         setFileName(filename);
         setUrl(`/api/plugins/msupply-datasource/resources/download/${filename}`);
         anchorRef?.click();
