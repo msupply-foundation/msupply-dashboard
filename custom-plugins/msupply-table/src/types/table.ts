@@ -1,7 +1,9 @@
 import { TableSortByFieldState } from '@grafana/ui';
 
 export interface Options {
+  exportTitle: string;
   frameIndex: number;
+  showExport: boolean;
   showHeader: boolean;
   sortBy?: TableSortByFieldState[];
 }

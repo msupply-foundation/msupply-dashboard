@@ -59,10 +59,23 @@ export const plugin = new PanelPlugin<Options, CustomFieldConfig>(TablePanel)
     },
   })
   .setPanelOptions(builder => {
-    builder.addBooleanSwitch({
-      path: 'showHeader',
-      name: 'Show header',
-      description: "To display table's header or not to display",
-      defaultValue: true,
-    });
+    builder
+      .addBooleanSwitch({
+        path: 'showHeader',
+        name: 'Show header',
+        description: "To display table's header or not to display",
+        defaultValue: true,
+      })
+      .addBooleanSwitch({
+        defaultValue: true,
+        description: 'Display or hide the export to excel option',
+        name: 'Show export button',
+        path: 'showExport',
+      })
+      .addTextInput({
+        defaultValue: 'Export',
+        description: 'The title of the export button',
+        name: 'Export button title',
+        path: 'exportTitle',
+      });
   });

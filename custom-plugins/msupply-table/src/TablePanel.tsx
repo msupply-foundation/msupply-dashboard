@@ -1,15 +1,21 @@
 import React, { Component } from 'react';
 
 import { Select } from '@grafana/ui';
-import { DataFrame, FieldMatcherID, getFrameDisplayName, PanelProps, SelectableValue } from '@grafana/data';
+import {
+  DataFrame,
+  DataQuery,
+  DataQueryRequest,
+  FieldMatcherID,
+  getFrameDisplayName,
+  PanelProps,
+  SelectableValue,
+} from '@grafana/data';
 import { Options } from './types';
 import { css } from 'emotion';
 import { config } from '@grafana/runtime';
-import { /*FilterItem,*/ TableSortByFieldState } from '@grafana/ui';
-import { Table } from './components/Table';
-//import { dispatch } from '../../../store/store';
-//import { applyFilterFromTable } from '../../../features/variables/adhoc/actions';
-// import { getDashboardSrv } from '@grafana/runtime/services' // '../../../features/dashboard/services/DashboardSrv';
+import { TableSortByFieldState } from '@grafana/ui';
+import { ExportButton, Table } from './components';
+import { parseTitle } from './utils';
 
 interface Props extends PanelProps<Options> {}
 
@@ -66,20 +72,33 @@ export class TablePanel extends Component<Props> {
     this.forceUpdate();
   };
 
-  renderTable(frame: DataFrame, width: number, height: number) {
+  renderTable(frame: DataFrame, width: number, height: number, request?: DataQueryRequest<DataQuery>) {
     const { options } = this.props;
 
     return (
-      <Table
-        height={height}
-        width={width}
-        data={frame}
-        noHeader={!options.showHeader}
-        resizable={true}
-        initialSortBy={options.sortBy}
-        onSortByChange={this.onSortByChange}
-        onColumnResize={this.onColumnResize}
-      />
+      <div>
+        <Table
+          height={height}
+          width={width}
+          data={frame}
+          noHeader={!options.showHeader}
+          resizable={true}
+          initialSortBy={options.sortBy}
+          onSortByChange={this.onSortByChange}
+          onColumnResize={this.onColumnResize}
+        />
+        {options.showExport && (
+          <div className={tableStyles.buttonWrapper}>
+            <ExportButton
+              dashboardId={request?.dashboardId}
+              options={options}
+              panelId={request?.panelId}
+              query={frame.meta?.executedQueryString}
+              title={parseTitle(this.props)}
+            />
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -90,8 +109,7 @@ export class TablePanel extends Component<Props> {
   }
 
   render() {
-    const { data, height, width } = this.props;
-
+    const { data, height, options, width } = this.props;
     const count = data.series?.length;
     const hasFields = data.series[0]?.fields.length;
 
@@ -101,7 +119,7 @@ export class TablePanel extends Component<Props> {
 
     if (count > 1) {
       const inputHeight = config.theme.spacing.formInputHeight;
-      const padding = 8 * 2;
+      const padding = options.showExport ? 8 * 2 : 46;
       const currentIndex = this.getCurrentFrameIndex();
       const names = data.series.map((frame, index) => {
         return {
@@ -112,7 +130,7 @@ export class TablePanel extends Component<Props> {
 
       return (
         <div className={tableStyles.wrapper}>
-          {this.renderTable(data.series[currentIndex], width, height - inputHeight - padding)}
+          {this.renderTable(data.series[currentIndex], width, height - inputHeight - padding, data.request)}
           <div className={tableStyles.selectWrapper}>
             <Select options={names} value={names[currentIndex]} onChange={this.onChangeTableSelection} />
           </div>
@@ -120,7 +138,9 @@ export class TablePanel extends Component<Props> {
       );
     }
 
-    return this.renderTable(data.series[0], width, height - 12);
+    const tableHeight = height - (options.showExport ? 42 : 12);
+
+    return this.renderTable(data.series[0], width, tableHeight, data.request);
   }
 }
 
@@ -130,6 +150,11 @@ const tableStyles = {
     flex-direction: column;
     justify-content: space-between;
     height: 100%;
+  `,
+  buttonWrapper: css`
+    padding-right: 10px;
+    text-align: right;
+    width: 100%;
   `,
   selectWrapper: css`
     padding: 8px;
