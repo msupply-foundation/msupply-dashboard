@@ -43,7 +43,7 @@ function getSignatureDisplayModel(signature?: PluginSignatureStatus): BadgeProps
 
   switch (signature) {
     case PluginSignatureStatus.internal:
-      return { text: 'Core', icon: 'cube', color: 'blue', tooltip: 'Core plugin that is bundled with Grafana' };
+      return { text: 'Core', color: 'blue', tooltip: 'Core plugin that is bundled with Grafana' };
     case PluginSignatureStatus.valid:
       return { text: 'Signed', icon: 'lock', color: 'green', tooltip: 'Signed and verified plugin' };
     case PluginSignatureStatus.invalid:
@@ -62,7 +62,7 @@ function getSignatureDisplayModel(signature?: PluginSignatureStatus): BadgeProps
       };
     case PluginSignatureStatus.missing:
       return {
-        text: 'Missing signture',
+        text: 'Missing signature',
         icon: 'exclamation-triangle',
         color: 'red',
         tooltip: 'Missing plugin signature',

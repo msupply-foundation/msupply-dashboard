@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 
 import { Button } from '@grafana/ui';
-import { getTemplateSrv } from '@grafana/runtime';
-import { exportPanel, ScopedVariable, searchForDashboards } from '../api';
+import { exportPanel, searchForDashboards } from '../api';
 
 export interface ExportButtonProps {
   dashboardId?: number;

@@ -7,6 +7,8 @@ import { NotificationSettings } from './NotificationSettings';
 import { BasicSettings } from './BasicSettings';
 import { ChannelSettings } from './ChannelSettings';
 
+import config from 'app/core/config';
+
 interface Props extends Omit<FormAPI<NotificationChannelDTO>, 'formState'> {
   selectableChannels: Array<SelectableValue<string>>;
   selectedChannel?: NotificationChannelType;
@@ -43,8 +45,8 @@ export const NotificationChannelForm: FC<Props> = ({
   const fieldsToWatch =
     new Set(
       selectedChannel?.options
-        .filter(o => o.showWhen.field)
-        .map(option => {
+        .filter((o) => o.showWhen.field)
+        .map((option) => {
           return `settings.${option.showWhen.field}`;
         })
     ) || [];
@@ -74,7 +76,7 @@ export const NotificationChannelForm: FC<Props> = ({
         />
       </div>
       {/* If there are no non-required fields, don't render this section*/}
-      {selectedChannel.options.filter(o => !o.required).length > 0 && (
+      {selectedChannel.options.filter((o) => !o.required).length > 0 && (
         <div className={styles.formItem}>
           <ChannelSettings
             selectedChannel={selectedChannel}
@@ -102,7 +104,7 @@ export const NotificationChannelForm: FC<Props> = ({
           <Button type="button" variant="secondary" onClick={() => onTestChannel(getValues({ nest: true }))}>
             Test
           </Button>
-          <a href="/alerting/notifications">
+          <a href={`${config.appSubUrl}/alerting/notifications`}>
             <Button type="button" variant="secondary">
               Back
             </Button>

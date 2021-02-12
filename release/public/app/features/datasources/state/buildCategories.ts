@@ -1,5 +1,6 @@
 import { DataSourcePluginMeta, PluginType } from '@grafana/data';
 import { DataSourcePluginCategory } from 'app/types';
+import { config } from '../../../core/config';
 
 export function buildCategories(plugins: DataSourcePluginMeta[]): DataSourcePluginCategory[] {
   const categories: DataSourcePluginCategory[] = [
@@ -11,7 +12,7 @@ export function buildCategories(plugins: DataSourcePluginMeta[]): DataSourcePlug
     { id: 'enterprise', title: 'Enterprise plugins', plugins: [] },
     { id: 'iot', title: 'Industrial & IoT', plugins: [] },
     { id: 'other', title: 'Others', plugins: [] },
-  ].filter(item => item);
+  ].filter((item) => item);
 
   const categoryIndex: Record<string, DataSourcePluginCategory> = {};
   const pluginIndex: Record<string, DataSourcePluginMeta> = {};
@@ -22,10 +23,15 @@ export function buildCategories(plugins: DataSourcePluginMeta[]): DataSourcePlug
     categoryIndex[category.id] = category;
   }
 
+  const { edition, hasValidLicense } = config.licenseInfo;
+
   for (const plugin of plugins) {
+    const enterprisePlugin = enterprisePlugins.find((item) => item.id === plugin.id);
     // Force category for enterprise plugins
-    if (plugin.enterprise || enterprisePlugins.find(item => item.id === plugin.id)) {
+    if (plugin.enterprise || enterprisePlugin) {
       plugin.category = 'enterprise';
+      plugin.unlicensed = edition !== 'Open Source' && !hasValidLicense;
+      plugin.info.links = enterprisePlugin?.info?.links || plugin.info.links;
     }
 
     // Fix link name
@@ -35,7 +41,7 @@ export function buildCategories(plugins: DataSourcePluginMeta[]): DataSourcePlug
       }
     }
 
-    const category = categories.find(item => item.id === plugin.category) || categoryIndex['other'];
+    const category = categories.find((item) => item.id === plugin.category) || categoryIndex['other'];
     category.plugins.push(plugin);
     // add to plugin index
     pluginIndex[plugin.id] = plugin;
@@ -60,7 +66,7 @@ export function buildCategories(plugins: DataSourcePluginMeta[]): DataSourcePlug
   }
 
   // Only show categories with plugins
-  return categories.filter(c => c.plugins.length > 0);
+  return categories.filter((c) => c.plugins.length > 0);
 }
 
 function sortPlugins(plugins: DataSourcePluginMeta[]) {
@@ -197,7 +203,7 @@ function getPhantomPlugin(options: GetPhantomPluginOptions): DataSourcePluginMet
       author: { name: 'Grafana Labs' },
       links: [
         {
-          url: 'https://grafana.com/grafana/plugins/' + options.id,
+          url: config.marketplaceUrl + options.id,
           name: 'Install now',
         },
       ],
