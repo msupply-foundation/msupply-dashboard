@@ -1,11 +1,11 @@
-diff --git a/packages/grafana-ui/src/components/TimePicker/TimeRangePicker.tsx b/packages/grafana-ui/src/components/TimePicker/TimeRangePicker.tsx
-index e3fc1e64ef..1b21095135 100644
---- a/packages/grafana-ui/src/components/TimePicker/TimeRangePicker.tsx
-+++ b/packages/grafana-ui/src/components/TimePicker/TimeRangePicker.tsx
-@@ -18,14 +18,6 @@ import { TimeRange, TimeOption, TimeZone, dateMath } from '@grafana/data';
- import { Themeable } from '../../types';
+diff --git a/packages/grafana-ui/src/components/TimePicker/rangeOptions.ts b/packages/grafana-ui/src/components/TimePicker/rangeOptions.ts
+index aea2b9ac03..df7f3f6470 100644
+--- a/packages/grafana-ui/src/components/TimePicker/rangeOptions.ts
++++ b/packages/grafana-ui/src/components/TimePicker/rangeOptions.ts
+@@ -1,14 +1,6 @@
+ import { TimeOption } from '@grafana/data';
  
- const quickOptions: TimeOption[] = [
+ export const quickOptions: TimeOption[] = [
 -  { from: 'now-5m', to: 'now', display: 'Last 5 minutes', section: 3 },
 -  { from: 'now-15m', to: 'now', display: 'Last 15 minutes', section: 3 },
 -  { from: 'now-30m', to: 'now', display: 'Last 30 minutes', section: 3 },
@@ -17,7 +17,7 @@ index e3fc1e64ef..1b21095135 100644
    { from: 'now-2d', to: 'now', display: 'Last 2 days', section: 3 },
    { from: 'now-7d', to: 'now', display: 'Last 7 days', section: 3 },
    { from: 'now-30d', to: 'now', display: 'Last 30 days', section: 3 },
-@@ -43,8 +35,6 @@ const otherOptions: TimeOption[] = [
+@@ -26,8 +18,6 @@ export const otherOptions: TimeOption[] = [
    { from: 'now-1w/w', to: 'now-1w/w', display: 'Previous week', section: 3 },
    { from: 'now-1M/M', to: 'now-1M/M', display: 'Previous month', section: 3 },
    { from: 'now-1y/y', to: 'now-1y/y', display: 'Previous year', section: 3 },
@@ -62,10 +62,10 @@ index ac1deda711..3b5e3e7eb5 100644
  
  .gicon-cog {
 diff --git a/public/views/index-template.html b/public/views/index-template.html
-index 68b0eae181..489029ec6e 100644
+index 15a98083c5..4e15f83fae 100644
 --- a/public/views/index-template.html
 +++ b/public/views/index-template.html
-@@ -80,7 +80,7 @@
+@@ -78,7 +78,7 @@
          height: 60px;
          background-repeat: no-repeat;
          background-size: contain;
