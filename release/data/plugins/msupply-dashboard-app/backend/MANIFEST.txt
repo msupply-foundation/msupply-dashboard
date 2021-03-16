@@ -1,0 +1,37 @@
+
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+{
+  "manifestVersion": "2.0.0",
+  "signatureType": "private",
+  "signedByOrg": "rankprism",
+  "signedByOrgName": "rankprism",
+  "rootUrls": [
+    "https://demo-board.msupply.org:3000/",
+    "https://ci.msupply.org:3000/",
+    "https://liberia.msupply.org:3000/"
+  ],
+  "plugin": "msupply-datasource",
+  "version": "1.0.0",
+  "time": 1614380746257,
+  "keyId": "7e4d0c6a708866e7",
+  "files": {
+    "LICENSE": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+    "module.js.map": "6bb926e74abe6020fdf6672647f99791507c7592781ef2f6676c5ada66da4a4f",
+    "plugin.json": "94f134e48d06b582ee6d0763fa97bdf4cd02b8cb414eec762662a439c6f9b7b8",
+    "README.md": "b9bc43fc2b2f7ce74864ccf40de24cb465ccc953902071467916390a8e8b4a45",
+    "module.js": "e157158bb5ae7b498345ae08029093d7517f689fc02f03429184e7a026f15928",
+    "msupply_light_icon.svg": "b4b32af01d584ecc186d19d73977c6f8262dcb18ac011e5ea11d4b915b6e1eb2"
+  }
+}
+-----BEGIN PGP SIGNATURE-----
+Version: OpenPGP.js v4.10.1
+Comment: https://openpgpjs.org
+
+wqEEARMKAAYFAmA5fsoACgkQfk0ManCIZuc2JQIJAf2EdY3CMCSPpmOr5vaZ
+GFE8ZiuuQiAvv4PovxGnzA+DJ1s8HvAwDRUHDK1fZStzkUu/GEHg0BAfWMr6
+aICN8vIUAgdcl8Kd8/gyISmTMB/KjOrMeRbOu4HJe58CPPNfr6e3ZB4u2rTt
+uY+CJfYvYoCKV8zlUDymjVBrHhdRoEXAo9FaQw==
+=+tJT
+-----END PGP SIGNATURE-----

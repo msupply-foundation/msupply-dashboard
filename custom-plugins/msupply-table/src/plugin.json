@@ -10,8 +10,8 @@
       "url": "https://msupply.foundation"
     },
     "logos": {
-      "small": "img/msupply-table-panel.svg",
-      "large": "img/msupply-table-panel.svg"
+      "small": "msupply-table-panel.svg",
+      "large": "msupply-table-panel.svg"
     },
     "version": "%VERSION%",
     "updated": "%TODAY%"

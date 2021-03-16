@@ -6,7 +6,8 @@ import { RegionMap } from './RegionMap';
 
 export const plugin = new PanelPlugin<RegionMapOptions>(RegionMap)
   .setPanelOptions(builder => {
-    const cssPath = 'plugins/m-supply-foundation-msupply-regionmap/static/';
+    // moved up from /static/ as the signing is having an issue
+    const cssPath = 'plugins/m-supply-foundation-msupply-regionmap/';
 
     loadPluginCss({
       light: `${cssPath}regionmap.light.css`,

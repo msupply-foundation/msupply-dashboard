@@ -7,8 +7,8 @@ import { Legend, RegionLayer } from './components';
 import { useTheme } from '@grafana/ui';
 import { LatLngTuple } from 'leaflet';
 
-import './static/leaflet.css';
-import './static/regionmap-panel.css';
+import './leaflet.css';
+import './regionmap-panel.css';
 
 interface Props extends PanelProps<RegionMapOptions> {}
 

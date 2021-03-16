@@ -1,0 +1,34 @@
+{
+  "type": "panel",
+  "name": "mSupply Region Map",
+  "id": "m-supply-foundation-msupply-regionmap",
+  "info": {
+    "description": "Display regions on a world map",
+    "author": {
+      "name": "The mSupply Foundation",
+      "url": "https://www.msupply.foundation"
+    },
+    "keywords": [],
+    "logos": {
+      "small": "logo.svg",
+      "large": "logo.svg"
+    },
+    "links": [
+      {
+        "name": "Website",
+        "url": "https://github.com/openmsupply/msupply-dashboard/"
+      },
+      {
+        "name": "License",
+        "url": "https://github.com/openmsupply/msupply-dashboard/blob/master/LICENSE"
+      }
+    ],
+    "screenshots": [],
+    "version": "1.0.0",
+    "updated": "2021-02-26"
+  },
+  "dependencies": {
+    "grafanaVersion": "7.0.x",
+    "plugins": []
+  }
+}

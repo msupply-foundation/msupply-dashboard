@@ -1,0 +1,42 @@
+
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+{
+  "manifestVersion": "2.0.0",
+  "signatureType": "private",
+  "signedByOrg": "rankprism",
+  "signedByOrgName": "rankprism",
+  "rootUrls": [
+    "https://demo-board.msupply.org:3000/",
+    "https://ci.msupply.org:3000/",
+    "https://liberia.msupply.org:3000/"
+  ],
+  "plugin": "m-supply-foundation-msupply-worldmap",
+  "version": "1.0.0",
+  "time": 1614381810286,
+  "keyId": "7e4d0c6a708866e7",
+  "files": {
+    "layers.png": "0908aa2a72a082fb2563a2427a5e4fb247571862b448b80fb6f720af1109923e",
+    "marker-icon.png": "915e83a6fc798c599e5c9e3f759d6bc065d65151019acd0410d1f4731bcaaf72",
+    "LICENSE": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+    "CHANGELOG.md": "f039df40cb9e6dffcd8eb814227ba03e47f686d447bfb45e5eae8bdf83fa9465",
+    "module.js.LICENSE.txt": "95efede2671f7967592b43ec0b831fb12fd69783319585840b25f3f9d2076392",
+    "module.js.map": "59f25a2cff5f7dada430da88423b28028cb4dda0a37707a8ac101ea432bb2667",
+    "plugin.json": "6b4040e83408592cfc3e5902c92bd71f7a171b3d4f7af7ae257d6d846ffd3521",
+    "README.md": "5ba9f6f81524312f230a70aa9e0745398dbca48307968635730f8ced78c70367",
+    "module.js": "0eb22437c0f9d6385a5fe6da56f764c8040671f657dda0b1258ed2d0bd0cd2ac",
+    "logo.svg": "0efa3ed52f36535025b0386857d0910c69dbba83fa7873d8985d8dce2e947589",
+    "layers-2x.png": "0c02a2388f637d21f86e6d4b314ec9a968e7b05ad4c3a005280a3f76c0fd3cb8"
+  }
+}
+-----BEGIN PGP SIGNATURE-----
+Version: OpenPGP.js v4.10.1
+Comment: https://openpgpjs.org
+
+wqIEARMKAAYFAmA5gvIACgkQfk0ManCIZucN3QIJAT1i8MfACCbg9x9zYnv7
+ve3PwA43srNrF7/WVoXME2YxGUOKA0f7aZaRoA8z8u0PiYlKces3T+P18Q3a
+m8eLyXCFAgkBmD67fGQ1uaHEy1j44tjlx7JqJ/LHtVlg6iHolVODJoo+4c9/
+4b/RYRhDjFY5lqW1ojX+Olf38HV09p44uZX2tTg=
+=dZfy
+-----END PGP SIGNATURE-----

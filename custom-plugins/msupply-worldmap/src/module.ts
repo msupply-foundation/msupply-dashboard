@@ -6,7 +6,9 @@ import { WorldMap } from './WorldMap';
 
 export const plugin = new PanelPlugin<WorldMapOptions>(WorldMap)
   .setPanelOptions(builder => {
-    const cssPath = 'plugins/m-supply-foundation-msupply-worldmap/static';
+    // moved from static as signing does not work with subfolder atm
+    // const cssPath = 'plugins/m-supply-foundation-msupply-worldmap/static';
+    const cssPath = 'plugins/m-supply-foundation-msupply-worldmap';
 
     loadPluginCss({
       light: `${cssPath}/worldmap.light.css`,
