@@ -9,7 +9,7 @@ export const plugin = new PanelPlugin<Options, CustomFieldConfig>(TablePanel)
   .setMigrationHandler(tableMigrationHandler)
   .setNoPadding()
   .useFieldConfig({
-    useCustomConfig: builder => {
+    useCustomConfig: (builder) => {
       builder
         .addNumberInput({
           path: 'width',
@@ -58,7 +58,7 @@ export const plugin = new PanelPlugin<Options, CustomFieldConfig>(TablePanel)
         });
     },
   })
-  .setPanelOptions(builder => {
+  .setPanelOptions((builder) => {
     builder
       .addBooleanSwitch({
         path: 'showHeader',

@@ -1,3 +1,4 @@
+/* eslint react/jsx-key:"off" */
 import React, { FC, memo, useCallback, useMemo } from 'react';
 import { DataFrame, Field, getFieldDisplayName, Vector } from '@grafana/data';
 import {

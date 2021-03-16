@@ -22,7 +22,7 @@ export const parseTitle = (props: PanelProps) => {
   const variables = getTemplateSrv().getVariables() as ScopedVariable[];
   let parsedTitle = title;
 
-  variables.map(v => mapVariable(v)).forEach(v => (parsedTitle = parsedTitle.replace(`\$\{${v.id}\}`, v.text)));
+  variables.map((v) => mapVariable(v)).forEach((v) => (parsedTitle = parsedTitle.replace(`\$\{${v.id}\}`, v.text)));
 
   return replaceVariables(parsedTitle);
 };

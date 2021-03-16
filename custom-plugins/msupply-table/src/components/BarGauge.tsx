@@ -143,23 +143,15 @@ export class BarGauge extends PureComponent<BarGaugeProps> {
       // if we are past real value the cell is not "on"
       if (value === null || (positionValue !== null && positionValue > value.numeric)) {
         return {
-          background: tinycolor(color)
-            .setAlpha(0.18)
-            .toRgbString(),
+          background: tinycolor(color).setAlpha(0.18).toRgbString(),
           border: 'transparent',
           isLit: false,
         };
       } else {
         return {
-          background: tinycolor(color)
-            .setAlpha(0.95)
-            .toRgbString(),
-          backgroundShade: tinycolor(color)
-            .setAlpha(0.55)
-            .toRgbString(),
-          border: tinycolor(color)
-            .setAlpha(0.9)
-            .toRgbString(),
+          background: tinycolor(color).setAlpha(0.95).toRgbString(),
+          backgroundShade: tinycolor(color).setAlpha(0.55).toRgbString(),
+          border: tinycolor(color).setAlpha(0.9).toRgbString(),
           isLit: true,
         };
       }
@@ -465,9 +457,7 @@ export function getBasicAndGradientStyles(props: BarGaugeProps): BasicAndGradien
 
     if (isBasic) {
       // Basic styles
-      barStyles.background = `${tinycolor(valueColor)
-        .setAlpha(0.35)
-        .toRgbString()}`;
+      barStyles.background = `${tinycolor(valueColor).setAlpha(0.35).toRgbString()}`;
 
       barStyles.borderTop = `2px solid ${valueColor}`;
     } else {
@@ -491,9 +481,7 @@ export function getBasicAndGradientStyles(props: BarGaugeProps): BasicAndGradien
 
     if (isBasic) {
       // Basic styles
-      barStyles.background = `${tinycolor(valueColor)
-        .setAlpha(0.35)
-        .toRgbString()}`;
+      barStyles.background = `${tinycolor(valueColor).setAlpha(0.35).toRgbString()}`;
       barStyles.borderRight = `2px solid ${valueColor}`;
     } else {
       // Gradient styles
@@ -546,7 +534,7 @@ export function getBarGradient(props: BarGaugeProps, maxSize: number): string {
   }
 
   if (mode.colors) {
-    const scheme = mode.colors.map(item => getColorForTheme(item, theme));
+    const scheme = mode.colors.map((item) => getColorForTheme(item, theme));
     for (let i = 0; i < scheme.length; i++) {
       const color = scheme[i];
 

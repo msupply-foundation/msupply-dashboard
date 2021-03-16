@@ -7,7 +7,7 @@
     "test": "grafana-toolkit plugin:test",
     "dev": "grafana-toolkit plugin:dev",
     "watch": "grafana-toolkit plugin:dev --watch",
-    "sign": "rm ./dist/.DS_Store & grafana-toolkit plugin:sign --signatureType private --rootUrls https://demo-board.msupply.org:3000,https://ci.msupply.org:3000,https://liberia.msupply.org:3000"
+    "sign": "rm ./dist/.DS_Store & grafana-toolkit plugin:sign --signatureType private --rootUrls https://demo-board.msupply.org:3000,https://ci.msupply.org:3000,https://liberia.msupply.org:3000,https://tonga-vax.msupply.org:3000"
   },
   "repository": "github:openmsupply/msupply-dashboard",
   "author": "The mSupply Foundation",
@@ -20,13 +20,17 @@
     "@emotion/core": "10.0.27",
     "@grafana/data": "7.3.3",
     "@grafana/runtime": "^7.3.3",
-    "@grafana/toolkit": "7.3.3",
+    "@grafana/toolkit": "^7.4.3",
     "@grafana/ui": "7.3.3",
     "@types/leaflet": "^1.5.19",
     "@types/lodash": "^4.14.165",
     "@types/react-window": "^1.8.2",
     "@types/tinycolor2": "^1.4.2",
-    "csstype": "2.6.7"
+    "@typescript-eslint/eslint-plugin": "^4.18.0",
+    "@typescript-eslint/parser": "^4.18.0",
+    "csstype": "2.6.7",
+    "eslint": "^7.22.0",
+    "eslint-plugin-react": "^7.22.0"
   },
   "engines": {
     "node": ">=12 <13"

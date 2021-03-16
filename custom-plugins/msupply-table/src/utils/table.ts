@@ -15,13 +15,13 @@ export function filterByValue(rows: Row[], id: string, filterValues?: Selectable
     return rows;
   }
 
-  return rows.filter(row => {
+  return rows.filter((row) => {
     if (!row.values.hasOwnProperty(id)) {
       return false;
     }
 
     const value = row.values[id];
-    return filterValues.find(filter => filter.value === value) !== undefined;
+    return filterValues.find((filter) => filter.value === value) !== undefined;
   });
 }
 

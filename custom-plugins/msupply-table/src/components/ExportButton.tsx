@@ -26,8 +26,8 @@ export const ExportButton = (props: ExportButtonProps) => {
   const download = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     event.preventDefault();
     setExporting(true);
-    searchForDashboards().then(dashboards => {
-      const dashboard = dashboards.find(d => d.id === dashboardId);
+    searchForDashboards().then((dashboards) => {
+      const dashboard = dashboards.find((d) => d.id === dashboardId);
       if (!dashboard) {
         setExporting(false);
         return;
@@ -50,7 +50,14 @@ export const ExportButton = (props: ExportButtonProps) => {
       <Button onClick={download} disabled={exporting} icon={exporting ? 'fa fa-spinner' : 'cloud-download'}>
         {exportTitle}
       </Button>
-      <a style={{ display: 'none' }} download={fileName} href={url} ref={e => setAnchorRef(e)} target="_blank">
+      <a
+        style={{ display: 'none' }}
+        download={fileName}
+        href={url}
+        rel="noreferrer"
+        ref={(e) => setAnchorRef(e)}
+        target="_blank"
+      >
         download
       </a>
     </>

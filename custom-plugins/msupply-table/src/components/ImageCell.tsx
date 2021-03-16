@@ -1,7 +1,7 @@
 import React, { FC } from 'react';
 import { TableCellProps } from './TableCell';
 
-export const ImageCell: FC<TableCellProps> = props => {
+export const ImageCell: FC<TableCellProps> = (props) => {
   const { cell, tableStyles, cellProps } = props;
 
   return (
