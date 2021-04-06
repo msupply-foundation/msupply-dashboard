@@ -34,7 +34,7 @@ export interface CloneOptions {
   message?: string;
 }
 
-type DashboardLinkType = 'link' | 'dashboards';
+export type DashboardLinkType = 'link' | 'dashboards';
 
 export interface DashboardLink {
   icon: string;
@@ -46,6 +46,8 @@ export interface DashboardLink {
   tags: any[];
   searchHits?: any[];
   targetBlank: boolean;
+  keepTime: boolean;
+  includeVars: boolean;
 }
 
 export class DashboardModel {
@@ -92,9 +94,11 @@ export class DashboardModel {
     templating: true, // needs special handling
     originalTime: true,
     originalTemplating: true,
+    originalLibraryPanels: true,
     panelInEdit: true,
     panelInView: true,
     getVariablesFromState: true,
+    formatDate: true,
   };
 
   constructor(data: any, meta?: DashboardMeta, private getVariablesFromState: GetVariables = getVariables) {
@@ -125,6 +129,7 @@ export class DashboardModel {
     this.links = data.links || [];
     this.gnetId = data.gnetId || null;
     this.panels = _.map(data.panels || [], (panelData: any) => new PanelModel(panelData));
+    this.formatDate = this.formatDate.bind(this);
 
     this.resetOriginalVariables(true);
     this.resetOriginalTime();
