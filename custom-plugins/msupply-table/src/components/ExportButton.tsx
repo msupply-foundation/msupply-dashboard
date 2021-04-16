@@ -35,7 +35,7 @@ export const ExportButton = (props: ExportButtonProps) => {
 
       exportPanel(dashboard.uid, panelId, query, title).then((filename: string) => {
         setFileName(filename);
-        setUrl(`/api/plugins/msupply-datasource/resources/download/${filename}`);
+        setUrl(`/api/plugins/msupplyfoundation-datasource/resources/download/${filename}`);
         anchorRef?.click();
 
         setExporting(false);
