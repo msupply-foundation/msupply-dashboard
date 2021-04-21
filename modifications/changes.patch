@@ -1,31 +1,17 @@
 diff --git a/packages/grafana-ui/src/components/TimePicker/rangeOptions.ts b/packages/grafana-ui/src/components/TimePicker/rangeOptions.ts
-index aea2b9ac03..df7f3f6470 100644
+index aea2b9ac03..565979a083 100644
 --- a/packages/grafana-ui/src/components/TimePicker/rangeOptions.ts
 +++ b/packages/grafana-ui/src/components/TimePicker/rangeOptions.ts
-@@ -1,14 +1,6 @@
+@@ -1,9 +1,6 @@
  import { TimeOption } from '@grafana/data';
  
  export const quickOptions: TimeOption[] = [
 -  { from: 'now-5m', to: 'now', display: 'Last 5 minutes', section: 3 },
 -  { from: 'now-15m', to: 'now', display: 'Last 15 minutes', section: 3 },
 -  { from: 'now-30m', to: 'now', display: 'Last 30 minutes', section: 3 },
--  { from: 'now-1h', to: 'now', display: 'Last 1 hour', section: 3 },
--  { from: 'now-3h', to: 'now', display: 'Last 3 hours', section: 3 },
--  { from: 'now-6h', to: 'now', display: 'Last 6 hours', section: 3 },
--  { from: 'now-12h', to: 'now', display: 'Last 12 hours', section: 3 },
--  { from: 'now-24h', to: 'now', display: 'Last 24 hours', section: 3 },
-   { from: 'now-2d', to: 'now', display: 'Last 2 days', section: 3 },
-   { from: 'now-7d', to: 'now', display: 'Last 7 days', section: 3 },
-   { from: 'now-30d', to: 'now', display: 'Last 30 days', section: 3 },
-@@ -26,8 +18,6 @@ export const otherOptions: TimeOption[] = [
-   { from: 'now-1w/w', to: 'now-1w/w', display: 'Previous week', section: 3 },
-   { from: 'now-1M/M', to: 'now-1M/M', display: 'Previous month', section: 3 },
-   { from: 'now-1y/y', to: 'now-1y/y', display: 'Previous year', section: 3 },
--  { from: 'now/d', to: 'now/d', display: 'Today', section: 3 },
--  { from: 'now/d', to: 'now', display: 'Today so far', section: 3 },
-   { from: 'now/w', to: 'now/w', display: 'This week', section: 3 },
-   { from: 'now/w', to: 'now', display: 'This week so far', section: 3 },
-   { from: 'now/M', to: 'now/M', display: 'This month', section: 3 },
+   { from: 'now-1h', to: 'now', display: 'Last 1 hour', section: 3 },
+   { from: 'now-3h', to: 'now', display: 'Last 3 hours', section: 3 },
+   { from: 'now-6h', to: 'now', display: 'Last 6 hours', section: 3 },
 diff --git a/public/app/core/components/Branding/Branding.tsx b/public/app/core/components/Branding/Branding.tsx
 index deb119b239..189bf9472c 100644
 --- a/public/app/core/components/Branding/Branding.tsx
@@ -48,6 +34,9 @@ index deb119b239..189bf9472c 100644
  };
  
  const LoginBoxBackground = () => {
+diff --git a/public/img/fav32.png b/public/img/fav32.png
+index af2a31715e..dd25a73c62 100644
+Binary files a/public/img/fav32.png and b/public/img/fav32.png differ
 diff --git a/public/sass/base/_icons.scss b/public/sass/base/_icons.scss
 index ac1deda711..3b5e3e7eb5 100644
 --- a/public/sass/base/_icons.scss
@@ -62,7 +51,7 @@ index ac1deda711..3b5e3e7eb5 100644
  
  .gicon-cog {
 diff --git a/public/views/index-template.html b/public/views/index-template.html
-index 15a98083c5..4e15f83fae 100644
+index 90656cdbd3..0e5d2468ce 100644
 --- a/public/views/index-template.html
 +++ b/public/views/index-template.html
 @@ -78,7 +78,7 @@
