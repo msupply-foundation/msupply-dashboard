@@ -8,7 +8,7 @@ import { AppEvents, DataQueryErrorType } from '@grafana/data';
 import appEvents from 'app/core/app_events';
 import { getConfig } from 'app/core/config';
 import { DashboardSearchHit } from 'app/features/search/types';
-import { CoreEvents, FolderDTO } from 'app/types';
+import { FolderDTO } from 'app/types';
 import { coreModule } from 'app/core/core_module';
 import { ContextSrv, contextSrv } from './context_srv';
 import { parseInitFromOptions, parseResponseBody, parseUrlFromOptions } from '../utils/fetch';
@@ -17,6 +17,7 @@ import { FetchQueue } from './FetchQueue';
 import { ResponseQueue } from './ResponseQueue';
 import { FetchQueueWorker } from './FetchQueueWorker';
 import { TokenRevokedModal } from 'app/features/users/TokenRevokedModal';
+import { ShowModalReactEvent } from '../../types/events';
 
 const CANCEL_ALL_REQUESTS_REQUEST_ID = 'cancel_all_requests_request_id';
 
@@ -53,6 +54,7 @@ export class BackendSrv implements BackendService {
       };
     }
 
+    this.noBackendCache = false;
     this.internalFetch = this.internalFetch.bind(this);
     this.fetchQueue = new FetchQueue();
     this.responseQueue = new ResponseQueue(this.fetchQueue, this.internalFetch);
@@ -214,12 +216,14 @@ export class BackendSrv implements BackendService {
 
               if (error.status === 401 && isLocalUrl(options.url) && firstAttempt && isSignedIn) {
                 if (error.data?.error?.id === 'ERR_TOKEN_REVOKED') {
-                  this.dependencies.appEvents.emit(CoreEvents.showModalReact, {
-                    component: TokenRevokedModal,
-                    props: {
-                      maxConcurrentSessions: error.data?.error?.maxConcurrentSessions,
-                    },
-                  });
+                  this.dependencies.appEvents.publish(
+                    new ShowModalReactEvent({
+                      component: TokenRevokedModal,
+                      props: {
+                        maxConcurrentSessions: error.data?.error?.maxConcurrentSessions,
+                      },
+                    })
+                  );
 
                   return of({});
                 }
@@ -397,10 +401,6 @@ export class BackendSrv implements BackendService {
 
   search(query: any): Promise<DashboardSearchHit[]> {
     return this.get('/api/search', query);
-  }
-
-  getDashboardBySlug(slug: string) {
-    return this.get(`/api/dashboards/db/${slug}`);
   }
 
   getDashboardByUid(uid: string) {

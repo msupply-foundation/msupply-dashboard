@@ -2,12 +2,12 @@ import React, { PureComponent } from 'react';
 import { connect } from 'react-redux';
 import { hot } from 'react-hot-loader';
 import classNames from 'classnames';
-import { css } from 'emotion';
+import { css } from '@emotion/css';
 
 import { ExploreId, ExploreItemState } from 'app/types/explore';
 import { Icon, IconButton, SetInterval, ToolbarButton, ToolbarButtonRow, Tooltip } from '@grafana/ui';
 import { DataSourceInstanceSettings, RawTimeRange, TimeRange, TimeZone } from '@grafana/data';
-import { DataSourcePicker } from 'app/core/components/Select/DataSourcePicker';
+import { DataSourcePicker } from '@grafana/runtime';
 import { StoreState } from 'app/types/store';
 import { createAndCopyShortLink } from 'app/core/utils/shortLinks';
 import { changeDatasource } from './state/datasource';
@@ -19,7 +19,7 @@ import { ExploreTimeControls } from './ExploreTimeControls';
 import { LiveTailButton } from './LiveTailButton';
 import { RunButton } from './RunButton';
 import { LiveTailControls } from './useLiveTailControls';
-import { cancelQueries, clearQueries, runQueries } from './state/query';
+import { cancelQueries, clearQueries, runQueries, clearCache } from './state/query';
 import ReturnToDashboardButton from './ReturnToDashboardButton';
 import { isSplit } from './state/selectors';
 
@@ -54,6 +54,7 @@ interface DispatchProps {
   syncTimes: typeof syncTimes;
   changeRefreshInterval: typeof changeRefreshInterval;
   onChangeTimeZone: typeof updateTimeZoneForSession;
+  clearCache: typeof clearCache;
 }
 
 type Props = StateProps & DispatchProps & OwnProps;
@@ -68,10 +69,13 @@ export class UnConnectedExploreToolbar extends PureComponent<Props> {
   };
 
   onRunQuery = (loading = false) => {
+    const { clearCache, runQueries, cancelQueries, exploreId } = this.props;
     if (loading) {
-      return this.props.cancelQueries(this.props.exploreId);
+      return cancelQueries(exploreId);
     } else {
-      return this.props.runQueries(this.props.exploreId);
+      // We want to give user a chance tu re-run the query even if it is saved in cache
+      clearCache(exploreId);
+      return runQueries(exploreId);
     }
   };
 
@@ -274,6 +278,7 @@ const mapDispatchToProps: DispatchProps = {
   split: splitOpen,
   syncTimes,
   onChangeTimeZone: updateTimeZoneForSession,
+  clearCache,
 };
 
 export const ExploreToolbar = hot(module)(connect(mapStateToProps, mapDispatchToProps)(UnConnectedExploreToolbar));

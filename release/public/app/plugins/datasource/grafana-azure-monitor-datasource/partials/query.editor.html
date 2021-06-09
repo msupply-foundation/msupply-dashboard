@@ -1,4 +1,8 @@
-<query-editor-row query-ctrl="ctrl" can-collapse="false">
+<query-editor-row
+  query-ctrl="ctrl"
+  can-collapse="false"
+  ng-if="!ctrl.reactQueryEditors.includes(ctrl.target.queryType)"
+>
   <div class="gf-form-inline">
     <div class="gf-form">
       <label class="gf-form-label query-keyword width-9">Service</label>
@@ -505,10 +509,10 @@
 
   <div
     class="gf-form"
-    ng-if="ctrl.target.queryType === 'Application Insights' || ctrl.target.queryType === 'Insights Analytics'"
+    ng-if="ctrl.target.queryType === 'Insights Analytics'"
   >
     <p class="gf-form-pre alert alert-info">
-      Application Insights and Insights Analytics will be deprecated and merged with Metrics and Logs in an upcomming
+      Application Insights and Insights Analytics will be deprecated and merged with Metrics and Logs in an upcoming
       release. See
       <a
         class="text-link"
@@ -519,3 +523,9 @@
     </p>
   </div>
 </query-editor-row>
+
+<!-- Partial migration to React -->
+<div ng-if="ctrl.reactQueryEditors.includes(ctrl.target.queryType)">
+  <azure-monitor-query-editor query="ctrl.target" datasource="ctrl.datasource" on-change="ctrl.handleNewQuery">
+  </azure-monitor-query-editor>
+</div>

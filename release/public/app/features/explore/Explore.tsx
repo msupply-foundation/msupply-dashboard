@@ -1,12 +1,19 @@
 import React from 'react';
 import { hot } from 'react-hot-loader';
-import { css, cx } from 'emotion';
+import { css, cx } from '@emotion/css';
 import { compose } from 'redux';
 import { connect } from 'react-redux';
 import AutoSizer from 'react-virtualized-auto-sizer';
 import memoizeOne from 'memoize-one';
 import { selectors } from '@grafana/e2e-selectors';
-import { ErrorBoundaryAlert, stylesFactory, withTheme } from '@grafana/ui';
+import {
+  ErrorBoundaryAlert,
+  stylesFactory,
+  withTheme,
+  CustomScrollbar,
+  Collapse,
+  TooltipDisplayMode,
+} from '@grafana/ui';
 import {
   AbsoluteTimeRange,
   DataQuery,
@@ -31,17 +38,15 @@ import { updateTimeRange } from './state/time';
 import { scanStopAction, addQueryRow, modifyQueries, setQueries, scanStart } from './state/query';
 import { ExploreId, ExploreItemState } from 'app/types/explore';
 import { StoreState } from 'app/types';
-import { getFirstNonQueryRowSpecificError } from 'app/core/utils/explore';
 import { ExploreToolbar } from './ExploreToolbar';
 import { NoDataSourceCallToAction } from './NoDataSourceCallToAction';
 import { getTimeZone } from '../profile/state/selectors';
-import { ErrorContainer } from './ErrorContainer';
-//TODO:unification
-import { TraceView } from './TraceView/TraceView';
 import { SecondaryActions } from './SecondaryActions';
 import { FILTER_FOR_OPERATOR, FILTER_OUT_OPERATOR, FilterItem } from '@grafana/ui/src/components/Table/types';
 import { ExploreGraphNGPanel } from './ExploreGraphNGPanel';
 import { NodeGraphContainer } from './NodeGraphContainer';
+import { ResponseErrorContainer } from './ResponseErrorContainer';
+import { TraceViewContainer } from './TraceView/TraceViewContainer';
 
 const getStyles = stylesFactory((theme: GrafanaTheme) => {
   return {
@@ -224,19 +229,21 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
     );
   }
 
-  renderGraphPanel(width: number) {
+  renderGraphPanel() {
     const { graphResult, absoluteRange, timeZone, splitOpen, queryResponse, loading } = this.props;
     return (
-      <ExploreGraphNGPanel
-        data={graphResult!}
-        width={width}
-        absoluteRange={absoluteRange}
-        timeZone={timeZone}
-        onUpdateTimeRange={this.onUpdateTimeRange}
-        annotations={queryResponse.annotations}
-        splitOpenFn={splitOpen}
-        isLoading={loading}
-      />
+      <Collapse label="Graph" loading={loading} isOpen>
+        <ExploreGraphNGPanel
+          data={graphResult!}
+          height={400}
+          tooltipDisplayMode={TooltipDisplayMode.Single}
+          absoluteRange={absoluteRange}
+          timeZone={timeZone}
+          onUpdateTimeRange={this.onUpdateTimeRange}
+          annotations={queryResponse.annotations}
+          splitOpenFn={splitOpen}
+        />
+      </Collapse>
     );
   }
 
@@ -252,11 +259,10 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
     );
   }
 
-  renderLogsPanel(width: number) {
+  renderLogsPanel() {
     const { exploreId, syncedTimes } = this.props;
     return (
       <LogsContainer
-        width={width}
         exploreId={exploreId}
         syncedTimes={syncedTimes}
         onClickFilterLabel={this.onClickFilterLabel}
@@ -273,7 +279,7 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
       <NodeGraphContainer
         dataFrames={this.getNodeGraphDataFrames(queryResponse.series)}
         exploreId={exploreId}
-        short={showTrace}
+        withTraceView={showTrace}
       />
     );
   }
@@ -292,7 +298,7 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
 
     return (
       // If there is no data (like 404) we show a separate error so no need to show anything here
-      dataFrames.length && <TraceView exploreId={exploreId} dataFrames={dataFrames} splitOpenFn={splitOpen} />
+      dataFrames.length && <TraceViewContainer exploreId={exploreId} dataFrames={dataFrames} splitOpenFn={splitOpen} />
     );
   }
 
@@ -315,17 +321,11 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
     const { openDrawer } = this.state;
     const styles = getStyles(theme);
     const showPanels = queryResponse && queryResponse.state !== LoadingState.NotStarted;
-
-    // gets an error without a refID, so non-query-row-related error, like a connection error
-    const queryErrors =
-      queryResponse.state === LoadingState.Error && queryResponse.error ? [queryResponse.error] : undefined;
-    const queryError = getFirstNonQueryRowSpecificError(queryErrors);
-
     const showRichHistory = openDrawer === ExploreDrawer.RichHistory;
     const showQueryInspector = openDrawer === ExploreDrawer.QueryInspector;
 
     return (
-      <>
+      <CustomScrollbar autoHeightMin={'100%'}>
         <ExploreToolbar exploreId={exploreId} onChangeTime={this.onChangeTime} />
         {datasourceMissing ? this.renderEmptyState() : null}
         {datasourceInstance && (
@@ -343,8 +343,8 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
                 onClickRichHistoryButton={this.toggleShowRichHistory}
                 onClickQueryInspectorButton={this.toggleShowQueryInspector}
               />
+              <ResponseErrorContainer exploreId={exploreId} />
             </div>
-            <ErrorContainer queryError={queryError} />
             <AutoSizer onResize={this.onResize} disableHeight>
               {({ width }) => {
                 if (width === 0) {
@@ -356,11 +356,13 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
                     <ErrorBoundaryAlert>
                       {showPanels && (
                         <>
-                          {showMetrics && graphResult && this.renderGraphPanel(width)}
-                          {showTable && this.renderTablePanel(width)}
-                          {showLogs && this.renderLogsPanel(width)}
-                          {showNodeGraph && this.renderNodeGraphPanel()}
-                          {showTrace && this.renderTraceViewPanel()}
+                          {showMetrics && graphResult && (
+                            <ErrorBoundaryAlert>{this.renderGraphPanel()}</ErrorBoundaryAlert>
+                          )}
+                          {showTable && <ErrorBoundaryAlert>{this.renderTablePanel(width)}</ErrorBoundaryAlert>}
+                          {showLogs && <ErrorBoundaryAlert>{this.renderLogsPanel()}</ErrorBoundaryAlert>}
+                          {showNodeGraph && <ErrorBoundaryAlert>{this.renderNodeGraphPanel()}</ErrorBoundaryAlert>}
+                          {showTrace && <ErrorBoundaryAlert>{this.renderTraceViewPanel()}</ErrorBoundaryAlert>}
                         </>
                       )}
                       {showRichHistory && (
@@ -384,7 +386,7 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
             </AutoSizer>
           </div>
         )}
-      </>
+      </CustomScrollbar>
     );
   }
 }
