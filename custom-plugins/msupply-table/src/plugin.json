@@ -1,7 +1,7 @@
 {
   "type": "panel",
   "name": "mSupply Table",
-  "id": "msupply-table",
+  "id": "msupplyfoundation-table",
 
   "info": {
     "description": "Table Panel for Grafana",
