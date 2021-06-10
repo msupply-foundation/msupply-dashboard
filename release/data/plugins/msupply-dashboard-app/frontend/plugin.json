@@ -1,7 +1,7 @@
 {
   "type": "app",
   "name": "mSupply",
-  "id": "msupply",
+  "id": "msupplyfoundation-scheduler",
 
   "info": {
     "description": "Interface for managing mSupply instance integration with Grafana",
@@ -26,13 +26,13 @@
     ],
     "screenshots": [],
     "version": "1.0.0",
-    "updated": "2021-02-26"
+    "updated": "2021-06-10"
   },
   "includes": [
     {
       "type": "page",
       "name": "Report groups",
-      "path": "/a/msupply/?tab=report-group",
+      "path": "/a/msupplyfoundation-scheduler/?tab=report-group",
       "role": "Viewer",
       "addToNav": true,
       "defaultNav": true
@@ -40,7 +40,7 @@
     {
       "type": "page",
       "name": "Report Schedules",
-      "path": "/a/msupply/?tab=report-schedule",
+      "path": "/a/msupplyfoundation-scheduler/?tab=report-schedule",
       "role": "Viewer",
       "addToNav": true,
       "defaultNav": false
@@ -50,7 +50,7 @@
     "grafanaVersion": "7.0.x",
     "plugins": [
       {
-        "id": "msupply-datasource",
+        "id": "msupplyfoundation-datasource",
         "name": "mSupply Datasource",
         "version": "1.0",
         "type": "datasource"
