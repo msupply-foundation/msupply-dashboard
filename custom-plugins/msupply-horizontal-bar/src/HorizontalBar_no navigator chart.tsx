@@ -149,7 +149,12 @@ export class HorizontalBar extends Component<Props, State> {
 
     this.previousRangeX = initialDomain.x[1] - initialDomain.x[0];
     this.previousRangeY = initialDomain.y[1] - initialDomain.y[0];
-    const mainChartBarWidth = calculateBarWidth(mainChartTheme.chart.height, mainChartPadding, this.previousRangeX, mainChartTheme.spaceBetweenBars);
+    const mainChartBarWidth = calculateBarWidth(
+      mainChartTheme.chart.height,
+      mainChartPadding,
+      this.previousRangeX,
+      mainChartTheme.spaceBetweenBars
+    );
     const mainChartDomainPadding = { x: mainChartBarWidth / 2 };
     const navigatorChartBarWidth = calculateBarWidth(
       navigatorChartTheme.chart.height,
@@ -183,7 +188,7 @@ export class HorizontalBar extends Component<Props, State> {
     };
   };
 
-  componentWillReceiveProps(props: any) {
+  UNSAFE_componentWillReceiveProps(props: any) {
     this.setState(this.getStateFromProps(props));
   }
 
@@ -316,7 +321,7 @@ export class HorizontalBar extends Component<Props, State> {
                           return [
                             {
                               target: 'data',
-                              mutation: props => {
+                              mutation: (props) => {
                                 // this.variableSrv.setOptionAsCurrent(this.variableSrv.variables[4], {
                                 //   text: props.datum.x,
                                 //   value: props.datum.x,

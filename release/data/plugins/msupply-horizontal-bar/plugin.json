@@ -6,12 +6,13 @@
   "info": {
     "description": "mSupply Horizontal Bar",
     "author": {
-      "name": "Sustainable Solutions"
+      "name": "The mSupply Foundation",
+      "url": "https://www.msupply.foundation"
     },
     "keywords": ["Simple"],
     "logos": {
-      "small": "img/test.png",
-      "large": "img/test.png"
+      "small": "logo.png",
+      "large": "logo.png"
     },
     "links": [
       {
@@ -23,7 +24,7 @@
     ],
     "screenshots": [],
     "version": "1.0.2",
-    "updated": "2020-01-09"
+    "updated": "2021-06-10"
   },
 
   "dependencies": {

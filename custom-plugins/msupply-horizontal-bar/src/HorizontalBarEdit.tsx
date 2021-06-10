@@ -213,7 +213,13 @@ export class HorizontalBarEdit extends React.Component<PanelEditorProps> {
       let otherSettings = JSON.parse(this.state.otherSettings);
       otherSettings = JSON.stringify(otherSettings, null, 2);
 
-      this.props.onOptionsChange({ ...this.props.options, mainChartTheme, navigatorChartTheme, otherSettings, thresholds: this.state.thresholds });
+      this.props.onOptionsChange({
+        ...this.props.options,
+        mainChartTheme,
+        navigatorChartTheme,
+        otherSettings,
+        thresholds: this.state.thresholds,
+      });
 
       this.setState({ mainChartTheme, navigatorChartTheme, otherSettings });
     } catch (e) {
@@ -231,7 +237,12 @@ export class HorizontalBarEdit extends React.Component<PanelEditorProps> {
             <textarea cols={50} rows={15} onChange={this.onMainChartThemeChange} value={this.state.mainChartTheme} />
           </PanelOptionsGroup>
           <PanelOptionsGroup title="Navigator Chart Theme">
-            <textarea cols={50} rows={15} onChange={this.onNavigatorChartThemeChange} value={this.state.navigatorChartTheme} />
+            <textarea
+              cols={50}
+              rows={15}
+              onChange={this.onNavigatorChartThemeChange}
+              value={this.state.navigatorChartTheme}
+            />
           </PanelOptionsGroup>
           <PanelOptionsGroup title="Other Settings">
             <textarea cols={50} rows={15} onChange={this.onOtherSettingsChange} value={this.state.otherSettings} />

@@ -1,0 +1,39 @@
+
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+{
+  "manifestVersion": "2.0.0",
+  "signatureType": "private",
+  "signedByOrg": "msupplyfoundation",
+  "signedByOrgName": "msupplyfoundation",
+  "rootUrls": [
+    "https://demo-board.msupply.org:3000/",
+    "https://ci.msupply.org:3000/",
+    "https://liberia.msupply.org:3000/",
+    "https://tonga-vax.msupply.org:3000/"
+  ],
+  "plugin": "msupply-horizontal-bar",
+  "version": "1.0.2",
+  "time": 1623284541745,
+  "keyId": "7e4d0c6a708866e7",
+  "files": {
+    "LICENSE": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+    "module.js.LICENSE.txt": "0d8f66cd4afb566cb5b7e1540c68f43b939d3eba12ace290f18abc4f4cb53ed0",
+    "module.js.map": "618c33e25e554dac66deda835c8d97bd0139d046fe340b9c5cbc1e932a8a0137",
+    "plugin.json": "d0ece6c9237a448c9ce484ff0e37d2fcd8ad8ff749d2afd146dbcc4d1560d5cf",
+    "README.md": "18ec2aa86d5470092642c30bf6df277ff7f5a9883644ecbb4f8e3d6d7c84d20f",
+    "module.js": "c94fbad9de772a6ac8c12a6d5652c5bb3492bd500bda9cbbe461d3237003245d",
+    "logo.png": "69b1f0a7b506340ab7d267e2ffaabdc68e4e9d6b2083413d7a07a76c422db8f7"
+  }
+}
+-----BEGIN PGP SIGNATURE-----
+Version: OpenPGP.js v4.10.1
+Comment: https://openpgpjs.org
+
+wqEEARMKAAYFAmDBWz0ACgkQfk0ManCIZucTggII6YydiJr20WNDfpDzmQh+
+S2ecolSchPv3r+BWGSqO6hSpKSLRHI+vaDwGDrBC2Uqqnx/SGOnkhxo/MTnG
+hzfcaZACCQFahlJyy4kA5L5LQ4zhzO1SJcLfi04ImPWOcMdXJKsafMhUgsRU
+4hHkN3usX10Uu+lkBawXD+L8Be6MwjCHkUmXRA==
+=QcLd
+-----END PGP SIGNATURE-----

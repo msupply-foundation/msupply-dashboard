@@ -144,10 +144,20 @@ class PaginateSelector extends React.Component<PaginateProps, StateProps> {
             </option>
           ))}
         </select>
-        <button id="jump-up" className="btn btn-primary" style={{ marginLeft: 10, marginRight: 10 }} onClick={this.handleClick}>
+        <button
+          id="jump-up"
+          className="btn btn-primary"
+          style={{ marginLeft: 10, marginRight: 10 }}
+          onClick={this.handleClick}
+        >
           Up
         </button>
-        <button id="jump-down" className="btn btn-primary" style={{ marginLeft: 10, marginRight: 10 }} onClick={this.handleClick}>
+        <button
+          id="jump-down"
+          className="btn btn-primary"
+          style={{ marginLeft: 10, marginRight: 10 }}
+          onClick={this.handleClick}
+        >
           Down
         </button>
         <label className="gf-form-label template-variable">Items to show: </label>
@@ -309,7 +319,7 @@ export class HorizontalBar extends Component<Props, State> {
     };
   };
 
-  componentWillReceiveProps(props: any) {
+  UNSAFE_componentWillReceiveProps(props: any) {
     this.setState(this.getStateFromProps(props));
   }
 
@@ -347,7 +357,10 @@ export class HorizontalBar extends Component<Props, State> {
       // console.log("Current Domain: ", this.state.selectedDomain);
       // console.log("Current Chart Height: ", currentChartHeight);
       newDomain = {
-        x: [this.state.graphData[0].length + 0.5 - (letterIndex + currentChartHeight), this.state.graphData[0].length + 0.5 - letterIndex],
+        x: [
+          this.state.graphData[0].length + 0.5 - (letterIndex + currentChartHeight),
+          this.state.graphData[0].length + 0.5 - letterIndex,
+        ],
         y: this.state.selectedDomain.y,
       };
     }
@@ -422,7 +435,7 @@ export class HorizontalBar extends Component<Props, State> {
           >
             <VictoryAxis
               style={{ tickLabels: { fontSize: 10 } }}
-              tickFormat={t => (t.length > 40 ? t.slice(0, 37) + '. . . ' : t)}
+              tickFormat={(t) => (t.length > 40 ? t.slice(0, 37) + '. . . ' : t)}
               events={[
                 {
                   target: 'tickLabels',
@@ -483,7 +496,7 @@ export class HorizontalBar extends Component<Props, State> {
                             return [
                               {
                                 target: 'data',
-                                mutation: props => {
+                                mutation: (props) => {
                                   // this.variableSrv.setOptionAsCurrent(this.variableSrv.variables[4], {
                                   //   text: props.datum.x,
                                   //   value: props.datum.x,
@@ -500,7 +513,8 @@ export class HorizontalBar extends Component<Props, State> {
                     horizontal
                     barWidth={this.state.mainChartBarWidth}
                     data={dataRows.filter(
-                      (item: any, index: number) => index > this.state.selectedDomain.x[0] && index < this.state.selectedDomain.x[1]
+                      (item: any, index: number) =>
+                        index > this.state.selectedDomain.x[0] && index < this.state.selectedDomain.x[1]
                     )}
                   />
                 );

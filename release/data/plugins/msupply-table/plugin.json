@@ -1,7 +1,7 @@
 {
   "type": "panel",
   "name": "mSupply Table",
-  "id": "msupply-table",
+  "id": "msupplyfoundation-table",
 
   "info": {
     "description": "Table Panel for Grafana",
@@ -14,7 +14,7 @@
       "large": "msupply-table-panel.svg"
     },
     "version": "1.0.0",
-    "updated": "2021-02-26"
+    "updated": "2021-06-10"
   },
   "links": [
     {
