@@ -36,7 +36,6 @@ export const Legend: React.FC<LegendProps> = ({ fieldConfig, position = 'bottoml
     return null;
   }
 
-  console.warn('steps', steps);
   return (
     <div className={positionClass}>
       <div className="info legend leaflet-control">
