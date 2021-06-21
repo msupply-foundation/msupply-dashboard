@@ -1,4 +1,5 @@
-import { FieldConfigSource, Threshold } from '@grafana/data';
+import { FieldConfigSource, Threshold, getColorForTheme } from '@grafana/data';
+import { useTheme } from '@grafana/ui';
 import React from 'react';
 
 const POSITION_CLASSES = {
@@ -15,6 +16,7 @@ interface LegendProps {
 }
 
 export const Legend: React.FC<LegendProps> = ({ fieldConfig, position = 'bottomleft', visible = true }) => {
+  const theme = useTheme();
   const steps = fieldConfig.defaults?.thresholds?.steps || [];
   const positionClass = (position && POSITION_CLASSES[position]) || POSITION_CLASSES.bottomleft;
   const renderLabel = (step: Threshold, index: number) => {
@@ -39,7 +41,7 @@ export const Legend: React.FC<LegendProps> = ({ fieldConfig, position = 'bottoml
       <div className="info legend leaflet-control">
         {steps.map((step, index) => (
           <div key={`${step.value}_${step.color}`} className="legend-item">
-            <i style={{ background: step.color }} />
+            <i style={{ background: getColorForTheme(step.color, theme) }} />
             {renderLabel(step, index)}
           </div>
         ))}
