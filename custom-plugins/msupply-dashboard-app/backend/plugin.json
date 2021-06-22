@@ -1,7 +1,7 @@
 {
   "type": "datasource",
   "name": "mSupply Datasource",
-  "id": "msupply-datasource",
+  "id": "msupplyfoundation-datasource",
   "metrics": true,
   "backend": true,
   "executable": "gpx_msupply-datasource",
@@ -13,8 +13,8 @@
     },
     "keywords": [],
     "logos": {
-      "small": "img/msupply_light_icon.svg",
-      "large": "img/msupply_light_icon.svg"
+      "small": "msupply_light_icon.svg",
+      "large": "msupply_light_icon.svg"
     },
     "links": [
       {
@@ -28,7 +28,7 @@
     ],
     "screenshots": [],
     "version": "1.0.0",
-    "updated": "2020-12-22"
+    "updated": "2021-05-06"
   },
   "dependencies": {
     "grafanaVersion": "7.x.x",
