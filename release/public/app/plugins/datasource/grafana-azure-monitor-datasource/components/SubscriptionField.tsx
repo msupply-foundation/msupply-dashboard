@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { SelectableValue } from '@grafana/data';
 import { Select, MultiSelect } from '@grafana/ui';
 
-import { AzureMonitorQuery, AzureQueryType, AzureQueryEditorFieldProps, AzureMonitorOption } from '../types';
+import { AzureMonitorQuery, AzureQueryEditorFieldProps, AzureMonitorOption, AzureQueryType } from '../types';
 import { findOption, findOptions } from '../utils/common';
 import { Field } from './Field';
 
@@ -64,8 +64,6 @@ const SubscriptionField: React.FC<SubscriptionFieldProps> = ({
       };
 
       if (query.queryType === AzureQueryType.AzureMonitor) {
-        // TODO: set the fields to undefined so we don't
-        // get "resource group select could not be found" errors
         newQuery.azureMonitor = {
           ...newQuery.azureMonitor,
           resourceGroup: undefined,
@@ -102,6 +100,7 @@ const SubscriptionField: React.FC<SubscriptionFieldProps> = ({
   return multiSelect ? (
     <Field label="Subscriptions">
       <MultiSelect
+        menuShouldPortal
         isClearable
         value={findOptions(subscriptions, query.subscriptions)}
         inputId="azure-monitor-subscriptions-field"
@@ -113,6 +112,7 @@ const SubscriptionField: React.FC<SubscriptionFieldProps> = ({
   ) : (
     <Field label="Subscription">
       <Select
+        menuShouldPortal
         value={findOption(subscriptions, query.subscription)}
         inputId="azure-monitor-subscriptions-field"
         onChange={handleChange}

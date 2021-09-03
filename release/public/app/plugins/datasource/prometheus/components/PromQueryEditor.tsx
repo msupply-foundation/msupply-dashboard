@@ -163,6 +163,7 @@ export class PromQueryEditor extends PureComponent<PromQueryEditorProps, State> 
             <div className="gf-form">
               <div className="gf-form-label">Resolution</div>
               <Select
+                menuShouldPortal
                 isSearchable={false}
                 options={INTERVAL_FACTOR_OPTIONS}
                 onChange={this.onIntervalFactorChange}
@@ -173,6 +174,7 @@ export class PromQueryEditor extends PureComponent<PromQueryEditorProps, State> 
             <div className="gf-form">
               <div className="gf-form-label width-7">Format</div>
               <Select
+                menuShouldPortal
                 width={16}
                 isSearchable={false}
                 options={FORMAT_OPTIONS}
@@ -189,8 +191,12 @@ export class PromQueryEditor extends PureComponent<PromQueryEditorProps, State> 
                 />
               </InlineFormLabel>
             </div>
-
-            <PromExemplarField isEnabled={exemplar} onChange={this.onExemplarChange} datasource={datasource} />
+            <PromExemplarField
+              refId={query.refId}
+              isEnabled={exemplar}
+              onChange={this.onExemplarChange}
+              datasource={datasource}
+            />
           </div>
         }
       />
