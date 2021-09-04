@@ -5,21 +5,29 @@ Hash: SHA512
 {
   "manifestVersion": "2.0.0",
   "signatureType": "private",
-  "signedByOrg": "rankprism",
-  "signedByOrgName": "rankprism",
+  "signedByOrg": "msupplyfoundation",
+  "signedByOrgName": "msupplyfoundation",
   "rootUrls": [
     "https://demo-board.msupply.org:3000/",
     "https://ci.msupply.org:3000/",
-    "https://liberia.msupply.org:3000/"
+    "https://liberia.msupply.org:3000/",
+    "https://tonga-vax.msupply.org:3000/",
+    "https://timor.msupply.org:3000/",
+    "http://localhost:3000/",
+    "https://vanuatu-vax.msupply.org:3000/",
+    "https://tokelau.msupply.org:3000/",
+    "https://tonga.msupply.org:3000/",
+    "https://who-demo.msupply.org:3000/"
   ],
-  "plugin": "msupply-datasource",
+  "plugin": "msupplyfoundation-datasource",
   "version": "1.0.0",
-  "time": 1614380746257,
+  "time": 1630713468977,
   "keyId": "7e4d0c6a708866e7",
   "files": {
+    "gpx_msupply-datasource_windows_amd64.exe": "3bd870e32e4264057300ef58e1161b002b86415e6ba10ece05d5f701d440e770",
     "LICENSE": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
     "module.js.map": "6bb926e74abe6020fdf6672647f99791507c7592781ef2f6676c5ada66da4a4f",
-    "plugin.json": "94f134e48d06b582ee6d0763fa97bdf4cd02b8cb414eec762662a439c6f9b7b8",
+    "plugin.json": "0afc849543822e164c8383afa05ff3e7b526d161712eec3a92670c5afe9f2555",
     "README.md": "b9bc43fc2b2f7ce74864ccf40de24cb465ccc953902071467916390a8e8b4a45",
     "module.js": "e157158bb5ae7b498345ae08029093d7517f689fc02f03429184e7a026f15928",
     "msupply_light_icon.svg": "b4b32af01d584ecc186d19d73977c6f8262dcb18ac011e5ea11d4b915b6e1eb2"
@@ -29,9 +37,9 @@ Hash: SHA512
 Version: OpenPGP.js v4.10.1
 Comment: https://openpgpjs.org
 
-wqEEARMKAAYFAmA5fsoACgkQfk0ManCIZuc2JQIJAf2EdY3CMCSPpmOr5vaZ
-GFE8ZiuuQiAvv4PovxGnzA+DJ1s8HvAwDRUHDK1fZStzkUu/GEHg0BAfWMr6
-aICN8vIUAgdcl8Kd8/gyISmTMB/KjOrMeRbOu4HJe58CPPNfr6e3ZB4u2rTt
-uY+CJfYvYoCKV8zlUDymjVBrHhdRoEXAo9FaQw==
-=+tJT
+wqIEARMKAAYFAmEytn0ACgkQfk0ManCIZudAOgIJARVCW8ArfcRyVseEUlFC
+BN7fgXhEIlSvdf72mkzXfDe1cy4ea1KWcdC+Wtpn5gryFLB0eK9TALe08z6N
+bIvP69RIAgkBUJ2lRDDX1ynXYXN1Np/SiuZU1/+vGTvOm8sxjV1Wzr+KBHei
+9EgDvnfz4OekHOt+wEaiGQ6IwTYlG3Qfg75Qinw=
+=Djuk
 -----END PGP SIGNATURE-----

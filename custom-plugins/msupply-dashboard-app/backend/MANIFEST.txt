@@ -13,14 +13,18 @@ Hash: SHA512
     "https://liberia.msupply.org:3000/",
     "https://tonga-vax.msupply.org:3000/",
     "https://timor.msupply.org:3000/",
-    "http://localhost:3000/"
+    "http://localhost:3000/",
+    "https://vanuatu-vax.msupply.org:3000/",
+    "https://tokelau.msupply.org:3000/",
+    "https://tonga.msupply.org:3000/",
+    "https://who-demo.msupply.org:3000/"
   ],
   "plugin": "msupplyfoundation-datasource",
   "version": "1.0.0",
-  "time": 1624340354842,
+  "time": 1630713468977,
   "keyId": "7e4d0c6a708866e7",
   "files": {
-    "gpx_msupply-datasource_windows_amd64.exe": "21899e89ba5878ebfad02f295ecbd4d89da1875e6059c90b0e55e6050eae2a08",
+    "gpx_msupply-datasource_windows_amd64.exe": "3bd870e32e4264057300ef58e1161b002b86415e6ba10ece05d5f701d440e770",
     "LICENSE": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
     "module.js.map": "6bb926e74abe6020fdf6672647f99791507c7592781ef2f6676c5ada66da4a4f",
     "plugin.json": "0afc849543822e164c8383afa05ff3e7b526d161712eec3a92670c5afe9f2555",
@@ -33,9 +37,9 @@ Hash: SHA512
 Version: OpenPGP.js v4.10.1
 Comment: https://openpgpjs.org
 
-wqAEARMKAAYFAmDRd4MACgkQfk0ManCIZuf2KAIIxvT79O2Ol+H0qoZaQGqx
-AdsY8+jDYGMjq/K9jjVwR6ZuI3i+oSQvsGhgv9c8v3CGVMZEVO4uGDbGa67t
-lumB6T8CCK7d6erOwoLi797jW0QfasDaU4v2QHpAd35eCt/hFj4rZPvlltgQ
-NzX3EmD1kQbpkst7UaQOHqJmHde+X+wg1dsv
-=EEgh
+wqIEARMKAAYFAmEytn0ACgkQfk0ManCIZudAOgIJARVCW8ArfcRyVseEUlFC
+BN7fgXhEIlSvdf72mkzXfDe1cy4ea1KWcdC+Wtpn5gryFLB0eK9TALe08z6N
+bIvP69RIAgkBUJ2lRDDX1ynXYXN1Np/SiuZU1/+vGTvOm8sxjV1Wzr+KBHei
+9EgDvnfz4OekHOt+wEaiGQ6IwTYlG3Qfg75Qinw=
+=Djuk
 -----END PGP SIGNATURE-----
