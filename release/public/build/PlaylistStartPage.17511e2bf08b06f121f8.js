@@ -1,2 +1,0 @@
-(window.webpackJsonp=window.webpackJsonp||[]).push([[41],{Kc13:function(t,a,n){"use strict";n.r(a),n.d(a,"PlaylistStartPage",(function(){return r}));var s=n("sQpB");const r=({match:t})=>(s.a.start(parseInt(t.params.id,10)),null);a.default=r}}]);
-//# sourceMappingURL=PlaylistStartPage.17511e2bf08b06f121f8.js.map

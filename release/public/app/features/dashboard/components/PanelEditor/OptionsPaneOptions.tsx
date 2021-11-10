@@ -1,17 +1,19 @@
 import React, { useMemo, useState } from 'react';
 import { FieldConfigSource, GrafanaTheme2, PanelData, PanelPlugin, SelectableValue } from '@grafana/data';
 import { DashboardModel, PanelModel } from '../../state';
-import { CustomScrollbar, RadioButtonGroup, useStyles2 } from '@grafana/ui';
+import { CustomScrollbar, RadioButtonGroup, useStyles2, FilterInput } from '@grafana/ui';
 import { getPanelFrameCategory } from './getPanelFrameOptions';
 import { getVizualizationOptions } from './getVizualizationOptions';
 import { css } from '@emotion/css';
-import { FilterInput } from 'app/core/components/FilterInput/FilterInput';
 import { OptionsPaneCategory } from './OptionsPaneCategory';
 import { getFieldOverrideCategories } from './getFieldOverrideElements';
 import { OptionsPaneCategoryDescriptor } from './OptionsPaneCategoryDescriptor';
 import { OptionSearchEngine } from './state/OptionSearchEngine';
 import { AngularPanelOptions } from './AngularPanelOptions';
 import { getRecentOptions } from './state/getRecentOptions';
+import { isPanelModelLibraryPanel } from '../../../library-panels/guard';
+import { getLibraryPanelOptionsCategory } from './getLibraryPanelOptions';
+
 interface Props {
   plugin: PanelPlugin;
   panel: PanelModel;
@@ -28,8 +30,13 @@ export const OptionsPaneOptions: React.FC<Props> = (props) => {
   const [listMode, setListMode] = useState(OptionFilter.All);
   const styles = useStyles2(getStyles);
 
-  const [panelFrameOptions, vizOptions, justOverrides] = useMemo(
-    () => [getPanelFrameCategory(props), getVizualizationOptions(props), getFieldOverrideCategories(props)],
+  const [panelFrameOptions, vizOptions, justOverrides, libraryPanelOptions] = useMemo(
+    () => [
+      getPanelFrameCategory(props),
+      getVizualizationOptions(props),
+      getFieldOverrideCategories(props),
+      getLibraryPanelOptionsCategory(props),
+    ],
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [panel.configRev, props.data]
@@ -38,7 +45,9 @@ export const OptionsPaneOptions: React.FC<Props> = (props) => {
   const mainBoxElements: React.ReactNode[] = [];
   const isSearching = searchQuery.length > 0;
   const optionRadioFilters = useMemo(getOptionRadioFilters, []);
-  const allOptions = [panelFrameOptions, ...vizOptions];
+  const allOptions = isPanelModelLibraryPanel(panel)
+    ? [libraryPanelOptions, panelFrameOptions, ...vizOptions]
+    : [panelFrameOptions, ...vizOptions];
 
   if (isSearching) {
     mainBoxElements.push(renderSearchHits(allOptions, justOverrides, searchQuery));
@@ -54,7 +63,11 @@ export const OptionsPaneOptions: React.FC<Props> = (props) => {
   } else {
     switch (listMode) {
       case OptionFilter.All:
-        // Panel frame options first
+        if (isPanelModelLibraryPanel(panel)) {
+          // Library Panel options first
+          mainBoxElements.push(libraryPanelOptions.render());
+        }
+        // Panel frame options second
         mainBoxElements.push(panelFrameOptions.render());
         // If angular add those options next
         if (props.plugin.angularPanelCtrl) {

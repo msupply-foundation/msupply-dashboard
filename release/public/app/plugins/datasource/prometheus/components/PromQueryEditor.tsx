@@ -40,7 +40,12 @@ export class PromQueryEditor extends PureComponent<PromQueryEditorProps, State> 
   constructor(props: PromQueryEditorProps) {
     super(props);
     // Use default query to prevent undefined input values
-    const defaultQuery: Partial<PromQuery> = { expr: '', legendFormat: '', interval: '', exemplar: true };
+    const defaultQuery: Partial<PromQuery> = {
+      expr: '',
+      legendFormat: '',
+      interval: '',
+      exemplar: true,
+    };
     const query = Object.assign({}, defaultQuery, props.query);
     this.query = query;
     // Query target properties that are fully controlled inputs
@@ -175,6 +180,7 @@ export class PromQueryEditor extends PureComponent<PromQueryEditorProps, State> 
               <div className="gf-form-label width-7">Format</div>
               <Select
                 menuShouldPortal
+                className="select-container"
                 width={16}
                 isSearchable={false}
                 options={FORMAT_OPTIONS}

@@ -113,6 +113,7 @@ exports[`Render PromQueryEditor with basic options should render 1`] = `
           Format
         </div>
         <Select
+          className="select-container"
           isSearchable={false}
           menuShouldPortal={true}
           onChange={[Function]}

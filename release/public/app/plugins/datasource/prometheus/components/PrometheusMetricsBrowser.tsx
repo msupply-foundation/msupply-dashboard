@@ -1,12 +1,21 @@
 import React, { ChangeEvent } from 'react';
-import { Button, HorizontalGroup, Input, Label, LoadingPlaceholder, stylesFactory, withTheme } from '@grafana/ui';
+import {
+  Button,
+  HorizontalGroup,
+  Input,
+  Label,
+  LoadingPlaceholder,
+  stylesFactory,
+  withTheme,
+  BrowserLabel as PromLabel,
+} from '@grafana/ui';
 import PromQlLanguageProvider from '../language_provider';
+import { escapeLabelValueInExactSelector, escapeLabelValueInRegexSelector } from '../language_utils';
 import { css, cx } from '@emotion/css';
 import store from 'app/core/store';
 import { FixedSizeList } from 'react-window';
 
 import { GrafanaTheme } from '@grafana/data';
-import { Label as PromLabel } from './Label';
 
 // Hard limit on labels to render
 const MAX_LABEL_COUNT = 10000;
@@ -57,12 +66,12 @@ export function buildSelector(labels: SelectableLabel[]): string {
     if ((label.name === METRIC_LABEL || label.selected) && label.values && label.values.length > 0) {
       const selectedValues = label.values.filter((value) => value.selected).map((value) => value.name);
       if (selectedValues.length > 1) {
-        selectedLabels.push(`${label.name}=~"${selectedValues.join('|')}"`);
+        selectedLabels.push(`${label.name}=~"${selectedValues.map(escapeLabelValueInRegexSelector).join('|')}"`);
       } else if (selectedValues.length === 1) {
         if (label.name === METRIC_LABEL) {
           singleMetric = selectedValues[0];
         } else {
-          selectedLabels.push(`${label.name}="${selectedValues[0]}"`);
+          selectedLabels.push(`${label.name}="${escapeLabelValueInExactSelector(selectedValues[0])}"`);
         }
       }
     }
@@ -591,7 +600,7 @@ export class UnthemedPrometheusMetricsBrowser extends React.Component<BrowserPro
                     <FixedSizeList
                       height={Math.min(200, LIST_ITEM_SIZE * (label.values?.length || 0))}
                       itemCount={label.values?.length || 0}
-                      itemSize={25}
+                      itemSize={28}
                       itemKey={(i) => (label.values as FacettableValue[])[i].name}
                       width={200}
                       className={styles.valueList}
