@@ -17,7 +17,7 @@ datasources:
   #   user: [[database_user]]
   #   isDefault: true
   #   secureJsonData:
-  #     password: [[database_password]]
+  #     password: '[[database_password]]'
   #   jsonData:
   #     sslmode: 'disable' # disable/require/verify-ca/verify-full
   #     maxOpenConns: 0 # Grafana v5.4+

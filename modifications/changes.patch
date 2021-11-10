@@ -1,9 +1,9 @@
-diff --git a/packages/grafana-ui/src/components/DateTimePickers/rangeOptions.ts b/packages/grafana-ui/src/components/DateTimePickers/rangeOptions.ts
-index 1c48ea551e..54428f9f12 100644
---- a/packages/grafana-ui/src/components/DateTimePickers/rangeOptions.ts
-+++ b/packages/grafana-ui/src/components/DateTimePickers/rangeOptions.ts
+diff --git a/packages/grafana-ui/src/components/DateTimePickers/options.ts b/packages/grafana-ui/src/components/DateTimePickers/options.ts
+index c5f7926d98..ba3c6d80b7 100644
+--- a/packages/grafana-ui/src/components/DateTimePickers/options.ts
++++ b/packages/grafana-ui/src/components/DateTimePickers/options.ts
 @@ -1,9 +1,6 @@
- import { TimeOption } from '@grafana/data';
+ import { SelectableValue, TimeOption } from '@grafana/data';
  
  export const quickOptions: TimeOption[] = [
 -  { from: 'now-5m', to: 'now', display: 'Last 5 minutes' },
@@ -48,10 +48,10 @@ index ac1deda711..3b5e3e7eb5 100644
  
  .gicon-cog {
 diff --git a/public/views/index-template.html b/public/views/index-template.html
-index 16697a0e89..b24ff26442 100644
+index 42d2e64c5f..0b3ef57804 100644
 --- a/public/views/index-template.html
 +++ b/public/views/index-template.html
-@@ -67,7 +67,7 @@
+@@ -70,7 +70,7 @@
          height: 60px;
          background-repeat: no-repeat;
          background-size: contain;
