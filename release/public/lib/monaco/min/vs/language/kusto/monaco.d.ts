@@ -14,6 +14,7 @@ declare module monaco.languages.kusto {
     export interface LanguageSettings {
         includeControlCommands?: boolean;
         newlineAfterPipe?: boolean;
+        syntaxErrorAsMarkDown?: SyntaxErrorAsMarkDownOptions;
         openSuggestionDialogAfterPreviousSuggestionAccepted?: boolean;
         useIntellisenseV2?: boolean;
         useSemanticColorization?: boolean;
@@ -22,6 +23,12 @@ declare module monaco.languages.kusto {
         onDidProvideCompletionItems?: monaco.languages.kusto.OnDidProvideCompletionItems;
         enableHover?: boolean;
         formatter?: FormatterOptions;
+    }
+
+    export interface SyntaxErrorAsMarkDownOptions {
+        header?: string;
+        icon?: string;
+        enableSyntaxErrorAsMarkDown?: boolean;
     }
 
     export interface FormatterOptions {
@@ -53,7 +60,7 @@ declare module monaco.languages.kusto {
     export interface KustoWorker {
         /**
          * Sets an array of ambient parameters to be known by the language service.
-         * Language service assumes that these parameters will be provided externaly when query gets executed and does
+         * Language service assumes that these parameters will be provided externally when query gets executed and does
          * not error-out when they are being referenced in the query.
          * @param parameters the array of parameters
          */
@@ -70,7 +77,7 @@ declare module monaco.languages.kusto {
             clusterConnectionString: string,
             databaseInContextName: string
         ): Promise<EngineSchema>;
-        getCommandInContext(uri: string, cursorOffest: number): Promise<string | null>;
+        getCommandInContext(uri: string, cursorOffset: number): Promise<string | null>;
         getCommandAndLocationInContext(
             uri: string,
             offset: number
@@ -84,10 +91,10 @@ declare module monaco.languages.kusto {
         /**
          * Get all declared query parameters declared in current block if any.
          */
-        getQueryParams(uri: string, cursorOffest: number): Promise<{ name: string; type: string }[]>;
+        getQueryParams(uri: string, cursorOffset: number): Promise<{ name: string; type: string }[]>;
 
         /**
-         * Get all the ambient parameters defind in global scope.
+         * Get all the ambient parameters defined in global scope.
          * Ambient parameters are parameters that are not defined in the syntax such as in a query paramter declaration.
          * These are parameters that are injected from outside, usually by a UX application that would like to offer
          * the user intellisense for a symbol, without forcing them to write a query declaration statement.
@@ -101,7 +108,7 @@ declare module monaco.languages.kusto {
          * statement.
          * It is also different from getGlobalParams that will return all global parameters whether used or not.
          */
-        getReferencedGlobalParams(uri: string): Promise<{ name: string; type: string }[]>;
+        getReferencedGlobalParams(uri: string, cursorOffset: number): Promise<{ name: string; type: string }[]>;
 
         /**
          * Get visualization options in render command if present (null otherwise).
@@ -111,6 +118,7 @@ declare module monaco.languages.kusto {
         doRangeFormat(uri: string, range: ls.Range): Promise<ls.TextEdit[]>;
         doCurrentCommandFormat(uri: string, caretPosition: ls.Position): Promise<ls.TextEdit[]>;
         doValidation(uri: string, intervals: { start: number; end: number }[]): Promise<ls.Diagnostic[]>;
+        setParameters(parameters: ScalarParameter[]): void;
     }
 
     /**
@@ -203,22 +211,22 @@ declare module monaco.languages.kusto {
     export declare type Kind = 'default' | 'unstacked' | 'stacked' | 'stacked100' | 'map';
 
     export interface RenderOptions {
-        visualization?: VisualizationType;
-        title?: string;
-        xcolumn?: string;
-        series?: string[];
-        ycolumns?: string[];
-        xtitle?: string;
-        ytitle?: string;
-        xaxis?: Scale;
-        yaxis?: Scale;
-        legend?: LegendVisibility;
-        ySplit?: YSplit;
-        accumulate?: boolean;
-        kind?: Kind;
-        anomalycolumns?: string[];
-        ymin?: number;
-        ymax?: number;
+        visualization?: null | VisualizationType;
+        title?: null | string;
+        xcolumn?: null | string;
+        series?: null | string[];
+        ycolumns?: null | string[];
+        xtitle?: null | string;
+        ytitle?: null | string;
+        xaxis?: null | Scale;
+        yaxis?: null | Scale;
+        legend?: null | LegendVisibility;
+        ySplit?: null | YSplit;
+        accumulate?: null | boolean;
+        kind?: null | Kind;
+        anomalycolumns?: null | string[];
+        ymin?: null | number;
+        ymax?: null | number;
     }
 
     export interface RenderInfo {

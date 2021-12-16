@@ -1,2 +1,0 @@
-"use strict";(self.webpackChunkgrafana=self.webpackChunkgrafana||[]).push([[4908],{"./public/app/features/sandbox/BenchmarksPage.tsx":(e,a,s)=>{s.r(a),s.d(a,{BenchmarksPage:()=>t,default:()=>u});var r,n=s("./packages/grafana-ui/src/index.ts"),c=(s("./node_modules/react/index.js"),s("./node_modules/react/jsx-runtime.js"));const t=()=>r||(r=(0,c.jsx)(n.VerticalGroup,{children:(0,c.jsx)(n.EmotionPerfTest,{})})),u=t}}]);
-//# sourceMappingURL=BenchmarksPage.0e7ce18a6cf0f8775a65.js.map

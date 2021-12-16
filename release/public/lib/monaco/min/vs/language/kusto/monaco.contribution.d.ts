@@ -10,3 +10,4 @@ export declare class LanguageServiceDefaultsImpl implements monaco.languages.kus
     setMaximumWorkerIdleTime(value: number): void;
     getWorkerMaxIdleTime(): number;
 }
+export declare function setupMonacoKusto(monacoInstance: typeof monaco): void;

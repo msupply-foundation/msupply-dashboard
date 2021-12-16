@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/><meta name="viewport" content="width=device-width"/><meta name="theme-color" content="#000"/><title>[[.AppTitle]]</title><base href="[[.AppSubUrl]]/"/><link rel="preload" href="[[.ContentDeliveryURL]]public/fonts/roboto/RxZJdnzeo3R5zSexge8UUVtXRa8TVwTICgirnJhmVJw.woff2" as="font" crossorigin/><link rel="icon" type="image/png" href="[[.FavIcon]]"/><link rel="apple-touch-icon" sizes="180x180" href="[[.AppleTouchIcon]]"/><link rel="mask-icon" href="[[.ContentDeliveryURL]]public/img/grafana_mask_icon.svg" color="#F05A28"/><link rel="stylesheet" href="[[.ContentDeliveryURL]]public/build/grafana.[[ .Theme ]].0e7ce18a6cf0f8775a65.css"/><script nonce="[[.Nonce]]">performance.mark('frontend_boot_css_time_seconds');</script><meta name="apple-mobile-web-app-capable" content="yes"/><meta name="apple-mobile-web-app-status-bar-style" content="black"/><meta name="msapplication-TileColor" content="#2b5797"/><meta name="msapplication-config" content="public/img/browserconfig.xml"/></head><body class="theme-[[ .Theme ]] [[.AppNameBodyClass]]"><style>.preloader {
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/><meta name="viewport" content="width=device-width"/><meta name="theme-color" content="#000"/><title>[[.AppTitle]]</title><base href="[[.AppSubUrl]]/"/><link rel="preload" href="[[.ContentDeliveryURL]]public/fonts/roboto/RxZJdnzeo3R5zSexge8UUVtXRa8TVwTICgirnJhmVJw.woff2" as="font" crossorigin/><link rel="icon" type="image/png" href="[[.FavIcon]]"/><link rel="apple-touch-icon" sizes="180x180" href="[[.AppleTouchIcon]]"/><link rel="mask-icon" href="[[.ContentDeliveryURL]]public/img/grafana_mask_icon.svg" color="#F05A28"/><link rel="stylesheet" href="[[.ContentDeliveryURL]]public/build/grafana.[[ .Theme ]].e27ef9683b776a9e8e93.css"/><script nonce="[[.Nonce]]">performance.mark('frontend_boot_css_time_seconds');</script><meta name="apple-mobile-web-app-capable" content="yes"/><meta name="apple-mobile-web-app-status-bar-style" content="black"/><meta name="msapplication-TileColor" content="#2b5797"/><meta name="msapplication-config" content="public/img/browserconfig.xml"/></head><body class="theme-[[ .Theme ]] [[.AppNameBodyClass]]"><style>.preloader {
         height: 100%;
         flex-direction: column;
         display: flex;
@@ -168,28 +168,36 @@
         if (!checkBrowserCompatibility()) {
           alert('Your browser is not fully supported, please try newer version.');
         }</script></div><div id="reactRoot"></div><script nonce="[[.Nonce]]">window.grafanaBootData = {
-          user: [[.User]],
-          settings: [[.Settings]],
-          navTree: [[.NavTree]],
-          themePaths: {
-            light: '[[.ContentDeliveryURL]]public/build/grafana.light.0e7ce18a6cf0f8775a65.css',
-            dark: '[[.ContentDeliveryURL]]public/build/grafana.dark.0e7ce18a6cf0f8775a65.css'
-          }
-        };
+        user: [[.User]],
+        settings: [[.Settings]],
+        navTree: [[.NavTree]],
+        themePaths: {
+          light: '[[.ContentDeliveryURL]]public/build/grafana.light.e27ef9683b776a9e8e93.css',
+          dark: '[[.ContentDeliveryURL]]public/build/grafana.dark.e27ef9683b776a9e8e93.css'
+        }
+      };
+
+      window.__grafana_load_failed = function() {
+        var preloader = document.getElementsByClassName("preloader");
+        if (preloader.length) {
+          preloader[0].className = "preloader preloader--done";
+        }
+      }
 
       // In case the js files fails to load the code below will show an info message.
-        window.onload = function() {
-          var preloader = document.getElementsByClassName("preloader");
-          if (preloader.length) {
-            preloader[0].className = "preloader preloader--done";
-          }
-        };
-        [[if .ContentDeliveryURL]]
-          window.public_cdn_path = '[[.ContentDeliveryURL]]public/build/';
-        [[end]]
-        [[if .Nonce]]
-          window.nonce = '[[.Nonce]]';
-        [[end]]</script>[[if .GoogleTagManagerId]]<script nonce="[[.Nonce]]">dataLayer = [
+      window.onload = function() {
+        if (window.__grafana_app_bundle_loaded) {
+          return;
+        }
+        window.__grafana_load_failed();
+      };
+
+      [[if .ContentDeliveryURL]]
+        window.public_cdn_path = '[[.ContentDeliveryURL]]public/build/';
+      [[end]]
+      [[if .Nonce]]
+        window.nonce = '[[.Nonce]]';
+      [[end]]</script>[[if .GoogleTagManagerId]]<script nonce="[[.Nonce]]">dataLayer = [
         {
           IsSignedIn: '[[.User.IsSignedIn]]',
           Email: '[[.User.Email]]',
@@ -207,4 +215,4 @@
         j.async = true;
         j.src = '//www.googletagmanager.com/gtm.js?id=' + i + dl;
         f.parentNode.insertBefore(j, f);
-      })(window, document, 'script', 'dataLayer', '[[.GoogleTagManagerId]]');</script>[[end]]<script nonce="[[.Nonce]]" src="[[.ContentDeliveryURL]]public/build/runtime.0e7ce18a6cf0f8775a65.js"></script><script nonce="[[.Nonce]]" src="[[.ContentDeliveryURL]]public/build/6695.0e7ce18a6cf0f8775a65.js"></script><script nonce="[[.Nonce]]" src="[[.ContentDeliveryURL]]public/build/1762.0e7ce18a6cf0f8775a65.js"></script><script nonce="[[.Nonce]]" src="[[.ContentDeliveryURL]]public/build/8529.0e7ce18a6cf0f8775a65.js"></script><script nonce="[[.Nonce]]" src="[[.ContentDeliveryURL]]public/build/8966.0e7ce18a6cf0f8775a65.js"></script><script nonce="[[.Nonce]]" src="[[.ContentDeliveryURL]]public/build/app.0e7ce18a6cf0f8775a65.js"></script><script nonce="[[.Nonce]]">performance.mark('frontend_boot_js_done_time_seconds');</script></body></html>
+      })(window, document, 'script', 'dataLayer', '[[.GoogleTagManagerId]]');</script>[[end]]<script nonce="[[.Nonce]]" src="[[.ContentDeliveryURL]]public/build/runtime.e27ef9683b776a9e8e93.js"></script><script nonce="[[.Nonce]]" src="[[.ContentDeliveryURL]]public/build/4808.e27ef9683b776a9e8e93.js"></script><script nonce="[[.Nonce]]" src="[[.ContentDeliveryURL]]public/build/4850.e27ef9683b776a9e8e93.js"></script><script nonce="[[.Nonce]]" src="[[.ContentDeliveryURL]]public/build/3553.e27ef9683b776a9e8e93.js"></script><script nonce="[[.Nonce]]" src="[[.ContentDeliveryURL]]public/build/9309.e27ef9683b776a9e8e93.js"></script><script nonce="[[.Nonce]]" src="[[.ContentDeliveryURL]]public/build/1609.e27ef9683b776a9e8e93.js"></script><script nonce="[[.Nonce]]" src="[[.ContentDeliveryURL]]public/build/app.e27ef9683b776a9e8e93.js"></script><script nonce="[[.Nonce]]">performance.mark('frontend_boot_js_done_time_seconds');</script></body></html>
