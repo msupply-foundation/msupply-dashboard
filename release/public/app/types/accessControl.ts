@@ -48,6 +48,20 @@ export enum AccessControlAction {
   DataSourcesPermissionsRead = 'datasources.permissions:read',
 
   ActionServerStatsRead = 'server.stats:read',
+
+  ActionTeamsCreate = 'teams:create',
+  ActionTeamsDelete = 'teams:delete',
+  ActionTeamsRead = 'teams:read',
+  ActionTeamsWrite = 'teams:write',
+  ActionTeamsPermissionsRead = 'teams.permissions:read',
+  ActionTeamsPermissionsWrite = 'teams.permissions:write',
+
+  ActionRolesList = 'roles:list',
+  ActionBuiltinRolesList = 'roles.builtin:list',
+  ActionTeamsRolesList = 'teams.roles:list',
+  ActionTeamsRolesAdd = 'teams.roles:add',
+  ActionTeamsRolesRemove = 'teams.roles:remove',
+  ActionUserRolesList = 'users.roles:list',
 }
 
 export interface Role {
