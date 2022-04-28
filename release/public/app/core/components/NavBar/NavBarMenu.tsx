@@ -37,8 +37,8 @@ export function NavBarMenu({ activeItem, navItems, onClose }: Props) {
         <nav className={styles.content}>
           <CustomScrollbar>
             <ul>
-              {navItems.map((link, index) => (
-                <div className={styles.section} key={index}>
+              {navItems.map((link) => (
+                <div className={styles.section} key={link.text}>
                   <NavBarMenuItem
                     isActive={activeItem === link}
                     onClick={() => {
@@ -52,10 +52,10 @@ export function NavBarMenu({ activeItem, navItems, onClose }: Props) {
                     isMobile={true}
                   />
                   {link.children?.map(
-                    (childLink, childIndex) =>
+                    (childLink) =>
                       !childLink.divider && (
                         <NavBarMenuItem
-                          key={childIndex}
+                          key={childLink.text}
                           icon={childLink.icon as IconName}
                           isActive={activeItem === childLink}
                           isDivider={childLink.divider}

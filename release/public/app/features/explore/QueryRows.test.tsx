@@ -44,13 +44,13 @@ function setup(queries: DataQuery[]) {
   const initialState: ExploreState = {
     left: {
       ...leftState,
+      richHistory: [],
       datasourceInstance: datasources['someDs-uid'],
       queries,
     },
     syncedTimes: false,
     right: undefined,
-    richHistory: [],
-    localStorageFull: false,
+    richHistoryStorageFull: false,
     richHistoryLimitExceededWarningShown: false,
   };
   const store = configureStore({ explore: initialState, user: { orgId: 1 } as UserState });

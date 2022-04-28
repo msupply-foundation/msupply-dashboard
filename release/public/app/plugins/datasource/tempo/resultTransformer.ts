@@ -8,6 +8,7 @@ import {
   MutableDataFrame,
   TraceKeyValuePair,
   TraceLog,
+  TraceSpanReference,
   TraceSpanRow,
   dateTimeFormat,
 } from '@grafana/data';
@@ -230,6 +231,24 @@ function getSpanTags(
   return spanTags;
 }
 
+function getReferences(span: collectorTypes.opentelemetryProto.trace.v1.Span) {
+  const references: TraceSpanReference[] = [];
+  if (span.links) {
+    for (const link of span.links) {
+      const { traceId, spanId } = link;
+      const tags: TraceKeyValuePair[] = [];
+      if (link.attributes) {
+        for (const attribute of link.attributes) {
+          tags.push({ key: attribute.key, value: getAttributeValue(attribute.value) });
+        }
+      }
+      references.push({ traceID: traceId, spanID: spanId, tags });
+    }
+  }
+
+  return references;
+}
+
 function getLogs(span: collectorTypes.opentelemetryProto.trace.v1.Span) {
   const logs: TraceLog[] = [];
   if (span.events) {
@@ -262,6 +281,7 @@ export function transformFromOTLP(
       { name: 'startTime', type: FieldType.number },
       { name: 'duration', type: FieldType.number },
       { name: 'logs', type: FieldType.other },
+      { name: 'references', type: FieldType.other },
       { name: 'tags', type: FieldType.other },
     ],
     meta: {
@@ -287,6 +307,7 @@ export function transformFromOTLP(
             duration: (span.endTimeUnixNano! - span.startTimeUnixNano!) / 1000000,
             tags: getSpanTags(span, librarySpan.instrumentationLibrary),
             logs: getLogs(span),
+            references: getReferences(span),
           } as TraceSpanRow);
         }
       }
@@ -369,6 +390,7 @@ export function transformToOTLP(data: MutableDataFrame): {
       droppedLinksCount: 0,
       status: getOTLPStatus(span.tags),
       events: getOTLPEvents(span.logs),
+      links: getOTLPReferences(span.references),
     });
   }
 
@@ -481,6 +503,34 @@ function getOTLPEvents(logs: TraceLog[]): collectorTypes.opentelemetryProto.trac
   return events;
 }
 
+function getOTLPReferences(
+  references: TraceSpanReference[]
+): collectorTypes.opentelemetryProto.trace.v1.Span.Link[] | undefined {
+  if (!references || !references.length) {
+    return undefined;
+  }
+
+  let links: collectorTypes.opentelemetryProto.trace.v1.Span.Link[] = [];
+  for (const ref of references) {
+    let link: collectorTypes.opentelemetryProto.trace.v1.Span.Link = {
+      traceId: ref.traceID,
+      spanId: ref.spanID,
+      attributes: [],
+      droppedAttributesCount: 0,
+    };
+    if (ref.tags?.length) {
+      for (const tag of ref.tags) {
+        link.attributes?.push({
+          key: tag.key,
+          value: toAttributeValue(tag),
+        });
+      }
+    }
+    links.push(link);
+  }
+  return links;
+}
+
 export function transformTrace(response: DataQueryResponse, nodeGraph = false): DataQueryResponse {
   // We need to parse some of the fields which contain stringified json.
   // Seems like we can't just map the values as the frame we got from backend has some default processing
@@ -513,7 +563,7 @@ export function transformTrace(response: DataQueryResponse, nodeGraph = false): 
  * Change fields which are json string into JS objects. Modifies the frame in place.
  */
 function parseJsonFields(frame: DataFrame) {
-  for (const fieldName of ['serviceTags', 'logs', 'tags']) {
+  for (const fieldName of ['serviceTags', 'logs', 'tags', 'references']) {
     const field = frame.fields.find((f) => f.name === fieldName);
     if (field) {
       const fieldIndex = frame.fields.indexOf(field);

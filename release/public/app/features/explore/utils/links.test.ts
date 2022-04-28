@@ -22,6 +22,10 @@ describe('getFieldLinksForExplore', () => {
       getVariables() {
         return [];
       },
+      containsTemplate() {
+        return false;
+      },
+      updateTimeRange(timeRange: TimeRange) {},
     });
   });
 
