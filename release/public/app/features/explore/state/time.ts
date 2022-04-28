@@ -8,13 +8,14 @@ import {
   TimeRange,
 } from '@grafana/data';
 import { RefreshPicker } from '@grafana/ui';
+import { getTemplateSrv } from '@grafana/runtime';
 
 import { getTimeRange, refreshIntervalToSortOrder, stopQueryState } from 'app/core/utils/explore';
 import { ExploreItemState, ThunkResult } from 'app/types';
 import { ExploreId } from 'app/types/explore';
 import { getFiscalYearStartMonth, getTimeZone } from 'app/features/profile/state/selectors';
 import { getTimeSrv } from '../../dashboard/services/TimeSrv';
-import { DashboardModel } from 'app/features/dashboard/state';
+import { TimeModel } from '../../dashboard/state/TimeModel';
 import { runQueries } from './query';
 import { syncTimesAction, stateSave } from './main';
 
@@ -95,14 +96,21 @@ export const updateTime = (config: {
 
     const range = getTimeRange(timeZone, rawRange, fiscalYearStartMonth);
     const absoluteRange: AbsoluteTimeRange = { from: range.from.valueOf(), to: range.to.valueOf() };
+    const timeModel: TimeModel = {
+      time: range.raw,
+      refresh: false,
+      timepicker: {},
+      getTimezone: () => timeZone,
+      timeRangeUpdated: (rawTimeRange: RawTimeRange) => {
+        dispatch(updateTimeRange({ exploreId: exploreId, rawRange: rawTimeRange }));
+      },
+    };
 
-    getTimeSrv().init(
-      new DashboardModel({
-        time: range.raw,
-        refresh: false,
-        timeZone,
-      })
-    );
+    // We need to re-initialize TimeSrv because it might have been triggered by the other Explore pane (when split)
+    getTimeSrv().init(timeModel);
+    // After re-initializing TimeSrv we need to update the time range in Template service for interpolation
+    // of __from and __to variables
+    getTemplateSrv().updateTimeRange(getTimeSrv().timeRange());
 
     dispatch(changeRangeAction({ exploreId, range, absoluteRange }));
   };

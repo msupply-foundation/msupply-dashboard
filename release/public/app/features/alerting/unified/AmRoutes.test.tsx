@@ -11,7 +11,6 @@ import {
   Route,
 } from 'app/plugins/datasource/alertmanager/types';
 import { configureStore } from 'app/store/configureStore';
-import { typeAsJestMock } from 'test/helpers/typeAsJestMock';
 import { byLabelText, byRole, byTestId, byText } from 'testing-library-selector';
 import AmRoutes from './AmRoutes';
 import { fetchAlertManagerConfig, fetchStatus, updateAlertManagerConfig } from './api/alertmanager';
@@ -21,18 +20,22 @@ import { DataSourceType, GRAFANA_RULES_SOURCE_NAME } from './utils/datasource';
 import userEvent from '@testing-library/user-event';
 import { selectOptionInTest } from '@grafana/ui';
 import { ALERTMANAGER_NAME_QUERY_KEY } from './utils/constants';
+import { contextSrv } from 'app/core/services/context_srv';
+import { AccessControlAction } from 'app/types';
 
 jest.mock('./api/alertmanager');
 jest.mock('./utils/config');
+jest.mock('app/core/services/context_srv');
 
 const mocks = {
-  getAllDataSourcesMock: typeAsJestMock(getAllDataSources),
+  getAllDataSourcesMock: jest.mocked(getAllDataSources),
 
   api: {
-    fetchAlertManagerConfig: typeAsJestMock(fetchAlertManagerConfig),
-    updateAlertManagerConfig: typeAsJestMock(updateAlertManagerConfig),
-    fetchStatus: typeAsJestMock(fetchStatus),
+    fetchAlertManagerConfig: jest.mocked(fetchAlertManagerConfig),
+    updateAlertManagerConfig: jest.mocked(updateAlertManagerConfig),
+    fetchStatus: jest.mocked(fetchStatus),
   },
+  contextSrv: jest.mocked(contextSrv),
 };
 
 const renderAmRoutes = (alertManagerSourceName?: string) => {
@@ -178,6 +181,9 @@ describe('AmRoutes', () => {
 
   beforeEach(() => {
     mocks.getAllDataSourcesMock.mockReturnValue(Object.values(dataSources));
+    mocks.contextSrv.hasAccess.mockImplementation(() => true);
+    mocks.contextSrv.hasPermission.mockImplementation(() => true);
+    mocks.contextSrv.evaluatePermission.mockImplementation(() => []);
     setDataSourceSrv(new MockDataSourceSrv(dataSources));
   });
 
@@ -358,6 +364,18 @@ describe('AmRoutes', () => {
       },
       template_files: {},
     });
+  });
+
+  it('hides create and edit button if user does not have permission', () => {
+    mocks.contextSrv.hasAccess.mockImplementation((action) =>
+      [AccessControlAction.AlertingNotificationsRead, AccessControlAction.AlertingNotificationsRead].includes(
+        action as AccessControlAction
+      )
+    );
+
+    renderAmRoutes();
+    expect(ui.newPolicyButton.query()).not.toBeInTheDocument();
+    expect(ui.editButton.query()).not.toBeInTheDocument();
   });
 
   it('Show error message if loading Alertmanager config fails', async () => {

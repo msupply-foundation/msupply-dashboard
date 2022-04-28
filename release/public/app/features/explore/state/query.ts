@@ -27,7 +27,6 @@ import {
   stopQueryState,
   updateHistory,
 } from 'app/core/utils/explore';
-import { addToRichHistory } from 'app/core/utils/richHistory';
 import { ExploreItemState, ExplorePanelData, ThunkDispatch, ThunkResult } from 'app/types';
 import { ExploreId, ExploreState, QueryOptions } from 'app/types/explore';
 import { getTimeZone } from 'app/features/profile/state/selectors';
@@ -36,10 +35,10 @@ import { notifyApp } from '../../../core/actions';
 import { runRequest } from '../../query/state/runRequest';
 import { decorateData } from '../utils/decorators';
 import { createErrorNotification } from '../../../core/copy/appNotification';
-import { localStorageFullAction, richHistoryLimitExceededAction, richHistoryUpdatedAction, stateSave } from './main';
+import { stateSave } from './main';
 import { AnyAction, createAction, PayloadAction } from '@reduxjs/toolkit';
 import { updateTime } from './time';
-import { historyUpdatedAction } from './history';
+import { addHistoryItem, historyUpdatedAction, loadRichHistory } from './history';
 import { createCacheKey, getResultsFromCache } from './utils';
 import deepEqual from 'fast-deep-equal';
 
@@ -192,7 +191,7 @@ export const scanStopAction = createAction<ScanStopPayload>('explore/scanStop');
 export interface AddResultsToCachePayload {
   exploreId: ExploreId;
   cacheKey: string;
-  queryResponse: PanelData;
+  queryResponse: ExplorePanelData;
 }
 export const addResultsToCacheAction = createAction<AddResultsToCachePayload>('explore/addResultsToCache');
 
@@ -305,7 +304,7 @@ export function modifyQueries(
   };
 }
 
-function handleHistory(
+async function handleHistory(
   dispatch: ThunkDispatch,
   state: ExploreState,
   history: Array<HistoryItem<DataQuery>>,
@@ -315,30 +314,14 @@ function handleHistory(
 ) {
   const datasourceId = datasource.meta.id;
   const nextHistory = updateHistory(history, datasourceId, queries);
-  const {
-    richHistory: nextRichHistory,
-    localStorageFull,
-    limitExceeded,
-  } = addToRichHistory(
-    state.richHistory || [],
-    datasourceId,
-    datasource.name,
-    queries,
-    false,
-    '',
-    '',
-    !state.localStorageFull,
-    !state.richHistoryLimitExceededWarningShown
-  );
   dispatch(historyUpdatedAction({ exploreId, history: nextHistory }));
-  dispatch(richHistoryUpdatedAction({ richHistory: nextRichHistory }));
 
-  if (localStorageFull) {
-    dispatch(localStorageFullAction());
-  }
-  if (limitExceeded) {
-    dispatch(richHistoryLimitExceededAction());
-  }
+  dispatch(addHistoryItem(datasource.uid, datasource.name, queries));
+
+  // Because filtering happens in the backend we cannot add a new entry without checking if it matches currently
+  // used filters. Instead, we refresh the query history list.
+  // TODO: run only if Query History list is opened (#47252)
+  dispatch(loadRichHistory(exploreId));
 }
 
 /**
@@ -493,7 +476,11 @@ export const runQueries = (
         );
         dispatch(cleanLogsVolumeAction({ exploreId }));
       } else if (hasLogsVolumeSupport(datasourceInstance)) {
-        const logsVolumeDataProvider = datasourceInstance.getLogsVolumeDataProvider(transaction.request);
+        const sourceRequest = {
+          ...transaction.request,
+          requestId: transaction.request.requestId + '_log_volume',
+        };
+        const logsVolumeDataProvider = datasourceInstance.getLogsVolumeDataProvider(sourceRequest);
         dispatch(
           storeLogsVolumeDataProviderAction({
             exploreId,
