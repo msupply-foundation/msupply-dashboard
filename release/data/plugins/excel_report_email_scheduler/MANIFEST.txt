@@ -1,0 +1,57 @@
+
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+{
+  "manifestVersion": "2.0.0",
+  "signatureType": "private",
+  "signedByOrg": "msupplyfoundation",
+  "signedByOrgName": "msupplyfoundation",
+  "rootUrls": [
+    "https://demo-board.msupply.org:3000/",
+    "https://png.msupply.org:3000/",
+    "https://ci.msupply.org:3000/",
+    "https://liberia.msupply.org:3000/",
+    "https://tonga-vax.msupply.org:3000/",
+    "https://timor.msupply.org:3000/",
+    "http://localhost:3000/",
+    "https://vanuatu-vax.msupply.org:3000/",
+    "https://tokelau.msupply.org:3000/",
+    "https://tonga.msupply.org:3000/",
+    "https://who-demo.msupply.org:3000/",
+    "https://msupply.health.gov.ws:3000/",
+    "https://fijimoh.msupply.org:3000/"
+  ],
+  "plugin": "msupplyfoundation-datasource",
+  "version": "2.1.1",
+  "time": 1663332823487,
+  "keyId": "7e4d0c6a708866e7",
+  "files": {
+    "gpx_excel_report_email_scheduler_darwin_amd64": "922de6a3205ac938241d11dcf9d199e29444c9348d10bab573cc7f12d17f259c",
+    "gpx_excel_report_email_scheduler_linux_arm": "beb3c0c30189ef899480780902400940533644bf63052b9ea5fdd6deb69de33f",
+    "gpx_excel_report_email_scheduler_linux_amd64": "eea39e3d0433dcfa7818c87efbdc1cb8d4a6ea467a826703fee2e781abcc5e22",
+    "locales/en.json": "026c96637f6d20d8c8890833355e61bfa63aac987d7efd17b8b8671019805f78",
+    "LICENSE": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+    "CHANGELOG.md": "aaa78be4710ef41d56ddab1edbd180ef9f9adfea2f293109aae925dc33a1b9b3",
+    "module.js.LICENSE.txt": "d4a7e197c25f0eb9176e26557c5f18e8cfc11a3fbd9a01106e79bae11fb7d0b8",
+    "module.js.map": "fa55d2021effcafe4b12cb1dca16be0beb3fe3a8c4bf41df1959e8817a064a21",
+    "plugin.json": "7927607f26ce48dd4dfa7831d2cab7b36c333f886a7541c794c43580a9926854",
+    "README.md": "9cd4dd25cee303062ec4ff6d90eec32ed3893351ae1646d5dc77c27801bc6d8b",
+    "img/msupply_light_icon.svg": "b4b32af01d584ecc186d19d73977c6f8262dcb18ac011e5ea11d4b915b6e1eb2",
+    "gpx_excel_report_email_scheduler_linux_arm64": "baf4071df0aff28f09b9f5438fec4c19e2755f97d0a3445e9d340a6478758161",
+    "module.js": "f38ac6a569bded89bcd05d5da6835313daae77b65cb27660c61f39b5a632c9a3",
+    "gpx_excel_report_email_scheduler_darwin_arm64": "64f83e17fa0b7453662c813f15b516a1f1d5b5ead5b92a5b7d95d3494d5deff8",
+    "gpx_excel_report_email_scheduler_windows_amd64.exe": "ea2fc954fd4c6e703010fb8ad4f118434d6ee6513f76840a106e9355d17d8e03"
+  }
+}
+-----BEGIN PGP SIGNATURE-----
+Version: OpenPGP.js v4.10.10
+Comment: https://openpgpjs.org
+
+wrcEARMKAAYFAmMkcdcAIQkQfk0ManCIZucWIQTzOyW2kQdOhGNlcPN+TQxq
+cIhm5161AgY9P5LTZvpXcamVkUym8ZOhquqaF0ay8K/57YrhypOWxcZ2Fo3K
+unk0snfuWJEnwOso9iQgA3E416ubI09LnB6qkAII27gX0rE5TOOog2ufJQPA
+gW8D0kLvA18JLGf0pOm1Sdy5crTcOTWUSaJ7G2E1qxCLJ7mI9upK5IknwJCz
+YSiRSr4=
+=RTQR
+-----END PGP SIGNATURE-----
