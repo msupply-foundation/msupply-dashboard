@@ -1,9 +1,9 @@
 const fs = require('fs');
-const installerWorkspace = process.env.installerWorkspace;
+const installerWorkspace = process.env.WORKSPACE;
 const installerFolder = `${installerWorkspace}\\installer`;
 const files = fs.readdirSync(installerFolder);
 
-files.forEach(fileName => {
+files.forEach((fileName) => {
   if (fileName.endsWith('.suf')) {
     const sufFileName = `${installerFolder}\\${fileName}`;
     const fileContent = fs.readFileSync(sufFileName, 'utf8');
@@ -16,11 +16,7 @@ function replaceVersion(fileContent) {
 }
 
 function adjustOutputFolder(fileContent) {
-  return fileContent.replace(
-    /~~installer-folder~~/g,
-    `${installerFolder}`
-  ).replace(
-    /~~release-folder~~/g,
-    `${installerWorkspace}\\release`
-  );
+  return fileContent
+    .replace(/~~installer-folder~~/g, `${installerFolder}`)
+    .replace(/~~release-folder~~/g, `${installerWorkspace}\\release`);
 }
