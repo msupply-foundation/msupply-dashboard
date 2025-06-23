@@ -4,9 +4,6 @@
 
 @ECHO.
 @ECHO ##### Adjusting SUFS #####
-@ECHO "Current working directory: %WORKSPACE%"
-@ECHO "Current working dir: %workspace_dir%"
-// SET installerWorkspace=C:\Users\Administrator\AppData\Local\Jenkins\.jenkins\workspace\mSupply Dashboard Installers
 FOR /F "delims=*" %%i in ('more version.txt') do SET versionTag=%%i
 @ECHO "current tag = %versionTag%"
 
