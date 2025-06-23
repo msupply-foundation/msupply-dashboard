@@ -18,5 +18,5 @@ function replaceVersion(fileContent) {
 function adjustOutputFolder(fileContent) {
   return fileContent
     .replace(/~~installer-folder~~/g, `${installerFolder}`)
-    .replace(/~~release-folder~~/g, `${installerWorkspace}\\release`);
+    .replace(/~~release-folder~~/g, `c:\\temp\\release`);
 }
