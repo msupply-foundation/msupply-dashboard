@@ -1,39 +1,40 @@
 CREATE EXTENSION IF NOT EXISTS tablefunc;
 
 -- TABLES --
+/*  aggregator, store, item, name*/
 CREATE TABLE IF NOT EXISTS public.aggregator (
 	id serial,
 	storeid text DEFAULT ''::text,
 	itemid text DEFAULT ''::text,
 	monthyear text DEFAULT ''::text,
-	value float8 DEFAULT 0,
+	value double precision DEFAULT 0,
 	fulldate date,
 	dataelement text DEFAULT ''::text,
-	temp1 float8 DEFAULT 0,
-	temp2 float8 DEFAULT 0,
-	temp3 float8 DEFAULT 0,
+	temp1 double precision DEFAULT 0,
+	temp2 double precision DEFAULT 0,
+	temp3 double precision DEFAULT 0,
 	CONSTRAINT aggregator_pkey PRIMARY KEY (id)
 );
 
 CREATE TABLE IF NOT EXISTS public.store (
-	id varchar(255) DEFAULT ''::character varying,
-	"name" varchar(50) DEFAULT ''::character varying,
-	code varchar(20) DEFAULT ''::character varying,
-	name_id varchar(255) DEFAULT ''::character varying,
-	mwks_export_mode varchar(20) DEFAULT ''::character varying,
+	id TEXT NOT NULL DEFAULT ''::text,
+	"name" TEXT DEFAULT ''::TEXT,
+	code TEXT DEFAULT ''::TEXT,
+	name_id TEXT DEFAULT ''::TEXT,
+	mwks_export_mode TEXT DEFAULT ''::TEXT,
 	is_his bool  DEFAULT false,
 	sort_issues_by_status_spare bool DEFAULT false,
 	disabled bool  DEFAULT false,
-	responsible_user_id varchar(255) DEFAULT ''::character varying,
-	organisation_name varchar(80) DEFAULT ''::character varying,
-	address_1 varchar(80) DEFAULT ''::character varying,
-	address_2 varchar(80) DEFAULT ''::character varying,
+	responsible_user_id TEXT DEFAULT ''::TEXT,
+	organisation_name TEXT DEFAULT ''::TEXT,
+	address_1 TEXT DEFAULT ''::TEXT,
+	address_2 TEXT DEFAULT ''::TEXT,
 	logo bytea,
-	sync_id_remote_site int4 DEFAULT 0,
-	address_3 varchar(80) DEFAULT ''::character varying,
-	address_4 varchar(80) DEFAULT ''::character varying,
-	address_5 varchar(80) DEFAULT ''::character varying,
-	postal_zip_code varchar(80) DEFAULT ''::character varying,
+	sync_id_remote_site integer DEFAULT 0,
+	address_3 TEXT DEFAULT ''::TEXT,
+	address_4 TEXT DEFAULT ''::TEXT,
+	address_5 TEXT DEFAULT ''::TEXT,
+	postal_zip_code TEXT DEFAULT ''::TEXT,
 	store_mode text DEFAULT ''::text,
 	phone text DEFAULT ''::text,
 	tags text DEFAULT ''::text,
@@ -54,97 +55,112 @@ CREATE TABLE IF NOT EXISTS public.store (
 	spare_user_15 text DEFAULT ''::text,
 	spare_user_16 text DEFAULT ''::text,
 	custom_data jsonb,
+	created_date date,
 	CONSTRAINT store_pkey PRIMARY KEY (id)
 );
 CREATE INDEX IF NOT EXISTS store_store_mode ON public.store USING btree (store_mode);
+CREATE INDEX IF NOT EXISTS store_name_id ON public.store USING btree (name_id);
 CREATE INDEX IF NOT EXISTS store_tags ON public.store USING btree (tags);
+CREATE INDEX IF NOT EXISTS store_sync_id_remote_site ON public.store USING btree (sync_id_remote_site);
 
-CREATE TABLE IF NOT EXISTS "name" (
-	id varchar(255)  DEFAULT ''::character varying,
+CREATE TABLE IF NOT EXISTS public.name (
+	id TEXT NOT NULL DEFAULT ''::text,
 	"name" text DEFAULT ''::text,
-	fax varchar(20) DEFAULT ''::character varying,
-	phone varchar(22) DEFAULT ''::character varying,
+	fax TEXT DEFAULT ''::TEXT,
+	phone TEXT DEFAULT ''::TEXT,
 	customer bool  DEFAULT false,
-	bill_address1 varchar(50) DEFAULT ''::character varying,
-	bill_address2 varchar(50) DEFAULT ''::character varying,
+	bill_address1 TEXT DEFAULT ''::TEXT,
+	bill_address2 TEXT DEFAULT ''::TEXT,
 	supplier bool DEFAULT false,
-	"charge code" varchar(20) DEFAULT ''::character varying,
-	margin float8 DEFAULT 0,
+	"charge code" TEXT DEFAULT ''::TEXT,
+	margin double precision DEFAULT 0,
 	"comment" text DEFAULT ''::text,
-	currency_id varchar(255) DEFAULT ''::character varying,
-	country varchar(20) DEFAULT ''::character varying,
-	freightfac float8 DEFAULT 0,
-	email varchar(255) DEFAULT ''::character varying,
-	custom1 varchar(40) DEFAULT ''::character varying,
-	code varchar(20) DEFAULT ''::character varying,
+	currency_id TEXT DEFAULT ''::TEXT,
+	country TEXT DEFAULT ''::TEXT,
+	freightfac double precision DEFAULT 0,
+	email TEXT DEFAULT ''::TEXT,
+	custom1 TEXT DEFAULT ''::TEXT,
+	code TEXT DEFAULT ''::TEXT,
 	"last" text DEFAULT ''::text,
 	"first" text DEFAULT ''::text,
-	title varchar(5) DEFAULT ''::character varying,
+	title TEXT DEFAULT ''::TEXT,
 	female bool DEFAULT false,
 	date_of_birth date,
-	overpayment float8 DEFAULT 0,
-	group_id varchar(255) DEFAULT ''::character varying,
+	overpayment double precision DEFAULT 0,
+	group_id TEXT DEFAULT ''::TEXT,
 	"hold" bool DEFAULT false,
-	ship_address1 varchar(50) DEFAULT ''::character varying,
-	ship_address2 varchar(50) DEFAULT ''::character varying,
-	url varchar(80) DEFAULT ''::character varying,
-	barcode varchar(22) DEFAULT ''::character varying,
-	postal_address1 varchar(50) DEFAULT ''::character varying,
-	postal_address2 varchar(50) DEFAULT ''::character varying,
-	category1_id varchar(255) DEFAULT ''::character varying,
-	spare_sacho bytea,
+	ship_address1 TEXT DEFAULT ''::TEXT,
+	ship_address2 TEXT DEFAULT ''::TEXT,
+	url TEXT DEFAULT ''::TEXT,
+	barcode TEXT DEFAULT ''::TEXT,
+	postal_address1 TEXT DEFAULT ''::TEXT,
+	postal_address2 TEXT DEFAULT ''::TEXT,
+	category1_id TEXT DEFAULT ''::TEXT,
+	region_id TEXT DEFAULT ''::TEXT,
 	"type" text DEFAULT ''::text,
-	price_category varchar(2) DEFAULT ''::character varying,
-	flag varchar(8) DEFAULT ''::character varying,
+	price_category TEXT DEFAULT ''::TEXT,
+	flag TEXT DEFAULT ''::TEXT,
 	manufacturer bool DEFAULT false,
 	print_invoice_alphabetical bool DEFAULT false,
-	custom2 varchar(40) DEFAULT ''::character varying,
-	custom3 varchar(40) DEFAULT ''::character varying,
+	custom2 TEXT DEFAULT ''::TEXT,
+	custom3 TEXT DEFAULT ''::TEXT,
 	default_order_days int2 DEFAULT 0,
 	connection_type int2 DEFAULT 0,
 	patient_photo bytea,
-	next_of_kin_id varchar(255) DEFAULT ''::character varying,
-	pobox varchar(255) DEFAULT ''::character varying,
-	zip int4 DEFAULT 0,
+	next_of_kin_id TEXT DEFAULT ''::TEXT,
+	pobox TEXT DEFAULT ''::TEXT,
+	zip integer DEFAULT 0,
 	middle text DEFAULT ''::text,
 	preferred bool DEFAULT false,
-	blood_group varchar(6) DEFAULT ''::character varying,
-	marital_status varchar(10) DEFAULT ''::character varying,
+	blood_group TEXT DEFAULT ''::TEXT,
+	marital_status TEXT DEFAULT ''::TEXT,
 	benchmark bool DEFAULT false,
-	next_of_kin_relative varchar(20) DEFAULT ''::character varying,
-	mother_id varchar(255) DEFAULT ''::character varying,
-	postal_address3 varchar(50) DEFAULT ''::character varying,
-	postal_address4 varchar(50) DEFAULT ''::character varying,
-	bill_address3 varchar(50) DEFAULT ''::character varying,
-	bill_address4 varchar(50) DEFAULT ''::character varying,
-	ship_address3 varchar(50) DEFAULT ''::character varying,
-	ship_address4 varchar(50) DEFAULT ''::character varying,
-	ethnicity_id varchar(255) DEFAULT ''::character varying,
-	occupation_id varchar(255) DEFAULT ''::character varying,
-	religion_id varchar(255) DEFAULT ''::character varying,
-	national_health_number varchar(40) DEFAULT ''::character varying,
-	master_rtm_supplier_code int4 DEFAULT 0,
-	ordering_method varchar(15) DEFAULT ''::character varying,
+	next_of_kin_relative TEXT DEFAULT ''::TEXT,
+	mother_id TEXT DEFAULT ''::TEXT,
+	postal_address3 TEXT DEFAULT ''::TEXT,
+	postal_address4 TEXT DEFAULT ''::TEXT,
+	bill_address3 TEXT DEFAULT ''::TEXT,
+	bill_address4 TEXT DEFAULT ''::TEXT,
+	ship_address3 TEXT DEFAULT ''::TEXT,
+	ship_address4 TEXT DEFAULT ''::TEXT,
+	ethnicity_id TEXT DEFAULT ''::TEXT,
+	occupation_id TEXT DEFAULT ''::TEXT,
+	religion_id TEXT DEFAULT ''::TEXT,
+	national_health_number TEXT DEFAULT ''::TEXT,
+	master_rtm_supplier_code integer DEFAULT 0,
+	ordering_method TEXT DEFAULT ''::TEXT,
 	donor bool DEFAULT false,
-	latitude float8 DEFAULT 0,
-	longitude float8 DEFAULT 0,
-	master_rtm_supplier_name varchar(80) DEFAULT ''::character varying,
-	category2_id varchar(255) DEFAULT ''::character varying,
-	category3_id varchar(255) DEFAULT ''::character varying,
-	category4_id varchar(255) DEFAULT ''::character varying,
-	category5_id varchar(255) DEFAULT ''::character varying,
-	category6_id varchar(255) DEFAULT ''::character varying,
-	bill_address5 varchar(80) DEFAULT ''::character varying,
-	bill_postal_zip_code varchar(80) DEFAULT ''::character varying,
-	postal_address5 varchar(80) DEFAULT ''::character varying,
-	postal_zip_code varchar(80) DEFAULT ''::character varying,
-	ship_address5 varchar(80) DEFAULT ''::character varying,
-	ship_postal_zip_code varchar(80) DEFAULT ''::character varying,
-	supplying_store_id varchar(255) DEFAULT ''::character varying,
+	latitude double precision DEFAULT 0,
+	longitude double precision DEFAULT 0,
+	master_rtm_supplier_name TEXT DEFAULT ''::TEXT,
+	category2_id TEXT DEFAULT ''::TEXT,
+	category3_id TEXT DEFAULT ''::TEXT,
+	category4_id TEXT DEFAULT ''::TEXT,
+	category5_id TEXT DEFAULT ''::TEXT,
+	category6_id TEXT DEFAULT ''::TEXT,
+	bill_address5 TEXT DEFAULT ''::TEXT,
+	bill_postal_zip_code TEXT DEFAULT ''::TEXT,
+	postal_address5 TEXT DEFAULT ''::TEXT,
+	postal_zip_code TEXT DEFAULT ''::TEXT,
+	ship_address5 TEXT DEFAULT ''::TEXT,
+	ship_postal_zip_code TEXT DEFAULT ''::TEXT,
+	supplying_store_id TEXT DEFAULT ''::TEXT,
 	license_number text DEFAULT ''::text,
 	license_expiry date,
 	has_current_license bool DEFAULT false,
-	custom_data jsonb,
+	custom_data jsonb, 
+	maximum_credit double precision DEFAULT 0,
+    nationality_id text DEFAULT ''::text,
+    created_date date,
+    integration_id text DEFAULT ''::text,
+    isdeceased boolean DEFAULT false,
+    is_deleted boolean DEFAULT false,
+    om_created_datetime text DEFAULT ''::text,
+    om_gender text DEFAULT ''::text,
+    hsh_name text DEFAULT ''::text,
+    hsh_code text DEFAULT ''::text,
+    hsh_id text DEFAULT ''::text,
+    om_date_of_death date,
 	CONSTRAINT name_pkey PRIMARY KEY (id)
 );
 CREATE INDEX IF NOT EXISTS name_category1_id ON public.name USING btree (category1_id);
@@ -159,6 +175,8 @@ CREATE INDEX IF NOT EXISTS name_donor ON public.name USING btree (donor);
 CREATE INDEX IF NOT EXISTS name_ethnicity_id ON public.name USING btree (ethnicity_id);
 CREATE INDEX IF NOT EXISTS name_first ON public.name USING btree (first);
 CREATE INDEX IF NOT EXISTS name_group_id ON public.name USING btree (group_id);
+CREATE INDEX IF NOT EXISTS name_hsh_id ON public.name USING btree (hsh_id);
+CREATE INDEX IF NOT EXISTS name_is_deleted ON public.name USING btree (is_deleted);
 CREATE INDEX IF NOT EXISTS name_last ON public.name USING btree (last);
 CREATE INDEX IF NOT EXISTS name_manufacturer ON public.name USING btree (manufacturer);
 CREATE INDEX IF NOT EXISTS name_master_rtm_supplier_code ON public.name USING btree (master_rtm_supplier_code);
@@ -168,80 +186,144 @@ CREATE INDEX IF NOT EXISTS name_next_of_kin_id ON public.name USING btree (next_
 CREATE INDEX IF NOT EXISTS name_occupation_id ON public.name USING btree (occupation_id);
 CREATE INDEX IF NOT EXISTS name_religion_id ON public.name USING btree (religion_id);
 CREATE INDEX IF NOT EXISTS name_supplier ON public.name USING btree (supplier);
+CREATE INDEX IF NOT EXISTS name_supplying_store_id ON public.name USING btree (supplying_store_id);
 CREATE INDEX IF NOT EXISTS name_type ON public.name USING btree (type);
 
 
-CREATE TABLE IF NOT EXISTS name_category1_level1 (
-	id varchar(255) DEFAULT ''::character varying,
-	description varchar(50) DEFAULT ''::character varying,
-	"type" varchar(2) DEFAULT ''::character varying,
-	CONSTRAINT name_category1_level1_pkey PRIMARY KEY (id)
+CREATE TABLE IF NOT EXISTS public.name_category1 (
+	id TEXT NOT NULL DEFAULT ''::text,
+	description TEXT DEFAULT ''::TEXT,
+	"type" TEXT DEFAULT ''::TEXT,
+	parent_id text DEFAULT ''::text,
+    user_field1 text DEFAULT ''::text,
+    user_field2 text DEFAULT ''::text,
+	CONSTRAINT name_category1_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS transact (
-	name_id varchar(255) DEFAULT ''::character varying,
-	id varchar(255) DEFAULT ''::character varying,
-	invoice_num int4 DEFAULT 0,
-	amount_outstanding float8 DEFAULT 0,
+CREATE TABLE IF NOT EXISTS public.name_category1_level1(
+    id TEXT NOT NULL DEFAULT ''::text,
+    description text DEFAULT ''::text,
+    type text DEFAULT ''::text,
+    CONSTRAINT name_category1_level1_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.name_category1_level2(
+    id TEXT NOT NULL DEFAULT ''::text,
+    description text DEFAULT ''::text,
+    type text DEFAULT ''::text,
+    parent_id text DEFAULT ''::text,
+    CONSTRAINT name_category1_level2_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.name_category2(
+    id TEXT NOT NULL DEFAULT ''::text,
+    description text DEFAULT ''::text,
+    type text DEFAULT ''::text,
+    user_field1 text DEFAULT ''::text,
+    user_field2 text DEFAULT ''::text,
+    CONSTRAINT name_category2_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.name_category3(
+    id TEXT NOT NULL DEFAULT ''::text,
+    description text DEFAULT ''::text,
+    type text DEFAULT ''::text,
+    user_field1 text DEFAULT ''::text,
+    user_field2 text DEFAULT ''::text,
+    CONSTRAINT name_category3_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.name_category4(
+    id TEXT NOT NULL DEFAULT ''::text,
+    description text DEFAULT ''::text,
+    type text DEFAULT ''::text,
+    user_field1 text DEFAULT ''::text,
+    user_field2 text DEFAULT ''::text,
+    CONSTRAINT name_category4_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.name_category5(
+    id TEXT NOT NULL DEFAULT ''::text,
+    description text DEFAULT ''::text,
+    type text DEFAULT ''::text,
+    user_field1 text DEFAULT ''::text,
+    user_field2 text DEFAULT ''::text,
+    CONSTRAINT name_category5_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.name_category6(
+    id TEXT NOT NULL DEFAULT ''::text,
+    description text DEFAULT ''::text,
+    type text DEFAULT ''::text,
+    user_field1 text DEFAULT ''::text,
+    user_field2 text DEFAULT ''::text,
+    CONSTRAINT name_category6_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.transact (
+	name_id TEXT DEFAULT ''::TEXT,
+	id TEXT DEFAULT ''::TEXT,
+	invoice_num integer DEFAULT 0,
+	amount_outstanding double precision DEFAULT 0,
 	"comment" text DEFAULT ''::text,
 	entry_date date,
-	"type" varchar(3) DEFAULT ''::character varying,
-	status varchar(3) DEFAULT ''::character varying,
-	total float8 DEFAULT 0,
-	export_batch int4 DEFAULT 0,
-	linked_transaction_id varchar(255) DEFAULT ''::character varying,
-	their_ref varchar(80) DEFAULT ''::character varying,
+	"type" TEXT DEFAULT ''::TEXT,
+	status TEXT DEFAULT ''::TEXT,
+	total double precision DEFAULT 0,
+	export_batch integer DEFAULT 0,
+	linked_transaction_id TEXT DEFAULT ''::TEXT,
+	their_ref TEXT DEFAULT ''::TEXT,
 	confirm_date date,
-	service_descrip varchar(60) DEFAULT ''::character varying,
-	service_price float8 DEFAULT 0,
-	subtotal float8 DEFAULT 0,
-	tax float8 DEFAULT 0,
-	user_id varchar(255) DEFAULT ''::character varying,
+	service_descrip TEXT DEFAULT ''::TEXT,
+	service_price double precision DEFAULT 0,
+	subtotal double precision DEFAULT 0,
+	tax double precision DEFAULT 0,
+	user_id TEXT DEFAULT ''::TEXT,
 	pickslip_printed_date date,
-	prescriber_id varchar(255) DEFAULT ''::character varying,
-	goods_received_id varchar(255) DEFAULT ''::character varying,
+	prescriber_id TEXT DEFAULT ''::TEXT,
+	goods_received_id TEXT DEFAULT ''::TEXT,
 	invoice_printed_date date,
 	ship_date date,
-	ship_method_id varchar(255) DEFAULT ''::character varying,
-	ship_method_comment varchar(80) DEFAULT ''::character varying,
-	waybill_number varchar(50) DEFAULT ''::character varying,
-	number_of_cartons int4 DEFAULT 0,
+	ship_method_id TEXT DEFAULT ''::TEXT,
+	ship_method_comment TEXT DEFAULT ''::TEXT,
+	waybill_number TEXT DEFAULT ''::TEXT,
+	number_of_cartons integer DEFAULT 0,
 	arrival_date_estimated date,
 	arrival_date_actual date,
-	responsible_officer_id varchar(255) DEFAULT ''::character varying,
-	"mode" varchar(255) DEFAULT ''::character varying,
-	category_id varchar(255) DEFAULT ''::character varying,
+	responsible_officer_id TEXT DEFAULT ''::TEXT,
+	"mode" TEXT DEFAULT ''::TEXT,
+	category_id TEXT DEFAULT ''::TEXT,
 	confirm_time time DEFAULT '00:00:00'::time without time zone,
-	foreign_currency_total float8 DEFAULT 0,
-	currency_id varchar(255) DEFAULT ''::character varying,
+	foreign_currency_total double precision DEFAULT 0,
+	currency_id TEXT DEFAULT ''::TEXT,
 	"hold" bool DEFAULT false,
-	currency_rate float8 DEFAULT 0,
-	supplier_charge_fc float8 DEFAULT 0,
-	local_charge_distributed float8 DEFAULT 0,
-	budget_period_id varchar(255) DEFAULT ''::character varying,
-	store_id varchar(255) DEFAULT ''::character varying,
-	user1 varchar(50) DEFAULT ''::character varying,
-	user2 varchar(50) DEFAULT ''::character varying,
-	mwks_sequence_num int4 DEFAULT 0,
+	currency_rate double precision DEFAULT 0,
+	supplier_charge_fc double precision DEFAULT 0,
+	local_charge_distributed double precision DEFAULT 0,
+	budget_period_id TEXT DEFAULT ''::TEXT,
+	store_id TEXT DEFAULT ''::TEXT,
+	user1 TEXT DEFAULT ''::TEXT,
+	user2 TEXT DEFAULT ''::TEXT,
+	mwks_sequence_num integer DEFAULT 0,
 	is_cancellation bool DEFAULT false,
-	user3 varchar(50) DEFAULT ''::character varying,
-	user4 varchar(50) DEFAULT ''::character varying,
-	colour int4 DEFAULT 0,
-	original_po_id varchar(255) DEFAULT ''::character varying,
-	donor_default_id varchar(255) DEFAULT ''::character varying,
+	user3 TEXT DEFAULT ''::TEXT,
+	user4 TEXT DEFAULT ''::TEXT,
+	colour integer DEFAULT 0,
+	original_po_id TEXT DEFAULT ''::TEXT,
+	donor_default_id TEXT DEFAULT ''::TEXT,
 	date_order_received date,
 	date_order_written date,
-	contact_id varchar(255) DEFAULT ''::character varying,
-	encounter_id varchar(255) DEFAULT ''::character varying,
+	contact_id TEXT DEFAULT ''::TEXT,
+	encounter_id TEXT DEFAULT ''::TEXT,
 	is_authorised bool DEFAULT false,
-	requisition_id varchar(255) DEFAULT ''::character varying,
+	requisition_id TEXT DEFAULT ''::TEXT,
 	entry_time time DEFAULT '00:00:00'::time without time zone,
-	linked_goods_received_id varchar(255) DEFAULT ''::character varying,
-	authorisationstatus varchar(255) DEFAULT ''::character varying,
-	nameinsurancejoinid varchar(255) DEFAULT ''::character varying,
-	insurancediscountamount float8 DEFAULT 0,
-	optionid varchar(255),
-	insuranceDiscountRate float8,
+	linked_goods_received_id TEXT DEFAULT ''::TEXT,
+	authorisationstatus TEXT DEFAULT ''::TEXT,
+	nameinsurancejoinid TEXT DEFAULT ''::TEXT,
+	insurancediscountamount double precision DEFAULT 0,
+	optionid TEXT,
+	insuranceDiscountRate double precision,
 	internalData jsonb,
 	lastmodifiedat int8,
 	custom_data jsonb NULL,
@@ -271,74 +353,74 @@ CREATE INDEX IF NOT EXISTS transact_user_id ON public.transact USING btree (user
 
 
 CREATE TABLE IF NOT EXISTS item (
-	id varchar(255) DEFAULT ''::character varying,
-	item_name varchar(80) DEFAULT ''::character varying,
+	id TEXT DEFAULT ''::TEXT,
+	item_name TEXT DEFAULT ''::TEXT,
 	start_of_year_date date,
 	manufacture_method text DEFAULT ''::text,
-	default_pack_size float8 DEFAULT 0,
+	default_pack_size double precision DEFAULT 0,
 	dose_picture bytea,
-	atc_category varchar(30) DEFAULT ''::character varying,
+	atc_category TEXT DEFAULT ''::TEXT,
 	medication_purpose text DEFAULT ''::text,
 	instructions text DEFAULT ''::text,
 	user_field_7 bool DEFAULT false,
-	flags varchar(16) DEFAULT ''::character varying,
-	ddd_value varchar(8) DEFAULT ''::character varying,
-	code varchar(18) DEFAULT ''::character varying,
+	flags TEXT DEFAULT ''::TEXT,
+	ddd_value TEXT DEFAULT ''::TEXT,
+	code TEXT DEFAULT ''::TEXT,
 	other_names text DEFAULT ''::text,
 	type_of text DEFAULT ''::text,
 	price_editable bool DEFAULT false,
-	margin float8 DEFAULT 0,
+	margin double precision DEFAULT 0,
 	barcode_spare text DEFAULT ''::text,
 	spare_ignore_for_orders bool DEFAULT false,
-	sms_pack_size float8 DEFAULT 0,
+	sms_pack_size double precision DEFAULT 0,
 	expiry_date_mandatory bool DEFAULT false,
-	volume_per_pack float8 DEFAULT 0,
-	department_id varchar(255) DEFAULT ''::character varying,
-	weight float8 DEFAULT 0,
+	volume_per_pack double precision DEFAULT 0,
+	department_id TEXT DEFAULT ''::TEXT,
+	weight double precision DEFAULT 0,
 	essential_drug_list bool DEFAULT false,
-	catalogue_code varchar(20) DEFAULT ''::character varying,
-	indic_price float8 DEFAULT 0,
-	user_field_1 varchar(30) DEFAULT ''::character varying,
+	catalogue_code TEXT DEFAULT ''::TEXT,
+	indic_price double precision DEFAULT 0,
+	user_field_1 TEXT DEFAULT ''::TEXT,
 	spare_hold_for_issue bool DEFAULT false,
 	builds_only bool DEFAULT false,
-	reference_bom_quantity float8 DEFAULT 0,
+	reference_bom_quantity double precision DEFAULT 0,
 	use_bill_of_materials bool DEFAULT false,
 	description text DEFAULT ''::text,
 	spare_hold_for_receive bool DEFAULT false,
 	message text DEFAULT ''::text,
-	interaction_group_id varchar(255) DEFAULT ''::character varying,
+	interaction_group_id TEXT DEFAULT ''::TEXT,
 	spare_pack_to_one_on_receive bool DEFAULT false,
-	cross_ref_item_id varchar(255) DEFAULT ''::character varying,
-	spare_shelf_location_bulk varchar(20) DEFAULT ''::character varying,
+	cross_ref_item_id TEXT DEFAULT ''::TEXT,
+	spare_shelf_location_bulk TEXT DEFAULT ''::TEXT,
 	user_field_4 bool DEFAULT false,
-	user_field_6 varchar(80) DEFAULT ''::character varying,
-	spare_internal_analysis float8 DEFAULT 0,
-	user_field_2 varchar(30) DEFAULT ''::character varying,
-	user_field_3 varchar(30) DEFAULT ''::character varying,
-	"ddd factor" float8 DEFAULT 0,
-	account_stock_id varchar(255) DEFAULT ''::character varying,
-	account_purchases_id varchar(255) DEFAULT ''::character varying,
-	account_income_id varchar(255) DEFAULT ''::character varying,
-	unit_id varchar(255) DEFAULT ''::character varying,
-	outer_pack_size int4 DEFAULT 0,
-	category_id varchar(255) DEFAULT ''::character varying,
-	abc_category varchar(20) DEFAULT ''::character varying,
-	warning_quantity int4 DEFAULT 0,
-	user_field_5 float8 DEFAULT 0,
+	user_field_6 TEXT DEFAULT ''::TEXT,
+	spare_internal_analysis double precision DEFAULT 0,
+	user_field_2 TEXT DEFAULT ''::TEXT,
+	user_field_3 TEXT DEFAULT ''::TEXT,
+	"ddd factor" double precision DEFAULT 0,
+	account_stock_id TEXT DEFAULT ''::TEXT,
+	account_purchases_id TEXT DEFAULT ''::TEXT,
+	account_income_id TEXT DEFAULT ''::TEXT,
+	unit_id TEXT DEFAULT ''::TEXT,
+	outer_pack_size integer DEFAULT 0,
+	category_id TEXT DEFAULT ''::TEXT,
+	abc_category TEXT DEFAULT ''::TEXT,
+	warning_quantity integer DEFAULT 0,
+	user_field_5 double precision DEFAULT 0,
 	print_units_in_dis_labels bool DEFAULT false,
-	volume_per_outer_pack float8 DEFAULT 0,
+	volume_per_outer_pack double precision DEFAULT 0,
 	normal_stock bool DEFAULT false,
 	critical_stock bool DEFAULT false,
 	spare_non_stock bool DEFAULT false,
-	non_stock_name_id varchar(255) DEFAULT ''::character varying,
+	non_stock_name_id TEXT DEFAULT ''::TEXT,
 	is_sync bool DEFAULT false,
-	sms_code varchar(20) DEFAULT ''::character varying,
-	category2_id varchar(255) DEFAULT ''::character varying,
-	category3_id varchar(255) DEFAULT ''::character varying,
-	buy_price float8 DEFAULT 0,
+	sms_code TEXT DEFAULT ''::TEXT,
+	category2_id TEXT DEFAULT ''::TEXT,
+	category3_id TEXT DEFAULT ''::TEXT,
+	buy_price double precision DEFAULT 0,
 	ven_category text DEFAULT ''::text,
-	universalcodes_code varchar(255) DEFAULT ''::character varying,
-	universalcodes_name varchar(255) DEFAULT ''::character varying,
+	universalcodes_code TEXT DEFAULT ''::TEXT,
+	universalcodes_name TEXT DEFAULT ''::TEXT,
 	kit_data jsonb,
 	custom_data jsonb,
 	CONSTRAINT item_pkey PRIMARY KEY (id)
@@ -354,39 +436,39 @@ CREATE INDEX IF NOT EXISTS item_other_names ON public.item USING btree (other_na
 CREATE INDEX IF NOT EXISTS item_unit_id ON public.item USING btree (unit_id);
 
 CREATE TABLE IF NOT EXISTS item_line (
-	store_id varchar(255) DEFAULT ''::character varying,
-	item_id varchar(255) DEFAULT ''::character varying,
-	pack_size float8 DEFAULT 0,
+	store_id TEXT DEFAULT ''::TEXT,
+	item_id TEXT DEFAULT ''::TEXT,
+	pack_size double precision DEFAULT 0,
 	expiry_date date,
 	batch text DEFAULT ''::text,
-	available float8 DEFAULT 0,
-	spare_start_year_quan_tot float8 DEFAULT 0,
-	cost_price float8 DEFAULT 0,
-	sell_price float8 DEFAULT 0,
+	available double precision DEFAULT 0,
+	spare_start_year_quan_tot double precision DEFAULT 0,
+	cost_price double precision DEFAULT 0,
+	sell_price double precision DEFAULT 0,
 	"hold" bool DEFAULT false,
-	initial_quan float8 DEFAULT 0,
-	id varchar(255) DEFAULT ''::character varying,
-	quantity float8 DEFAULT 0,
-	name_id varchar(255) DEFAULT ''::character varying,
-	manufacturer_id varchar(255) DEFAULT ''::character varying,
-	location_id varchar(255) DEFAULT ''::character varying,
-	volume_per_pack float8 DEFAULT 0,
-	stock_on_hand_tot float8 DEFAULT 0,
-	total_volume float8 DEFAULT 0,
-	user_1 varchar(20) DEFAULT ''::character varying,
-	user_2 varchar(20) DEFAULT ''::character varying,
-	user_3 varchar(20) DEFAULT ''::character varying,
-	user_4 varchar(40) DEFAULT ''::character varying,
-	pack_quan_per_inner int4 DEFAULT 0,
-	pack_inners_per_outer int4 DEFAULT 0,
+	initial_quan double precision DEFAULT 0,
+	id TEXT DEFAULT ''::TEXT,
+	quantity double precision DEFAULT 0,
+	name_id TEXT DEFAULT ''::TEXT,
+	manufacturer_id TEXT DEFAULT ''::TEXT,
+	location_id TEXT DEFAULT ''::TEXT,
+	volume_per_pack double precision DEFAULT 0,
+	stock_on_hand_tot double precision DEFAULT 0,
+	total_volume double precision DEFAULT 0,
+	user_1 TEXT DEFAULT ''::TEXT,
+	user_2 TEXT DEFAULT ''::TEXT,
+	user_3 TEXT DEFAULT ''::TEXT,
+	user_4 TEXT DEFAULT ''::TEXT,
+	pack_quan_per_inner integer DEFAULT 0,
+	pack_inners_per_outer integer DEFAULT 0,
 	note text DEFAULT ''::text,
-	vvm_status varchar(15) DEFAULT ''::character varying,
-	donor_id varchar(255) DEFAULT ''::character varying,
-	total_cost float8 DEFAULT 0,
-	user_5_id varchar(255) DEFAULT ''::character varying,
-	user_6_id varchar(255) DEFAULT ''::character varying,
-	user_7_id varchar(255) DEFAULT ''::character varying,
-	user_8_id varchar(255) DEFAULT ''::character varying,
+	vvm_status TEXT DEFAULT ''::TEXT,
+	donor_id TEXT DEFAULT ''::TEXT,
+	total_cost double precision DEFAULT 0,
+	user_5_id TEXT DEFAULT ''::TEXT,
+	user_6_id TEXT DEFAULT ''::TEXT,
+	user_7_id TEXT DEFAULT ''::TEXT,
+	user_8_id TEXT DEFAULT ''::TEXT,
 	kit_data jsonb,
 	barcodeid text DEFAULT ''::text,
 	CONSTRAINT item_line_pkey PRIMARY KEY (id)
@@ -404,27 +486,27 @@ CREATE INDEX IF NOT EXISTS item_line_user_7_id ON public.item_line USING btree (
 CREATE INDEX IF NOT EXISTS item_line_user_8_id ON public.item_line USING btree (user_8_id);
 
 CREATE TABLE IF NOT EXISTS item_store_join (
-	id varchar(255) DEFAULT ''::character varying,
-	item_id varchar(255) DEFAULT ''::character varying,
-	store_id varchar(255) DEFAULT ''::character varying,
-	default_location_id varchar(255) DEFAULT ''::character varying,
-	location_bulk_id varchar(255) DEFAULT ''::character varying,
+	id TEXT DEFAULT ''::TEXT,
+	item_id TEXT DEFAULT ''::TEXT,
+	store_id TEXT DEFAULT ''::TEXT,
+	default_location_id TEXT DEFAULT ''::TEXT,
+	location_bulk_id TEXT DEFAULT ''::TEXT,
 	include_on_price_list bool DEFAULT false,
-	indic_price float8 DEFAULT 0,
-	report_quantity float8 DEFAULT 0,
-	minimum_stock int4 DEFAULT 0,
+	indic_price double precision DEFAULT 0,
+	report_quantity double precision DEFAULT 0,
+	minimum_stock integer DEFAULT 0,
 	pack_to_one bool DEFAULT false,
-	default_price float8 DEFAULT 0,
+	default_price double precision DEFAULT 0,
 	hold_for_issue bool DEFAULT false,
-	margin float8 DEFAULT 0,
+	margin double precision DEFAULT 0,
 	inactive bool DEFAULT false,
 	pack_to_one_allow bool DEFAULT false,
-	restricted_location_type_id varchar(255) DEFAULT ''::character varying,
+	restricted_location_type_id TEXT DEFAULT ''::TEXT,
 	non_stock bool DEFAULT false,
-	non_stock_name_id varchar(255) DEFAULT ''::character varying,
-	forecast_method int4 DEFAULT 0,
-	estimated_amc int4 DEFAULT 0,
-	amc_modification_factor int4 DEFAULT 0,
+	non_stock_name_id TEXT DEFAULT ''::TEXT,
+	forecast_method integer DEFAULT 0,
+	estimated_amc integer DEFAULT 0,
+	amc_modification_factor integer DEFAULT 0,
 	projection_for_calcs text DEFAULT ''::text,
 	hold_for_receive bool DEFAULT false,
 	ignore_for_orders bool DEFAULT false,
@@ -436,6 +518,66 @@ CREATE INDEX IF NOT EXISTS item_store_join_item_id ON public.item_store_join USI
 CREATE INDEX IF NOT EXISTS item_store_join_location_bulk_id ON public.item_store_join USING btree (location_bulk_id);
 CREATE INDEX IF NOT EXISTS item_store_join_store_id ON public.item_store_join USING btree (store_id);
 
+
+
+CREATE TABLE IF NOT EXISTS public.item_category
+(
+    id text COLLATE pg_catalog."default" NOT NULL DEFAULT ''::text,
+    description text COLLATE pg_catalog."default" DEFAULT ''::text,
+    sort_order integer DEFAULT 0,
+    summary_only boolean DEFAULT false,
+    parent_id text COLLATE pg_catalog."default" DEFAULT ''::text,
+    custom_data jsonb,
+    CONSTRAINT item_category_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS item_category_parent_id ON public.item_category USING btree  (parent_id COLLATE pg_catalog."default" ASC NULLS LAST);
+
+CREATE TABLE IF NOT EXISTS public.item_category2
+(
+    id text COLLATE pg_catalog."default" NOT NULL DEFAULT ''::text,
+    description text COLLATE pg_catalog."default" DEFAULT ''::text,
+    sort_order integer DEFAULT 0,
+    summary_only boolean DEFAULT false,
+    CONSTRAINT item_category2_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.item_category3
+(
+    id text COLLATE pg_catalog."default" NOT NULL DEFAULT ''::text,
+    description text COLLATE pg_catalog."default" DEFAULT ''::text,
+    sort_order integer DEFAULT 0,
+    summary_only boolean DEFAULT false,
+    CONSTRAINT item_category3_pkey PRIMARY KEY (id)
+);
+
+-- Table: public.item_category_level1
+
+-- DROP TABLE IF EXISTS public.item_category_level1;
+
+CREATE TABLE IF NOT EXISTS public.item_category_level1
+(
+    id text COLLATE pg_catalog."default" NOT NULL DEFAULT ''::text,
+    description text COLLATE pg_catalog."default" DEFAULT ''::text,
+    sort_order integer DEFAULT 0,
+    summary_only boolean DEFAULT false,
+    custom_data jsonb,
+    CONSTRAINT item_category_level1_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.item_category_level2
+(
+    id text COLLATE pg_catalog."default" NOT NULL DEFAULT ''::text,
+    description text COLLATE pg_catalog."default" DEFAULT ''::text,
+    sort_order integer DEFAULT 0,
+    summary_only boolean DEFAULT false,
+    parent_id text COLLATE pg_catalog."default" DEFAULT ''::text,
+    CONSTRAINT item_category_level2_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS item_category_level2_parent_id
+    ON public.item_category_level2 USING btree
+    (parent_id COLLATE pg_catalog."default" ASC NULLS LAST);
 
 CREATE TABLE IF NOT EXISTS export_log (
 	id VARCHAR,
@@ -453,17 +595,17 @@ CREATE TABLE IF NOT EXISTS geojson (
 );
 
 CREATE TABLE IF NOT EXISTS "user" (
-	id varchar(255) DEFAULT ''::character varying,
+	id TEXT DEFAULT ''::TEXT,
 	lastlogin date,
-	group_id varchar(255) DEFAULT ''::character varying,
-	"mode" varchar(8) DEFAULT ''::character varying,
+	group_id TEXT DEFAULT ''::TEXT,
+	"mode" TEXT DEFAULT ''::TEXT,
 	active bool DEFAULT false,
 	lasttime time DEFAULT '00:00:00'::time without time zone,
 	date_created date,
 	date_left date,
-	"language" int4 DEFAULT 0,
+	"language" integer DEFAULT 0,
 	is_group bool DEFAULT false,
-	license_category_id varchar(255) DEFAULT ''::character varying,
+	license_category_id TEXT DEFAULT ''::TEXT,
 	tags jsonb,
 	"type" jsonb,
 	CONSTRAINT user_pkey PRIMARY KEY (id)
@@ -471,53 +613,120 @@ CREATE TABLE IF NOT EXISTS "user" (
 CREATE INDEX IF NOT EXISTS user_id ON "user" USING btree (id);
 
 -- VIEWS --
-
-/*
 -- as you'll see below, these are now created after exporting --
 
-CREATE OR REPLACE VIEW store_mos
-AS SELECT CURRENT_DATE AS "current_date",
-    name.name AS store,
-    a.value,
-    name.latitude,
-    name.longitude
+CREATE OR REPLACE VIEW public.item_categories
+ AS
+ WITH stock_type_strings AS (
+         SELECT item_1.id,
+            'On essential drug list'::text AS stock_type
+           FROM item item_1
+          WHERE item_1.essential_drug_list = true
+        UNION
+         SELECT item_1.id,
+            'Critical stock'::text AS stock_type
+           FROM item item_1
+          WHERE item_1.critical_stock = true
+        UNION
+         SELECT item_1.id,
+            'Normal stock'::text AS stock_type
+           FROM item item_1
+          WHERE item_1.normal_stock = true
+        )
+ SELECT item.id,
+    item.item_name,
+        CASE
+            WHEN item_category.description IS NULL THEN 'NONE'::text
+            ELSE item_category.description
+        END AS category,
+        CASE
+            WHEN item_category_level2.description IS NULL THEN 'NONE'::text
+            ELSE item_category_level2.description
+        END AS category_level2,
+        CASE
+            WHEN item_category_level1.description IS NULL THEN 'NONE'::text
+            ELSE item_category_level1.description
+        END AS category_level1,
+        CASE
+            WHEN item_category2.description IS NULL THEN 'NONE'::text
+            ELSE item_category2.description
+        END AS category2,
+        CASE
+            WHEN item_category3.description IS NULL THEN 'NONE'::text
+            ELSE item_category3.description
+        END AS category3,
+        CASE
+            WHEN item.ven_category = ''::text OR item.ven_category IS NULL THEN 'NONE'::text
+            ELSE item.ven_category
+        END AS ven_category,
+    item.essential_drug_list,
+    item.critical_stock,
+    item.normal_stock,
+        CASE
+            WHEN stock_type_strings.stock_type IS NULL THEN 'NONE'::text
+            ELSE stock_type_strings.stock_type
+        END AS stock_type
+   FROM item
+     LEFT JOIN item_category ON item.category_id = item_category.id
+     LEFT JOIN item_category2 ON item.category2_id = item_category2.id
+     LEFT JOIN item_category3 ON item.category3_id = item_category3.id
+     LEFT JOIN item_category_level2 ON item_category.parent_id = item_category_level2.id
+     LEFT JOIN item_category_level1 ON item_category_level2.parent_id = item_category_level1.id
+     LEFT JOIN stock_type_strings ON item.id = stock_type_strings.id;
+
+
+CREATE OR REPLACE VIEW public.store_categories
+ AS
+ SELECT store.name,
+    store.code,
+        CASE
+            WHEN store.organisation_name = ''::text THEN 'NONE'::text::character varying::text
+            ELSE store.organisation_name
+        END AS organisation,
+        CASE
+            WHEN name_category1.* IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category1.description
+        END AS category1,
+        CASE
+            WHEN name_category1_level2.description IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category1_level2.description
+        END AS category1_level2,
+        CASE
+            WHEN name_category1_level1.description IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category1_level1.description
+        END AS category1_level1,
+        CASE
+            WHEN name_category2.* IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category2.description
+        END AS category2,
+        CASE
+            WHEN name_category3.* IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category3.description
+        END AS category3,
+        CASE
+            WHEN name_category4.* IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category4.description
+        END AS category4,
+        CASE
+            WHEN name_category5.* IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category5.description
+        END AS category5,
+        CASE
+            WHEN name_category6.* IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category6.description
+        END AS category6,
+    store.store_mode AS mode,
+    store.disabled
    FROM store
-     JOIN name ON store.name_id::text = name.id::text
-     JOIN aggregator a ON store.id::text = a.storeid
-  WHERE store.disabled = false AND a.dataelement = 'mos'::text;
-
-CREATE OR REPLACE VIEW region_mos
-AS SELECT current_date AS "time",
-    region.description AS region,
-    a.store,
-    a.value,
-    g.data AS geojson
-FROM ( SELECT s.name AS store,
-        s.id AS storeid,
-        avg(a.value) AS value,
-        s.name_id
-       FROM aggregator a
-        JOIN store s on a.storeid=s.id 
-       WHERE a.dataelement = 'mos'
-       GROUP BY s.name, s.id, s.name_id 
-      ) a
- JOIN name n on a.name_id=n.id
- JOIN name_category1_level1 region ON n.category1_id = region.id
- join geojson g on region.id=g.id
-order by region.description;
-
-CREATE OR REPLACE VIEW store_transactions
-AS select min(date_trunc('month', confirm_date)) as "date", s."name" as store, count(*) as "month", sum(case when t.confirm_date > current_date-7 then 1 else 0 end) as "week" 
-	from store s
-	left outer join transact t on s.id = t.store_id 
-	where s.store_mode not in ('supervisor', 'his', 'drug_registration')
-	and s.disabled = false
-	and t.confirm_date > current_date-30
-	and t.confirm_date <= CURRENT_DATE
-	group by s."name"
-    order by s."name";
-
-*/
+     LEFT JOIN name ON store.name_id = name.id
+     LEFT JOIN name_category1 ON name_category1.id = name.category1_id
+     LEFT JOIN name_category1_level2 ON name_category1.parent_id = name_category1_level2.id
+     LEFT JOIN name_category1_level1 ON name_category1_level2.parent_id = name_category1_level1.id
+     LEFT JOIN name_category2 ON name_category2.id = name.category2_id
+     LEFT JOIN name_category3 ON name_category3.id = name.category3_id
+     LEFT JOIN name_category4 ON name_category4.id = name.category4_id
+     LEFT JOIN name_category5 ON name_category5.id = name.category5_id
+     LEFT JOIN name_category6 ON name_category6.id = name.category4_id;
 
 -- FUNCTIONS --
 CREATE OR REPLACE FUNCTION year_month(d date) RETURNS varchar AS $$
@@ -614,8 +823,8 @@ AS $procedure$
 			storeid text,
 			itemid text,
 			fulldate date,
-			stockin integer default 0,
-			stockout integer default 0
+			stockin bigint default 0,
+			stockout bigint default 0
 		)
 		on commit drop;
 	
@@ -684,7 +893,7 @@ AS $procedure$
 ;
 
 CREATE OR REPLACE FUNCTION public.checkstockondate(patdate date, pstoreid text, pitemid text)
-	RETURNS int4
+	RETURNS integer
 	LANGUAGE plpgsql
 AS $function$
 	DECLARE result integer;
@@ -719,71 +928,125 @@ end $$
 CREATE OR REPLACE PROCEDURE public.pre_export()
  LANGUAGE sql
 AS $procedure$ 	
-DROP VIEW IF EXISTS public.region_mos;
-DROP VIEW IF EXISTS public.store_mos; 
-DROP VIEW IF EXISTS public.store_transactions; 
+DROP VIEW IF EXISTS public.store_categories;
  $procedure$
 ;
 
 CREATE OR REPLACE PROCEDURE public.post_export()
  LANGUAGE sql
 AS $procedure$ 	
-CREATE OR REPLACE VIEW public.region_mos
-AS SELECT CURRENT_DATE AS "time",
-    region.description AS region,
-    a.store,
-    a.value,
-    g.data AS geojson
-   FROM ( SELECT s.name AS store,
-            s.id AS storeid,
-            avg(a_1.value) AS value,
-            s.name_id
-           FROM aggregator a_1
-             JOIN store s ON a_1.storeid = s.id::text
-          WHERE a_1.dataelement = 'mos'::text
-          GROUP BY s.name, s.id, s.name_id) a
-     JOIN name n ON a.name_id::text = n.id::text
-     JOIN name_category1 region ON n.category1_id::text = region.id::text
-     JOIN geojson g ON region.id::text = g.id::text
-  ORDER BY region.description;
-  
-CREATE OR REPLACE VIEW public.store_mos
-AS SELECT (CURRENT_DATE - interval '1 day')::date AS "current_date",
-    name.name AS store,
-    a.value,
-    name.latitude,
-    name.longitude,
-    i.item_name AS item
+CREATE OR REPLACE VIEW public.item_categories
+ AS
+ WITH stock_type_strings AS (
+         SELECT item_1.id,
+            'On essential drug list'::text AS stock_type
+           FROM item item_1
+          WHERE item_1.essential_drug_list = true
+        UNION
+         SELECT item_1.id,
+            'Critical stock'::text AS stock_type
+           FROM item item_1
+          WHERE item_1.critical_stock = true
+        UNION
+         SELECT item_1.id,
+            'Normal stock'::text AS stock_type
+           FROM item item_1
+          WHERE item_1.normal_stock = true
+        )
+ SELECT item.id,
+    item.item_name,
+        CASE
+            WHEN item_category.description IS NULL THEN 'NONE'::text
+            ELSE item_category.description
+        END AS category,
+        CASE
+            WHEN item_category_level2.description IS NULL THEN 'NONE'::text
+            ELSE item_category_level2.description
+        END AS category_level2,
+        CASE
+            WHEN item_category_level1.description IS NULL THEN 'NONE'::text
+            ELSE item_category_level1.description
+        END AS category_level1,
+        CASE
+            WHEN item_category2.description IS NULL THEN 'NONE'::text
+            ELSE item_category2.description
+        END AS category2,
+        CASE
+            WHEN item_category3.description IS NULL THEN 'NONE'::text
+            ELSE item_category3.description
+        END AS category3,
+        CASE
+            WHEN item.ven_category = ''::text OR item.ven_category IS NULL THEN 'NONE'::text
+            ELSE item.ven_category
+        END AS ven_category,
+    item.essential_drug_list,
+    item.critical_stock,
+    item.normal_stock,
+        CASE
+            WHEN stock_type_strings.stock_type IS NULL THEN 'NONE'::text
+            ELSE stock_type_strings.stock_type
+        END AS stock_type
+   FROM item
+     LEFT JOIN item_category ON item.category_id = item_category.id
+     LEFT JOIN item_category2 ON item.category2_id = item_category2.id
+     LEFT JOIN item_category3 ON item.category3_id = item_category3.id
+     LEFT JOIN item_category_level2 ON item_category.parent_id = item_category_level2.id
+     LEFT JOIN item_category_level1 ON item_category_level2.parent_id = item_category_level1.id
+     LEFT JOIN stock_type_strings ON item.id = stock_type_strings.id;
+
+
+CREATE OR REPLACE VIEW public.store_categories
+ AS
+ SELECT store.name,
+    store.code,
+        CASE
+            WHEN store.organisation_name = ''::text THEN 'NONE'::text::character varying::text
+            ELSE store.organisation_name
+        END AS organisation,
+        CASE
+            WHEN name_category1.* IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category1.description
+        END AS category1,
+        CASE
+            WHEN name_category1_level2.description IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category1_level2.description
+        END AS category1_level2,
+        CASE
+            WHEN name_category1_level1.description IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category1_level1.description
+        END AS category1_level1,
+        CASE
+            WHEN name_category2.* IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category2.description
+        END AS category2,
+        CASE
+            WHEN name_category3.* IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category3.description
+        END AS category3,
+        CASE
+            WHEN name_category4.* IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category4.description
+        END AS category4,
+        CASE
+            WHEN name_category5.* IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category5.description
+        END AS category5,
+        CASE
+            WHEN name_category6.* IS NULL THEN 'NONE'::text::character varying::text
+            ELSE name_category6.description
+        END AS category6,
+    store.store_mode AS mode,
+    store.disabled
    FROM store
-     JOIN name ON store.name_id::text = name.id::text
-     JOIN aggregator a ON store.id::text = a.storeid
-     JOIN item i ON a.itemid = i.id::text
-  WHERE store.disabled = false AND a.dataelement = 'mos'::text;
-
-
-CREATE OR REPLACE VIEW public.store_transactions AS
-with stores as (
-  select id, name as store
-  from store
-  where (store_mode <> ALL (ARRAY['supervisor', 'his', 'drug_registration'])) 
-   and disabled = false 
-), transactions as (
-  select t.store_id, 
-    date_trunc('month', t.confirm_date::timestamp with time zone) confirm_date, 
-    1  "month", 
-    case when confirm_date > (CURRENT_DATE - 7) then 1 else 0 end "week"
-  from transact t
-  where t.confirm_date > (CURRENT_DATE - 30) 
-    and t.confirm_date <= CURRENT_DATE
-)
-SELECT min(confirm_date) AS date,
-    store,
-    coalesce(sum(month), 0) AS month,
-    coalesce(sum(week), 0) AS week
-  FROM stores s
-  LEFT JOIN transactions ON id = store_id
-  GROUP BY store
-  ORDER BY store;
+     LEFT JOIN name ON store.name_id = name.id
+     LEFT JOIN name_category1 ON name_category1.id = name.category1_id
+     LEFT JOIN name_category1_level2 ON name_category1.parent_id = name_category1_level2.id
+     LEFT JOIN name_category1_level1 ON name_category1_level2.parent_id = name_category1_level1.id
+     LEFT JOIN name_category2 ON name_category2.id = name.category2_id
+     LEFT JOIN name_category3 ON name_category3.id = name.category3_id
+     LEFT JOIN name_category4 ON name_category4.id = name.category4_id
+     LEFT JOIN name_category5 ON name_category5.id = name.category5_id
+     LEFT JOIN name_category6 ON name_category6.id = name.category4_id;
 
  $procedure$
 ;
