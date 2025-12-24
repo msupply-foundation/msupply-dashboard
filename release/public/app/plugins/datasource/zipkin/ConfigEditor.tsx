@@ -1,12 +1,16 @@
+import React from 'react';
+
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
-import { DataSourceHttpSettings } from '@grafana/ui';
+import { config } from '@grafana/runtime';
+import { DataSourceHttpSettings, SecureSocksProxySettings } from '@grafana/ui';
 import { NodeGraphSettings } from 'app/core/components/NodeGraphSettings';
 import { TraceToLogsSettings } from 'app/core/components/TraceToLogs/TraceToLogsSettings';
-import React from 'react';
+import { TraceToMetricsSettings } from 'app/core/components/TraceToMetrics/TraceToMetricsSettings';
+import { SpanBarSettings } from 'app/features/explore/TraceView/components';
 
 export type Props = DataSourcePluginOptionsEditorProps;
 
-export const ConfigEditor: React.FC<Props> = ({ options, onOptionsChange }) => {
+export const ConfigEditor = ({ options, onOptionsChange }: Props) => {
   return (
     <>
       <DataSourceHttpSettings
@@ -16,12 +20,26 @@ export const ConfigEditor: React.FC<Props> = ({ options, onOptionsChange }) => {
         onChange={onOptionsChange}
       />
 
+      {config.featureToggles.secureSocksDatasourceProxy && (
+        <SecureSocksProxySettings options={options} onOptionsChange={onOptionsChange} />
+      )}
+
       <div className="gf-form-group">
         <TraceToLogsSettings options={options} onOptionsChange={onOptionsChange} />
       </div>
 
+      {config.featureToggles.traceToMetrics ? (
+        <div className="gf-form-group">
+          <TraceToMetricsSettings options={options} onOptionsChange={onOptionsChange} />
+        </div>
+      ) : null}
+
       <div className="gf-form-group">
         <NodeGraphSettings options={options} onOptionsChange={onOptionsChange} />
+      </div>
+
+      <div className="gf-form-group">
+        <SpanBarSettings options={options} onOptionsChange={onOptionsChange} />
       </div>
     </>
   );

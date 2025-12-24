@@ -1,28 +1,34 @@
 import { TransformerRegistryItem } from '@grafana/data';
-import { reduceTransformRegistryItem } from './editors/ReduceTransformerEditor';
+import { config } from '@grafana/runtime';
+
+import { filterByValueTransformRegistryItem } from './FilterByValueTransformer/FilterByValueTransformerEditor';
+import { heatmapTransformRegistryItem } from './calculateHeatmap/HeatmapTransformerEditor';
+import { configFromQueryTransformRegistryItem } from './configFromQuery/ConfigFromQueryTransformerEditor';
+import { calculateFieldTransformRegistryItem } from './editors/CalculateFieldTransformerEditor';
+import { concatenateTransformRegistryItem } from './editors/ConcatenateTransformerEditor';
+import { convertFieldTypeTransformRegistryItem } from './editors/ConvertFieldTypeTransformerEditor';
 import { filterFieldsByNameTransformRegistryItem } from './editors/FilterByNameTransformerEditor';
 import { filterFramesByRefIdTransformRegistryItem } from './editors/FilterByRefIdTransformerEditor';
-import { filterByValueTransformRegistryItem } from './FilterByValueTransformer/FilterByValueTransformerEditor';
-import { organizeFieldsTransformRegistryItem } from './editors/OrganizeFieldsTransformerEditor';
-import { seriesToFieldsTransformerRegistryItem } from './editors/SeriesToFieldsTransformerEditor';
-import { calculateFieldTransformRegistryItem } from './editors/CalculateFieldTransformerEditor';
-import { labelsToFieldsTransformerRegistryItem } from './editors/LabelsToFieldsTransformerEditor';
 import { groupByTransformRegistryItem } from './editors/GroupByTransformerEditor';
-import { sortByTransformRegistryItem } from './editors/SortByTransformerEditor';
-import { mergeTransformerRegistryItem } from './editors/MergeTransformerEditor';
-import { seriesToRowsTransformerRegistryItem } from './editors/SeriesToRowsTransformerEditor';
-import { concatenateTransformRegistryItem } from './editors/ConcatenateTransformerEditor';
-import { renameByRegexTransformRegistryItem } from './editors/RenameByRegexTransformer';
-import { histogramTransformRegistryItem } from './editors/HistogramTransformerEditor';
-import { rowsToFieldsTransformRegistryItem } from './rowsToFields/RowsToFieldsTransformerEditor';
-import { configFromQueryTransformRegistryItem } from './configFromQuery/ConfigFromQueryTransformerEditor';
-import { prepareTimeseriesTransformerRegistryItem } from './prepareTimeSeries/PrepareTimeSeriesEditor';
-import { convertFieldTypeTransformRegistryItem } from './editors/ConvertFieldTypeTransformerEditor';
-import { fieldLookupTransformRegistryItem } from './lookupGazetteer/FieldLookupTransformerEditor';
-import { extractFieldsTransformRegistryItem } from './extractFields/ExtractFieldsTransformerEditor';
-import { heatmapTransformRegistryItem } from './calculateHeatmap/HeatmapTransformerEditor';
-import { spatialTransformRegistryItem } from './spatial/SpatialTransformerEditor';
 import { groupingToMatrixTransformRegistryItem } from './editors/GroupingToMatrixTransformerEditor';
+import { histogramTransformRegistryItem } from './editors/HistogramTransformerEditor';
+import { joinByFieldTransformerRegistryItem } from './editors/JoinByFieldTransformerEditor';
+import { labelsToFieldsTransformerRegistryItem } from './editors/LabelsToFieldsTransformerEditor';
+import { limitTransformRegistryItem } from './editors/LimitTransformerEditor';
+import { mergeTransformerRegistryItem } from './editors/MergeTransformerEditor';
+import { organizeFieldsTransformRegistryItem } from './editors/OrganizeFieldsTransformerEditor';
+import { reduceTransformRegistryItem } from './editors/ReduceTransformerEditor';
+import { renameByRegexTransformRegistryItem } from './editors/RenameByRegexTransformer';
+import { seriesToRowsTransformerRegistryItem } from './editors/SeriesToRowsTransformerEditor';
+import { sortByTransformRegistryItem } from './editors/SortByTransformerEditor';
+import { extractFieldsTransformRegistryItem } from './extractFields/ExtractFieldsTransformerEditor';
+import { joinByLabelsTransformRegistryItem } from './joinByLabels/JoinByLabelsTransformerEditor';
+import { fieldLookupTransformRegistryItem } from './lookupGazetteer/FieldLookupTransformerEditor';
+import { partitionByValuesTransformRegistryItem } from './partitionByValues/PartitionByValuesEditor';
+import { prepareTimeseriesTransformerRegistryItem } from './prepareTimeSeries/PrepareTimeSeriesEditor';
+import { rowsToFieldsTransformRegistryItem } from './rowsToFields/RowsToFieldsTransformerEditor';
+import { spatialTransformRegistryItem } from './spatial/SpatialTransformerEditor';
+import { timeSeriesTableTransformRegistryItem } from './timeSeriesTable/TimeSeriesTableTransformEditor';
 
 export const getStandardTransformers = (): Array<TransformerRegistryItem<any>> => {
   return [
@@ -32,7 +38,7 @@ export const getStandardTransformers = (): Array<TransformerRegistryItem<any>> =
     filterFramesByRefIdTransformRegistryItem,
     filterByValueTransformRegistryItem,
     organizeFieldsTransformRegistryItem,
-    seriesToFieldsTransformerRegistryItem,
+    joinByFieldTransformerRegistryItem,
     seriesToRowsTransformerRegistryItem,
     concatenateTransformRegistryItem,
     calculateFieldTransformRegistryItem,
@@ -50,5 +56,9 @@ export const getStandardTransformers = (): Array<TransformerRegistryItem<any>> =
     extractFieldsTransformRegistryItem,
     heatmapTransformRegistryItem,
     groupingToMatrixTransformRegistryItem,
+    limitTransformRegistryItem,
+    joinByLabelsTransformRegistryItem,
+    partitionByValuesTransformRegistryItem,
+    ...(config.featureToggles.timeSeriesTable ? [timeSeriesTableTransformRegistryItem] : []),
   ];
 };

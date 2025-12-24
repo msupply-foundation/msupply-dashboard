@@ -1,5 +1,7 @@
-import React, { useMemo, useCallback } from 'react';
 import { css } from '@emotion/css';
+import { cloneDeep } from 'lodash';
+import React, { useMemo, useCallback } from 'react';
+
 import {
   DataTransformerID,
   standardTransformers,
@@ -12,14 +14,13 @@ import {
   ValueMatcherID,
   valueMatchers,
 } from '@grafana/data';
-import { Button, RadioButtonGroup, stylesFactory } from '@grafana/ui';
-import { cloneDeep } from 'lodash';
 import {
   FilterByValueFilter,
   FilterByValueMatch,
   FilterByValueTransformerOptions,
   FilterByValueType,
 } from '@grafana/data/src/transformations/transformers/filterByValue';
+import { Button, RadioButtonGroup, stylesFactory } from '@grafana/ui';
 
 import { DataFrameFieldsInfo, FilterByValueFilterEditor } from './FilterByValueFilterEditor';
 
@@ -33,9 +34,7 @@ const filterMatch: Array<SelectableValue<FilterByValueMatch>> = [
   { label: 'Match any', value: FilterByValueMatch.any },
 ];
 
-export const FilterByValueTransformerEditor: React.FC<TransformerUIProps<FilterByValueTransformerOptions>> = (
-  props
-) => {
+export const FilterByValueTransformerEditor = (props: TransformerUIProps<FilterByValueTransformerOptions>) => {
   const { input, options, onChange } = props;
   const styles = getEditorStyles();
   const fieldsInfo = useFieldsInfo(input);

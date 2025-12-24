@@ -1,8 +1,10 @@
-import { getPanelEditorTabs } from './selectors';
 import { PanelPlugin } from '@grafana/data';
-import { PanelEditorTabId } from '../types';
-import { updateConfig } from '../../../../../core/config';
 import { contextSrv } from 'app/core/services/context_srv';
+
+import { updateConfig } from '../../../../../core/config';
+import { PanelEditorTabId } from '../types';
+
+import { getPanelEditorTabs } from './selectors';
 
 jest.mock('app/core/services/context_srv');
 
@@ -21,14 +23,14 @@ describe('getPanelEditorTabs selector', () => {
 
   it('marks tab as active when tab param provided', () => {
     expect(getPanelEditorTabs('transform', { meta: { skipDataQuery: false } } as PanelPlugin)).toMatchInlineSnapshot(`
-      Array [
-        Object {
+      [
+        {
           "active": false,
           "icon": "database",
           "id": "query",
           "text": "Query",
         },
-        Object {
+        {
           "active": true,
           "icon": "process",
           "id": "transform",

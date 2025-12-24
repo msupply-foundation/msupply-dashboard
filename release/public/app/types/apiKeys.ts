@@ -1,6 +1,8 @@
-﻿import { OrgRole } from './acl';
+﻿import { WithAccessControlMetadata } from '@grafana/data';
 
-export interface ApiKey {
+import { OrgRole } from './acl';
+
+export interface ApiKey extends WithAccessControlMetadata {
   id?: number;
   name: string;
   role: OrgRole;
@@ -8,13 +10,9 @@ export interface ApiKey {
   expiration?: string;
   secondsUntilExpiration?: number;
   hasExpired?: boolean;
+  isRevoked?: boolean;
   created?: string;
-}
-
-export interface NewApiKey {
-  name: string;
-  role: OrgRole;
-  secondsToLive: string;
+  lastUsedAt?: string;
 }
 
 export interface ApiKeysState {

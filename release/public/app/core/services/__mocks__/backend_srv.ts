@@ -1,7 +1,9 @@
 import 'whatwg-fetch'; // fetch polyfill needed for Headers
 
-import { BackendSrvRequest, FetchResponse } from '@grafana/runtime';
 import { of } from 'rxjs';
+
+import { BackendSrvRequest, FetchResponse } from '@grafana/runtime';
+
 import { BackendSrv } from '../backend_srv';
 
 /**
@@ -32,6 +34,7 @@ export const backendSrv = {
   getFolderByUid: jest.fn(),
   post: jest.fn(),
   resolveCancelerIfExists: jest.fn(),
+  search: jest.fn(),
   datasourceRequest: jest.fn(() => Promise.resolve(makePromResponse())),
 
   // Observable support

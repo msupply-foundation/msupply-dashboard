@@ -1,13 +1,15 @@
-import React, { FC } from 'react';
-import { RuleType, SharedProps } from './RuleType';
-import { DisabledTooltip } from './DisabledTooltip';
+import React from 'react';
+
 import { RuleFormType } from '../../../types/rule-form';
+
+import { DisabledTooltip } from './DisabledTooltip';
+import { RuleType, SharedProps } from './RuleType';
 
 interface Props extends SharedProps {
   onClick: (value: RuleFormType) => void;
 }
 
-const MimirFlavoredType: FC<Props> = ({ selected = false, disabled = false, onClick }) => {
+const MimirFlavoredType = ({ selected = false, disabled = false, onClick }: Props) => {
   return (
     <DisabledTooltip visible={disabled}>
       <RuleType
@@ -19,7 +21,7 @@ const MimirFlavoredType: FC<Props> = ({ selected = false, disabled = false, onCl
             Expressions are not supported.
           </span>
         }
-        image="/public/img/alerting/mimir_logo.svg"
+        image="public/img/alerting/mimir_logo.svg"
         selected={selected}
         disabled={disabled}
         value={RuleFormType.cloudAlerting}

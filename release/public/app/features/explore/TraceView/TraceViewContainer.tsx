@@ -1,118 +1,89 @@
+import { css } from '@emotion/css';
 import React, { RefObject, useMemo, useState } from 'react';
-import { Collapse } from '@grafana/ui';
-import { DataFrame, SplitOpen, PanelData } from '@grafana/data';
-import { TraceView } from './TraceView';
+
+import { DataFrame, SplitOpen, PanelData, GrafanaTheme2 } from '@grafana/data';
+import { config } from '@grafana/runtime';
+import { useStyles2 } from '@grafana/ui';
+import { StoreState, useSelector } from 'app/types';
 import { ExploreId } from 'app/types/explore';
-import TracePageSearchBar from '@jaegertracing/jaeger-ui-components/src/TracePageHeader/TracePageSearchBar';
+
+import { TraceView } from './TraceView';
+import TracePageSearchBar from './components/TracePageHeader/TracePageSearchBar';
+import { TopOfViewRefType } from './components/TraceTimelineViewer/VirtualizedTraceView';
 import { useSearch } from './useSearch';
 import { transformDataFrames } from './utils/transform';
-import { useChildrenState } from './useChildrenState';
 interface Props {
   dataFrames: DataFrame[];
   splitOpenFn: SplitOpen;
   exploreId: ExploreId;
   scrollElement?: Element;
-  topOfExploreViewRef?: RefObject<HTMLDivElement>;
   queryResponse: PanelData;
+  topOfViewRef: RefObject<HTMLDivElement>;
 }
+
+const getStyles = (theme: GrafanaTheme2) => ({
+  container: css`
+    label: container;
+    margin-bottom: ${theme.spacing(1)};
+    background-color: ${theme.colors.background.primary};
+    border: 1px solid ${theme.colors.border.medium};
+    position: relative;
+    border-radius: ${theme.shape.radius.default};
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    padding: ${config.featureToggles.newTraceView ? 0 : theme.spacing(theme.components.panel.padding)};
+  `,
+});
+
 export function TraceViewContainer(props: Props) {
   // At this point we only show single trace
   const frame = props.dataFrames[0];
-
-  const { dataFrames, splitOpenFn, exploreId, scrollElement, topOfExploreViewRef, queryResponse } = props;
+  const style = useStyles2(getStyles);
+  const { dataFrames, splitOpenFn, exploreId, scrollElement, topOfViewRef, queryResponse } = props;
   const traceProp = useMemo(() => transformDataFrames(frame), [frame]);
   const { search, setSearch, spanFindMatches } = useSearch(traceProp?.spans);
-  const { expandOne, collapseOne, childrenToggle, collapseAll, childrenHiddenIDs, expandAll } = useChildrenState();
-
   const [focusedSpanIdForSearch, setFocusedSpanIdForSearch] = useState('');
   const [searchBarSuffix, setSearchBarSuffix] = useState('');
-
-  const setTraceSearch = (value: string) => {
-    setFocusedSpanIdForSearch('');
-    setSearchBarSuffix('');
-    setSearch(value);
-  };
-
-  const nextResult = () => {
-    expandAll();
-    const spanMatches = Array.from(spanFindMatches!);
-    const prevMatchedIndex = spanMatches.indexOf(focusedSpanIdForSearch)
-      ? spanMatches.indexOf(focusedSpanIdForSearch)
-      : 0;
-
-    // new query || at end, go to start
-    if (prevMatchedIndex === -1 || prevMatchedIndex === spanMatches.length - 1) {
-      setFocusedSpanIdForSearch(spanMatches[0]);
-      setSearchBarSuffix(getSearchBarSuffix(1));
-      return;
-    }
-
-    // get next
-    setFocusedSpanIdForSearch(spanMatches[prevMatchedIndex + 1]);
-    setSearchBarSuffix(getSearchBarSuffix(prevMatchedIndex + 2));
-  };
-
-  const prevResult = () => {
-    expandAll();
-    const spanMatches = Array.from(spanFindMatches!);
-    const prevMatchedIndex = spanMatches.indexOf(focusedSpanIdForSearch)
-      ? spanMatches.indexOf(focusedSpanIdForSearch)
-      : 0;
-
-    // new query || at start, go to end
-    if (prevMatchedIndex === -1 || prevMatchedIndex === 0) {
-      setFocusedSpanIdForSearch(spanMatches[spanMatches.length - 1]);
-      setSearchBarSuffix(getSearchBarSuffix(spanMatches.length));
-      return;
-    }
-
-    // get prev
-    setFocusedSpanIdForSearch(spanMatches[prevMatchedIndex - 1]);
-    setSearchBarSuffix(getSearchBarSuffix(prevMatchedIndex));
-  };
-
-  const getSearchBarSuffix = (index: number): string => {
-    if (spanFindMatches?.size && spanFindMatches?.size > 0) {
-      return index + ' of ' + spanFindMatches?.size;
-    }
-    return '';
-  };
+  const datasource = useSelector(
+    (state: StoreState) => state.explore[props.exploreId!]?.datasourceInstance ?? undefined
+  );
+  const datasourceType = datasource ? datasource?.type : 'unknown';
 
   if (!traceProp) {
     return null;
   }
 
   return (
-    <>
-      <TracePageSearchBar
-        nextResult={nextResult}
-        prevResult={prevResult}
-        navigable={true}
-        searchValue={search}
-        onSearchValueChange={setTraceSearch}
-        searchBarSuffix={searchBarSuffix}
-      />
-
-      <Collapse label="Trace View" isOpen>
-        <TraceView
-          exploreId={exploreId}
-          dataFrames={dataFrames}
-          splitOpenFn={splitOpenFn}
-          scrollElement={scrollElement}
-          topOfExploreViewRef={topOfExploreViewRef}
-          traceProp={traceProp}
+    <div className={style.container}>
+      {!config.featureToggles.newTraceView && (
+        <TracePageSearchBar
+          navigable={true}
+          searchValue={search}
+          setSearch={setSearch}
           spanFindMatches={spanFindMatches}
-          search={search}
+          searchBarSuffix={searchBarSuffix}
+          setSearchBarSuffix={setSearchBarSuffix}
           focusedSpanIdForSearch={focusedSpanIdForSearch}
-          expandOne={expandOne}
-          collapseOne={collapseOne}
-          collapseAll={collapseAll}
-          expandAll={expandAll}
-          childrenToggle={childrenToggle}
-          childrenHiddenIDs={childrenHiddenIDs}
-          queryResponse={queryResponse}
+          setFocusedSpanIdForSearch={setFocusedSpanIdForSearch}
+          datasourceType={datasourceType}
         />
-      </Collapse>
-    </>
+      )}
+      <TraceView
+        exploreId={exploreId}
+        dataFrames={dataFrames}
+        splitOpenFn={splitOpenFn}
+        scrollElement={scrollElement}
+        traceProp={traceProp}
+        spanFindMatches={spanFindMatches}
+        search={search}
+        focusedSpanIdForSearch={focusedSpanIdForSearch}
+        queryResponse={queryResponse}
+        datasource={datasource}
+        topOfViewRef={topOfViewRef}
+        topOfViewRefType={TopOfViewRefType.Explore}
+      />
+    </div>
   );
 }

@@ -1,25 +1,28 @@
-import React, { FC, useMemo } from 'react';
-import { GrafanaTheme2, dateMath } from '@grafana/data';
-import { Icon, useStyles2, Link, Button } from '@grafana/ui';
 import { css } from '@emotion/css';
-import { AlertmanagerAlert, Silence, SilenceState } from 'app/plugins/datasource/alertmanager/types';
-import { NoSilencesSplash } from './NoSilencesCTA';
-import { getSilenceFiltersFromUrlParams, makeAMLink } from '../../utils/misc';
-import { contextSrv } from 'app/core/services/context_srv';
+import React, { useMemo } from 'react';
+
+import { GrafanaTheme2, dateMath } from '@grafana/data';
+import { Stack } from '@grafana/experimental';
+import { Icon, useStyles2, Link, Button } from '@grafana/ui';
 import { useQueryParams } from 'app/core/hooks/useQueryParams';
-import { SilencesFilter } from './SilencesFilter';
+import { contextSrv } from 'app/core/services/context_srv';
+import { AlertmanagerAlert, Silence, SilenceState } from 'app/plugins/datasource/alertmanager/types';
+import { useDispatch } from 'app/types';
+
+import { expireSilenceAction } from '../../state/actions';
+import { getInstancesPermissions } from '../../utils/access-control';
 import { parseMatchers } from '../../utils/alertmanager';
+import { getSilenceFiltersFromUrlParams, makeAMLink } from '../../utils/misc';
+import { Authorize } from '../Authorize';
 import { DynamicTable, DynamicTableColumnProps, DynamicTableItemProps } from '../DynamicTable';
-import { SilenceStateTag } from './SilenceStateTag';
-import { Matchers } from './Matchers';
 import { ActionButton } from '../rules/ActionButton';
 import { ActionIcon } from '../rules/ActionIcon';
-import { useDispatch } from 'react-redux';
-import { expireSilenceAction } from '../../state/actions';
+
+import { Matchers } from './Matchers';
+import { NoSilencesSplash } from './NoSilencesCTA';
 import { SilenceDetails } from './SilenceDetails';
-import { Stack } from '@grafana/experimental';
-import { Authorize } from '../Authorize';
-import { getInstancesPermissions } from '../../utils/access-control';
+import { SilenceStateTag } from './SilenceStateTag';
+import { SilencesFilter } from './SilencesFilter';
 
 export interface SilenceTableItem extends Silence {
   silencedAlerts: AlertmanagerAlert[];
@@ -33,7 +36,7 @@ interface Props {
   alertManagerSourceName: string;
 }
 
-const SilencesTable: FC<Props> = ({ silences, alertManagerAlerts, alertManagerSourceName }) => {
+const SilencesTable = ({ silences, alertManagerAlerts, alertManagerSourceName }: Props) => {
   const styles = useStyles2(getStyles);
   const [queryParams] = useQueryParams();
   const filteredSilences = useFilteredSilences(silences);
@@ -68,7 +71,7 @@ const SilencesTable: FC<Props> = ({ silences, alertManagerAlerts, alertManagerSo
             <div className={styles.topButtonContainer}>
               <Link href={makeAMLink('/alerting/silence/new', alertManagerSourceName)}>
                 <Button className={styles.addNewSilence} icon="plus">
-                  New Silence
+                  Add Silence
                 </Button>
               </Link>
             </div>
@@ -148,7 +151,7 @@ const getStyles = (theme: GrafanaTheme2) => ({
   callout: css`
     background-color: ${theme.colors.background.secondary};
     border-top: 3px solid ${theme.colors.info.border};
-    border-radius: 2px;
+    border-radius: ${theme.shape.borderRadius()};
     height: 62px;
     display: flex;
     flex-direction: row;
@@ -183,7 +186,7 @@ function useColumns(alertManagerSourceName: string) {
         renderCell: function renderStateTag({ data: { status } }) {
           return <SilenceStateTag state={status.state} />;
         },
-        size: '88px',
+        size: 4,
       },
       {
         id: 'matchers',
@@ -191,7 +194,7 @@ function useColumns(alertManagerSourceName: string) {
         renderCell: function renderMatchers({ data: { matchers } }) {
           return <Matchers matchers={matchers || []} />;
         },
-        size: 9,
+        size: 10,
       },
       {
         id: 'alerts',
@@ -199,7 +202,7 @@ function useColumns(alertManagerSourceName: string) {
         renderCell: function renderSilencedAlerts({ data: { silencedAlerts } }) {
           return <span data-testid="alerts">{silencedAlerts.length}</span>;
         },
-        size: 1,
+        size: 4,
       },
       {
         id: 'schedule',
@@ -212,12 +215,11 @@ function useColumns(alertManagerSourceName: string) {
             <>
               {' '}
               {startsAtDate?.format(dateDisplayFormat)} {'-'}
-              <br />
               {endsAtDate?.format(dateDisplayFormat)}
             </>
           );
         },
-        size: '150px',
+        size: 7,
       },
     ];
     if (showActions) {
@@ -247,7 +249,7 @@ function useColumns(alertManagerSourceName: string) {
             </Stack>
           );
         },
-        size: '147px',
+        size: 5,
       });
     }
     return columns;

@@ -1,10 +1,12 @@
 import { css } from '@emotion/css';
+import React from 'react';
+
 import { GrafanaTheme2 } from '@grafana/data';
 import { LinkButton, useStyles2 } from '@grafana/ui';
 import { contextSrv } from 'app/core/services/context_srv';
 import { AlertmanagerAlert, AlertState } from 'app/plugins/datasource/alertmanager/types';
 import { AccessControlAction } from 'app/types';
-import React, { FC } from 'react';
+
 import { getInstancesPermissions } from '../../utils/access-control';
 import { isGrafanaRulesSource } from '../../utils/datasource';
 import { makeAMLink, makeLabelBasedSilenceLink } from '../../utils/misc';
@@ -16,7 +18,7 @@ interface AmNotificationsAlertDetailsProps {
   alert: AlertmanagerAlert;
 }
 
-export const AlertDetails: FC<AmNotificationsAlertDetailsProps> = ({ alert, alertManagerSourceName }) => {
+export const AlertDetails = ({ alert, alertManagerSourceName }: AmNotificationsAlertDetailsProps) => {
   const styles = useStyles2(getStyles);
   const instancePermissions = getInstancesPermissions(alertManagerSourceName);
 

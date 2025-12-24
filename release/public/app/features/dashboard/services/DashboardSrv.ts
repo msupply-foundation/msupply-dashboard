@@ -1,12 +1,16 @@
+import { lastValueFrom } from 'rxjs';
+
+import { AppEvents } from '@grafana/data';
+import { BackendSrvRequest } from '@grafana/runtime';
 import { appEvents } from 'app/core/app_events';
-import { DashboardModel } from '../state/DashboardModel';
-import { removePanel } from '../utils/panel';
-import { DashboardMeta } from 'app/types';
+import { t } from 'app/core/internationalization';
 import { getBackendSrv } from 'app/core/services/backend_srv';
 import { saveDashboard } from 'app/features/manage-dashboards/state/actions';
+import { DashboardMeta } from 'app/types';
+
 import { RemovePanelEvent } from '../../../types/events';
-import { BackendSrvRequest } from '@grafana/runtime';
-import { lastValueFrom } from 'rxjs';
+import { DashboardModel } from '../state/DashboardModel';
+import { removePanel } from '../utils/panel';
 
 export interface SaveDashboardOptions {
   /** The complete dashboard model. If `dashboard.id` is not set a new dashboard will be created. */
@@ -67,7 +71,7 @@ export class DashboardSrv {
     const parsedJson = JSON.parse(json);
     return saveDashboard({
       dashboard: parsedJson,
-      folderId: this.dashboard?.meta.folderId || parsedJson.folderId,
+      folderUid: this.dashboard?.meta.folderUid || parsedJson.folderUid,
     });
   }
 
@@ -88,25 +92,29 @@ export class DashboardSrv {
     );
   }
 
-  starDashboard(dashboardId: string, isStarred: any) {
+  starDashboard(dashboardUid: string, isStarred: boolean) {
     const backendSrv = getBackendSrv();
-    let promise;
 
-    if (isStarred) {
-      promise = backendSrv.delete('/api/user/stars/dashboard/' + dashboardId).then(() => {
-        return false;
-      });
-    } else {
-      promise = backendSrv.post('/api/user/stars/dashboard/' + dashboardId).then(() => {
-        return true;
-      });
-    }
+    const request = {
+      showSuccessAlert: false,
+      url: '/api/user/stars/dashboard/uid/' + dashboardUid,
+      method: isStarred ? 'DELETE' : 'POST',
+    };
 
-    return promise.then((res: boolean) => {
-      if (this.dashboard && this.dashboard.id === dashboardId) {
-        this.dashboard.meta.isStarred = res;
+    return backendSrv.request(request).then(() => {
+      const newIsStarred = !isStarred;
+
+      if (this.dashboard?.uid === dashboardUid) {
+        this.dashboard.meta.isStarred = newIsStarred;
       }
-      return res;
+
+      const message = newIsStarred
+        ? t('notifications.starred-dashboard', 'Dashboard starred')
+        : t('notifications.unstarred-dashboard', 'Dashboard unstarred');
+
+      appEvents.emit(AppEvents.alertSuccess, [message]);
+
+      return newIsStarred;
     });
   }
 }

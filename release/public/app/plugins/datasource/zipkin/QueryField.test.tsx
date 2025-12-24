@@ -1,9 +1,11 @@
-import { CascaderOption } from '@grafana/ui';
-import { act, renderHook } from '@testing-library/react-hooks';
 import { render, screen } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react-hooks';
 import React from 'react';
-import { ZipkinDatasource } from './datasource';
+
+import { CascaderOption } from '@grafana/ui';
+
 import { ZipkinQueryField, useLoadOptions, useServices } from './QueryField';
+import { ZipkinDatasource } from './datasource';
 import { ZipkinQuery } from './types';
 
 describe('QueryField', () => {
@@ -28,10 +30,11 @@ describe('QueryField', () => {
 describe('useServices', () => {
   it('returns services from datasource', async () => {
     const ds = {
-      async metadataRequest(url: string, params?: Record<string, any>): Promise<any> {
+      async metadataRequest(url) {
         if (url === '/api/v2/services') {
           return Promise.resolve(['service1', 'service2']);
         }
+        return undefined;
       },
     } as ZipkinDatasource;
 
@@ -47,7 +50,7 @@ describe('useServices', () => {
 describe('useLoadOptions', () => {
   it('loads spans and traces', async () => {
     const ds = {
-      async metadataRequest(url: string, params?: Record<string, any>): Promise<any> {
+      async metadataRequest(url, params) {
         if (url === '/api/v2/spans' && params?.serviceName === 'service1') {
           return Promise.resolve(['span1', 'span2']);
         }
@@ -55,6 +58,7 @@ describe('useLoadOptions', () => {
         if (url === '/api/v2/traces' && params?.serviceName === 'service1' && params?.spanName === 'span1') {
           return Promise.resolve([[{ name: 'trace1', duration: 10_000, traceId: 'traceId1' }]]);
         }
+        return undefined;
       },
     } as ZipkinDatasource;
 

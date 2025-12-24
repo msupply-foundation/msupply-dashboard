@@ -1,3 +1,4 @@
+import { SelectableValue } from '@grafana/data';
 import {
   AlertManagerCortexConfig,
   MatcherOperator,
@@ -5,13 +6,14 @@ import {
   Matcher,
   TimeInterval,
   TimeRange,
+  ObjectMatcher,
 } from 'app/plugins/datasource/alertmanager/types';
 import { Labels } from 'app/types/unified-alerting-dto';
+
 import { MatcherFieldValue } from '../types/silence-form';
-import { SelectableValue } from '@grafana/data';
+
 import { getAllDataSources } from './config';
 import { DataSourceType } from './datasource';
-import { FetchError } from '@grafana/runtime';
 
 export function addDefaultsToAlertmanagerConfig(config: AlertManagerCortexConfig): AlertManagerCortexConfig {
   // add default receiver if it does not exist
@@ -157,8 +159,13 @@ export function parseMatcher(matcher: string): Matcher {
   };
 }
 
+export function matcherToObjectMatcher(matcher: Matcher): ObjectMatcher {
+  const operator = matcherToOperator(matcher);
+  return [matcher.name, operator, matcher.value];
+}
+
 export function parseMatchers(matcherQueryString: string): Matcher[] {
-  const matcherRegExp = /\b([\w.-]+)(=~|!=|!~|=(?="?\w))"?([^"\n,]*)"?/g;
+  const matcherRegExp = /\b([\w.-]+)(=~|!=|!~|=(?="?\w))"?([^"\n,}]*)"?/g;
   const matchers: Matcher[] = [];
 
   matcherQueryString.replace(matcherRegExp, (_, key, operator, value) => {
@@ -166,7 +173,7 @@ export function parseMatchers(matcherQueryString: string): Matcher[] {
     const isRegex = operator === MatcherOperator.regex || operator === MatcherOperator.notRegex;
     matchers.push({
       name: key,
-      value,
+      value: value.trim(),
       isEqual,
       isRegex,
     });
@@ -257,8 +264,4 @@ export function getMonthsString(months?: string[]): string {
 
 export function getYearsString(years?: string[]): string {
   return 'Years: ' + (years?.join(', ') ?? 'All');
-}
-
-export function isFetchError(e: unknown): e is FetchError {
-  return typeof e === 'object' && e !== null && 'status' in e && 'data' in e;
 }

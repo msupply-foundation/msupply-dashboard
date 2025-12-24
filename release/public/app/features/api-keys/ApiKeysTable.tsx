@@ -1,19 +1,21 @@
-import React, { FC } from 'react';
-import { DeleteButton, Icon, IconName, Tooltip, useTheme2 } from '@grafana/ui';
+import { css } from '@emotion/css';
+import React from 'react';
+
 import { dateTimeFormat, GrafanaTheme2, TimeZone } from '@grafana/data';
+import { Button, DeleteButton, HorizontalGroup, Icon, Tooltip, useTheme2 } from '@grafana/ui';
+import { contextSrv } from 'app/core/core';
+import { AccessControlAction } from 'app/types';
 
 import { ApiKey } from '../../types';
-import { css } from '@emotion/css';
 
 interface Props {
   apiKeys: ApiKey[];
   timeZone: TimeZone;
   onDelete: (apiKey: ApiKey) => void;
-  canRead: boolean;
-  canDelete: boolean;
+  onMigrate: (apiKey: ApiKey) => void;
 }
 
-export const ApiKeysTable: FC<Props> = ({ apiKeys, timeZone, onDelete, canRead, canDelete }) => {
+export const ApiKeysTable = ({ apiKeys, timeZone, onDelete, onMigrate }: Props) => {
   const theme = useTheme2();
   const styles = getStyles(theme);
 
@@ -24,10 +26,11 @@ export const ApiKeysTable: FC<Props> = ({ apiKeys, timeZone, onDelete, canRead, 
           <th>Name</th>
           <th>Role</th>
           <th>Expires</th>
+          <th>Last used at</th>
           <th style={{ width: '34px' }} />
         </tr>
       </thead>
-      {canRead && apiKeys.length > 0 ? (
+      {apiKeys.length > 0 ? (
         <tbody>
           {apiKeys.map((key) => {
             const isExpired = Boolean(key.expiration && Date.now() > new Date(key.expiration).getTime());
@@ -40,18 +43,24 @@ export const ApiKeysTable: FC<Props> = ({ apiKeys, timeZone, onDelete, canRead, 
                   {isExpired && (
                     <span className={styles.tooltipContainer}>
                       <Tooltip content="This API key has expired.">
-                        <Icon name={'exclamation-triangle' as IconName} />
+                        <Icon name="exclamation-triangle" />
                       </Tooltip>
                     </span>
                   )}
                 </td>
+                <td>{formatLastUsedAtDate(timeZone, key.lastUsedAt)}</td>
                 <td>
-                  <DeleteButton
-                    aria-label="Delete API key"
-                    size="sm"
-                    onConfirm={() => onDelete(key)}
-                    disabled={!canDelete}
-                  />
+                  <HorizontalGroup justify="flex-end">
+                    <Button size="sm" onClick={() => onMigrate(key)}>
+                      Migrate to service account
+                    </Button>
+                    <DeleteButton
+                      aria-label="Delete API key"
+                      size="sm"
+                      onConfirm={() => onDelete(key)}
+                      disabled={!contextSrv.hasPermissionInMetadata(AccessControlAction.ActionAPIKeysDelete, key)}
+                    />
+                  </HorizontalGroup>
                 </td>
               </tr>
             );
@@ -61,6 +70,13 @@ export const ApiKeysTable: FC<Props> = ({ apiKeys, timeZone, onDelete, canRead, 
     </table>
   );
 };
+
+function formatLastUsedAtDate(timeZone: TimeZone, lastUsedAt?: string): string {
+  if (!lastUsedAt) {
+    return 'Never';
+  }
+  return dateTimeFormat(lastUsedAt, { timeZone });
+}
 
 function formatDate(expiration: string | undefined, timeZone: TimeZone): string {
   if (!expiration) {

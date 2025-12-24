@@ -1,16 +1,18 @@
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { within } from '@testing-library/dom';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
+import React from 'react';
+
 import { OrgRole } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
-import TestProvider from '../../../test/helpers/TestProvider';
+
+import { TestProvider } from '../../../test/helpers/TestProvider';
+import { backendSrv } from '../../core/services/backend_srv';
+import { TeamPermissionLevel } from '../../types';
+import { getMockTeam } from '../teams/__mocks__/teamMocks';
 
 import { Props, UserProfileEditPage } from './UserProfileEditPage';
 import { initialUserState } from './state/reducers';
-import { getNavModel } from '../../core/selectors/navModel';
-import { backendSrv } from '../../core/services/backend_srv';
-import { TeamPermissionLevel } from '../../types';
 
 const defaultProps: Props = {
   ...initialUserState,
@@ -24,14 +26,13 @@ const defaultProps: Props = {
     orgId: 0,
   },
   teams: [
-    {
-      id: 0,
+    getMockTeam(0, {
       name: 'Team One',
       email: 'team.one@test.com',
       avatarUrl: '/avatar/07d881f402480a2a511a9a15b5fa82c0',
       memberCount: 2000,
       permission: TeamPermissionLevel.Admin,
-    },
+    }),
   ],
   orgs: [
     {
@@ -64,23 +65,6 @@ const defaultProps: Props = {
       seenAt: new Date().toUTCString(),
     },
   ],
-  navModel: getNavModel(
-    {
-      'profile-settings': {
-        icon: 'sliders-v-alt',
-        id: 'profile-settings',
-        parentItem: {
-          id: 'profile',
-          text: 'Test User',
-          img: '/avatar/46d229b033af06a191ff2267bca9ae56',
-          url: '/profile',
-        },
-        text: 'Preferences',
-        url: '/profile',
-      },
-    },
-    'profile-settings'
-  ),
   initUserProfilePage: jest.fn().mockResolvedValue(undefined),
   revokeUserSession: jest.fn().mockResolvedValue(undefined),
   changeUserOrg: jest.fn().mockResolvedValue(undefined),
@@ -88,8 +72,6 @@ const defaultProps: Props = {
 };
 
 function getSelectors() {
-  const dashboardSelect = () => screen.getByTestId('User preferences home dashboard drop down');
-  const timepickerSelect = () => screen.getByTestId(selectors.components.TimeZonePicker.containerV2);
   const teamsTable = () => screen.getByRole('table', { name: /user teams table/i });
   const orgsTable = () => screen.getByTestId(selectors.components.UserProfile.orgsTable);
   const sessionsTable = () => screen.getByTestId(selectors.components.UserProfile.sessionsTable);
@@ -98,10 +80,6 @@ function getSelectors() {
     email: () => screen.getByRole('textbox', { name: /email/i }),
     username: () => screen.getByRole('textbox', { name: /username/i }),
     saveProfile: () => screen.getByTestId(selectors.components.UserProfile.profileSaveButton),
-    dashboardSelect,
-    dashboardValue: () => within(dashboardSelect()).getByText(/default/i),
-    timepickerSelect,
-    timepickerValue: () => within(timepickerSelect()).getByText(/coordinated universal time/i),
     savePreferences: () => screen.getByTestId(selectors.components.UserProfile.preferencesSaveButton),
     teamsTable,
     teamsRow: () => within(teamsTable()).getByRole('row', { name: /team one team.one@test\.com 2000/i }),
@@ -122,7 +100,7 @@ async function getTestContext(overrides: Partial<Props> = {}) {
   const putSpy = jest.spyOn(backendSrv, 'put');
   const getSpy = jest
     .spyOn(backendSrv, 'get')
-    .mockResolvedValue({ timezone: 'UTC', homeDashboardId: 0, theme: 'dark' });
+    .mockResolvedValue({ timezone: 'UTC', homeDashboardUID: 'home-dashboard', theme: 'dark' });
   const searchSpy = jest.spyOn(backendSrv, 'search').mockResolvedValue([]);
 
   const props = { ...defaultProps, ...overrides };
@@ -147,11 +125,10 @@ describe('UserProfileEditPage', () => {
   });
 
   describe('when user has loaded', () => {
-    it('should show edit profile form', async () => {
+    it('should show profile form', async () => {
       await getTestContext();
 
       const { name, email, username, saveProfile } = getSelectors();
-      expect(screen.getByText(/edit profile/i)).toBeInTheDocument();
       expect(name()).toBeInTheDocument();
       expect(name()).toHaveValue('Test User');
       expect(email()).toBeInTheDocument();
@@ -164,16 +141,8 @@ describe('UserProfileEditPage', () => {
     it('should show shared preferences', async () => {
       await getTestContext();
 
-      const { dashboardSelect, dashboardValue, timepickerSelect, timepickerValue, savePreferences } = getSelectors();
-      expect(screen.getByRole('group', { name: /preferences/i })).toBeInTheDocument();
-      expect(screen.getByRole('radio', { name: /default/i })).toBeInTheDocument();
-      expect(screen.getByRole('radio', { name: /dark/i })).toBeInTheDocument();
-      expect(screen.getByRole('radio', { name: /light/i })).toBeInTheDocument();
-      expect(dashboardSelect()).toBeInTheDocument();
-      expect(dashboardValue()).toBeInTheDocument();
-      expect(timepickerSelect()).toBeInTheDocument();
-      expect(timepickerValue()).toBeInTheDocument();
-      expect(savePreferences()).toBeInTheDocument();
+      // SharedPreferences itself is tested, so here just make sure it's being rendered
+      expect(screen.getByLabelText('Home Dashboard')).toBeInTheDocument();
     });
 
     describe('and teams are loading', () => {
@@ -239,10 +208,10 @@ describe('UserProfileEditPage', () => {
         const { props } = await getTestContext();
 
         const { email, saveProfile } = getSelectors();
-        userEvent.clear(email());
-        userEvent.type(email(), 'test@test.se');
+        await userEvent.clear(email());
+        await userEvent.type(email(), 'test@test.se');
         // TODO remove skipPointerEventsCheck once https://github.com/jsdom/jsdom/issues/3232 is fixed
-        userEvent.click(saveProfile(), undefined, { skipPointerEventsCheck: true });
+        await userEvent.click(saveProfile(), { pointerEventsCheck: PointerEventsCheckLevel.Never });
 
         await waitFor(() => expect(props.updateUserProfile).toHaveBeenCalledTimes(1));
         expect(props.updateUserProfile).toHaveBeenCalledWith({
@@ -261,7 +230,7 @@ describe('UserProfileEditPage', () => {
             name: /select organisation/i,
           });
 
-        userEvent.click(orgsAdminSelectButton());
+        await userEvent.click(orgsAdminSelectButton());
 
         await waitFor(() => expect(props.changeUserOrg).toHaveBeenCalledTimes(1));
         expect(props.changeUserOrg).toHaveBeenCalledWith({
@@ -280,7 +249,7 @@ describe('UserProfileEditPage', () => {
             name: /revoke user session/i,
           });
 
-        userEvent.click(sessionsRevokeButton());
+        await userEvent.click(sessionsRevokeButton());
 
         await waitFor(() => expect(props.revokeUserSession).toHaveBeenCalledTimes(1));
         expect(props.revokeUserSession).toHaveBeenCalledWith(0);

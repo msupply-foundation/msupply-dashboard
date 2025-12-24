@@ -1,9 +1,12 @@
 import { of } from 'rxjs';
+
+import { FieldType, PanelData, toDataFrame } from '@grafana/data';
+
 import { queryBuilder } from '../shared/testing/builders';
-import { FieldType, toDataFrame } from '@grafana/data';
-import { updateVariableOptions } from './reducer';
-import { areMetricFindValues, toMetricFindValues, updateOptionsState, validateVariableSelection } from './operators';
 import { toKeyedAction } from '../state/keyedVariablesReducer';
+
+import { areMetricFindValues, toMetricFindValues, updateOptionsState, validateVariableSelection } from './operators';
+import { updateVariableOptions } from './reducer';
 
 describe('operators', () => {
   beforeEach(() => {
@@ -127,7 +130,7 @@ describe('operators', () => {
     ].map((scenario) => {
       it(`when called with series:${JSON.stringify(scenario.series, null, 0)}`, async () => {
         const { series, expected } = scenario;
-        const panelData: any = { series };
+        const panelData = { series } as PanelData;
         const observable = of(panelData).pipe(toMetricFindValues());
 
         await expect(observable).toEmitValuesWith((received) => {
@@ -143,7 +146,7 @@ describe('operators', () => {
           fields: [{ name: 'time', type: FieldType.time, values: [1, 2, 3] }],
         });
 
-        const panelData: any = { series: [frameWithTimeField] };
+        const panelData = { series: [frameWithTimeField] } as PanelData;
         const observable = of(panelData).pipe(toMetricFindValues());
 
         await expect(observable).toEmitValuesWith((received) => {

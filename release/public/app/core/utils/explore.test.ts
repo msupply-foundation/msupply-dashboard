@@ -1,3 +1,11 @@
+import { dateTime, ExploreUrlState, LogsSortOrder } from '@grafana/data';
+import { serializeStateToUrlParam } from '@grafana/data/src/utils/url';
+import { RefreshPicker } from '@grafana/ui';
+import store from 'app/core/store';
+
+import { DatasourceSrvMock, MockDataSourceApi } from '../../../test/mocks/datasource_srv';
+import { ExploreId } from '../../types';
+
 import {
   buildQueryTransaction,
   clearHistory,
@@ -12,18 +20,30 @@ import {
   GetExploreUrlArguments,
   getTimeRangeFromUrl,
   getTimeRange,
+  generateEmptyQuery,
 } from './explore';
-import store from 'app/core/store';
-import { dateTime, ExploreUrlState, LogsSortOrder } from '@grafana/data';
-import { RefreshPicker } from '@grafana/ui';
-import { serializeStateToUrlParam } from '@grafana/data/src/utils/url';
-import { ExploreId } from '../../types';
 
 const DEFAULT_EXPLORE_STATE: ExploreUrlState = {
   datasource: '',
   queries: [],
   range: DEFAULT_RANGE,
 };
+
+const defaultDs = new MockDataSourceApi('default datasource', { data: ['default data'] });
+
+const datasourceSrv = new DatasourceSrvMock(defaultDs, {
+  'generate empty query': new MockDataSourceApi('generateEmptyQuery'),
+  ds1: {
+    name: 'testDs',
+    type: 'loki',
+  } as MockDataSourceApi,
+});
+
+const getDataSourceSrvMock = jest.fn().mockReturnValue(datasourceSrv);
+jest.mock('@grafana/runtime', () => ({
+  ...jest.requireActual('@grafana/runtime'),
+  getDataSourceSrv: () => getDataSourceSrvMock(),
+}));
 
 describe('state functions', () => {
   describe('parseUrlState', () => {
@@ -120,6 +140,7 @@ describe('state functions', () => {
       const state = {
         ...DEFAULT_EXPLORE_STATE,
         datasource: 'foo',
+        isFromCompactUrl: false,
         queries: [
           {
             expr: 'metric{test="a/b"}',
@@ -144,6 +165,7 @@ describe('state functions', () => {
       const state = {
         ...DEFAULT_EXPLORE_STATE,
         datasource: 'foo',
+        isFromCompactUrl: false,
         queries: [
           {
             expr: 'metric{test="a/b"}',
@@ -175,7 +197,10 @@ describe('getExploreUrl', () => {
   const args = {
     panel: {
       getSavedId: () => 1,
-      targets: [{ refId: 'A', expr: 'query1', legendFormat: 'legendFormat1' }],
+      targets: [
+        { refId: 'A', expr: 'query1', legendFormat: 'legendFormat1' },
+        { refId: 'B', expr: 'query2', datasource: { type: '__expr__', uid: '__expr__' } },
+      ],
     },
     datasourceSrv: {
       get() {
@@ -192,6 +217,9 @@ describe('getExploreUrl', () => {
 
   it('should omit legendFormat in explore url', () => {
     expect(getExploreUrl(args).then((data) => expect(data).not.toMatch(/legendFormat1/g)));
+  });
+  it('should omit expression target in explore url', () => {
+    expect(getExploreUrl(args).then((data) => expect(data).not.toMatch(/__expr__/g)));
   });
 });
 
@@ -233,7 +261,7 @@ describe('hasNonEmptyQuery', () => {
 describe('hasRefId', () => {
   describe('when called with a null value', () => {
     it('then it should return undefined', () => {
-      const input: any = null;
+      const input = null;
       const result = getValueWithRefId(input);
 
       expect(result).toBeUndefined();
@@ -269,10 +297,11 @@ describe('hasRefId', () => {
 
   describe('when called with an object that has refId somewhere in the object tree', () => {
     it('then it should return the object', () => {
-      const input: any = { data: [123, null, {}, { series: [123, null, {}, { refId: 'A' }] }] };
+      const mockObject = { refId: 'A' };
+      const input = { data: [123, null, {}, { series: [123, null, {}, mockObject] }] };
       const result = getValueWithRefId(input);
 
-      expect(result).toBe(input.data[3].series[3]);
+      expect(result).toBe(mockObject);
     });
   });
 });
@@ -326,7 +355,7 @@ describe('getTimeRange', () => {
 describe('getRefIds', () => {
   describe('when called with a null value', () => {
     it('then it should return empty array', () => {
-      const input: any = null;
+      const input = null;
       const result = getRefIds(input);
 
       expect(result).toEqual([]);
@@ -362,7 +391,7 @@ describe('getRefIds', () => {
 
   describe('when called with an object that has refIds somewhere in the object tree', () => {
     it('then it should return return an array with unique refIds', () => {
-      const input: any = {
+      const input = {
         data: [
           123,
           null,
@@ -434,5 +463,30 @@ describe('when buildQueryTransaction', () => {
     const range = { from: dateTime().subtract(1, 'd'), to: dateTime(), raw: { from: '1h', to: '1h' } };
     const transaction = buildQueryTransaction(ExploreId.left, queries, queryOptions, range, false);
     expect(transaction.request.interval).toEqual('2h');
+  });
+});
+
+describe('generateEmptyQuery', () => {
+  it('should generate query with dataSourceOverride and without queries', async () => {
+    const query = await generateEmptyQuery([], 1, { type: 'loki', uid: 'ds1' });
+
+    expect(query.datasource?.uid).toBe('ds1');
+    expect(query.datasource?.type).toBe('loki');
+    expect(query.refId).toBe('A');
+  });
+  it('should generate query without dataSourceOverride and with queries', async () => {
+    const query = await generateEmptyQuery(
+      [
+        {
+          datasource: { type: 'loki', uid: 'ds1' },
+          refId: 'A',
+        },
+      ],
+      1
+    );
+
+    expect(query.datasource?.uid).toBe('ds1');
+    expect(query.datasource?.type).toBe('loki');
+    expect(query.refId).toBe('B');
   });
 });

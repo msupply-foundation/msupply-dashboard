@@ -1,10 +1,12 @@
 import { cloneDeep, isNumber } from 'lodash';
-import { coreModule } from 'app/angular/core_module';
+
 import { AnnotationEvent, dateTime } from '@grafana/data';
+import { coreModule } from 'app/angular/core_module';
 import { MetricsPanelCtrl } from 'app/angular/panel/metrics_panel_ctrl';
+
+import { contextSrv } from '../../../core/services/context_srv';
 import { deleteAnnotation, saveAnnotation, updateAnnotation } from '../../../features/annotations/api';
 import { getDashboardQueryRunner } from '../../../features/query/state/DashboardQueryRunner/DashboardQueryRunner';
-import { contextSrv } from '../../../core/services/context_srv';
 
 export class EventEditorCtrl {
   // @ts-ignore initialized through Angular not constructor
@@ -16,12 +18,11 @@ export class EventEditorCtrl {
   close: any;
   timeFormated?: string;
 
-  /** @ngInject */
   constructor() {}
 
   $onInit() {
     this.event.panelId = this.panelCtrl.panel.id; // set correct id if in panel edit
-    this.event.dashboardId = this.panelCtrl.dashboard.id;
+    this.event.dashboardUID = this.panelCtrl.dashboard.uid;
 
     // Annotations query returns time as Unix timestamp in milliseconds
     this.event.time = tryEpochToMoment(this.event.time);

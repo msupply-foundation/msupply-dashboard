@@ -1,23 +1,27 @@
 import { css } from '@emotion/css';
+import React, { useMemo } from 'react';
+
 import { GrafanaTheme2, intervalToAbbreviatedDurationString } from '@grafana/data';
 import { HorizontalGroup, Spinner, useStyles2 } from '@grafana/ui';
 import { CombinedRule } from 'app/types/unified-alerting';
 import { PromAlertingRuleState } from 'app/types/unified-alerting-dto';
-import React, { FC, useMemo } from 'react';
+
 import { isAlertingRule, isRecordingRule, getFirstActiveAt } from '../../utils/rules';
+
 import { AlertStateTag } from './AlertStateTag';
 
 interface Props {
   rule: CombinedRule;
   isDeleting: boolean;
   isCreating: boolean;
+  isPaused?: boolean;
 }
 
-export const RuleState: FC<Props> = ({ rule, isDeleting, isCreating }) => {
+export const RuleState = ({ rule, isDeleting, isCreating, isPaused }: Props) => {
   const style = useStyles2(getStyle);
   const { promRule } = rule;
 
-  // return how long the rule has been in it's firing state, if any
+  // return how long the rule has been in its firing state, if any
   const forTime = useMemo(() => {
     if (
       promRule &&
@@ -65,7 +69,7 @@ export const RuleState: FC<Props> = ({ rule, isDeleting, isCreating }) => {
   } else if (promRule && isAlertingRule(promRule)) {
     return (
       <HorizontalGroup align="flex-start">
-        <AlertStateTag state={promRule.state} />
+        <AlertStateTag state={promRule.state} isPaused={isPaused} />
         {forTime}
       </HorizontalGroup>
     );

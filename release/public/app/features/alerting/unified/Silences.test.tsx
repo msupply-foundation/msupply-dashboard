@@ -1,20 +1,20 @@
-import React from 'react';
 import { render, waitFor } from '@testing-library/react';
-import { locationService, setDataSourceSrv } from '@grafana/runtime';
-import { dateTime } from '@grafana/data';
-import { Provider } from 'react-redux';
-import { Router } from 'react-router-dom';
-import { fetchSilences, fetchAlerts, createOrUpdateSilence } from './api/alertmanager';
-import { configureStore } from 'app/store/configureStore';
-import Silences from './Silences';
-import { mockAlertmanagerAlert, mockDataSource, MockDataSourceSrv, mockSilence } from './mocks';
-import { DataSourceType } from './utils/datasource';
-import { parseMatchers } from './utils/alertmanager';
-import { AlertState, MatcherOperator } from 'app/plugins/datasource/alertmanager/types';
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
+import React from 'react';
+import { TestProvider } from 'test/helpers/TestProvider';
 import { byLabelText, byPlaceholderText, byRole, byTestId, byText } from 'testing-library-selector';
-import userEvent from '@testing-library/user-event';
+
+import { dateTime } from '@grafana/data';
+import { locationService, setDataSourceSrv, config } from '@grafana/runtime';
 import { contextSrv } from 'app/core/services/context_srv';
+import { AlertState, MatcherOperator } from 'app/plugins/datasource/alertmanager/types';
 import { AccessControlAction } from 'app/types';
+
+import Silences from './Silences';
+import { fetchSilences, fetchAlerts, createOrUpdateSilence } from './api/alertmanager';
+import { mockAlertmanagerAlert, mockDataSource, MockDataSourceSrv, mockSilence } from './mocks';
+import { parseMatchers } from './utils/alertmanager';
+import { DataSourceType } from './utils/datasource';
 
 jest.mock('./api/alertmanager');
 jest.mock('app/core/services/context_srv');
@@ -31,15 +31,12 @@ const mocks = {
 };
 
 const renderSilences = (location = '/alerting/silences/') => {
-  const store = configureStore();
   locationService.push(location);
 
   return render(
-    <Provider store={store}>
-      <Router history={locationService.getHistory()}>
-        <Silences />
-      </Router>
-    </Provider>
+    <TestProvider>
+      <Silences />
+    </TestProvider>
   );
 };
 
@@ -54,7 +51,7 @@ const ui = {
   silencesTable: byTestId('dynamic-table'),
   silenceRow: byTestId('row'),
   silencedAlertCell: byTestId('alerts'),
-  addSilenceButton: byRole('button', { name: /new silence/i }),
+  addSilenceButton: byRole('button', { name: /add silence/i }),
   queryBar: byPlaceholderText('Search'),
   editor: {
     timeRange: byLabelText('Timepicker', { exact: false }),
@@ -68,6 +65,7 @@ const ui = {
     matcherOperator: (operator: MatcherOperator) => byText(operator, { exact: true }),
     addMatcherButton: byRole('button', { name: 'Add matcher' }),
     submit: byText('Submit'),
+    createdBy: byText(/created by \*/i),
   },
 };
 
@@ -108,6 +106,11 @@ const resetMocks = () => {
   });
 
   mocks.contextSrv.hasAccess.mockImplementation(() => true);
+};
+
+const setUserLogged = (isLogged: boolean) => {
+  config.bootData.user.isSignedIn = isLogged;
+  config.bootData.user.name = isLogged ? 'admin' : '';
 };
 
 describe('Silences', () => {
@@ -171,7 +174,8 @@ describe('Silences', () => {
       await waitFor(() => expect(mocks.api.fetchAlerts).toHaveBeenCalled());
 
       const queryBar = ui.queryBar.get();
-      userEvent.paste(queryBar, 'foo=bar');
+      await userEvent.click(queryBar);
+      await userEvent.paste('foo=bar');
 
       await waitFor(() => expect(ui.silenceRow.getAll()).toHaveLength(1));
     },
@@ -207,9 +211,19 @@ describe('Silence edit', () => {
   afterEach(resetMocks);
 
   beforeEach(() => {
+    setUserLogged(true);
     setDataSourceSrv(new MockDataSourceSrv(dataSources));
   });
 
+  it('Should not render createdBy if user is logged in and has a name', async () => {
+    renderSilences(baseUrlPath);
+    await waitFor(() => expect(ui.editor.createdBy.query()).not.toBeInTheDocument());
+  });
+  it('Should render createdBy if user is not logged or has no name', async () => {
+    setUserLogged(false);
+    renderSilences(baseUrlPath);
+    await waitFor(() => expect(ui.editor.createdBy.get()).toBeInTheDocument());
+  });
   it(
     'prefills the matchers field with matchers params',
     async () => {
@@ -249,51 +263,50 @@ describe('Silence edit', () => {
 
       const start = new Date();
       const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-      const now = dateTime().format('YYYY-MM-DD HH:mm');
 
       const startDateString = dateTime(start).format('YYYY-MM-DD');
       const endDateString = dateTime(end).format('YYYY-MM-DD');
 
-      userEvent.clear(ui.editor.durationInput.get());
-      userEvent.type(ui.editor.durationInput.get(), '1d');
+      await userEvent.clear(ui.editor.durationInput.get());
+      await userEvent.type(ui.editor.durationInput.get(), '1d');
 
       await waitFor(() => expect(ui.editor.durationInput.query()).toHaveValue('1d'));
       await waitFor(() => expect(ui.editor.timeRange.get()).toHaveTextContent(startDateString));
       await waitFor(() => expect(ui.editor.timeRange.get()).toHaveTextContent(endDateString));
 
-      userEvent.type(ui.editor.matcherName.get(), 'foo');
-      userEvent.type(ui.editor.matcherOperatorSelect.get(), '=');
-      userEvent.tab();
-      userEvent.type(ui.editor.matcherValue.get(), 'bar');
+      await userEvent.type(ui.editor.matcherName.get(), 'foo');
+      await userEvent.type(ui.editor.matcherOperatorSelect.get(), '=');
+      await userEvent.tab();
+      await userEvent.type(ui.editor.matcherValue.get(), 'bar');
 
       // TODO remove skipPointerEventsCheck once https://github.com/jsdom/jsdom/issues/3232 is fixed
-      userEvent.click(ui.editor.addMatcherButton.get(), undefined, { skipPointerEventsCheck: true });
-      userEvent.type(ui.editor.matcherName.getAll()[1], 'bar');
-      userEvent.type(ui.editor.matcherOperatorSelect.getAll()[1], '!=');
-      userEvent.tab();
-      userEvent.type(ui.editor.matcherValue.getAll()[1], 'buzz');
+      await userEvent.click(ui.editor.addMatcherButton.get(), { pointerEventsCheck: PointerEventsCheckLevel.Never });
+      await userEvent.type(ui.editor.matcherName.getAll()[1], 'bar');
+      await userEvent.type(ui.editor.matcherOperatorSelect.getAll()[1], '!=');
+      await userEvent.tab();
+      await userEvent.type(ui.editor.matcherValue.getAll()[1], 'buzz');
 
       // TODO remove skipPointerEventsCheck once https://github.com/jsdom/jsdom/issues/3232 is fixed
-      userEvent.click(ui.editor.addMatcherButton.get(), undefined, { skipPointerEventsCheck: true });
-      userEvent.type(ui.editor.matcherName.getAll()[2], 'region');
-      userEvent.type(ui.editor.matcherOperatorSelect.getAll()[2], '=~');
-      userEvent.tab();
-      userEvent.type(ui.editor.matcherValue.getAll()[2], 'us-west-.*');
+      await userEvent.click(ui.editor.addMatcherButton.get(), { pointerEventsCheck: PointerEventsCheckLevel.Never });
+      await userEvent.type(ui.editor.matcherName.getAll()[2], 'region');
+      await userEvent.type(ui.editor.matcherOperatorSelect.getAll()[2], '=~');
+      await userEvent.tab();
+      await userEvent.type(ui.editor.matcherValue.getAll()[2], 'us-west-.*');
 
       // TODO remove skipPointerEventsCheck once https://github.com/jsdom/jsdom/issues/3232 is fixed
-      userEvent.click(ui.editor.addMatcherButton.get(), undefined, { skipPointerEventsCheck: true });
-      userEvent.type(ui.editor.matcherName.getAll()[3], 'env');
-      userEvent.type(ui.editor.matcherOperatorSelect.getAll()[3], '!~');
-      userEvent.tab();
-      userEvent.type(ui.editor.matcherValue.getAll()[3], 'dev|staging');
+      await userEvent.click(ui.editor.addMatcherButton.get(), { pointerEventsCheck: PointerEventsCheckLevel.Never });
+      await userEvent.type(ui.editor.matcherName.getAll()[3], 'env');
+      await userEvent.type(ui.editor.matcherOperatorSelect.getAll()[3], '!~');
+      await userEvent.tab();
+      await userEvent.type(ui.editor.matcherValue.getAll()[3], 'dev|staging');
 
-      userEvent.click(ui.editor.submit.get());
+      await userEvent.click(ui.editor.submit.get());
 
       await waitFor(() =>
         expect(mocks.api.createOrUpdateSilence).toHaveBeenCalledWith(
           'grafana',
           expect.objectContaining({
-            comment: `created ${now}`,
+            comment: expect.stringMatching(/created (\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/),
             matchers: [
               { isEqual: true, isRegex: false, name: 'foo', value: 'bar' },
               { isEqual: false, isRegex: false, name: 'bar', value: 'buzz' },

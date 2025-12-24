@@ -1,30 +1,31 @@
 import { dateTime, TimeRange } from '@grafana/data';
 
-import { TemplateSrv } from '../../templating/template_srv';
-import { onTimeRangeUpdated, OnTimeRangeUpdatedDependencies, setOptionAsCurrent } from './actions';
-import { DashboardModel } from '../../dashboard/state';
+import { reduxTester } from '../../../../test/core/redux/reduxTester';
+import { silenceConsoleOutput } from '../../../../test/core/utils/silenceConsoleOutput';
+import { appEvents } from '../../../core/core';
+import { notifyApp } from '../../../core/reducers/appNotification';
 import { DashboardState } from '../../../types';
-import { createIntervalVariableAdapter } from '../interval/adapter';
+import { DashboardModel } from '../../dashboard/state';
+import { createDashboardModelFixture } from '../../dashboard/state/__fixtures__/dashboardFixtures';
+import { TemplateSrv } from '../../templating/template_srv';
 import { variableAdapters } from '../adapters';
 import { createConstantVariableAdapter } from '../constant/adapter';
-import { VariableRefresh } from '../types';
+import { createIntervalVariableAdapter } from '../interval/adapter';
+import { createIntervalOptions } from '../interval/reducer';
 import { constantBuilder, intervalBuilder } from '../shared/testing/builders';
-import { reduxTester } from '../../../../test/core/redux/reduxTester';
+import { VariableRefresh } from '../types';
+import { toKeyedVariableIdentifier, toVariablePayload } from '../utils';
+
+import { onTimeRangeUpdated, OnTimeRangeUpdatedDependencies, setOptionAsCurrent } from './actions';
 import { getPreloadedState, getRootReducer, RootReducerType } from './helpers';
+import { toKeyedAction } from './keyedVariablesReducer';
 import {
   setCurrentVariableValue,
   variableStateCompleted,
   variableStateFailed,
   variableStateFetching,
 } from './sharedReducer';
-import { createIntervalOptions } from '../interval/reducer';
-import { silenceConsoleOutput } from '../../../../test/core/utils/silenceConsoleOutput';
-import { notifyApp } from '../../../core/reducers/appNotification';
-import { expect } from '../../../../test/lib/common';
-import { appEvents } from '../../../core/core';
 import { variablesInitTransaction } from './transactionReducer';
-import { toKeyedAction } from './keyedVariablesReducer';
-import { toKeyedVariableIdentifier, toVariablePayload } from '../utils';
 
 variableAdapters.setInit(() => [createIntervalVariableAdapter(), createConstantVariableAdapter()]);
 
@@ -226,5 +227,5 @@ describe('when onTimeRangeUpdated is dispatched', () => {
 });
 
 function getDashboardModel(): DashboardModel {
-  return new DashboardModel({ schemaVersion: 9999 }); // ignore any schema migrations
+  return createDashboardModelFixture({ schemaVersion: 9999 }); // ignore any schema migrations
 }

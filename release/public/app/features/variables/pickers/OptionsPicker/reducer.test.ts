@@ -1,4 +1,9 @@
 import { cloneDeep } from 'lodash';
+
+import { reducerTester } from '../../../../../test/core/redux/reducerTester';
+import { ALL_VARIABLE_TEXT, ALL_VARIABLE_VALUE } from '../../constants';
+import { QueryVariableModel, VariableOption } from '../../types';
+
 import {
   cleanPickerState,
   hideOptions,
@@ -14,9 +19,6 @@ import {
   updateOptionsFromSearch,
   updateSearchQuery,
 } from './reducer';
-import { reducerTester } from '../../../../../test/core/redux/reducerTester';
-import { QueryVariableModel, VariableOption } from '../../types';
-import { ALL_VARIABLE_TEXT, ALL_VARIABLE_VALUE } from '../../constants';
 
 const getVariableTestContext = (extend: Partial<OptionsPickerState>) => {
   return {
@@ -365,7 +367,7 @@ describe('optionsPickerReducer', () => {
         .whenActionIsDispatched(moveOptionsHighlight(-1))
         .thenStateShouldEqual({
           ...initialState,
-          highlightIndex: 0,
+          highlightIndex: -1,
         });
     });
   });

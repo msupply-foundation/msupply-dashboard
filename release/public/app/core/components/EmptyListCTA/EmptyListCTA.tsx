@@ -1,7 +1,8 @@
 import { css } from '@emotion/css';
+import React, { MouseEvent } from 'react';
+
 import { selectors } from '@grafana/e2e-selectors';
 import { Button, CallToActionCard, Icon, IconName, LinkButton } from '@grafana/ui';
-import React, { MouseEvent } from 'react';
 
 export interface Props {
   title: string;
@@ -27,7 +28,7 @@ const infoBoxStyles = css`
   margin: 0 auto;
 `;
 
-const EmptyListCTA: React.FunctionComponent<Props> = ({
+const EmptyListCTA = ({
   title,
   buttonIcon,
   buttonLink,
@@ -40,7 +41,7 @@ const EmptyListCTA: React.FunctionComponent<Props> = ({
   proTipTarget,
   infoBox,
   infoBoxTitle,
-}) => {
+}: Props) => {
   const footer = () => {
     return (
       <>

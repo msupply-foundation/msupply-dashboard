@@ -1,14 +1,17 @@
-import { PanelModel, PanelPlugin } from '@grafana/data';
-import { DashList } from './DashList';
 import React from 'react';
+
+import { PanelModel, PanelPlugin } from '@grafana/data';
+import { config } from '@grafana/runtime';
 import { TagsInput } from '@grafana/ui';
+
 import {
   ALL_FOLDER,
   GENERAL_FOLDER,
   ReadonlyFolderPicker,
 } from '../../../core/components/Select/ReadonlyFolderPicker/ReadonlyFolderPicker';
-import { config } from '@grafana/runtime';
-import { defaultPanelOptions, PanelLayout, PanelOptions } from './models.gen';
+
+import { DashList } from './DashList';
+import { defaultPanelOptions, PanelLayout, PanelOptions } from './panelcfg.gen';
 
 export const plugin = new PanelPlugin<PanelOptions>(DashList)
   .setPanelOptions((builder) => {

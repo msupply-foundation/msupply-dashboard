@@ -5,15 +5,17 @@ import {
   identityOverrideProcessor,
   PanelPlugin,
 } from '@grafana/data';
-import { StateTimelinePanel } from './StateTimelinePanel';
-import { TimelineOptions, TimelineFieldConfig, defaultPanelOptions, defaultTimelineFieldConfig } from './types';
 import { VisibilityMode } from '@grafana/schema';
 import { commonOptionsBuilder } from '@grafana/ui';
-import { timelinePanelChangedHandler } from './migrations';
-import { StatTimelineSuggestionsSupplier } from './suggestions';
+
 import { SpanNullsEditor } from '../timeseries/SpanNullsEditor';
 
-export const plugin = new PanelPlugin<TimelineOptions, TimelineFieldConfig>(StateTimelinePanel)
+import { StateTimelinePanel } from './StateTimelinePanel';
+import { timelinePanelChangedHandler } from './migrations';
+import { PanelOptions, PanelFieldConfig, defaultPanelOptions, defaultPanelFieldConfig } from './panelcfg.gen';
+import { StatTimelineSuggestionsSupplier } from './suggestions';
+
+export const plugin = new PanelPlugin<PanelOptions, PanelFieldConfig>(StateTimelinePanel)
   .setPanelChangeHandler(timelinePanelChangedHandler)
   .useFieldConfig({
     standardOptions: {
@@ -31,7 +33,7 @@ export const plugin = new PanelPlugin<TimelineOptions, TimelineFieldConfig>(Stat
         .addSliderInput({
           path: 'lineWidth',
           name: 'Line width',
-          defaultValue: defaultTimelineFieldConfig.lineWidth,
+          defaultValue: defaultPanelFieldConfig.lineWidth,
           settings: {
             min: 0,
             max: 10,
@@ -41,7 +43,7 @@ export const plugin = new PanelPlugin<TimelineOptions, TimelineFieldConfig>(Stat
         .addSliderInput({
           path: 'fillOpacity',
           name: 'Fill opacity',
-          defaultValue: defaultTimelineFieldConfig.fillOpacity,
+          defaultValue: defaultPanelFieldConfig.fillOpacity,
           settings: {
             min: 0,
             max: 100,
@@ -105,4 +107,5 @@ export const plugin = new PanelPlugin<TimelineOptions, TimelineFieldConfig>(Stat
     commonOptionsBuilder.addLegendOptions(builder, false);
     commonOptionsBuilder.addTooltipOptions(builder, true);
   })
-  .setSuggestionsSupplier(new StatTimelineSuggestionsSupplier());
+  .setSuggestionsSupplier(new StatTimelineSuggestionsSupplier())
+  .setDataSupport({ annotations: true });

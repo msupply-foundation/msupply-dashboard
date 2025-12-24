@@ -1,9 +1,12 @@
-import React from 'react';
-import { Icon, Tooltip, useStyles2 } from '@grafana/ui';
-import { FunctionEditorControls, FunctionEditorControlsProps } from './FunctionEditorControls';
-import { FuncInstance } from '../gfunc';
 import { css } from '@emotion/css';
+import React from 'react';
+
 import { GrafanaTheme2 } from '@grafana/data';
+import { Icon, Tooltip, useStyles2 } from '@grafana/ui';
+
+import { FuncInstance } from '../gfunc';
+
+import { FunctionEditorControls, FunctionEditorControlsProps } from './FunctionEditorControls';
 
 interface FunctionEditorProps extends FunctionEditorControlsProps {
   func: FuncInstance;
@@ -23,7 +26,7 @@ const getStyles = (theme: GrafanaTheme2) => {
   };
 };
 
-const FunctionEditor: React.FC<FunctionEditorProps> = ({ onMoveLeft, onMoveRight, func, ...props }) => {
+const FunctionEditor = ({ onMoveLeft, onMoveRight, func, ...props }: FunctionEditorProps) => {
   const styles = useStyles2(getStyles);
 
   const renderContent = ({ updatePopperPosition }: any) => (

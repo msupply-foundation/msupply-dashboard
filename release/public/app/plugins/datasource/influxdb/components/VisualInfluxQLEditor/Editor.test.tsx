@@ -1,7 +1,9 @@
+import { act, render } from '@testing-library/react';
 import React from 'react';
-import { InfluxQuery } from '../../types';
+
 import InfluxDatasource from '../../datasource';
-import { render } from '@testing-library/react';
+import { InfluxQuery } from '../../types';
+
 import { Editor } from './Editor';
 
 // we mock the @grafana/ui components we use to make sure they just show their "value".
@@ -33,24 +35,28 @@ jest.mock('./Seg', () => {
   };
 });
 
-function assertEditor(query: InfluxQuery, textContent: string) {
+async function assertEditor(query: InfluxQuery, textContent: string) {
   const onChange = jest.fn();
   const onRunQuery = jest.fn();
   const datasource: InfluxDatasource = {
+    retentionPolicies: [],
     metricFindQuery: () => Promise.resolve([]),
   } as unknown as InfluxDatasource;
-  const { container } = render(
-    <Editor query={query} datasource={datasource} onChange={onChange} onRunQuery={onRunQuery} />
-  );
-  expect(container.textContent).toBe(textContent);
+  await act(async () => {
+    const { container } = await render(
+      <Editor query={query} datasource={datasource} onChange={onChange} onRunQuery={onRunQuery} />
+    );
+    expect(container.textContent).toBe(textContent);
+  });
 }
 
 describe('InfluxDB InfluxQL Visual Editor', () => {
-  it('should handle minimal query', () => {
+  it('should handle minimal query', async () => {
     const query: InfluxQuery = {
       refId: 'A',
+      policy: 'default',
     };
-    assertEditor(
+    await assertEditor(
       query,
       'FROM[default][select measurement]WHERE[+]' +
         'SELECT[field]([value])[mean]()[+]' +
@@ -60,13 +66,14 @@ describe('InfluxDB InfluxQL Visual Editor', () => {
         'FORMAT AS[time_series]ALIAS[Naming pattern]'
     );
   });
-  it('should have the alias-field hidden when format-as-table', () => {
+  it('should have the alias-field hidden when format-as-table', async () => {
     const query: InfluxQuery = {
       refId: 'A',
       alias: 'test-alias',
       resultFormat: 'table',
+      policy: 'default',
     };
-    assertEditor(
+    await assertEditor(
       query,
       'FROM[default][select measurement]WHERE[+]' +
         'SELECT[field]([value])[mean]()[+]' +
@@ -76,7 +83,7 @@ describe('InfluxDB InfluxQL Visual Editor', () => {
         'FORMAT AS[table]'
     );
   });
-  it('should handle complex query', () => {
+  it('should handle complex query', async () => {
     const query: InfluxQuery = {
       refId: 'A',
       policy: 'default',
@@ -145,7 +152,7 @@ describe('InfluxDB InfluxQL Visual Editor', () => {
       tz: 'UTC',
       alias: 'all i as',
     };
-    assertEditor(
+    await assertEditor(
       query,
       'FROM[default][cpu]WHERE[cpu][=][cpu1][AND][cpu][<][cpu3][+]' +
         'SELECT[field]([usage_idle])[mean]()[+]' +

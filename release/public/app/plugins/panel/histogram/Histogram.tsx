@@ -1,13 +1,6 @@
 import React from 'react';
 import uPlot, { AlignedData } from 'uplot';
-import {
-  VizLegendOptions,
-  LegendDisplayMode,
-  ScaleDistribution,
-  AxisPlacement,
-  ScaleDirection,
-  ScaleOrientation,
-} from '@grafana/schema';
+
 import {
   DataFrame,
   formattedValueToString,
@@ -15,6 +8,11 @@ import {
   getFieldSeriesColor,
   GrafanaTheme2,
 } from '@grafana/data';
+import {
+  histogramBucketSizes,
+  histogramFrameBucketMaxFieldName,
+} from '@grafana/data/src/transformations/transformers/histogram';
+import { VizLegendOptions, ScaleDistribution, AxisPlacement, ScaleDirection, ScaleOrientation } from '@grafana/schema';
 import {
   Themeable2,
   UPlotConfigBuilder,
@@ -25,11 +23,7 @@ import {
   UPLOT_AXIS_FONT_SIZE,
 } from '@grafana/ui';
 
-import {
-  histogramBucketSizes,
-  histogramFrameBucketMaxFieldName,
-} from '@grafana/data/src/transformations/transformers/histogram';
-import { PanelOptions } from './models.gen';
+import { defaultPanelFieldConfig, PanelFieldConfig, PanelOptions } from './panelcfg.gen';
 
 function incrRoundDn(num: number, incr: number) {
   return Math.floor(num / incr) * incr;
@@ -47,6 +41,7 @@ export interface HistogramProps extends Themeable2 {
   height: number;
   structureRev?: number; // a number that will change when the frames[] structure changes
   legend: VizLegendOptions;
+  rawSeries?: DataFrame[];
   children?: (builder: UPlotConfigBuilder, frame: DataFrame) => React.ReactNode;
 }
 
@@ -57,6 +52,10 @@ export function getBucketSize(frame: DataFrame) {
 
 const prepConfig = (frame: DataFrame, theme: GrafanaTheme2) => {
   // todo: scan all values in BucketMin and BucketMax fields to assert if uniform bucketSize
+
+  // since this is x axis range, this should ideally come from xMin or xMax fields, not a count field
+  // though both methods are probably hacks, and we should just accept explicit opts into this prepConfig
+  let { min: xScaleMin, max: xScaleMax } = frame.fields[2].config;
 
   let builder = new UPlotConfigBuilder();
 
@@ -69,8 +68,8 @@ const prepConfig = (frame: DataFrame, theme: GrafanaTheme2) => {
     let minSpace = u.axes[axisIdx]._space;
     let bucketWidth = u.valToPos(u.data[0][0] + bucketSize, 'x') - u.valToPos(u.data[0][0], 'x');
 
-    let firstSplit = u.data[0][0];
-    let lastSplit = u.data[0][u.data[0].length - 1] + bucketSize;
+    let firstSplit = incrRoundDn(xScaleMin ?? u.data[0][0], bucketSize);
+    let lastSplit = incrRoundUp(xScaleMax ?? u.data[0][u.data[0].length - 1] + bucketSize, bucketSize);
 
     let splits = [];
     let skip = Math.ceil(minSpace / bucketWidth);
@@ -89,6 +88,14 @@ const prepConfig = (frame: DataFrame, theme: GrafanaTheme2) => {
     orientation: ScaleOrientation.Horizontal,
     direction: ScaleDirection.Right,
     range: (u, wantedMin, wantedMax) => {
+      // these settings will prevent zooming, probably okay?
+      if (xScaleMin != null) {
+        wantedMin = xScaleMin;
+      }
+      if (xScaleMax != null) {
+        wantedMax = xScaleMax;
+      }
+
       let fullRangeMin = u.data[0][0];
       let fullRangeMax = u.data[0][u.data[0].length - 1];
 
@@ -150,10 +157,15 @@ const prepConfig = (frame: DataFrame, theme: GrafanaTheme2) => {
     theme,
   });
 
+  // assumes BucketMax is [1]
+  let countField = frame.fields[2];
+  let dispY = countField.display;
+
   builder.addAxis({
     scaleKey: 'y',
     isTime: false,
     placement: AxisPlacement.Left,
+    formatValue: (v, decimals) => formattedValueToString(dispY!(v, decimals)),
     //splits: config.xSplits,
     //values: config.xValues,
     //grid: false,
@@ -175,14 +187,14 @@ const prepConfig = (frame: DataFrame, theme: GrafanaTheme2) => {
 
   let seriesIndex = 0;
 
-  // assumes BucketMax is [1]
+  // assumes xMin is [0], xMax is [1]
   for (let i = 2; i < frame.fields.length; i++) {
     const field = frame.fields[i];
 
     field.state = field.state ?? {};
     field.state.seriesIndex = seriesIndex++;
 
-    const customConfig = { ...field.config.custom };
+    const customConfig: PanelFieldConfig = { ...defaultPanelFieldConfig, ...field.config.custom };
 
     const scaleKey = 'y';
     const colorMode = getFieldColorModeForField(field);
@@ -199,7 +211,7 @@ const prepConfig = (frame: DataFrame, theme: GrafanaTheme2) => {
       colorMode,
       pathBuilder,
       //pointsBuilder: config.drawPoints,
-      show: !customConfig.hideFrom?.vis,
+      show: !customConfig.hideFrom?.viz,
       gradientMode: customConfig.gradientMode,
       thresholds: field.config.thresholds,
 
@@ -209,10 +221,7 @@ const prepConfig = (frame: DataFrame, theme: GrafanaTheme2) => {
       softMax: customConfig.axisSoftMax,
 
       // The following properties are not used in the uPlot config, but are utilized as transport for legend config
-      dataFrameFieldIndex: {
-        fieldIndex: i,
-        frameIndex: 0,
-      },
+      dataFrameFieldIndex: field.state.origin,
     });
   }
 
@@ -220,7 +229,7 @@ const prepConfig = (frame: DataFrame, theme: GrafanaTheme2) => {
 };
 
 const preparePlotData = (frame: DataFrame) => {
-  let data: AlignedData = [] as any;
+  let data = [];
 
   for (const field of frame.fields) {
     if (field.name !== histogramFrameBucketMaxFieldName) {
@@ -239,7 +248,7 @@ const preparePlotData = (frame: DataFrame) => {
     }
   }
 
-  return data;
+  return data as AlignedData;
 };
 
 interface State {
@@ -272,11 +281,12 @@ export class Histogram extends React.Component<HistogramProps, State> {
 
   renderLegend(config: UPlotConfigBuilder) {
     const { legend } = this.props;
-    if (!config || legend.displayMode === LegendDisplayMode.Hidden) {
+
+    if (!config || legend.showLegend === false) {
       return null;
     }
 
-    return <PlotLegend data={[this.props.alignedFrame]} config={config} maxHeight="35%" maxWidth="60%" {...legend} />;
+    return <PlotLegend data={this.props.rawSeries!} config={config} maxHeight="35%" maxWidth="60%" {...legend} />;
   }
 
   componentDidUpdate(prevProps: HistogramProps) {

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { ExploreId } from 'app/types';
-import { AddToDashboardModal } from './AddToDashboardModal';
+
 import { ToolbarButton } from '@grafana/ui';
-import { useSelector } from 'react-redux';
+import { ExploreId, useSelector } from 'app/types';
+
 import { getExploreItemSelector } from '../state/selectors';
+
+import { AddToDashboardModal } from './AddToDashboardModal';
 
 interface Props {
   exploreId: ExploreId;
@@ -18,6 +20,7 @@ export const AddToDashboard = ({ exploreId }: Props) => {
     <>
       <ToolbarButton
         icon="apps"
+        variant="canvas"
         onClick={() => setIsOpen(true)}
         aria-label="Add to dashboard"
         disabled={!explorePaneHasQueries}

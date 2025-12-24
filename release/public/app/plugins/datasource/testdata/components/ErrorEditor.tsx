@@ -1,5 +1,7 @@
-import { InlineField, InlineFieldRow, Select } from '@grafana/ui';
 import React from 'react';
+
+import { InlineField, InlineFieldRow, Select } from '@grafana/ui';
+
 import { EditorProps } from '../QueryEditor';
 
 const ERROR_OPTIONS = [
@@ -17,7 +19,7 @@ const ERROR_OPTIONS = [
   },
 ];
 
-const FrontendErrorQueryEditor: React.FC<EditorProps> = ({ query, onChange }) => {
+const FrontendErrorQueryEditor = ({ query, onChange }: EditorProps) => {
   return (
     <InlineFieldRow>
       <InlineField labelWidth={14} label="Error type">

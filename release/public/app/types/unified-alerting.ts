@@ -1,23 +1,31 @@
 /* Prometheus internal models */
 
 import { AlertState, DataSourceInstanceSettings } from '@grafana/data';
+
 import {
+  Annotations,
+  GrafanaAlertState,
+  GrafanaAlertStateWithReason,
+  Labels,
+  mapStateWithReasonToBaseState,
   PromAlertingRuleState,
   PromRuleType,
   RulerRuleDTO,
-  Labels,
-  Annotations,
   RulerRuleGroupDTO,
-  GrafanaAlertState,
 } from './unified-alerting-dto';
 
 export type Alert = {
   activeAt: string;
   annotations: { [key: string]: string };
   labels: { [key: string]: string };
-  state: PromAlertingRuleState | GrafanaAlertState;
+  state: PromAlertingRuleState | GrafanaAlertStateWithReason;
   value: string;
 };
+
+export function hasAlertState(alert: Alert, state: PromAlertingRuleState | GrafanaAlertState): boolean {
+  return mapStateWithReasonToBaseState(alert.state as GrafanaAlertStateWithReason) === state;
+}
+
 interface RuleBase {
   health: string;
   name: string;
@@ -96,11 +104,17 @@ export interface CombinedRuleNamespace {
   groups: CombinedRuleGroup[];
 }
 
-export interface RuleWithLocation {
+export interface RuleWithLocation<T = RulerRuleDTO> {
   ruleSourceName: string;
   namespace: string;
   group: RulerRuleGroupDTO;
-  rule: RulerRuleDTO;
+  rule: T;
+}
+
+export interface CombinedRuleWithLocation extends CombinedRule {
+  dataSourceName: string;
+  namespaceName: string;
+  groupName: string;
 }
 
 export interface PromRuleWithLocation {
@@ -114,7 +128,7 @@ export interface CloudRuleIdentifier {
   ruleSourceName: string;
   namespace: string;
   groupName: string;
-  rulerRuleHash: number;
+  rulerRuleHash: string;
 }
 export interface GrafanaRuleIdentifier {
   ruleSourceName: 'grafana';
@@ -126,7 +140,7 @@ export interface PrometheusRuleIdentifier {
   ruleSourceName: string;
   namespace: string;
   groupName: string;
-  ruleHash: number;
+  ruleHash: string;
 }
 
 export type RuleIdentifier = CloudRuleIdentifier | GrafanaRuleIdentifier | PrometheusRuleIdentifier;
@@ -150,7 +164,7 @@ interface EvalMatch {
 }
 
 export interface StateHistoryItemData {
-  noData: boolean;
+  noData?: boolean;
   evalMatches?: EvalMatch[];
 }
 
@@ -184,4 +198,8 @@ export interface PromBasedDataSource {
   name: string;
   id: string | number;
   rulerConfig?: RulerDataSourceConfig;
+}
+
+export interface PaginationProps {
+  itemsPerPage: number;
 }

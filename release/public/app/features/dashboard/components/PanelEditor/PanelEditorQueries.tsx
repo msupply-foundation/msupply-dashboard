@@ -1,10 +1,12 @@
 import React, { PureComponent } from 'react';
-import { QueryGroup } from 'app/features/query/components/QueryGroup';
-import { PanelModel } from '../../state';
-import { locationService } from '@grafana/runtime';
-import { QueryGroupDataSource, QueryGroupOptions } from 'app/types';
+
 import { DataQuery, getDataSourceRef } from '@grafana/data';
+import { locationService } from '@grafana/runtime';
 import { getDatasourceSrv } from 'app/features/plugins/datasource_srv';
+import { QueryGroup } from 'app/features/query/components/QueryGroup';
+import { QueryGroupDataSource, QueryGroupOptions } from 'app/types';
+
+import { PanelModel } from '../../state';
 
 interface Props {
   /** Current panel */
@@ -31,6 +33,7 @@ export class PanelEditorQueries extends PureComponent<Props> {
         type: datasourceSettings?.type,
         uid: datasourceSettings?.uid,
       },
+      queryCachingTTL: datasourceSettings?.cachingConfig?.enabled ? panel.queryCachingTTL : undefined,
       queries: panel.targets,
       maxDataPoints: panel.maxDataPoints,
       minInterval: panel.interval,

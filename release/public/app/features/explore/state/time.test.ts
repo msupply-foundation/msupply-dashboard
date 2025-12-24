@@ -1,12 +1,14 @@
-import { dateTime, LoadingState } from '@grafana/data';
-
-import { makeExplorePaneState } from './utils';
-import { ExploreId, ExploreItemState } from 'app/types/explore';
 import { reducerTester } from 'test/core/redux/reducerTester';
-import { changeRangeAction, changeRefreshIntervalAction, timeReducer, updateTime } from './time';
-import { createDefaultInitialState } from './helpers';
+
+import { dateTime, LoadingState } from '@grafana/data';
 import { configureStore } from 'app/store/configureStore';
+import { ExploreId, ExploreItemState } from 'app/types/explore';
+
 import { silenceConsoleOutput } from '../../../../test/core/utils/silenceConsoleOutput';
+
+import { createDefaultInitialState } from './helpers';
+import { changeRangeAction, changeRefreshIntervalAction, timeReducer, updateTime } from './time';
+import { makeExplorePaneState } from './utils';
 
 const MOCK_TIME_RANGE = {};
 
@@ -23,7 +25,7 @@ const mockTemplateSrv = {
   updateTimeRange: jest.fn(),
 };
 jest.mock('@grafana/runtime', () => ({
-  ...(jest.requireActual('@grafana/runtime') as unknown as object),
+  ...jest.requireActual('@grafana/runtime'),
   getTemplateSrv: () => mockTemplateSrv,
 }));
 
@@ -51,7 +53,7 @@ describe('Explore item reducer', () => {
         loading: true,
         logsResult: {
           hasUniqueLabels: false,
-          rows: [] as any[],
+          rows: [],
         },
         queryResponse: {
           ...initialState.queryResponse,
@@ -71,7 +73,7 @@ describe('Explore item reducer', () => {
         refreshInterval: '',
         logsResult: {
           hasUniqueLabels: false,
-          rows: [] as any[],
+          rows: [],
         },
         queryResponse: {
           ...initialState.queryResponse,

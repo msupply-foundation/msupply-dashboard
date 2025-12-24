@@ -1,19 +1,21 @@
+import { css } from '@emotion/css';
 import React, { useEffect, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useDebounce } from 'react-use';
-import { useDispatch } from 'react-redux';
-import { css } from '@emotion/css';
+
 import { dateTime, GrafanaTheme2 } from '@grafana/data';
 import { Badge, useStyles2 } from '@grafana/ui';
-import { DynamicTable, DynamicTableColumnProps, DynamicTableItemProps } from '../DynamicTable';
-import { useCombinedRuleNamespaces } from '../../hooks/useCombinedRuleNamespaces';
-import { findAlertInstancesWithMatchers } from '../../utils/matchers';
-import { fetchAllPromAndRulerRulesAction } from '../../state/actions';
+import { useDispatch } from 'app/types';
 import { Alert, AlertingRule } from 'app/types/unified-alerting';
+
+import { useCombinedRuleNamespaces } from '../../hooks/useCombinedRuleNamespaces';
+import { fetchAllPromAndRulerRulesAction } from '../../state/actions';
 import { MatcherFieldValue, SilenceFormFields } from '../../types/silence-form';
+import { findAlertInstancesWithMatchers } from '../../utils/matchers';
 import { isAlertingRule } from '../../utils/rules';
-import { AlertStateTag } from '../rules/AlertStateTag';
 import { AlertLabels } from '../AlertLabels';
+import { DynamicTable, DynamicTableColumnProps, DynamicTableItemProps } from '../DynamicTable';
+import { AlertStateTag } from '../rules/AlertStateTag';
 
 type MatchedRulesTableItemProps = DynamicTableItemProps<{
   matchedInstance: Alert;
@@ -62,12 +64,12 @@ export const MatchedSilencedRules = () => {
         {matchers.every((matcher) => !matcher.value && !matcher.name) ? (
           <span>Add a valid matcher to see affected alerts</span>
         ) : (
-          <>
-            <DynamicTable items={matchedAlertRules.slice(0, 5) ?? []} isExpandable={false} cols={columns} />
-            {matchedAlertRules.length > 5 && (
-              <div className={styles.moreMatches}>and {matchedAlertRules.length - 5} more</div>
-            )}
-          </>
+          <DynamicTable
+            items={matchedAlertRules}
+            isExpandable={false}
+            cols={columns}
+            pagination={{ itemsPerPage: 5 }}
+          />
         )}
       </div>
     </div>
@@ -90,7 +92,7 @@ function useColumns(): MatchedRulesTableColumnProps[] {
       renderCell: function renderName({ data: { matchedInstance } }) {
         return <AlertLabels labels={matchedInstance.labels} />;
       },
-      size: '250px',
+      size: 'auto',
     },
     {
       id: 'created',
@@ -104,7 +106,7 @@ function useColumns(): MatchedRulesTableColumnProps[] {
           </>
         );
       },
-      size: '400px',
+      size: '180px',
     },
   ];
 }

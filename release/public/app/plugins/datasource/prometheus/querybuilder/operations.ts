@@ -1,3 +1,4 @@
+import { binaryScalarOperations } from './binaryScalarOperations';
 import { LabelParamEditor } from './components/LabelParamEditor';
 import {
   defaultAddOperationHandler,
@@ -15,7 +16,6 @@ import {
   VisualQueryModeller,
 } from './shared/types';
 import { PromOperationId, PromVisualQuery, PromVisualQueryOperationCategory } from './types';
-import { binaryScalarOperations } from './binaryScalarOperations';
 
 export function getOperationDefinitions(): QueryBuilderOperationDef[] {
   const list: QueryBuilderOperationDef[] = [
@@ -101,6 +101,7 @@ export function getOperationDefinitions(): QueryBuilderOperationDef[] {
       renderer: (model, def, innerExpr) => innerExpr,
       addOperationHandler: addNestedQueryHandler,
     },
+    createFunction({ id: PromOperationId.Abs }),
     createFunction({ id: PromOperationId.Absent }),
     createFunction({
       id: PromOperationId.Acos,

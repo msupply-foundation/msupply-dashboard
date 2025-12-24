@@ -1,9 +1,12 @@
-import { serializeStateToUrlParam } from '@grafana/data';
-import { ExploreId, StoreState, ThunkDispatch } from 'app/types';
-import { refreshExplore } from './explorePane';
-import { setDataSourceSrv } from '@grafana/runtime';
-import { configureStore } from '../../../store/configureStore';
 import { of } from 'rxjs';
+
+import { serializeStateToUrlParam } from '@grafana/data';
+import { setDataSourceSrv } from '@grafana/runtime';
+import { ExploreId, StoreState, ThunkDispatch } from 'app/types';
+
+import { configureStore } from '../../../store/configureStore';
+
+import { refreshExplore } from './explorePane';
 import { createDefaultInitialState } from './helpers';
 
 jest.mock('../../dashboard/services/TimeSrv', () => ({
@@ -16,7 +19,7 @@ jest.mock('../../dashboard/services/TimeSrv', () => ({
 const { testRange, defaultInitialState } = createDefaultInitialState();
 
 jest.mock('@grafana/runtime', () => ({
-  ...(jest.requireActual('@grafana/runtime') as unknown as object),
+  ...jest.requireActual('@grafana/runtime'),
   getTemplateSrv: () => ({
     updateTimeRange: jest.fn(),
   }),
@@ -69,6 +72,9 @@ function setup(state?: any) {
               testDatasource: jest.fn(),
               init: jest.fn(),
               name: 'default',
+              getRef() {
+                return { type: 'default', uid: 'default' };
+              },
             }
       );
     },

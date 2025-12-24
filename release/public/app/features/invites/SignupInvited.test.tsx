@@ -1,10 +1,14 @@
-import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import React from 'react';
+import { match } from 'react-router-dom';
+import { TestProvider } from 'test/helpers/TestProvider';
+
+import { getRouteComponentProps } from 'app/core/navigation/__mocks__/routeProps';
+
+import { backendSrv } from '../../core/services/backend_srv';
 
 import { SignupInvitedPage, Props } from './SignupInvited';
-import { backendSrv } from '../../core/services/backend_srv';
-import { getRouteComponentProps } from 'app/core/navigation/__mocks__/routeProps';
 
 jest.mock('app/core/core', () => ({
   contextSrv: {
@@ -13,7 +17,7 @@ jest.mock('app/core/core', () => ({
 }));
 
 jest.mock('@grafana/runtime', () => ({
-  ...(jest.requireActual('@grafana/runtime') as unknown as object),
+  ...jest.requireActual('@grafana/runtime'),
   getBackendSrv: () => backendSrv,
 }));
 
@@ -37,11 +41,15 @@ async function setupTestContext({ get = defaultGet }: { get?: typeof defaultGet 
     ...getRouteComponentProps({
       match: {
         params: { code: 'some code' },
-      } as any,
+      } as unknown as match,
     }),
   };
 
-  render(<SignupInvitedPage {...props} />);
+  render(
+    <TestProvider>
+      <SignupInvitedPage {...props} />
+    </TestProvider>
+  );
 
   await waitFor(() => expect(getSpy).toHaveBeenCalled());
   expect(getSpy).toHaveBeenCalledTimes(1);
@@ -103,7 +111,7 @@ describe('SignupInvitedPage', () => {
     it('then required fields should show error messages and nothing should be posted', async () => {
       const { postSpy } = await setupTestContext({ get: { email: '', invitedBy: '', name: '', username: '' } });
 
-      userEvent.click(screen.getByRole('button', { name: /sign up/i }));
+      await userEvent.click(screen.getByRole('button', { name: /sign up/i }));
 
       await waitFor(() => expect(screen.getByText(/email is required/i)).toBeInTheDocument());
       expect(screen.getByText(/username is required/i)).toBeInTheDocument();
@@ -116,8 +124,8 @@ describe('SignupInvitedPage', () => {
     it('then correct form data should be posted', async () => {
       const { postSpy } = await setupTestContext();
 
-      userEvent.type(screen.getByPlaceholderText(/password/i), 'pass@word1');
-      userEvent.click(screen.getByRole('button', { name: /sign up/i }));
+      await userEvent.type(screen.getByPlaceholderText(/password/i), 'pass@word1');
+      await userEvent.click(screen.getByRole('button', { name: /sign up/i }));
 
       await waitFor(() => expect(postSpy).toHaveBeenCalledTimes(1));
       expect(postSpy).toHaveBeenCalledWith('/api/user/invite/complete', {

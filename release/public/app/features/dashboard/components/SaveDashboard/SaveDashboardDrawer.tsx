@@ -1,15 +1,20 @@
 import React, { useMemo, useState } from 'react';
-import { Drawer, Tab, TabsBar } from '@grafana/ui';
-import { SaveDashboardData, SaveDashboardModalProps, SaveDashboardOptions } from './types';
-import { jsonDiff } from '../VersionHistory/utils';
 import { useAsync } from 'react-use';
+
+import { config, isFetchError } from '@grafana/runtime';
+import { Drawer, Spinner, Tab, TabsBar } from '@grafana/ui';
 import { backendSrv } from 'app/core/services/backend_srv';
-import { useDashboardSave } from './useDashboardSave';
-import { SaveProvisionedDashboardForm } from './forms/SaveProvisionedDashboardForm';
+
+import { jsonDiff } from '../VersionHistory/utils';
+
+import DashboardValidation from './DashboardValidation';
+import { SaveDashboardDiff } from './SaveDashboardDiff';
 import { SaveDashboardErrorProxy } from './SaveDashboardErrorProxy';
 import { SaveDashboardAsForm } from './forms/SaveDashboardAsForm';
 import { SaveDashboardForm } from './forms/SaveDashboardForm';
-import { SaveDashboardDiff } from './SaveDashboardDiff';
+import { SaveProvisionedDashboardForm } from './forms/SaveProvisionedDashboardForm';
+import { SaveDashboardData, SaveDashboardModalProps, SaveDashboardOptions } from './types';
+import { useDashboardSave } from './useDashboardSave';
 
 export const SaveDashboardDrawer = ({ dashboard, onDismiss, onSaveSuccess, isCopy }: SaveDashboardModalProps) => {
   const [options, setOptions] = useState<SaveDashboardOptions>({});
@@ -54,7 +59,7 @@ export const SaveDashboardDrawer = ({ dashboard, onDismiss, onSaveSuccess, isCop
   }, [dashboard, previous.value, options, isNew]);
 
   const [showDiff, setShowDiff] = useState(false);
-  const { state, onDashboardSave } = useDashboardSave(dashboard);
+  const { state, onDashboardSave } = useDashboardSave(dashboard, isCopy);
   const onSuccess = onSaveSuccess
     ? () => {
         onDismiss();
@@ -62,9 +67,17 @@ export const SaveDashboardDrawer = ({ dashboard, onDismiss, onSaveSuccess, isCop
       }
     : onDismiss;
 
-  const renderBody = () => {
+  const renderSaveBody = () => {
     if (showDiff) {
       return <SaveDashboardDiff diff={data.diff} oldValue={previous.value} newValue={data.clone} />;
+    }
+
+    if (state.loading) {
+      return (
+        <div>
+          <Spinner />
+        </div>
+      );
     }
 
     if (isNew || isCopy) {
@@ -96,7 +109,7 @@ export const SaveDashboardDrawer = ({ dashboard, onDismiss, onSaveSuccess, isCop
     );
   };
 
-  if (state.error) {
+  if (state.error && isFetchError(state.error) && !state.error.isHandled) {
     return (
       <SaveDashboardErrorProxy
         error={state.error}
@@ -107,22 +120,33 @@ export const SaveDashboardDrawer = ({ dashboard, onDismiss, onSaveSuccess, isCop
     );
   }
 
+  let title = 'Save dashboard';
+  if (isCopy) {
+    title = 'Save dashboard copy';
+  } else if (isProvisioned) {
+    title = 'Provisioned dashboard';
+  }
+
   return (
     <Drawer
-      title={isCopy ? 'Save dashboard copy' : 'Save dashboard'}
+      title={title}
       onClose={onDismiss}
       width={'40%'}
       subtitle={dashboard.title}
       tabs={
         <TabsBar>
           <Tab label={'Details'} active={!showDiff} onChangeTab={() => setShowDiff(false)} />
-          <Tab label={'Changes'} active={showDiff} onChangeTab={() => setShowDiff(true)} counter={data.diffCount} />
+          {data.hasChanges && (
+            <Tab label={'Changes'} active={showDiff} onChangeTab={() => setShowDiff(true)} counter={data.diffCount} />
+          )}
         </TabsBar>
       }
       expandable
       scrollableContent
     >
-      {renderBody()}
+      {renderSaveBody()}
+
+      {config.featureToggles.showDashboardValidationWarnings && <DashboardValidation dashboard={dashboard} />}
     </Drawer>
   );
 };

@@ -1,14 +1,16 @@
-import React, { useEffect, useState } from 'react';
 import { css } from '@emotion/css';
-import { Button, DataLinkInput, stylesFactory, LegacyForms } from '@grafana/ui';
-import { VariableSuggestion } from '@grafana/data';
-import { DataSourcePicker } from '@grafana/runtime';
-import { DerivedFieldConfig } from '../types';
+import React, { useEffect, useState } from 'react';
 import { usePrevious } from 'react-use';
+
+import { GrafanaTheme2, VariableSuggestion } from '@grafana/data';
+import { DataSourcePicker } from '@grafana/runtime';
+import { Button, DataLinkInput, LegacyForms, useStyles2 } from '@grafana/ui';
+
+import { DerivedFieldConfig } from '../types';
 
 const { Switch, FormField } = LegacyForms;
 
-const getStyles = stylesFactory(() => ({
+const getStyles = (theme: GrafanaTheme2) => ({
   row: css`
     display: flex;
     align-items: baseline;
@@ -21,11 +23,12 @@ const getStyles = stylesFactory(() => ({
   `,
   urlField: css`
     flex: 1;
+    margin-right: ${theme.spacing(0.5)};
   `,
   urlDisplayLabelField: css`
     flex: 1;
   `,
-}));
+});
 
 type Props = {
   value: DerivedFieldConfig;
@@ -36,7 +39,7 @@ type Props = {
 };
 export const DerivedField = (props: Props) => {
   const { value, onChange, onDelete, suggestions, className } = props;
-  const styles = getStyles();
+  const styles = useStyles2(getStyles);
   const [showInternalLink, setShowInternalLink] = useState(!!value.datasourceUid);
   const previousUid = usePrevious(value.datasourceUid);
 
@@ -58,11 +61,11 @@ export const DerivedField = (props: Props) => {
   };
 
   return (
-    <div className={className}>
-      <div className={styles.row}>
+    <div className={className} data-testid="derived-field">
+      <div className="gf-form">
         <FormField
+          labelWidth={10}
           className={styles.nameField}
-          labelWidth={5}
           // A bit of a hack to prevent using default value for the width from FormField
           inputWidth={null}
           label="Name"
@@ -71,6 +74,7 @@ export const DerivedField = (props: Props) => {
           onChange={handleChange('name')}
         />
         <FormField
+          labelWidth={10}
           className={styles.regexField}
           inputWidth={null}
           label="Regex"
@@ -89,14 +93,12 @@ export const DerivedField = (props: Props) => {
             event.preventDefault();
             onDelete();
           }}
-          className={css`
-            margin-left: 8px;
-          `}
         />
       </div>
 
-      <div className={styles.row}>
+      <div className="gf-form">
         <FormField
+          labelWidth={10}
           label={showInternalLink ? 'Query' : 'URL'}
           inputEl={
             <DataLinkInput
@@ -115,6 +117,7 @@ export const DerivedField = (props: Props) => {
         />
         <FormField
           className={styles.urlDisplayLabelField}
+          labelWidth={10}
           inputWidth={null}
           label="URL Label"
           type="text"

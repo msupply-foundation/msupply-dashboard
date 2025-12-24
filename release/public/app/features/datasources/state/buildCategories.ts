@@ -1,5 +1,5 @@
 import { DataSourcePluginMeta, PluginType } from '@grafana/data';
-import { config, featureEnabled } from '@grafana/runtime';
+import { featureEnabled } from '@grafana/runtime';
 import { DataSourcePluginCategory } from 'app/types';
 
 export function buildCategories(plugins: DataSourcePluginMeta[]): DataSourcePluginCategory[] {
@@ -7,6 +7,7 @@ export function buildCategories(plugins: DataSourcePluginMeta[]): DataSourcePlug
     { id: 'tsdb', title: 'Time series databases', plugins: [] },
     { id: 'logging', title: 'Logging & document databases', plugins: [] },
     { id: 'tracing', title: 'Distributed tracing', plugins: [] },
+    { id: 'profiling', title: 'Profiling', plugins: [] },
     { id: 'sql', title: 'SQL', plugins: [] },
     { id: 'cloud', title: 'Cloud', plugins: [] },
     { id: 'enterprise', title: 'Enterprise plugins', plugins: [] },
@@ -88,7 +89,7 @@ function sortPlugins(plugins: DataSourcePluginMeta[]) {
       return 1;
     }
 
-    return a.name > b.name ? -1 : 1;
+    return a.name > b.name ? 1 : -1;
   });
 }
 
@@ -190,6 +191,12 @@ function getEnterprisePhantomPlugins(): DataSourcePluginMeta[] {
       name: 'Splunk Infrastructure Monitoring',
       imgUrl: 'public/img/plugins/signalfx-logo.svg',
     }),
+    getPhantomPlugin({
+      id: 'grafana-azuredevops-datasource',
+      description: 'Azure Devops datasource',
+      name: 'Azure Devops',
+      imgUrl: 'public/img/plugins/azure-devops.png',
+    }),
   ];
 }
 
@@ -237,8 +244,9 @@ function getPhantomPlugin(options: GetPhantomPluginOptions): DataSourcePluginMet
       author: { name: 'Grafana Labs' },
       links: [
         {
-          url: config.pluginCatalogURL + options.id,
+          url: '/plugins/' + options.id,
           name: 'Install now',
+          target: '_self',
         },
       ],
       screenshots: [],

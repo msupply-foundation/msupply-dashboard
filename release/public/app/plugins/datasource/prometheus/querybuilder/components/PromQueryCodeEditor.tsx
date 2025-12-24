@@ -1,20 +1,20 @@
-import React from 'react';
-import { PromQueryEditorProps } from '../../components/types';
-import PromQueryField from '../../components/PromQueryField';
-import { testIds } from '../../components/PromQueryEditor';
-import { useStyles2 } from '@grafana/ui';
 import { css } from '@emotion/css';
-import { GrafanaTheme2 } from '@grafana/data';
+import React from 'react';
 
-export function PromQueryCodeEditor({
-  query,
-  datasource,
-  range,
-  onRunQuery,
-  onChange,
-  data,
-  app,
-}: PromQueryEditorProps) {
+import { GrafanaTheme2 } from '@grafana/data';
+import { useStyles2 } from '@grafana/ui';
+
+import PromQueryField from '../../components/PromQueryField';
+import { PromQueryEditorProps } from '../../components/types';
+
+import { PromQueryBuilderExplained } from './PromQueryBuilderExplained';
+
+type Props = PromQueryEditorProps & {
+  showExplain: boolean;
+};
+
+export function PromQueryCodeEditor(props: Props) {
+  const { query, datasource, range, onRunQuery, onChange, data, app, showExplain } = props;
   const styles = useStyles2(getStyles);
 
   return (
@@ -27,9 +27,10 @@ export function PromQueryCodeEditor({
         onChange={onChange}
         history={[]}
         data={data}
-        data-testid={testIds.editor}
         app={app}
       />
+
+      {showExplain && <PromQueryBuilderExplained query={query.expr} />}
     </div>
   );
 }

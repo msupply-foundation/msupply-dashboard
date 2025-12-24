@@ -1,27 +1,24 @@
 import { of, throwError } from 'rxjs';
-import { getDefaultTimeRange, LoadingState, VariableSupportType } from '@grafana/data';
 import { delay } from 'rxjs/operators';
 
-import { UpdateOptionsResults, VariableQueryRunner } from './VariableQueryRunner';
+import { DataSourceApi, getDefaultTimeRange, LoadingState, VariableSupportType } from '@grafana/data';
+
 import { queryBuilder } from '../shared/testing/builders';
-import { QueryRunner, QueryRunners } from './queryRunners';
-import { KeyedVariableIdentifier } from '../state/types';
-import { QueryVariableModel } from '../types';
-import { updateVariableOptions } from './reducer';
+import { getPreloadedState } from '../state/helpers';
 import { toKeyedAction } from '../state/keyedVariablesReducer';
 import { initialTransactionState } from '../state/transactionReducer';
-import { getPreloadedState } from '../state/helpers';
+import { KeyedVariableIdentifier } from '../state/types';
+import { QueryVariableModel } from '../types';
 import { toKeyedVariableIdentifier } from '../utils';
 
-type DoneCallback = {
-  (...args: any[]): any;
-  fail(error?: string | { message: string }): any;
-};
+import { UpdateOptionsResults, VariableQueryRunner } from './VariableQueryRunner';
+import { QueryRunner, QueryRunners } from './queryRunners';
+import { updateVariableOptions } from './reducer';
 
 function expectOnResults(args: {
   runner: VariableQueryRunner;
   identifier: KeyedVariableIdentifier;
-  done: DoneCallback;
+  done: jest.DoneCallback;
   expect: (results: UpdateOptionsResults[]) => void;
 }) {
   const { runner, identifier, done, expect: expectCallback } = args;
@@ -49,7 +46,7 @@ function getTestContext(variable?: QueryVariableModel) {
   });
   const key = '0123456789';
   variable = variable ?? queryBuilder().withId('query').withRootStateKey(key).withName('query').build();
-  const datasource: any = { metricFindQuery: jest.fn().mockResolvedValue([]) };
+  const datasource = { metricFindQuery: jest.fn().mockResolvedValue([]) } as unknown as DataSourceApi;
   const identifier = toKeyedVariableIdentifier(variable);
   const searchFilter = undefined;
   const getTemplatedRegex = jest.fn().mockReturnValue('getTemplatedRegex result');

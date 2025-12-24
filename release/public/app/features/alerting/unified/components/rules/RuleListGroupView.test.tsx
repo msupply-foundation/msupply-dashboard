@@ -1,16 +1,28 @@
-import { locationService } from '@grafana/runtime';
 import { render } from '@testing-library/react';
-import { contextSrv } from 'app/core/services/context_srv';
-import { configureStore } from 'app/store/configureStore';
-import { AccessControlAction } from 'app/types';
-import { CombinedRuleNamespace } from 'app/types/unified-alerting';
 import React from 'react';
 import { Provider } from 'react-redux';
 import { Router } from 'react-router-dom';
 import { byRole } from 'testing-library-selector';
+
+import { locationService, logInfo } from '@grafana/runtime';
+import { contextSrv } from 'app/core/services/context_srv';
+import { configureStore } from 'app/store/configureStore';
+import { AccessControlAction } from 'app/types';
+import { CombinedRuleNamespace } from 'app/types/unified-alerting';
+
+import { LogMessages } from '../../Analytics';
 import { mockCombinedRule, mockDataSource } from '../../mocks';
 import { GRAFANA_RULES_SOURCE_NAME } from '../../utils/datasource';
+
 import { RuleListGroupView } from './RuleListGroupView';
+
+jest.mock('@grafana/runtime', () => {
+  const original = jest.requireActual('@grafana/runtime');
+  return {
+    ...original,
+    logInfo: jest.fn(),
+  };
+});
 
 const ui = {
   grafanaRulesHeading: byRole('heading', { name: 'Grafana' }),
@@ -18,7 +30,7 @@ const ui = {
 };
 
 describe('RuleListGroupView', () => {
-  describe('FGAC', () => {
+  describe('RBAC', () => {
     jest.spyOn(contextSrv, 'accessControlEnabled').mockReturnValue(true);
 
     it('Should display Grafana rules when the user has the alert rule read permission', () => {
@@ -69,6 +81,17 @@ describe('RuleListGroupView', () => {
       renderRuleList(namespaces);
 
       expect(ui.cloudRulesHeading.query()).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Analytics', () => {
+    it('Sends log info when the list is loaded', () => {
+      const grafanaNamespace = getGrafanaNamespace();
+      const namespaces: CombinedRuleNamespace[] = [grafanaNamespace];
+
+      renderRuleList(namespaces);
+
+      expect(logInfo).toHaveBeenCalledWith(LogMessages.loadedList);
     });
   });
 });

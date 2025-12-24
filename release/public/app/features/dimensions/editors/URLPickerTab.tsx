@@ -1,11 +1,12 @@
-import React, { Dispatch, SetStateAction } from 'react';
-import { Field, Input, Label, useStyles2 } from '@grafana/ui';
-import { GrafanaTheme2 } from '@grafana/data';
 import { css } from '@emotion/css';
-import SVG from 'react-inlinesvg';
+import React, { Dispatch, SetStateAction } from 'react';
 
-import { MediaType } from '../types';
+import { GrafanaTheme2 } from '@grafana/data';
+import { Field, Input, Label, useStyles2 } from '@grafana/ui';
+import { SanitizedSVG } from 'app/core/components/SVG/SanitizedSVG';
+
 import { getPublicOrAbsoluteUrl } from '../resource';
+import { MediaType } from '../types';
 
 interface Props {
   newValue: string;
@@ -32,8 +33,10 @@ export const URLPickerTab = (props: Props) => {
       <div className={styles.iconContainer}>
         <Field label="Preview">
           <div className={styles.iconPreview}>
-            {mediaType === MediaType.Icon && <SVG src={imgSrc} className={styles.img} />}
-            {mediaType === MediaType.Image && newValue && <img src={imgSrc} className={styles.img} />}
+            {mediaType === MediaType.Icon && <SanitizedSVG src={imgSrc} className={styles.img} />}
+            {mediaType === MediaType.Image && newValue && (
+              <img src={imgSrc} alt="Preview of the selected URL" className={styles.img} />
+            )}
           </div>
         </Field>
         <Label>{shortName}</Label>

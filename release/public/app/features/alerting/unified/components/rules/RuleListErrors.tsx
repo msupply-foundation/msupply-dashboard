@@ -1,12 +1,15 @@
 import { css } from '@emotion/css';
-import { DataSourceInstanceSettings, GrafanaTheme2 } from '@grafana/data';
-import { Alert, Button, Tooltip, useStyles2 } from '@grafana/ui';
 import { SerializedError } from '@reduxjs/toolkit';
 import pluralize from 'pluralize';
 import React, { useMemo, ReactElement, useState, FC } from 'react';
 import { useLocalStorage } from 'react-use';
+
+import { DataSourceInstanceSettings, GrafanaTheme2 } from '@grafana/data';
+import { Alert, Button, Tooltip, useStyles2 } from '@grafana/ui';
+
 import { useUnifiedAlertingSelector } from '../../hooks/useUnifiedAlertingSelector';
 import { getRulesDataSources, GRAFANA_RULES_SOURCE_NAME } from '../../utils/datasource';
+import { makeDataSourceLink } from '../../utils/misc';
 import { isRulerNotSupportedResponse } from '../../utils/rules';
 
 export function RuleListErrors(): ReactElement {
@@ -50,7 +53,10 @@ export function RuleListErrors(): ReactElement {
       result.push(
         <>
           Failed to load the data source configuration for{' '}
-          <a href={`datasources/edit/${dataSource.uid}`}>{dataSource.name}</a>: {error.message || 'Unknown error.'}
+          <a href={makeDataSourceLink(dataSource)} className={styles.dsLink}>
+            {dataSource.name}
+          </a>
+          : {error.message || 'Unknown error.'}
         </>
       );
     });
@@ -58,8 +64,11 @@ export function RuleListErrors(): ReactElement {
     promRequestErrors.forEach(({ dataSource, error }) =>
       result.push(
         <>
-          Failed to load rules state from <a href={`datasources/edit/${dataSource.uid}`}>{dataSource.name}</a>:{' '}
-          {error.message || 'Unknown error.'}
+          Failed to load rules state from{' '}
+          <a href={makeDataSourceLink(dataSource)} className={styles.dsLink}>
+            {dataSource.name}
+          </a>
+          : {error.message || 'Unknown error.'}
         </>
       )
     );
@@ -67,14 +76,17 @@ export function RuleListErrors(): ReactElement {
     rulerRequestErrors.forEach(({ dataSource, error }) =>
       result.push(
         <>
-          Failed to load rules config from <a href={`datasources/edit/${dataSource.uid}`}>{dataSource.name}</a>:{' '}
-          {error.message || 'Unknown error.'}
+          Failed to load rules config from{' '}
+          <a href={makeDataSourceLink(dataSource)} className={styles.dsLink}>
+            {dataSource.name}
+          </a>
+          : {error.message || 'Unknown error.'}
         </>
       )
     );
 
     return result;
-  }, [dataSourceConfigRequests, promRuleRequests, rulerRuleRequests]);
+  }, [dataSourceConfigRequests, promRuleRequests, rulerRuleRequests, styles.dsLink]);
 
   return (
     <>
@@ -137,5 +149,8 @@ const getStyles = (theme: GrafanaTheme2) => ({
   floatRight: css`
     display: flex;
     justify-content: flex-end;
+  `,
+  dsLink: css`
+    font-weight: ${theme.typography.fontWeightBold};
   `,
 });

@@ -1,4 +1,5 @@
 import { toDataFrame, FieldType } from '@grafana/data';
+
 import { rowsToFields } from './rowsToFields';
 
 describe('Rows to fields', () => {
@@ -26,31 +27,31 @@ describe('Rows to fields', () => {
     );
 
     expect(result).toMatchInlineSnapshot(`
-      Object {
-        "fields": Array [
-          Object {
-            "config": Object {
+      {
+        "fields": [
+          {
+            "config": {
               "max": 15,
               "min": 3,
               "unit": "degree",
             },
-            "labels": Object {},
+            "labels": {},
             "name": "Temperature",
             "type": "number",
-            "values": Array [
+            "values": [
               10,
             ],
           },
-          Object {
-            "config": Object {
+          {
+            "config": {
               "max": 200,
               "min": 100,
               "unit": "pressurebar",
             },
-            "labels": Object {},
+            "labels": {},
             "name": "Pressure",
             "type": "number",
-            "values": Array [
+            "values": [
               200,
             ],
           },

@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+
 import {
   compareArrayValues,
   compareDataFrameStructures,
@@ -8,11 +9,15 @@ import {
   PanelProps,
   ReducerID,
 } from '@grafana/data';
-
-import { DebugPanelOptions, UpdateCounters, UpdateConfig } from './types';
 import { IconButton } from '@grafana/ui';
 
-type Props = PanelProps<DebugPanelOptions>;
+import { PanelOptions, UpdateConfig } from './panelcfg.gen';
+
+type Props = PanelProps<PanelOptions>;
+
+type UpdateCounters = {
+  [K in keyof UpdateConfig]: number;
+};
 
 export class RenderInfoViewer extends Component<Props> {
   // Intentionally not state to avoid overhead -- yes, things will be 1 tick behind
@@ -54,7 +59,11 @@ export class RenderInfoViewer extends Component<Props> {
 
   render() {
     const { data, options } = this.props;
-    const showCounters = options.counters ?? ({} as UpdateConfig);
+    const showCounters = options.counters ?? {
+      render: false,
+      dataChanged: false,
+      schemaChanged: false,
+    };
     this.counters.render++;
     const now = Date.now();
     const elapsed = now - this.lastRender;

@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+
 import {
   PanelOptionsEditorBuilder,
   PluginState,
@@ -7,9 +8,10 @@ import {
   TransformerUIProps,
 } from '@grafana/data';
 
-import { HeatmapTransformerOptions, heatmapTransformer } from './heatmap';
-import { addHeatmapCalculationOptions } from './editor/helper';
 import { getDefaultOptions, getTransformerOptionPane } from '../spatial/optionsHelper';
+
+import { addHeatmapCalculationOptions } from './editor/helper';
+import { HeatmapTransformerOptions, heatmapTransformer } from './heatmap';
 
 // Nothing defined in state
 const supplier = (
@@ -21,9 +23,9 @@ const supplier = (
   addHeatmapCalculationOptions('', builder, options);
 };
 
-export const HeatmapTransformerEditor: React.FC<TransformerUIProps<HeatmapTransformerOptions>> = (props) => {
+export const HeatmapTransformerEditor = (props: TransformerUIProps<HeatmapTransformerOptions>) => {
   useEffect(() => {
-    if (!props.options.xAxis?.mode) {
+    if (!props.options.xBuckets?.mode) {
       const opts = getDefaultOptions(supplier);
       props.onChange({ ...opts, ...props.options });
       console.log('geometry useEffect', opts);

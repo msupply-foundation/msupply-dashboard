@@ -1,5 +1,7 @@
 import { toDataFrame, FieldType, ReducerID } from '@grafana/data';
+
 import { FieldConfigHandlerKey } from '../fieldToConfigMapping/fieldToConfigMapping';
+
 import { extractConfigFromQuery, ConfigFromQueryTransformOptions } from './configFromQuery';
 
 describe('config from data', () => {
@@ -130,20 +132,20 @@ describe('value mapping from data', () => {
 
     const results = extractConfigFromQuery(options, [config, seriesA]);
     expect(results[0].fields[1].config.mappings).toMatchInlineSnapshot(`
-      Array [
-        Object {
-          "options": Object {
-            "1": Object {
+      [
+        {
+          "options": {
+            "1": {
               "color": "red",
               "index": 0,
               "text": "one",
             },
-            "2": Object {
+            "2": {
               "color": "blue",
               "index": 1,
               "text": "two",
             },
-            "3": Object {
+            "3": {
               "color": "green",
               "index": 2,
               "text": "three",

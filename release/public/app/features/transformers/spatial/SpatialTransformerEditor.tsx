@@ -1,9 +1,8 @@
-import React, { useEffect } from 'react';
 import { css } from '@emotion/css';
+import React, { useEffect } from 'react';
+
 import {
   DataTransformerID,
-  FrameGeometrySource,
-  FrameGeometrySourceMode,
   GrafanaTheme2,
   PanelOptionsEditorBuilder,
   PluginState,
@@ -11,12 +10,13 @@ import {
   TransformerRegistryItem,
   TransformerUIProps,
 } from '@grafana/data';
-
-import { isLineBuilderOption, spatialTransformer } from './spatialTransformer';
-import { addLocationFields } from 'app/features/geo/editor/locationEditor';
-import { getDefaultOptions, getTransformerOptionPane } from './optionsHelper';
-import { SpatialCalculation, SpatialOperation, SpatialAction, SpatialTransformOptions } from './models.gen';
+import { FrameGeometrySource, FrameGeometrySourceMode } from '@grafana/schema';
 import { useTheme2 } from '@grafana/ui';
+import { addLocationFields } from 'app/features/geo/editor/locationEditor';
+
+import { SpatialCalculation, SpatialOperation, SpatialAction, SpatialTransformOptions } from './models.gen';
+import { getDefaultOptions, getTransformerOptionPane } from './optionsHelper';
+import { isLineBuilderOption, spatialTransformer } from './spatialTransformer';
 
 // Nothing defined in state
 const supplier = (
@@ -113,7 +113,9 @@ const supplier = (
   }
 };
 
-export const SetGeometryTransformerEditor: React.FC<TransformerUIProps<SpatialTransformOptions>> = (props) => {
+type Props = TransformerUIProps<SpatialTransformOptions>;
+
+export const SetGeometryTransformerEditor = (props: Props) => {
   // a new component is created with every change :(
   useEffect(() => {
     if (!props.options.source?.mode) {
@@ -121,7 +123,8 @@ export const SetGeometryTransformerEditor: React.FC<TransformerUIProps<SpatialTr
       props.onChange({ ...opts, ...props.options });
       console.log('geometry useEffect', opts);
     }
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const styles = getStyles(useTheme2());
 

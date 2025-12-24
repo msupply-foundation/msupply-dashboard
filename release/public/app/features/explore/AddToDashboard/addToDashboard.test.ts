@@ -1,9 +1,12 @@
-import { DataQuery, MutableDataFrame } from '@grafana/data';
-import { ExplorePanelData } from 'app/types';
-import { createEmptyQueryResponse } from '../state/utils';
-import { setDashboardInLocalStorage } from './addToDashboard';
-import * as api from 'app/features/dashboard/state/initDashboard';
+import { MutableDataFrame } from '@grafana/data';
+import { DataQuery, defaultDashboard } from '@grafana/schema';
 import { backendSrv } from 'app/core/services/backend_srv';
+import * as api from 'app/features/dashboard/state/initDashboard';
+import { ExplorePanelData } from 'app/types';
+
+import { createEmptyQueryResponse } from '../state/utils';
+
+import { setDashboardInLocalStorage } from './addToDashboard';
 
 describe('addPanelToDashboard', () => {
   let spy: jest.SpyInstance;
@@ -51,6 +54,7 @@ describe('addPanelToDashboard', () => {
     const existingPanel = { prop: 'this should be kept' };
     jest.spyOn(backendSrv, 'getDashboardByUid').mockResolvedValue({
       dashboard: {
+        ...defaultDashboard,
         templating: { list: [] },
         title: 'Previous panels should not be removed',
         uid: 'someUid',
@@ -88,12 +92,6 @@ describe('addPanelToDashboard', () => {
           [{ refId: 'A', hide: true }],
           { ...createEmptyQueryResponse(), logsFrames: [new MutableDataFrame({ refId: 'A', fields: [] })] },
         ],
-        [
-          // trace view is not supported in dashboards, we expect to fallback to table panel
-          'If there are trace frames',
-          [{ refId: 'A' }],
-          { ...createEmptyQueryResponse(), traceFrames: [new MutableDataFrame({ refId: 'A', fields: [] })] },
-        ],
       ];
 
       it.each(cases)('%s', async (_, queries, queryResponse) => {
@@ -113,15 +111,13 @@ describe('addPanelToDashboard', () => {
         framesType: string;
         expectedPanel: string;
       };
-      // Note: traceFrames test is "duplicated" in "Defaults to table" tests.
-      // This is intentional as a way to enforce explicit tests for that case whenever in the future we'll
-      // add support for creating traceview panels
       it.each`
-        framesType           | expectedPanel
-        ${'logsFrames'}      | ${'logs'}
-        ${'graphFrames'}     | ${'timeseries'}
-        ${'nodeGraphFrames'} | ${'nodeGraph'}
-        ${'traceFrames'}     | ${'table'}
+        framesType            | expectedPanel
+        ${'logsFrames'}       | ${'logs'}
+        ${'graphFrames'}      | ${'timeseries'}
+        ${'nodeGraphFrames'}  | ${'nodeGraph'}
+        ${'flameGraphFrames'} | ${'flamegraph'}
+        ${'traceFrames'}      | ${'traces'}
       `(
         'Sets visualization to $expectedPanel if there are $frameType frames',
         async ({ framesType, expectedPanel }: TestArgs) => {

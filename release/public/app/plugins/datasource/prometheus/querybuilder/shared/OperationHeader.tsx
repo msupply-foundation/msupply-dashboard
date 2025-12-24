@@ -1,8 +1,11 @@
 import { css } from '@emotion/css';
+import React, { useState } from 'react';
+import { DraggableProvided } from 'react-beautiful-dnd';
+
 import { GrafanaTheme2, SelectableValue } from '@grafana/data';
 import { FlexItem } from '@grafana/experimental';
 import { Button, Select, useStyles2 } from '@grafana/ui';
-import React, { useState } from 'react';
+
 import { OperationInfoButton } from './OperationInfoButton';
 import { VisualQueryModeller, QueryBuilderOperation, QueryBuilderOperationDef } from './types';
 
@@ -11,7 +14,7 @@ export interface Props {
   def: QueryBuilderOperationDef;
   index: number;
   queryModeller: VisualQueryModeller;
-  dragHandleProps: any;
+  dragHandleProps?: DraggableProvided['dragHandleProps'];
   onChange: (index: number, update: QueryBuilderOperation) => void;
   onRemove: (index: number) => void;
 }
@@ -77,7 +80,16 @@ export const OperationHeader = React.memo<Props>(
                 if (value.value) {
                   // Operation should exist if it is selectable
                   const newDef = queryModeller.getOperationDef(value.value.id)!;
-                  let changedOp = { ...operation, id: value.value.id };
+
+                  // copy default params, and override with all current params
+                  const newParams = [...newDef.defaultParams];
+                  for (let i = 0; i < Math.min(operation.params.length, newParams.length); i++) {
+                    if (newDef.params[i].type === def.params[i].type) {
+                      newParams[i] = operation.params[i];
+                    }
+                  }
+
+                  const changedOp = { ...operation, params: newParams, id: value.value.id };
                   onChange(index, def.changeTypeHandler ? def.changeTypeHandler(changedOp, newDef) : changedOp);
                 }
               }}

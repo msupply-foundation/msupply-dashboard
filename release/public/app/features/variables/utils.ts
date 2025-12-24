@@ -1,22 +1,25 @@
 import { isArray, isEqual } from 'lodash';
+
 import { ScopedVars, UrlQueryMap, UrlQueryValue, VariableType } from '@grafana/data';
 import { getTemplateSrv } from '@grafana/runtime';
-
-import { ALL_VARIABLE_TEXT, ALL_VARIABLE_VALUE } from './constants';
-import { QueryVariableModel, TransactionStatus, VariableModel, VariableRefresh } from './types';
-import { getTimeSrv } from '../dashboard/services/TimeSrv';
-import { variableAdapters } from './adapters';
 import { safeStringifyValue } from 'app/core/utils/explore';
-import { StoreState } from '../../types';
+
 import { getState } from '../../store/store';
+import { StoreState } from '../../types';
+import { getTimeSrv } from '../dashboard/services/TimeSrv';
+
+import { variableAdapters } from './adapters';
+import { ALL_VARIABLE_TEXT, ALL_VARIABLE_VALUE, VARIABLE_PREFIX } from './constants';
 import { getVariablesState } from './state/selectors';
 import { KeyedVariableIdentifier, VariableIdentifier, VariablePayload } from './state/types';
+import { QueryVariableModel, TransactionStatus, VariableModel, VariableRefresh, VariableWithOptions } from './types';
 
 /*
  * This regex matches 3 types of variable reference with an optional format specifier
- * \$(\w+)                          $var1
- * \[\[(\w+?)(?::(\w+))?\]\]        [[var2]] or [[var2:fmt2]]
- * \${(\w+)(?::(\w+))?}             ${var3} or ${var3:fmt3}
+ * There are 6 capture groups that replace will return
+ * \$(\w+)                                    $var1
+ * \[\[(\w+?)(?::(\w+))?\]\]                  [[var2]] or [[var2:fmt2]]
+ * \${(\w+)(?:\.([^:^\}]+))?(?::([^\}]+))?}   ${var3} or ${var3.fieldPath} or ${var3:fmt3} (or ${var3.fieldPath:fmt3} but that is not a separate capture group)
  */
 export const variableRegex = /\$(\w+)|\[\[(\w+?)(?::(\w+))?\]\]|\${(\w+)(?:\.([^:^\}]+))?(?::([^\}]+))?}/g;
 
@@ -31,10 +34,14 @@ export const SEARCH_FILTER_VARIABLE = '__searchFilter';
 export const containsSearchFilter = (query: string | unknown): boolean =>
   query && typeof query === 'string' ? query.indexOf(SEARCH_FILTER_VARIABLE) !== -1 : false;
 
+export interface SearchFilterOptions {
+  searchFilter?: string;
+}
+
 export const getSearchFilterScopedVar = (args: {
   query: string;
   wildcardChar: string;
-  options: { searchFilter?: string };
+  options?: SearchFilterOptions;
 }): ScopedVars => {
   const { query, wildcardChar } = args;
   if (!containsSearchFilter(query)) {
@@ -128,6 +135,22 @@ export const getCurrentText = (variable: any): string => {
   return variable.current.text;
 };
 
+export const getCurrentValue = (variable: VariableWithOptions): string | null => {
+  if (!variable || !variable.current || variable.current.value === undefined || variable.current.value === null) {
+    return null;
+  }
+
+  if (Array.isArray(variable.current.value)) {
+    return variable.current.value.toString();
+  }
+
+  if (typeof variable.current.value !== 'string') {
+    return null;
+  }
+
+  return variable.current.value;
+};
+
 export function getTemplatedRegex(variable: QueryVariableModel, templateSrv = getTemplateSrv()): string {
   if (!variable) {
     return '';
@@ -171,9 +194,10 @@ export function getVariableTypes(): Array<{ label: string; value: VariableType }
   return variableAdapters
     .list()
     .filter((v) => v.id !== 'system')
-    .map(({ id, name }) => ({
+    .map(({ id, name, description }) => ({
       label: name,
       value: id,
+      description,
     }));
 }
 
@@ -201,7 +225,7 @@ export function findTemplateVarChanges(query: UrlQueryMap, old: UrlQueryMap): Ex
   const changes: ExtendedUrlQueryMap = {};
 
   for (const key in query) {
-    if (!key.startsWith('var-')) {
+    if (!key.startsWith(VARIABLE_PREFIX)) {
       continue;
     }
 
@@ -215,7 +239,7 @@ export function findTemplateVarChanges(query: UrlQueryMap, old: UrlQueryMap): Ex
   }
 
   for (const key in old) {
-    if (!key.startsWith('var-')) {
+    if (!key.startsWith(VARIABLE_PREFIX)) {
       continue;
     }
 
@@ -278,9 +302,7 @@ export function toVariablePayload<T extends any = undefined>(
   identifier: VariableIdentifier,
   data?: T
 ): VariablePayload<T>;
-// eslint-disable-next-line
 export function toVariablePayload<T extends any = undefined>(model: VariableModel, data?: T): VariablePayload<T>;
-// eslint-disable-next-line
 export function toVariablePayload<T extends any = undefined>(
   obj: VariableIdentifier | VariableModel,
   data?: T

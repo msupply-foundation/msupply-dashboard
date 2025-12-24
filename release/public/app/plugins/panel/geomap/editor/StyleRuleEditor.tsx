@@ -1,36 +1,31 @@
-import React, { FC, useCallback, useMemo } from 'react';
-import { GrafanaTheme2, SelectableValue, StandardEditorProps } from '@grafana/data';
-import { ComparisonOperation, FeatureStyleConfig } from '../types';
-import { Button, InlineField, InlineFieldRow, Select, useStyles2 } from '@grafana/ui';
 import { css } from '@emotion/css';
-import { StyleEditor } from '../layers/data/StyleEditor';
-import { defaultStyleConfig, StyleConfig } from '../style/types';
-import { DEFAULT_STYLE_RULE } from '../layers/data/geojsonLayer';
-import { Observable } from 'rxjs';
-import { useObservable } from 'react-use';
-import { getUniqueFeatureValues, LayerContentInfo } from '../utils/getFeatures';
 import { FeatureLike } from 'ol/Feature';
+import React, { useCallback, useMemo } from 'react';
+import { useObservable } from 'react-use';
+import { Observable } from 'rxjs';
+
+import { GrafanaTheme2, SelectableValue, StandardEditorProps, StandardEditorsRegistryItem } from '@grafana/data';
+import { ComparisonOperation } from '@grafana/schema';
+import { Button, InlineField, InlineFieldRow, Select, useStyles2 } from '@grafana/ui';
+import { comparisonOperationOptions } from '@grafana/ui/src/components/MatchersUI/FieldValueMatcher';
+import { NumberInput } from 'app/core/components/OptionsUI/NumberInput';
+
+import { DEFAULT_STYLE_RULE } from '../layers/data/geojsonLayer';
+import { defaultStyleConfig, StyleConfig } from '../style/types';
+import { FeatureStyleConfig } from '../types';
+import { getUniqueFeatureValues, LayerContentInfo } from '../utils/getFeatures';
 import { getSelectionInfo } from '../utils/selection';
-import { NumberInput } from 'app/features/dimensions/editors/NumberInput';
+
+import { StyleEditor } from './StyleEditor';
 
 export interface StyleRuleEditorSettings {
   features: Observable<FeatureLike[]>;
   layerInfo: Observable<LayerContentInfo>;
 }
 
-const comparators = [
-  { label: '==', value: ComparisonOperation.EQ },
-  { label: '!=', value: ComparisonOperation.NEQ },
-  { label: '>', value: ComparisonOperation.GT },
-  { label: '>=', value: ComparisonOperation.GTE },
-  { label: '<', value: ComparisonOperation.LT },
-  { label: '<=', value: ComparisonOperation.LTE },
-];
+type Props = StandardEditorProps<FeatureStyleConfig, any, unknown, StyleRuleEditorSettings>;
 
-export const StyleRuleEditor: FC<StandardEditorProps<FeatureStyleConfig, any, any, StyleRuleEditorSettings>> = (
-  props
-) => {
-  const { value, onChange, item, context } = props;
+export const StyleRuleEditor = ({ value, onChange, item, context }: Props) => {
   const settings: StyleRuleEditorSettings = item.settings;
   const { features, layerInfo } = settings;
 
@@ -135,7 +130,6 @@ export const StyleRuleEditor: FC<StandardEditorProps<FeatureStyleConfig, any, an
       <InlineFieldRow className={styles.row}>
         <InlineField label="Rule" labelWidth={LABEL_WIDTH} grow={true}>
           <Select
-            menuShouldPortal
             placeholder={'Feature property'}
             value={propv.current}
             options={propv.options}
@@ -147,9 +141,8 @@ export const StyleRuleEditor: FC<StandardEditorProps<FeatureStyleConfig, any, an
         </InlineField>
         <InlineField className={styles.inline}>
           <Select
-            menuShouldPortal
-            value={comparators.find((v) => v.value === check.operation)}
-            options={comparators}
+            value={comparisonOperationOptions.find((v) => v.value === check.operation)}
+            options={comparisonOperationOptions}
             onChange={onChangeComparison}
             aria-label={'Comparison operator'}
             width={8}
@@ -159,7 +152,6 @@ export const StyleRuleEditor: FC<StandardEditorProps<FeatureStyleConfig, any, an
           <div className={styles.flexRow}>
             {(check.operation === ComparisonOperation.EQ || check.operation === ComparisonOperation.NEQ) && (
               <Select
-                menuShouldPortal
                 placeholder={'value'}
                 value={valuev.current}
                 options={valuev.options}
@@ -199,7 +191,7 @@ export const StyleRuleEditor: FC<StandardEditorProps<FeatureStyleConfig, any, an
                 simpleFixedValues: true,
                 layerInfo,
               },
-            } as any
+            } as StandardEditorsRegistryItem
           }
         />
       </div>

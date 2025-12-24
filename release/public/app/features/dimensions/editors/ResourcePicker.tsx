@@ -1,5 +1,7 @@
-import React, { createRef } from 'react';
 import { css } from '@emotion/css';
+import React, { createRef } from 'react';
+
+import { GrafanaTheme2 } from '@grafana/data';
 import {
   Button,
   InlineField,
@@ -11,13 +13,13 @@ import {
   useStyles2,
   useTheme2,
 } from '@grafana/ui';
-import { GrafanaTheme2 } from '@grafana/data';
-import SVG from 'react-inlinesvg';
-
-import { MediaType, ResourceFolderName, ResourcePickerSize } from '../types';
 import { closePopover } from '@grafana/ui/src/utils/closePopover';
-import { ResourcePickerPopover } from './ResourcePickerPopover';
+import { SanitizedSVG } from 'app/core/components/SVG/SanitizedSVG';
+
 import { getPublicOrAbsoluteUrl } from '../resource';
+import { MediaType, ResourceFolderName, ResourcePickerSize } from '../types';
+
+import { ResourcePickerPopover } from './ResourcePickerPopover';
 
 interface Props {
   onChange: (value?: string) => void;
@@ -38,7 +40,7 @@ export const ResourcePicker = (props: Props) => {
   const styles = useStyles2(getStyles);
   const theme = useTheme2();
 
-  const pickerTriggerRef = createRef<any>();
+  const pickerTriggerRef = createRef<HTMLDivElement>();
   const popoverElement = (
     <ResourcePickerPopover onChange={onChange} value={value} mediaType={mediaType} folderName={folderName} />
   );
@@ -54,7 +56,7 @@ export const ResourcePicker = (props: Props) => {
 
   const renderSmallResourcePicker = () => {
     if (value && sanitizedSrc) {
-      return <SVG src={sanitizedSrc} className={styles.icon} style={{ ...colorStyle }} />;
+      return <SanitizedSVG src={sanitizedSrc} className={styles.icon} style={{ ...colorStyle }} />;
     } else {
       return (
         <LinkButton variant="primary" fill="text" size="sm">
@@ -71,7 +73,7 @@ export const ResourcePicker = (props: Props) => {
           value={name}
           placeholder={placeholder}
           readOnly={true}
-          prefix={sanitizedSrc && <SVG src={sanitizedSrc} className={styles.icon} style={{ ...colorStyle }} />}
+          prefix={sanitizedSrc && <SanitizedSVG src={sanitizedSrc} className={styles.icon} style={{ ...colorStyle }} />}
           suffix={<Button icon="times" variant="secondary" fill="text" size="sm" onClick={onClear} />}
         />
       </InlineField>
@@ -88,7 +90,7 @@ export const ResourcePicker = (props: Props) => {
                 {...popperProps}
                 referenceElement={pickerTriggerRef.current}
                 onMouseEnter={showPopper}
-                onKeyDown={(event: any) => {
+                onKeyDown={(event) => {
                   closePopover(event, hidePopper);
                 }}
               />

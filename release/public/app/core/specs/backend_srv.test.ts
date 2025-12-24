@@ -1,13 +1,14 @@
 import 'whatwg-fetch'; // fetch polyfill needed for PhantomJs rendering
 import { Observable, of } from 'rxjs';
 import { delay } from 'rxjs/operators';
-import { AppEvents, DataQueryErrorType, EventBusExtended } from '@grafana/data';
 
-import { BackendSrv } from '../services/backend_srv';
-import { ContextSrv, User } from '../services/context_srv';
-import { BackendSrvRequest, FetchError } from '@grafana/runtime';
+import { AppEvents, DataQueryErrorType, EventBusExtended } from '@grafana/data';
+import { BackendSrvRequest, FetchError, FetchResponse } from '@grafana/runtime';
+
 import { TokenRevokedModal } from '../../features/users/TokenRevokedModal';
 import { ShowModalReactEvent } from '../../types/events';
+import { BackendSrv, BackendSrvDependencies } from '../services/backend_srv';
+import { ContextSrv, User } from '../services/context_srv';
 
 const getTestContext = (overides?: object) => {
   const defaults = {
@@ -39,15 +40,15 @@ const getTestContext = (overides?: object) => {
   const appEventsMock: EventBusExtended = {
     emit: jest.fn(),
     publish: jest.fn(),
-  } as any as EventBusExtended;
+  } as jest.MockedObject<EventBusExtended>;
 
   const user: User = {
     isSignedIn: props.isSignedIn,
     orgId: props.orgId,
-  } as any as User;
+  } as jest.MockedObject<User>;
   const contextSrvMock: ContextSrv = {
     user,
-  } as any as ContextSrv;
+  } as jest.MockedObject<ContextSrv>;
   const logoutMock = jest.fn();
   const parseRequestOptionsMock = jest.fn().mockImplementation((options) => options);
 
@@ -60,14 +61,14 @@ const getTestContext = (overides?: object) => {
 
   backendSrv['parseRequestOptions'] = parseRequestOptionsMock;
 
-  const expectCallChain = (options: any) => {
+  const expectCallChain = () => {
     expect(fromFetchMock).toHaveBeenCalledTimes(1);
   };
 
-  const expectRequestCallChain = (options: any) => {
+  const expectRequestCallChain = (options: unknown) => {
     expect(parseRequestOptionsMock).toHaveBeenCalledTimes(1);
     expect(parseRequestOptionsMock).toHaveBeenCalledWith(options);
-    expectCallChain(options);
+    expectCallChain();
   };
 
   return {
@@ -108,7 +109,7 @@ describe('backendSrv', () => {
               orgId: orgId,
             },
           },
-        } as any);
+        } as BackendSrvDependencies);
 
         if (noBackendCache) {
           await srv.withNoBackendCache(async () => {
@@ -153,7 +154,7 @@ describe('backendSrv', () => {
 
     describe('when making an unsuccessful call and conditions for retry are favorable and loginPing does not throw', () => {
       it('then it should retry', async () => {
-        jest.useFakeTimers('modern');
+        jest.useFakeTimers();
         const url = '/api/dashboard/';
         const { backendSrv, appEventsMock, logoutMock, expectRequestCallChain } = getTestContext({
           ok: false,
@@ -219,7 +220,7 @@ describe('backendSrv', () => {
 
     describe('when making an unsuccessful call and conditions for retry are favorable and retry throws', () => {
       it('then it throw error', async () => {
-        jest.useFakeTimers('modern');
+        jest.useFakeTimers();
         const { backendSrv, appEventsMock, logoutMock, expectRequestCallChain } = getTestContext({
           ok: false,
           status: 401,
@@ -274,12 +275,32 @@ describe('backendSrv', () => {
             'bogus-trace-id',
           ]);
         });
+
+        it('It should favor error.message for fetch errors when error.data.message is Unexpected error', async () => {
+          const { backendSrv, appEventsMock } = getTestContext({});
+          backendSrv.showErrorAlert(
+            {
+              url: 'api/do/something',
+            } as BackendSrvRequest,
+            {
+              data: {
+                message: 'Unexpected error',
+              },
+              message: 'Failed to fetch',
+              status: 500,
+              config: {
+                url: '',
+              },
+            } as FetchError
+          );
+          expect(appEventsMock.emit).toHaveBeenCalledWith(AppEvents.alertError, ['Failed to fetch', '']);
+        });
       });
     });
 
     describe('when making an unsuccessful 422 call', () => {
       it('then it should emit Validation failed message', async () => {
-        jest.useFakeTimers('modern');
+        jest.useFakeTimers();
         const { backendSrv, appEventsMock, logoutMock, expectRequestCallChain } = getTestContext({
           ok: false,
           status: 422,
@@ -312,7 +333,7 @@ describe('backendSrv', () => {
 
     describe('when making an unsuccessful call and we handle the error', () => {
       it('then it should not emit message', async () => {
-        jest.useFakeTimers('modern');
+        jest.useFakeTimers();
         const { backendSrv, appEventsMock, logoutMock, expectRequestCallChain } = getTestContext({
           ok: false,
           status: 404,
@@ -376,7 +397,7 @@ describe('backendSrv', () => {
           requestId: 'A',
         };
 
-        let slowError: any = null;
+        let slowError = null;
         backendSrv.request(options).catch((err) => {
           slowError = err;
         });
@@ -414,7 +435,7 @@ describe('backendSrv', () => {
           .mockResolvedValue({ ok: true, status: 200, statusText: 'OK', data: { message: 'Ok' } });
         const url = '/api/dashboard/';
 
-        let inspectorPacket: any = null;
+        let inspectorPacket: FetchResponse | FetchError;
         backendSrv.getInspectorStream().subscribe({
           next: (rsp) => (inspectorPacket = rsp),
         });
@@ -535,7 +556,7 @@ describe('backendSrv', () => {
           method: 'GET',
         };
 
-        let inspectorPacket: any = null;
+        let inspectorPacket: FetchResponse | FetchError;
         backendSrv.getInspectorStream().subscribe({
           next: (rsp) => (inspectorPacket = rsp),
         });
@@ -562,7 +583,7 @@ describe('backendSrv', () => {
     describe('when called with 2 separate requests and then cancelAllInFlightRequests is called', () => {
       const url = '/api/dashboard/';
 
-      const getRequestObservable = (message: string, unsubscribe: any) =>
+      const getRequestObservable = (message: string, unsubscribe: jest.Mock) =>
         new Observable((subscriber) => {
           subscriber.next({
             ok: true,

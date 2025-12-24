@@ -1,18 +1,19 @@
-import React, { FC, useEffect, useMemo } from 'react';
 import { isEmpty, uniq } from 'lodash';
-import { Icon, MultiSelect } from '@grafana/ui';
+import React, { useEffect, useMemo } from 'react';
+
 import { SelectableValue } from '@grafana/data';
-import { useDispatch } from 'react-redux';
-import { fetchAllPromRulesAction } from 'app/features/alerting/unified/state/actions';
+import { Icon, MultiSelect } from '@grafana/ui';
 import { useUnifiedAlertingSelector } from 'app/features/alerting/unified/hooks/useUnifiedAlertingSelector';
-import { getAllRulesSourceNames } from 'app/features/alerting/unified/utils/datasource';
-import { PromRuleType } from 'app/types/unified-alerting-dto';
-import { AlertingRule } from 'app/types/unified-alerting';
-import { isPrivateLabel } from './util';
+import { fetchAllPromRulesAction } from 'app/features/alerting/unified/state/actions';
 import {
-  isAsyncRequestMapSliceFulfilled,
   isAsyncRequestMapSlicePending,
+  isAsyncRequestMapSliceSettled,
 } from 'app/features/alerting/unified/utils/redux';
+import { useDispatch } from 'app/types';
+import { AlertingRule } from 'app/types/unified-alerting';
+import { PromRuleType } from 'app/types/unified-alerting-dto';
+
+import { isPrivateLabel } from './util';
 
 interface Props {
   id: string;
@@ -20,7 +21,7 @@ interface Props {
   onChange: (keys: string[]) => void;
 }
 
-export const GroupBy: FC<Props> = (props) => {
+export const GroupBy = (props: Props) => {
   const { onChange, id, defaultValue } = props;
   const dispatch = useDispatch();
 
@@ -29,9 +30,8 @@ export const GroupBy: FC<Props> = (props) => {
   }, [dispatch]);
 
   const promRulesByDatasource = useUnifiedAlertingSelector((state) => state.promRules);
-  const rulesDataSourceNames = useMemo(getAllRulesSourceNames, []);
 
-  const allRequestsReady = isAsyncRequestMapSliceFulfilled(promRulesByDatasource);
+  const allRequestsReady = isAsyncRequestMapSliceSettled(promRulesByDatasource);
   const loading = isAsyncRequestMapSlicePending(promRulesByDatasource);
 
   const labels = useMemo(() => {
@@ -43,7 +43,7 @@ export const GroupBy: FC<Props> = (props) => {
       return [];
     }
 
-    const allLabels = rulesDataSourceNames
+    const allLabels = Object.keys(promRulesByDatasource)
       .flatMap((datasource) => promRulesByDatasource[datasource].result ?? [])
       .flatMap((rules) => rules.groups)
       .flatMap((group) => group.rules.filter((rule): rule is AlertingRule => rule.type === PromRuleType.Alerting))
@@ -52,7 +52,7 @@ export const GroupBy: FC<Props> = (props) => {
       .flatMap((labels) => labels.filter(isPrivateLabel));
 
     return uniq(allLabels);
-  }, [allRequestsReady, promRulesByDatasource, rulesDataSourceNames]);
+  }, [allRequestsReady, promRulesByDatasource]);
 
   return (
     <MultiSelect<string>
@@ -69,7 +69,6 @@ export const GroupBy: FC<Props> = (props) => {
         label: key,
         value: key,
       }))}
-      menuShouldPortal={true}
     />
   );
 };

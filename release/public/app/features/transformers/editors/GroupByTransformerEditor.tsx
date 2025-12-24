@@ -1,5 +1,6 @@
-import React, { useCallback } from 'react';
 import { css, cx } from '@emotion/css';
+import React, { useCallback } from 'react';
+
 import {
   DataTransformerID,
   ReducerID,
@@ -8,13 +9,13 @@ import {
   TransformerRegistryItem,
   TransformerUIProps,
 } from '@grafana/data';
-import { Select, StatsPicker, stylesFactory } from '@grafana/ui';
-
 import {
   GroupByFieldOptions,
   GroupByOperationID,
   GroupByTransformerOptions,
 } from '@grafana/data/src/transformations/transformers/groupBy';
+import { Select, StatsPicker, stylesFactory } from '@grafana/ui';
+
 import { useAllFieldNamesFromDataFrames } from '../utils';
 
 interface FieldProps {
@@ -23,11 +24,11 @@ interface FieldProps {
   onConfigChange: (config: GroupByFieldOptions) => void;
 }
 
-export const GroupByTransformerEditor: React.FC<TransformerUIProps<GroupByTransformerOptions>> = ({
+export const GroupByTransformerEditor = ({
   input,
   options,
   onChange,
-}) => {
+}: TransformerUIProps<GroupByTransformerOptions>) => {
   const fieldNames = useAllFieldNamesFromDataFrames(input);
 
   const onConfigChange = useCallback(
@@ -64,7 +65,7 @@ const options = [
   { label: 'Calculate', value: GroupByOperationID.aggregate },
 ];
 
-export const GroupByFieldConfiguration: React.FC<FieldProps> = ({ fieldName, config, onConfigChange }) => {
+export const GroupByFieldConfiguration = ({ fieldName, config, onConfigChange }: FieldProps) => {
   const styles = getStyling();
 
   const onChange = useCallback(
@@ -86,7 +87,6 @@ export const GroupByFieldConfiguration: React.FC<FieldProps> = ({ fieldName, con
       <div className={cx('gf-form', styles.cell)}>
         <div className={cx('gf-form-spacing', styles.rowSpacing)}>
           <Select
-            menuShouldPortal
             className="width-12"
             options={options}
             value={config?.operation}

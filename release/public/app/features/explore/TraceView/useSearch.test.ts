@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react-hooks';
+
+import { TraceSpan } from './components';
 import { useSearch } from './useSearch';
-import { TraceSpan } from '@jaegertracing/jaeger-ui-components';
 
 describe('useSearch', () => {
   it('returns matching span IDs', async () => {

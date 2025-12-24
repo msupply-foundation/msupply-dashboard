@@ -1,12 +1,34 @@
-import React from 'react';
-import { testIds } from '../../components/LokiQueryEditor';
-import { useStyles2 } from '@grafana/ui';
 import { css } from '@emotion/css';
-import { GrafanaTheme2 } from '@grafana/data';
-import { LokiQueryEditorProps } from '../../components/types';
-import { LokiQueryField } from '../../components/LokiQueryField';
+import React from 'react';
 
-export function LokiQueryCodeEditor({ query, datasource, range, onRunQuery, onChange, data }: LokiQueryEditorProps) {
+import { GrafanaTheme2 } from '@grafana/data';
+import { useStyles2 } from '@grafana/ui';
+
+import { testIds } from '../../components/LokiQueryEditor';
+import { LokiQueryField } from '../../components/LokiQueryField';
+import { getStats } from '../../components/stats';
+import { LokiQueryEditorProps } from '../../components/types';
+import { QueryStats } from '../../types';
+
+import { LokiQueryBuilderExplained } from './LokiQueryBuilderExplained';
+
+type Props = LokiQueryEditorProps & {
+  showExplain: boolean;
+  setQueryStats: React.Dispatch<React.SetStateAction<QueryStats | undefined>>;
+};
+
+export function LokiQueryCodeEditor({
+  query,
+  datasource,
+  range,
+  onRunQuery,
+  onChange,
+  data,
+  app,
+  showExplain,
+  history,
+  setQueryStats,
+}: Props) {
   const styles = useStyles2(getStyles);
 
   return (
@@ -17,21 +39,26 @@ export function LokiQueryCodeEditor({ query, datasource, range, onRunQuery, onCh
         range={range}
         onRunQuery={onRunQuery}
         onChange={onChange}
-        history={[]}
+        history={history}
         data={data}
+        app={app}
         data-testid={testIds.editor}
+        onQueryType={async (query: string) => {
+          const stats = await getStats(datasource, query);
+          setQueryStats(stats);
+        }}
       />
+      {showExplain && <LokiQueryBuilderExplained query={query.expr} />}
     </div>
   );
 }
 
 const getStyles = (theme: GrafanaTheme2) => {
   return {
-    // This wrapper styling can be removed after the old PromQueryEditor is removed.
-    // This is removing margin bottom on the old legacy inline form styles
     wrapper: css`
+      max-width: 100%;
       .gf-form {
-        margin-bottom: 0;
+        margin-bottom: 0.5;
       }
     `,
   };

@@ -1,29 +1,32 @@
 import React, { useCallback } from 'react';
-import { DataFrame, DataTransformerConfig, TransformerRegistryItem } from '@grafana/data';
-import { HorizontalGroup } from '@grafana/ui';
+import { useToggle } from 'react-use';
 
-import { TransformationEditor } from './TransformationEditor';
+import { DataFrame, DataTransformerConfig, TransformerRegistryItem, FrameMatcherID } from '@grafana/data';
+import { reportInteraction } from '@grafana/runtime';
+import { HorizontalGroup } from '@grafana/ui';
+import { OperationRowHelp } from 'app/core/components/QueryOperationRow/OperationRowHelp';
+import { QueryOperationAction } from 'app/core/components/QueryOperationRow/QueryOperationAction';
 import {
   QueryOperationRow,
   QueryOperationRowRenderProps,
 } from 'app/core/components/QueryOperationRow/QueryOperationRow';
-import { QueryOperationAction } from 'app/core/components/QueryOperationRow/QueryOperationAction';
-import { TransformationsEditorTransformation } from './types';
 import { PluginStateInfo } from 'app/features/plugins/components/PluginStateInfo';
-import { useToggle } from 'react-use';
-import { OperationRowHelp } from 'app/core/components/QueryOperationRow/OperationRowHelp';
+
+import { TransformationEditor } from './TransformationEditor';
+import { TransformationFilter } from './TransformationFilter';
+import { TransformationsEditorTransformation } from './types';
 
 interface TransformationOperationRowProps {
   id: string;
   index: number;
   data: DataFrame[];
-  uiConfig: TransformerRegistryItem<any>;
+  uiConfig: TransformerRegistryItem<null>;
   configs: TransformationsEditorTransformation[];
   onRemove: (index: number) => void;
   onChange: (index: number, config: DataTransformerConfig) => void;
 }
 
-export const TransformationOperationRow: React.FC<TransformationOperationRowProps> = ({
+export const TransformationOperationRow = ({
   onRemove,
   index,
   id,
@@ -31,10 +34,12 @@ export const TransformationOperationRow: React.FC<TransformationOperationRowProp
   configs,
   uiConfig,
   onChange,
-}) => {
+}: TransformationOperationRowProps) => {
   const [showDebug, toggleDebug] = useToggle(false);
   const [showHelp, toggleHelp] = useToggle(false);
   const disabled = configs[index].transformation.disabled;
+  const filter = configs[index].transformation.filter != null;
+  const showFilter = filter || data.length > 1;
 
   const onDisableToggle = useCallback(
     (index: number) => {
@@ -47,6 +52,35 @@ export const TransformationOperationRow: React.FC<TransformationOperationRowProp
     [onChange, configs]
   );
 
+  // Adds or removes the frame filter
+  const toggleFilter = useCallback(() => {
+    let current = { ...configs[index].transformation };
+    if (current.filter) {
+      delete current.filter;
+    } else {
+      current.filter = {
+        id: FrameMatcherID.byRefId,
+        options: '', // empty string will not do anything
+      };
+    }
+    onChange(index, current);
+  }, [onChange, index, configs]);
+
+  // Instrument toggle callback
+  const instrumentToggleCallback = useCallback(
+    (callback: (e: React.MouseEvent) => void, toggleId: string, active: boolean | undefined) =>
+      (e: React.MouseEvent) => {
+        reportInteraction('panel_editor_tabs_transformations_toggle', {
+          action: active ? 'off' : 'on',
+          toggleId,
+          transformationId: configs[index].transformation.id,
+        });
+
+        callback(e);
+      },
+    [configs, index]
+  );
+
   const renderActions = ({ isOpen }: QueryOperationRowRenderProps) => {
     return (
       <HorizontalGroup align="center" width="auto">
@@ -54,14 +88,28 @@ export const TransformationOperationRow: React.FC<TransformationOperationRowProp
         <QueryOperationAction
           title="Show/hide transform help"
           icon="info-circle"
-          onClick={toggleHelp}
+          onClick={instrumentToggleCallback(toggleHelp, 'help', showHelp)}
           active={showHelp}
         />
-        <QueryOperationAction title="Debug" disabled={!isOpen} icon="bug" onClick={toggleDebug} active={showDebug} />
+        {showFilter && (
+          <QueryOperationAction
+            title="Filter"
+            icon="filter"
+            onClick={instrumentToggleCallback(toggleFilter, 'filter', filter)}
+            active={filter}
+          />
+        )}
+        <QueryOperationAction
+          title="Debug"
+          disabled={!isOpen}
+          icon="bug"
+          onClick={instrumentToggleCallback(toggleDebug, 'debug', showDebug)}
+          active={showDebug}
+        />
         <QueryOperationAction
           title="Disable/Enable transformation"
           icon={disabled ? 'eye-slash' : 'eye'}
-          onClick={() => onDisableToggle(index)}
+          onClick={instrumentToggleCallback(() => onDisableToggle(index), 'disabled', disabled)}
           active={disabled}
         />
         <QueryOperationAction title="Remove" icon="trash-alt" onClick={() => onRemove(index)} />
@@ -79,6 +127,9 @@ export const TransformationOperationRow: React.FC<TransformationOperationRowProp
       disabled={disabled}
     >
       {showHelp && <OperationRowHelp markdown={prepMarkdown(uiConfig)} />}
+      {filter && (
+        <TransformationFilter index={index} config={configs[index].transformation} data={data} onChange={onChange} />
+      )}
       <TransformationEditor
         debugMode={showDebug}
         index={index}
@@ -91,7 +142,7 @@ export const TransformationOperationRow: React.FC<TransformationOperationRowProp
   );
 };
 
-function prepMarkdown(uiConfig: TransformerRegistryItem<any>) {
+function prepMarkdown(uiConfig: TransformerRegistryItem<null>) {
   let helpMarkdown = uiConfig.help ?? uiConfig.description;
 
   return `

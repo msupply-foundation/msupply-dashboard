@@ -1,6 +1,8 @@
-import { updateDatasourceInstanceAction, datasourceReducer } from './datasource';
+import { DataSourceApi } from '@grafana/data';
+import { DataQuery } from '@grafana/schema';
 import { ExploreId, ExploreItemState } from 'app/types';
-import { DataQuery, DataSourceApi } from '@grafana/data';
+
+import { updateDatasourceInstanceAction, datasourceReducer } from './datasource';
 import { createEmptyQueryResponse } from './utils';
 
 describe('Datasource reducer', () => {

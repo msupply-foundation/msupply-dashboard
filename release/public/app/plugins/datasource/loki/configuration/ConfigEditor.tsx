@@ -1,10 +1,13 @@
 import React from 'react';
+
 import { DataSourcePluginOptionsEditorProps, DataSourceSettings } from '@grafana/data';
-import { AlertingSettings, DataSourceHttpSettings } from '@grafana/ui';
+import { config } from '@grafana/runtime';
+import { AlertingSettings, DataSourceHttpSettings, SecureSocksProxySettings } from '@grafana/ui';
+
 import { LokiOptions } from '../types';
-import { MaxLinesField } from './MaxLinesField';
+
 import { DerivedFields } from './DerivedFields';
-import { getAllAlertmanagerDataSources } from 'app/features/alerting/unified/utils/alertmanager';
+import { MaxLinesField } from './MaxLinesField';
 
 export type Props = DataSourcePluginOptionsEditorProps<LokiOptions>;
 
@@ -25,7 +28,6 @@ const setDerivedFields = makeJsonUpdater('derivedFields');
 
 export const ConfigEditor = (props: Props) => {
   const { options, onOptionsChange } = props;
-  const alertmanagers = getAllAlertmanagerDataSources();
 
   return (
     <>
@@ -36,11 +38,11 @@ export const ConfigEditor = (props: Props) => {
         onChange={onOptionsChange}
       />
 
-      <AlertingSettings<LokiOptions>
-        alertmanagerDataSources={alertmanagers}
-        options={options}
-        onOptionsChange={onOptionsChange}
-      />
+      {config.featureToggles.secureSocksDatasourceProxy && (
+        <SecureSocksProxySettings options={options} onOptionsChange={onOptionsChange} />
+      )}
+
+      <AlertingSettings<LokiOptions> options={options} onOptionsChange={onOptionsChange} />
 
       <div className="gf-form-group">
         <div className="gf-form-inline">

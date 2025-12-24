@@ -1,7 +1,7 @@
-import { config } from '@grafana/runtime';
-import { getTimeSrv } from 'app/features/dashboard/services/TimeSrv';
-import { createShortLink } from 'app/core/utils/shortLinks';
 import { dateTime, locationUtil, PanelModel, TimeRange, urlUtil } from '@grafana/data';
+import { config } from '@grafana/runtime';
+import { createShortLink } from 'app/core/utils/shortLinks';
+import { getTimeSrv } from 'app/features/dashboard/services/TimeSrv';
 
 export interface BuildParamsArgs {
   useCurrentTimeRange: boolean;
@@ -121,11 +121,11 @@ export function getLocalTimeZone() {
   const utcOffset = '&tz=UTC' + encodeURIComponent(dateTime().format('Z'));
 
   // Older browser does not the internationalization API
-  if (!(window as any).Intl) {
+  if (!window.Intl) {
     return utcOffset;
   }
 
-  const dateFormat = (window as any).Intl.DateTimeFormat();
+  const dateFormat = window.Intl.DateTimeFormat();
   if (!dateFormat.resolvedOptions) {
     return utcOffset;
   }

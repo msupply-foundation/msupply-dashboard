@@ -1,4 +1,5 @@
 import { map } from 'rxjs/operators';
+
 import {
   ArrayVector,
   DataFrame,
@@ -10,6 +11,7 @@ import {
   MatcherConfig,
   reduceField,
 } from '@grafana/data';
+
 import {
   getFieldConfigFromFrame,
   FieldToConfigMapping,
@@ -65,6 +67,7 @@ export function extractConfigFromQuery(options: ConfigFromQueryTransformOptions,
     const outputFrame: DataFrame = {
       fields: [],
       length: frame.length,
+      refId: frame.refId,
     };
 
     for (const field of frame.fields) {
@@ -84,7 +87,6 @@ export function extractConfigFromQuery(options: ConfigFromQueryTransformOptions,
 
     output.push(outputFrame);
   }
-
   return output;
 }
 

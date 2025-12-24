@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+
 import {
   DataTransformerID,
   FieldNamePickerConfigSettings,
@@ -8,11 +9,11 @@ import {
   TransformerUIProps,
   FieldType,
 } from '@grafana/data';
-
 import { InlineField, InlineFieldRow } from '@grafana/ui';
 import { FieldNamePicker } from '@grafana/ui/src/components/MatchersUI/FieldNamePicker';
-import { FieldLookupOptions, fieldLookupTransformer } from './fieldLookup';
 import { GazetteerPathEditor, GazetteerPathEditorConfigSettings } from 'app/features/geo/editor/GazetteerPathEditor';
+
+import { FieldLookupOptions, fieldLookupTransformer } from './fieldLookup';
 
 const fieldNamePickerSettings: StandardEditorsRegistryItem<string, FieldNamePickerConfigSettings> = {
   settings: {
@@ -30,11 +31,7 @@ const fieldLookupSettings: StandardEditorsRegistryItem<string, GazetteerPathEdit
   settings: {},
 } as any;
 
-export const FieldLookupTransformerEditor: React.FC<TransformerUIProps<FieldLookupOptions>> = ({
-  input,
-  options,
-  onChange,
-}) => {
+export const FieldLookupTransformerEditor = ({ input, options, onChange }: TransformerUIProps<FieldLookupOptions>) => {
   const onPickLookupField = useCallback(
     (value: string | undefined) => {
       onChange({
