@@ -1,7 +1,9 @@
 @ECHO ##### Removing previous installers #####
 @del /q installer\dashboard-setup-*.exe
 @del /q installer\dashboard-upgrade-*.exe
-@del /q c:\temp\release
+
+@if exist c:\temp\release rmdir /s /q c:\temp\release
+@if not exist c:\temp mkdir c:\temp
 
 @ECHO.
 @ECHO ##### Adjusting SUFS #####
