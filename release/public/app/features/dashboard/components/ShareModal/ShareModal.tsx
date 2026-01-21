@@ -1,20 +1,24 @@
-import React from 'react';
+import * as React from 'react';
 
-import { reportInteraction } from '@grafana/runtime/src';
-import { Modal, ModalTabsHeader, TabContent } from '@grafana/ui';
+import { t } from '@grafana/i18n';
+import { Modal, ModalTabsHeader, TabContent, Themeable2, withTheme2 } from '@grafana/ui';
 import { config } from 'app/core/config';
 import { contextSrv } from 'app/core/core';
-import { t } from 'app/core/internationalization';
 import { SharePublicDashboard } from 'app/features/dashboard/components/ShareModal/SharePublicDashboard/SharePublicDashboard';
-import { DashboardModel, PanelModel } from 'app/features/dashboard/state';
+import { isPublicDashboardsEnabled } from 'app/features/dashboard/components/ShareModal/SharePublicDashboard/SharePublicDashboardUtils';
+import { DashboardModel } from 'app/features/dashboard/state/DashboardModel';
+import { PanelModel } from 'app/features/dashboard/state/PanelModel';
+import { DashboardInteractions } from 'app/features/dashboard-scene/utils/interactions';
 import { isPanelModelLibraryPanel } from 'app/features/library-panels/guard';
+import { AccessControlAction } from 'app/types/accessControl';
 
 import { ShareEmbed } from './ShareEmbed';
 import { ShareExport } from './ShareExport';
 import { ShareLibraryPanel } from './ShareLibraryPanel';
 import { ShareLink } from './ShareLink';
 import { ShareSnapshot } from './ShareSnapshot';
-import { ShareModalTabModel } from './types';
+import { ShareModalTabModel, ShareModalTabProps } from './types';
+import { getTrackingSource, shareDashboardType } from './utils';
 
 const customDashboardTabs: ShareModalTabModel[] = [];
 const customPanelTabs: ShareModalTabModel[] = [];
@@ -27,32 +31,44 @@ export function addPanelShareTab(tab: ShareModalTabModel) {
   customPanelTabs.push(tab);
 }
 
-function getTabs(panel?: PanelModel, activeTab?: string) {
+function getTabs(canEditDashboard: boolean, panel?: PanelModel, activeTab?: string) {
   const linkLabel = t('share-modal.tab-title.link', 'Link');
-  const tabs: ShareModalTabModel[] = [{ label: linkLabel, value: 'link', component: ShareLink }];
+  const tabs: ShareModalTabModel[] = [{ label: linkLabel, value: shareDashboardType.link, component: ShareLink }];
 
-  if (contextSrv.isSignedIn && config.snapshotEnabled) {
+  if (
+    contextSrv.isSignedIn &&
+    config.snapshotEnabled &&
+    contextSrv.hasPermission(AccessControlAction.SnapshotsCreate)
+  ) {
     const snapshotLabel = t('share-modal.tab-title.snapshot', 'Snapshot');
-    tabs.push({ label: snapshotLabel, value: 'snapshot', component: ShareSnapshot });
+    tabs.push({ label: snapshotLabel, value: shareDashboardType.snapshot, component: ShareSnapshot });
   }
 
   if (panel) {
     const embedLabel = t('share-modal.tab-title.embed', 'Embed');
-    tabs.push({ label: embedLabel, value: 'embed', component: ShareEmbed });
+    tabs.push({ label: embedLabel, value: shareDashboardType.embed, component: ShareEmbedTab });
 
     if (!isPanelModelLibraryPanel(panel)) {
       const libraryPanelLabel = t('share-modal.tab-title.library-panel', 'Library panel');
-      tabs.push({ label: libraryPanelLabel, value: 'library_panel', component: ShareLibraryPanel });
+      tabs.push({ label: libraryPanelLabel, value: shareDashboardType.libraryPanel, component: ShareLibraryPanel });
     }
     tabs.push(...customPanelTabs);
   } else {
     const exportLabel = t('share-modal.tab-title.export', 'Export');
-    tabs.push({ label: exportLabel, value: 'export', component: ShareExport });
+    tabs.push({
+      label: exportLabel,
+      value: shareDashboardType.export,
+      component: ShareExport,
+    });
     tabs.push(...customDashboardTabs);
-  }
 
-  if (Boolean(config.featureToggles['publicDashboards'])) {
-    tabs.push({ label: 'Public dashboard', value: 'share', component: SharePublicDashboard });
+    if (isPublicDashboardsEnabled()) {
+      tabs.push({
+        label: t('share-modal.tab-title.public-dashboard-title', 'Public dashboard'),
+        value: shareDashboardType.publicDashboard,
+        component: SharePublicDashboard,
+      });
+    }
   }
 
   const at = tabs.find((t) => t.value === activeTab);
@@ -63,11 +79,21 @@ function getTabs(panel?: PanelModel, activeTab?: string) {
   };
 }
 
-interface Props {
+function ShareEmbedTab(props: ShareModalTabProps) {
+  return (
+    <ShareEmbed
+      dashboard={props.dashboard}
+      panelId={String(props.panel?.id)}
+      timeFrom={props.panel?.timeFrom}
+      onDismiss={props.onDismiss}
+    />
+  );
+}
+
+interface Props extends Themeable2 {
   dashboard: DashboardModel;
   panel?: PanelModel;
   activeTab?: string;
-
   onDismiss(): void;
 }
 
@@ -77,7 +103,7 @@ interface State {
 }
 
 function getInitialState(props: Props): State {
-  const { tabs, activeTab } = getTabs(props.panel, props.activeTab);
+  const { tabs, activeTab } = getTabs(props.dashboard.canEditDashboard(), props.panel, props.activeTab);
 
   return {
     tabs,
@@ -85,18 +111,18 @@ function getInitialState(props: Props): State {
   };
 }
 
-export class ShareModal extends React.Component<Props, State> {
+class UnthemedShareModal extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = getInitialState(props);
   }
 
-  componentDidMount() {
-    reportInteraction('grafana_dashboards_share_modal_viewed');
-  }
-
   onSelectTab: React.ComponentProps<typeof ModalTabsHeader>['onChangeTab'] = (t) => {
     this.setState((prevState) => ({ ...prevState, activeTab: t.value }));
+    DashboardInteractions.sharingCategoryClicked({
+      item: t.value,
+      shareResource: getTrackingSource(this.props.panel),
+    });
   };
 
   getActiveTab() {
@@ -104,15 +130,14 @@ export class ShareModal extends React.Component<Props, State> {
     return tabs.find((t) => t.value === activeTab)!;
   }
 
-  renderTitle() {
-    const { panel } = this.props;
+  renderTitle(modalTitle: string) {
     const { activeTab } = this.state;
-    const title = panel ? t('share-modal.panel.title', 'Share Panel') : t('share-modal.dashboard.title', 'Share');
-    const tabs = getTabs(this.props.panel, this.state.activeTab).tabs;
+    const canEditDashboard = this.props.dashboard.canEditDashboard();
+    const tabs = getTabs(canEditDashboard, this.props.panel, this.state.activeTab).tabs;
 
     return (
       <ModalTabsHeader
-        title={title}
+        title={modalTitle}
         icon="share-alt"
         tabs={tabs}
         activeTab={activeTab}
@@ -125,9 +150,10 @@ export class ShareModal extends React.Component<Props, State> {
     const { dashboard, panel } = this.props;
     const activeTabModel = this.getActiveTab();
     const ActiveTab = activeTabModel.component;
+    const modalTitle = panel ? t('share-modal.panel.title', 'Share Panel') : t('share-modal.dashboard.title', 'Share');
 
     return (
-      <Modal isOpen={true} title={this.renderTitle()} onDismiss={this.props.onDismiss}>
+      <Modal ariaLabel={modalTitle} isOpen={true} title={this.renderTitle(modalTitle)} onDismiss={this.props.onDismiss}>
         <TabContent>
           <ActiveTab dashboard={dashboard} panel={panel} onDismiss={this.props.onDismiss} />
         </TabContent>
@@ -135,3 +161,5 @@ export class ShareModal extends React.Component<Props, State> {
     );
   }
 }
+
+export const ShareModal = withTheme2(UnthemedShareModal);

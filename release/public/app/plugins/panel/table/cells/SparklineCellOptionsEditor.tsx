@@ -1,17 +1,18 @@
 import { css } from '@emotion/css';
-import React, { useMemo } from 'react';
+import { useId, useMemo } from 'react';
 
-import { createFieldConfigRegistry } from '@grafana/data';
+import { createFieldConfigRegistry, SetFieldConfigOptionsArgs } from '@grafana/data';
 import { GraphFieldConfig, TableSparklineCellOptions } from '@grafana/schema';
-import { VerticalGroup, Field, useStyles2 } from '@grafana/ui';
-import { defaultSparklineCellConfig } from '@grafana/ui/src/components/Table/SparklineCell';
+import { Field, useStyles2, Stack } from '@grafana/ui';
+import { defaultSparklineCellConfig } from '@grafana/ui/internal';
 
 import { getGraphFieldConfig } from '../../timeseries/config';
 import { TableCellEditorProps } from '../TableCellOptionEditor';
 
 type OptionKey = keyof TableSparklineCellOptions;
 
-const optionIds: Array<keyof GraphFieldConfig> = [
+const optionIds: Array<keyof TableSparklineCellOptions> = [
+  'hideValue',
   'drawStyle',
   'lineInterpolation',
   'barAlignment',
@@ -24,11 +25,25 @@ const optionIds: Array<keyof GraphFieldConfig> = [
   'pointSize',
 ];
 
+function getChartCellConfig(cfg: GraphFieldConfig): SetFieldConfigOptionsArgs<GraphFieldConfig> {
+  const graphFieldConfig = getGraphFieldConfig(cfg);
+  return {
+    ...graphFieldConfig,
+    useCustomConfig: (builder) => {
+      graphFieldConfig.useCustomConfig?.(builder);
+      builder.addBooleanSwitch({
+        path: 'hideValue',
+        name: 'Hide value',
+      });
+    },
+  };
+}
+
 export const SparklineCellOptionsEditor = (props: TableCellEditorProps<TableSparklineCellOptions>) => {
   const { cellOptions, onChange } = props;
 
   const registry = useMemo(() => {
-    const config = getGraphFieldConfig(defaultSparklineCellConfig);
+    const config = getChartCellConfig(defaultSparklineCellConfig);
     return createFieldConfigRegistry(config, 'ChartCell');
   }, []);
 
@@ -36,8 +51,10 @@ export const SparklineCellOptionsEditor = (props: TableCellEditorProps<TableSpar
 
   const values = { ...defaultSparklineCellConfig, ...cellOptions };
 
+  const htmlIdBase = useId();
+
   return (
-    <VerticalGroup>
+    <Stack direction="column">
       {registry.list(optionIds.map((id) => `custom.${id}`)).map((item) => {
         if (item.showIf && !item.showIf(values)) {
           return null;
@@ -52,11 +69,12 @@ export const SparklineCellOptionsEditor = (props: TableCellEditorProps<TableSpar
               value={(isOptionKey(path, values) ? values[path] : undefined) ?? item.defaultValue}
               item={item}
               context={{ data: [] }}
+              id={`${htmlIdBase}${item.id}`}
             />
           </Field>
         );
       })}
-    </VerticalGroup>
+    </Stack>
   );
 };
 
@@ -66,14 +84,14 @@ function isOptionKey(key: string, options: TableSparklineCellOptions): key is Op
 }
 
 const getStyles = () => ({
-  field: css`
-    width: 100%;
+  field: css({
+    width: '100%',
 
     // @TODO don't show "scheme" option for custom gradient mode.
     // it needs thresholds to work, which are not supported
     // for area chart cell right now
-    [title='Use color scheme to define gradient'] {
-      display: none;
-    }
-  `,
+    "[title='Use color scheme to define gradient']": {
+      display: 'none',
+    },
+  }),
 });

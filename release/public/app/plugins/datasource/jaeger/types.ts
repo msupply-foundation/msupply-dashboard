@@ -1,20 +1,5 @@
-import { DataQuery } from '@grafana/data';
-
-export type TraceKeyValuePair = {
-  key: string;
-  type?: string;
-  value: any;
-};
-
-export type TraceLink = {
-  url: string;
-  text: string;
-};
-
-export type TraceLog = {
-  timestamp: number;
-  fields: TraceKeyValuePair[];
-};
+import { TraceKeyValuePair, TraceLog } from '@grafana/data';
+import { DataQuery } from '@grafana/schema';
 
 export type TraceProcess = {
   serviceName: string;
@@ -63,7 +48,7 @@ export type JaegerQuery = {
   limit?: number;
 } & DataQuery;
 
-export type JaegerQueryType = 'search' | 'upload';
+export type JaegerQueryType = 'search' | 'upload' | 'dependencyGraph';
 
 export type JaegerResponse = {
   data: TraceResponse[];
@@ -71,4 +56,13 @@ export type JaegerResponse = {
   limit: number;
   offset: number;
   errors?: string[] | null;
+};
+
+/**
+ * Type definition for service dependencies as returned by the Jaeger dependencies API.
+ */
+export type JaegerServiceDependency = {
+  parent: string;
+  child: string;
+  callCount: number;
 };

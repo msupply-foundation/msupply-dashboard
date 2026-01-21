@@ -1,46 +1,72 @@
 import { useObservable } from 'react-use';
 import { BehaviorSubject } from 'rxjs';
 
-import { AppEvents, NavModelItem, UrlQueryValue } from '@grafana/data';
-import { locationService, reportInteraction } from '@grafana/runtime';
+import { AppEvents, NavModel, NavModelItem, PageLayoutType, UrlQueryValue } from '@grafana/data';
+import { t } from '@grafana/i18n';
+import { config, locationService, reportInteraction } from '@grafana/runtime';
 import appEvents from 'app/core/app_events';
-import { t } from 'app/core/internationalization';
 import store from 'app/core/store';
 import { isShallowEqual } from 'app/core/utils/isShallowEqual';
-import { KioskMode } from 'app/types';
+import { KioskMode } from 'app/types/dashboard';
 
 import { RouteDescriptor } from '../../navigation/types';
+import { buildBreadcrumbs } from '../Breadcrumbs/utils';
+
+import { logDuplicateUnifiedHistoryEntryEvent } from './History/eventsTracking';
+import { ReturnToPreviousProps } from './ReturnToPrevious/ReturnToPrevious';
+import { HistoryEntry } from './types';
 
 export interface AppChromeState {
   chromeless?: boolean;
-  sectionNav: NavModelItem;
+  sectionNav: NavModel;
   pageNav?: NavModelItem;
   actions?: React.ReactNode;
-  searchBarHidden?: boolean;
-  megaMenuOpen?: boolean;
+  breadcrumbActions?: React.ReactNode;
+  megaMenuOpen: boolean;
+  megaMenuDocked: boolean;
   kioskMode: KioskMode | null;
+  layout: PageLayoutType;
+  returnToPrevious?: {
+    title: ReturnToPreviousProps['title'];
+    href: ReturnToPreviousProps['href'];
+  };
 }
+
+export const DOCKED_LOCAL_STORAGE_KEY = 'grafana.navigation.docked';
+export const DOCKED_MENU_OPEN_LOCAL_STORAGE_KEY = 'grafana.navigation.open';
+export const HISTORY_LOCAL_STORAGE_KEY = 'grafana.navigation.history';
 
 export class AppChromeService {
   searchBarStorageKey = 'SearchBar_Hidden';
   private currentRoute?: RouteDescriptor;
   private routeChangeHandled = true;
 
+  private megaMenuDocked = Boolean(
+    window.innerWidth >= config.theme2.breakpoints.values.xl &&
+      store.getBool(DOCKED_LOCAL_STORAGE_KEY, Boolean(window.innerWidth >= config.theme2.breakpoints.values.xl))
+  );
+
+  private sessionStorageData = window.sessionStorage.getItem('returnToPrevious');
+  private returnToPreviousData = this.sessionStorageData ? JSON.parse(this.sessionStorageData) : undefined;
+
   readonly state = new BehaviorSubject<AppChromeState>({
     chromeless: true, // start out hidden to not flash it on pages without chrome
-    sectionNav: { text: t('nav.home.title', 'Home') },
-    searchBarHidden: store.getBool(this.searchBarStorageKey, false),
+    sectionNav: { node: { text: t('nav.home.title', 'Home') }, main: { text: '' } },
+    megaMenuOpen: this.megaMenuDocked && store.getBool(DOCKED_MENU_OPEN_LOCAL_STORAGE_KEY, true),
+    megaMenuDocked: this.megaMenuDocked,
     kioskMode: null,
+    layout: PageLayoutType.Canvas,
+    returnToPrevious: this.returnToPreviousData,
   });
 
-  setMatchedRoute(route: RouteDescriptor) {
+  public setMatchedRoute(route: RouteDescriptor) {
     if (this.currentRoute !== route) {
       this.currentRoute = route;
       this.routeChangeHandled = false;
     }
   }
 
-  update(update: Partial<AppChromeState>) {
+  public update(update: Partial<AppChromeState>) {
     const current = this.state.getValue();
     const newState: AppChromeState = {
       ...current,
@@ -50,8 +76,9 @@ export class AppChromeService {
     if (!this.routeChangeHandled) {
       newState.actions = undefined;
       newState.pageNav = undefined;
-      newState.sectionNav = { text: t('nav.home.title', 'Home') };
+      newState.sectionNav = { node: { text: t('nav.home.title', 'Home') }, main: { text: '' } };
       newState.chromeless = this.currentRoute?.chromeless;
+      newState.layout = PageLayoutType.Standard;
       this.routeChangeHandled = true;
     }
 
@@ -61,11 +88,71 @@ export class AppChromeService {
     newState.chromeless = newState.kioskMode === KioskMode.Full || this.currentRoute?.chromeless;
 
     if (!this.ignoreStateUpdate(newState, current)) {
+      config.featureToggles.unifiedHistory &&
+        store.setObject(HISTORY_LOCAL_STORAGE_KEY, this.getUpdatedHistory(newState));
       this.state.next(newState);
     }
   }
 
-  ignoreStateUpdate(newState: AppChromeState, current: AppChromeState) {
+  public setReturnToPrevious = (returnToPrevious: ReturnToPreviousProps) => {
+    const previousPage = this.state.getValue().returnToPrevious;
+    reportInteraction('grafana_return_to_previous_button_created', {
+      page: returnToPrevious.href,
+      previousPage: previousPage?.href,
+    });
+
+    this.update({ returnToPrevious });
+    window.sessionStorage.setItem('returnToPrevious', JSON.stringify(returnToPrevious));
+  };
+
+  public clearReturnToPrevious = (interactionAction: 'clicked' | 'dismissed' | 'auto_dismissed') => {
+    const existingRtp = this.state.getValue().returnToPrevious;
+    if (existingRtp) {
+      reportInteraction('grafana_return_to_previous_button_dismissed', {
+        action: interactionAction,
+        page: existingRtp.href,
+      });
+    }
+
+    this.update({ returnToPrevious: undefined });
+    window.sessionStorage.removeItem('returnToPrevious');
+  };
+
+  private getUpdatedHistory(newState: AppChromeState): HistoryEntry[] {
+    const breadcrumbs = buildBreadcrumbs(newState.sectionNav.node, newState.pageNav, { text: 'Home', url: '/' }, true);
+    const newPageNav = newState.pageNav || newState.sectionNav.node;
+
+    let entries = store.getObject<HistoryEntry[]>(HISTORY_LOCAL_STORAGE_KEY, []);
+    const clickedHistory = store.getObject<boolean>('CLICKING_HISTORY');
+    if (clickedHistory) {
+      store.setObject('CLICKING_HISTORY', false);
+      return entries;
+    }
+    if (!newPageNav) {
+      return entries;
+    }
+
+    const lastEntry = entries[0];
+    const newEntry = { name: newPageNav.text, views: [], breadcrumbs, time: Date.now(), url: window.location.href };
+    const isSamePath = lastEntry && newEntry.url.split('?')[0] === lastEntry.url.split('?')[0];
+
+    // To avoid adding an entry with the same path twice, we always use the latest one
+    if (isSamePath) {
+      entries[0] = newEntry;
+    } else {
+      if (lastEntry && lastEntry.name === newEntry.name) {
+        logDuplicateUnifiedHistoryEntryEvent({
+          entryName: newEntry.name,
+          lastEntryURL: lastEntry.url,
+          newEntryURL: newEntry.url,
+        });
+      }
+      entries = [newEntry, ...entries];
+    }
+
+    return entries;
+  }
+  private ignoreStateUpdate(newState: AppChromeState, current: AppChromeState) {
     if (isShallowEqual(newState, current)) {
       return true;
     }
@@ -74,7 +161,8 @@ export class AppChromeService {
     if (newState.sectionNav !== current.sectionNav || newState.pageNav !== current.pageNav) {
       if (
         newState.actions === current.actions &&
-        navItemsAreTheSame(newState.sectionNav, current.sectionNav) &&
+        newState.layout === current.layout &&
+        navItemsAreTheSame(newState.sectionNav.node, current.sectionNav.node) &&
         navItemsAreTheSame(newState.pageNav, current.pageNav)
       ) {
         return true;
@@ -84,53 +172,68 @@ export class AppChromeService {
     return false;
   }
 
-  useState() {
+  public useState() {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     return useObservable(this.state, this.state.getValue());
   }
 
-  onToggleMegaMenu = () => {
-    const isOpen = !this.state.getValue().megaMenuOpen;
-    reportInteraction('grafana_toggle_menu_clicked', { action: isOpen ? 'open' : 'close' });
-    this.update({ megaMenuOpen: isOpen });
+  public setMegaMenuOpen = (newOpenState: boolean, updatePersistedState = true) => {
+    const { megaMenuDocked } = this.state.getValue();
+    if (megaMenuDocked && updatePersistedState) {
+      store.set(DOCKED_MENU_OPEN_LOCAL_STORAGE_KEY, newOpenState);
+    }
+    reportInteraction('grafana_mega_menu_open', {
+      state: newOpenState,
+    });
+    this.update({
+      megaMenuOpen: newOpenState,
+    });
   };
 
-  setMegaMenu = (megaMenuOpen: boolean) => {
-    this.update({ megaMenuOpen });
+  public setMegaMenuDocked = (newDockedState: boolean, updatePersistedState = true) => {
+    if (updatePersistedState) {
+      store.set(DOCKED_LOCAL_STORAGE_KEY, newDockedState);
+    }
+    reportInteraction('grafana_mega_menu_docked', { state: newDockedState });
+    this.update({
+      megaMenuDocked: newDockedState,
+    });
   };
 
-  onToggleSearchBar = () => {
-    const searchBarHidden = !this.state.getValue().searchBarHidden;
-    store.set(this.searchBarStorageKey, searchBarHidden);
-    this.update({ searchBarHidden });
-  };
-
-  onToggleKioskMode = () => {
+  public onToggleKioskMode = () => {
     const nextMode = this.getNextKioskMode();
     this.update({ kioskMode: nextMode });
     locationService.partial({ kiosk: this.getKioskUrlValue(nextMode) });
+    reportInteraction('grafana_kiosk_mode', {
+      action: 'toggle',
+      mode: nextMode,
+    });
   };
 
-  exitKioskMode() {
+  public exitKioskMode() {
     this.update({ kioskMode: undefined });
     locationService.partial({ kiosk: null });
+    reportInteraction('grafana_kiosk_mode', {
+      action: 'exit',
+    });
   }
 
-  setKioskModeFromUrl(kiosk: UrlQueryValue) {
+  public setKioskModeFromUrl(kiosk: UrlQueryValue) {
+    let newKioskMode: KioskMode | undefined;
+
     switch (kiosk) {
-      case 'tv':
-        this.update({ kioskMode: KioskMode.TV });
-        break;
       case '1':
       case true:
-        this.update({ kioskMode: KioskMode.Full });
+        newKioskMode = KioskMode.Full;
+    }
+
+    if (newKioskMode && newKioskMode !== this.state.getValue().kioskMode) {
+      this.update({ kioskMode: newKioskMode });
     }
   }
 
-  getKioskUrlValue(mode: KioskMode | null) {
+  public getKioskUrlValue(mode: KioskMode | null) {
     switch (mode) {
-      case KioskMode.TV:
-        return 'tv';
       case KioskMode.Full:
         return true;
       default:
@@ -139,25 +242,15 @@ export class AppChromeService {
   }
 
   private getNextKioskMode() {
-    const { kioskMode, searchBarHidden } = this.state.getValue();
-
-    if (searchBarHidden || kioskMode === KioskMode.TV) {
-      appEvents.emit(AppEvents.alertSuccess, [t('navigation.kiosk.tv-alert', 'Press ESC to exit kiosk mode')]);
-      return KioskMode.Full;
-    }
-
-    if (!kioskMode) {
-      return KioskMode.TV;
-    }
-
-    return null;
+    appEvents.emit(AppEvents.alertInfo, [t('navigation.kiosk.tv-alert', 'Press ESC to exit kiosk mode')]);
+    return KioskMode.Full;
   }
 }
 
 /**
- * Checks if text, url and active child url are the same
+ * Checks if text, url, active child url and parent are the same
  **/
-function navItemsAreTheSame(a: NavModelItem | undefined, b: NavModelItem | undefined) {
+function navItemsAreTheSame(a: NavModelItem | undefined, b: NavModelItem | undefined): boolean {
   if (a === b) {
     return true;
   }
@@ -165,5 +258,10 @@ function navItemsAreTheSame(a: NavModelItem | undefined, b: NavModelItem | undef
   const aActiveChild = a?.children?.find((child) => child.active);
   const bActiveChild = b?.children?.find((child) => child.active);
 
-  return a?.text === b?.text && a?.url === b?.url && aActiveChild?.url === bActiveChild?.url;
+  return (
+    a?.text === b?.text &&
+    a?.url === b?.url &&
+    aActiveChild?.url === bActiveChild?.url &&
+    navItemsAreTheSame(a?.parentItem, b?.parentItem)
+  );
 }

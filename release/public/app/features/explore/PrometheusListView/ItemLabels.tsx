@@ -1,30 +1,28 @@
 import { css } from '@emotion/css';
-import React from 'react';
 
-import { Field, GrafanaTheme2 } from '@grafana/data/';
-import { useStyles2 } from '@grafana/ui/';
-
-import { InstantQueryRefIdIndex } from '../../../plugins/datasource/prometheus/datasource';
+import { Field, GrafanaTheme2 } from '@grafana/data';
+import { InstantQueryRefIdIndex } from '@grafana/prometheus';
+import { useStyles2 } from '@grafana/ui';
 
 import { rawListItemColumnWidth } from './RawListItem';
 
 const getItemLabelsStyles = (theme: GrafanaTheme2, expanded: boolean) => {
   return {
-    valueNavigation: css`
-      width: ${rawListItemColumnWidth};
-      font-weight: bold;
-    `,
-    valueNavigationWrapper: css`
-      display: flex;
-      justify-content: flex-end;
-    `,
-    itemLabelsWrap: css`
-      ${!expanded ? `border-bottom: 1px solid ${theme.colors.border.medium}` : ''};
-    `,
+    valueNavigation: css({
+      width: rawListItemColumnWidth,
+      fontWeight: 'bold',
+    }),
+    valueNavigationWrapper: css({
+      display: 'flex',
+      justifyContent: 'flex-end',
+    }),
+    itemLabelsWrap: css({
+      borderBottom: expanded ? `1px solid ${theme.colors.border.medium}` : '',
+    }),
   };
 };
 
-const formatValueName = (name: string): string => {
+export const formatValueName = (name: string): string => {
   if (name.includes(InstantQueryRefIdIndex)) {
     return name.replace(InstantQueryRefIdIndex, '');
   }
@@ -32,7 +30,7 @@ const formatValueName = (name: string): string => {
 };
 
 export const ItemLabels = ({ valueLabels, expanded }: { valueLabels: Field[]; expanded: boolean }) => {
-  const styles = useStyles2((theme) => getItemLabelsStyles(theme, expanded));
+  const styles = useStyles2(getItemLabelsStyles, expanded);
 
   return (
     <div className={styles.itemLabelsWrap}>

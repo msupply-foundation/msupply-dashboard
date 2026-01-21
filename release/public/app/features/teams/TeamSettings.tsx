@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
-import { connect, ConnectedProps } from 'react-redux';
+import { useForm } from 'react-hook-form';
+import { ConnectedProps, connect } from 'react-redux';
 
-import { Input, Field, Form, Button, FieldSet, VerticalGroup } from '@grafana/ui';
+import { Trans, t } from '@grafana/i18n';
+import { Button, Field, FieldSet, Input, Stack } from '@grafana/ui';
 import { TeamRolePicker } from 'app/core/components/RolePicker/TeamRolePicker';
-import { updateTeamRoles } from 'app/core/components/RolePicker/api';
 import { useRoleOptions } from 'app/core/components/RolePicker/hooks';
 import { SharedPreferences } from 'app/core/components/SharedPreferences/SharedPreferences';
 import { contextSrv } from 'app/core/services/context_srv';
-import { AccessControlAction, Role, Team } from 'app/types';
+import { AccessControlAction } from 'app/types/accessControl';
+import { Team } from 'app/types/teams';
 
 import { updateTeam } from './state/actions';
 
@@ -27,29 +28,40 @@ export const TeamSettings = ({ team, updateTeam }: Props) => {
   const currentOrgId = contextSrv.user.orgId;
 
   const [{ roleOptions }] = useRoleOptions(currentOrgId);
-  const [pendingRoles, setPendingRoles] = useState<Role[]>([]);
+  const {
+    handleSubmit,
+    register,
+    formState: { errors },
+  } = useForm<Team>({ defaultValues: team });
 
   const canUpdateRoles =
-    contextSrv.hasPermission(AccessControlAction.ActionUserRolesAdd) &&
-    contextSrv.hasPermission(AccessControlAction.ActionUserRolesRemove);
+    contextSrv.hasPermission(AccessControlAction.ActionTeamsRolesAdd) &&
+    contextSrv.hasPermission(AccessControlAction.ActionTeamsRolesRemove);
+
+  const canListRoles =
+    contextSrv.hasPermissionInMetadata(AccessControlAction.ActionTeamsRolesList, team) &&
+    contextSrv.hasPermission(AccessControlAction.ActionRolesList);
+
+  const onSubmit = async (formTeam: Team) => {
+    updateTeam(formTeam.name, formTeam.email || '');
+  };
 
   return (
-    <VerticalGroup spacing="lg">
-      <Form
-        defaultValues={{ ...team }}
-        onSubmit={async (formTeam: Team) => {
-          if (contextSrv.licensedAccessControlEnabled() && canUpdateRoles) {
-            await updateTeamRoles(pendingRoles, team.id);
-          }
-          updateTeam(formTeam.name, formTeam.email || '');
-        }}
-        disabled={!canWriteTeamSettings}
-      >
-        {({ register, errors }) => (
-          <FieldSet label="Team details">
+    <Stack direction={'column'} gap={3}>
+      <form onSubmit={handleSubmit(onSubmit)} style={{ maxWidth: '600px' }}>
+        <FieldSet label={t('teams.team-settings.label-team-details', 'Team details')}>
+          <Stack direction="column" gap={2}>
             <Field
-              label="Name"
-              disabled={!canWriteTeamSettings}
+              noMargin
+              label={t('teams.team-settings.label-numerical-identifier', 'Numerical identifier')}
+              disabled={true}
+            >
+              <Input value={team.id} id="id-input" />
+            </Field>
+            <Field
+              noMargin
+              label={t('teams.team-settings.label-name', 'Name')}
+              disabled={!canWriteTeamSettings || !!team.isProvisioned}
               required
               invalid={!!errors.name}
               error="Name is required"
@@ -57,35 +69,37 @@ export const TeamSettings = ({ team, updateTeam }: Props) => {
               <Input {...register('name', { required: true })} id="name-input" />
             </Field>
 
-            {contextSrv.licensedAccessControlEnabled() && (
-              <Field label="Role">
-                <TeamRolePicker
-                  teamId={team.id}
-                  roleOptions={roleOptions}
-                  disabled={false}
-                  apply={true}
-                  onApplyRoles={setPendingRoles}
-                  pendingRoles={pendingRoles}
-                  maxWidth="100%"
-                />
+            {contextSrv.licensedAccessControlEnabled() && canListRoles && (
+              <Field noMargin label={t('teams.team-settings.label-role', 'Role')}>
+                <TeamRolePicker teamId={team.id} roleOptions={roleOptions} disabled={!canUpdateRoles} maxWidth="100%" />
               </Field>
             )}
 
             <Field
-              label="Email"
-              description="This is optional and is primarily used to set the team profile avatar (via gravatar service)."
+              noMargin
+              label={t('teams.team-settings.label-email', 'Email')}
+              description={t(
+                'teams.team-settings.description-email',
+                'This is optional and is primarily used to set the team profile avatar (via the Gravatar service)'
+              )}
               disabled={!canWriteTeamSettings}
             >
-              <Input {...register('email')} placeholder="team@email.com" type="email" id="email-input" />
+              <Input
+                {...register('email')}
+                // eslint-disable-next-line @grafana/i18n/no-untranslated-strings
+                placeholder="team@email.com"
+                type="email"
+                id="email-input"
+              />
             </Field>
-            <Button type="submit" disabled={!canWriteTeamSettings}>
-              Update
-            </Button>
-          </FieldSet>
-        )}
-      </Form>
+          </Stack>
+        </FieldSet>
+        <Button type="submit" disabled={!canWriteTeamSettings}>
+          <Trans i18nKey="teams.team-settings.save">Save team details</Trans>
+        </Button>
+      </form>
       <SharedPreferences resourceUri={`teams/${team.id}`} disabled={!canWriteTeamSettings} preferenceType="team" />
-    </VerticalGroup>
+    </Stack>
   );
 };
 

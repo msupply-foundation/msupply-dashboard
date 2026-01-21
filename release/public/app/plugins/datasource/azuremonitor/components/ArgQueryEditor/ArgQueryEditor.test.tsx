@@ -1,10 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 
-import createMockDatasource from '../../__mocks__/datasource';
-import createMockQuery from '../../__mocks__/query';
+import { ARGScope } from '../../dataquery.gen';
 import { selectors } from '../../e2e/selectors';
+import createMockDatasource from '../../mocks/datasource';
+import createMockQuery from '../../mocks/query';
 
 import ArgQueryEditor from './ArgQueryEditor';
 
@@ -31,11 +31,51 @@ const defaultProps = {
 };
 
 describe('ArgQueryEditor', () => {
+  beforeAll(() => {
+    const mockGetBoundingClientRect = jest.fn(() => ({
+      width: 120,
+      height: 120,
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+    }));
+
+    Object.defineProperty(Element.prototype, 'getBoundingClientRect', {
+      value: mockGetBoundingClientRect,
+    });
+  });
   it('should render', async () => {
     render(<ArgQueryEditor {...defaultProps} />);
     expect(
       await screen.findByTestId(selectors.components.queryEditor.argsQueryEditor.container.input)
     ).toBeInTheDocument();
+  });
+
+  it('should change the scope to directory', async () => {
+    const datasource = createMockDatasource({
+      getSubscriptions: jest.fn().mockResolvedValue([{ value: 'foo' }]),
+    });
+    const onChange = jest.fn();
+    render(<ArgQueryEditor {...defaultProps} datasource={datasource} onChange={onChange} />);
+    expect(await screen.findByTestId(selectors.components.queryEditor.argsQueryEditor.scope.input)).toBeInTheDocument();
+
+    const scopeSelector = screen.getByTestId(selectors.components.queryEditor.argsQueryEditor.scope.input);
+
+    await userEvent.click(scopeSelector);
+    const directoryOption = await screen.findByRole('option', { name: 'Directory' });
+    await userEvent.click(directoryOption);
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        azureResourceGraph: {
+          query: 'Resources | summarize count()',
+          resultFormat: 'table',
+          scope: ARGScope.Directory,
+        },
+        subscriptions: [],
+      })
+    );
   });
 
   it('should select a subscription from the fetched array', async () => {
@@ -166,7 +206,7 @@ describe('ArgQueryEditor', () => {
     );
     expect(await waitFor(() => screen.findByText('foo'))).toBeInTheDocument();
 
-    const clear = screen.getByLabelText('select-clear-value');
+    const clear = screen.getByLabelText('Clear value');
     await userEvent.click(clear);
 
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ subscriptions: [] }));
@@ -181,5 +221,56 @@ describe('ArgQueryEditor', () => {
       />
     );
     expect(await waitFor(() => screen.getByText('At least one subscription must be chosen.'))).toBeInTheDocument();
+  });
+
+  it('should select all subscriptions if select all is chosen from the dropdown', async () => {
+    const onChange = jest.fn();
+    const datasource = createMockDatasource({
+      getSubscriptions: jest.fn().mockResolvedValue([
+        { text: 'foo', value: 'test-subscription-value1' },
+        { text: 'bar', value: 'test-subscription-value2' },
+        { text: 'Select all subscriptions', value: 'Select all' },
+      ]),
+    });
+    const query = createMockQuery({
+      subscription: undefined,
+      subscriptions: ['test-subscription-value1', 'test-subscription-value2', 'Select all'],
+    });
+    const { rerender } = render(
+      <ArgQueryEditor
+        {...defaultProps}
+        query={query}
+        datasource={datasource}
+        onChange={onChange}
+        variableOptionGroup={{ label: 'Template Variables', options: [] }}
+      />
+    );
+
+    expect(datasource.getSubscriptions).toHaveBeenCalled();
+    expect(await waitFor(() => onChange)).toHaveBeenCalledWith(
+      expect.objectContaining({ subscriptions: ['test-subscription-value1', 'test-subscription-value2', 'Select all'] })
+    );
+    expect(await waitFor(() => screen.findByText('foo'))).toBeInTheDocument();
+    expect(await waitFor(() => screen.findByText('bar'))).toBeInTheDocument();
+    expect(await waitFor(() => screen.findByText('Select all subscriptions'))).toBeInTheDocument();
+
+    const selectAll = screen.getByText('Select all subscriptions');
+    await userEvent.click(selectAll);
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ subscriptions: ['test-subscription-value1', 'test-subscription-value2', 'Select all'] })
+    );
+
+    rerender(
+      <ArgQueryEditor
+        {...defaultProps}
+        datasource={datasource}
+        onChange={onChange}
+        query={{ ...query, subscriptions: ['test-subscription-value1', 'test-subscription-value2', 'Select all'] }}
+        variableOptionGroup={{ label: 'Template Variables', options: [] }}
+      />
+    );
+    expect(await waitFor(() => screen.getByText('foo'))).toBeInTheDocument();
+    expect(await waitFor(() => screen.getByText('bar'))).toBeInTheDocument();
   });
 });

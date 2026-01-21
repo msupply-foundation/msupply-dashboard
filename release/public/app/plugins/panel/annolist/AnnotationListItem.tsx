@@ -1,12 +1,13 @@
 import { css } from '@emotion/css';
-import React, { MouseEvent } from 'react';
+import { MouseEvent } from 'react';
 
 import { AnnotationEvent, DateTimeInput, GrafanaTheme2, PanelProps } from '@grafana/data';
-import { Card, TagList, Tooltip, RenderUserContentAsHTML, useStyles2 } from '@grafana/ui';
+import { Trans } from '@grafana/i18n';
+import { Card, RenderUserContentAsHTML, TagList, Tooltip, useStyles2 } from '@grafana/ui';
 
-import { PanelOptions } from './panelcfg.gen';
+import { Options } from './panelcfg.gen';
 
-interface Props extends Pick<PanelProps<PanelOptions>, 'options'> {
+interface Props extends Pick<PanelProps<Options>, 'options'> {
   annotation: AnnotationEvent;
   formatDate: (date: DateTimeInput, format?: string) => string;
   onClick: (annotation: AnnotationEvent) => void;
@@ -29,7 +30,7 @@ export const AnnotationListItem = ({ options, annotation, formatDate, onClick, o
   const showTimeStampEnd = timeEnd && timeEnd !== time && showTime;
 
   return (
-    <Card className={styles.card} onClick={onItemClick}>
+    <Card noMargin className={styles.card} onClick={onItemClick}>
       <Card.Heading>
         <RenderUserContentAsHTML
           className={styles.heading}
@@ -79,14 +80,16 @@ const Avatar = ({ onClick, avatarUrl, login, email }: AvatarProps) => {
   };
   const tooltipContent = (
     <span>
-      Created by:
-      <br /> {email}
+      <Trans i18nKey="annolist.annotation-list-item.tooltip-created-by">
+        Created by:
+        <br /> {{ email }}
+      </Trans>
     </span>
   );
 
   return (
     <Tooltip content={tooltipContent} theme="info" placement="top">
-      <button onClick={onAvatarClick} className={styles.avatar} aria-label={`Created by ${email}`}>
+      <button onClick={onAvatarClick} className={styles.avatar}>
         <img src={avatarUrl} alt="avatar icon" />
       </button>
     </Tooltip>
@@ -148,7 +151,7 @@ function getStyles(theme: GrafanaTheme2) {
       margin: 0,
       padding: theme.spacing(0.5),
       img: {
-        borderRadius: '50%',
+        borderRadius: theme.shape.radius.circle,
         width: theme.spacing(2),
         height: theme.spacing(2),
       },

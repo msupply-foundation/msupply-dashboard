@@ -1,8 +1,7 @@
 import { memoize } from 'lodash';
 
 import { DataSourceInstanceSettings, SelectableValue } from '@grafana/data';
-import { getBackendSrv } from '@grafana/runtime';
-import { TemplateSrv } from 'app/features/templating/template_srv';
+import { getBackendSrv, TemplateSrv } from '@grafana/runtime';
 
 import { CloudWatchRequest } from '../query-runner/CloudWatchRequest';
 import { CloudWatchJsonData, LogGroupField, MultiFilters } from '../types';
@@ -13,12 +12,12 @@ import {
   ResourceResponse,
   DescribeLogGroupsRequest,
   LogGroupResponse,
-  GetLogGroupFieldsRequest,
   GetMetricsRequest,
   GetDimensionKeysRequest,
   GetDimensionValuesRequest,
   MetricResponse,
   SelectableResourceValue,
+  RegionResponse,
 } from './types';
 
 export class ResourcesAPI extends CloudWatchRequest {
@@ -35,6 +34,10 @@ export class ResourcesAPI extends CloudWatchRequest {
     return getBackendSrv().get(`/api/datasources/${this.instanceSettings.id}/resources/${subtype}`, parameters);
   }
 
+  async getExternalId(): Promise<string> {
+    return await this.memoizedGetRequest<{ externalId: string }>('external-id').then(({ externalId }) => externalId);
+  }
+
   getAccounts({ region }: ResourceRequest): Promise<Account[]> {
     return this.memoizedGetRequest<Array<ResourceResponse<Account>>>('accounts', {
       region: this.templateSrv.replace(this.getActualRegion(region)),
@@ -47,11 +50,17 @@ export class ResourcesAPI extends CloudWatchRequest {
       .catch(() => false);
   }
 
-  getRegions() {
-    return this.memoizedGetRequest<SelectableResourceValue[]>('regions').then((regions) => [
-      { label: 'default', value: 'default', text: 'default' },
-      ...regions.filter((r) => r.value),
-    ]);
+  getRegions(): Promise<SelectableResourceValue[]> {
+    return this.memoizedGetRequest<Array<ResourceResponse<RegionResponse>>>('regions').then((regions) => {
+      return [
+        { label: 'default', value: 'default', text: 'default' },
+        ...regions.map((r) => ({
+          label: r.value.name,
+          value: r.value.name,
+          text: r.value.name,
+        })),
+      ].filter((r) => r.value);
+    });
   }
 
   getNamespaces() {
@@ -69,15 +78,10 @@ export class ResourcesAPI extends CloudWatchRequest {
     });
   }
 
-  getLogGroupFields({
-    region,
-    arn,
-    logGroupName,
-  }: GetLogGroupFieldsRequest): Promise<Array<ResourceResponse<LogGroupField>>> {
+  getLogGroupFields(region: string, logGroupName: string): Promise<Array<ResourceResponse<LogGroupField>>> {
     return this.memoizedGetRequest<Array<ResourceResponse<LogGroupField>>>('log-group-fields', {
       region: this.templateSrv.replace(this.getActualRegion(region)),
-      logGroupName: this.templateSrv.replace(logGroupName, {}),
-      logGroupArn: this.templateSrv.replace(arn),
+      logGroupName: logGroupName,
     });
   }
 
@@ -100,19 +104,18 @@ export class ResourcesAPI extends CloudWatchRequest {
     }).then((metrics) => metrics.map((m) => ({ metricName: m.value.name, namespace: m.value.namespace })));
   }
 
-  getDimensionKeys({
-    region,
-    namespace = '',
-    dimensionFilters = {},
-    metricName = '',
-    accountId,
-  }: GetDimensionKeysRequest): Promise<Array<SelectableValue<string>>> {
+  getDimensionKeys(
+    { region, namespace = '', dimensionFilters = {}, metricName = '', accountId }: GetDimensionKeysRequest,
+    displayErrorIfIsMultiTemplateVariable?: boolean
+  ): Promise<Array<SelectableValue<string>>> {
     return this.memoizedGetRequest<Array<ResourceResponse<string>>>('dimension-keys', {
       region: this.templateSrv.replace(this.getActualRegion(region)),
       namespace: this.templateSrv.replace(namespace),
       accountId: this.templateSrv.replace(accountId),
       metricName: this.templateSrv.replace(metricName),
-      dimensionFilters: JSON.stringify(this.convertDimensionFormat(dimensionFilters, {})),
+      dimensionFilters: JSON.stringify(
+        this.convertDimensionFormat(dimensionFilters, {}, displayErrorIfIsMultiTemplateVariable)
+      ),
     }).then((r) => r.map((r) => ({ label: r.value, value: r.value })));
   }
 
@@ -132,7 +135,7 @@ export class ResourcesAPI extends CloudWatchRequest {
       region: this.templateSrv.replace(this.getActualRegion(region)),
       namespace: this.templateSrv.replace(namespace),
       metricName: this.templateSrv.replace(metricName.trim()),
-      dimensionKey: this.templateSrv.replace(dimensionKey),
+      dimensionKey: this.replaceVariableAndDisplayWarningIfMulti(dimensionKey, {}, true),
       dimensionFilters: JSON.stringify(this.convertDimensionFormat(dimensionFilters, {})),
       accountId: this.templateSrv.replace(accountId),
     }).then((r) => r.map((r) => ({ label: r.value, value: r.value })));
@@ -158,6 +161,13 @@ export class ResourcesAPI extends CloudWatchRequest {
       region: this.templateSrv.replace(this.getActualRegion(region)),
       resourceType: this.templateSrv.replace(resourceType),
       tags: JSON.stringify(this.convertMultiFilterFormat(tags, 'tag name')),
+    });
+  }
+
+  legacyDescribeLogGroups(region: string, logGroupNamePrefix?: string) {
+    return this.memoizedGetRequest<SelectableResourceValue[]>('legacy-log-groups', {
+      region: this.templateSrv.replace(this.getActualRegion(region)),
+      logGroupNamePrefix: logGroupNamePrefix || '',
     });
   }
 }

@@ -1,6 +1,7 @@
-import React from 'react';
+import * as React from 'react';
 
-import { Button, ModalsController, ButtonProps } from '@grafana/ui/src';
+import { t } from '@grafana/i18n';
+import { Button, ModalsController, ButtonProps } from '@grafana/ui';
 import { useDeletePublicDashboardMutation } from 'app/features/dashboard/api/publicDashboardApi';
 import { DashboardModel } from 'app/features/dashboard/state/DashboardModel';
 
@@ -23,7 +24,7 @@ export const DeletePublicDashboardButton = ({
   dashboard?: DashboardModel;
   publicDashboard: PublicDashboardDeletion;
   loader?: JSX.Element;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   onDismiss?: () => void;
 } & ButtonProps) => {
   const [deletePublicDashboard, { isLoading }] = useDeletePublicDashboardMutation();
@@ -39,24 +40,26 @@ export const DeletePublicDashboardButton = ({
 
   return (
     <ModalsController>
-      {({ showModal, hideModal }) => (
-        <Button
-          aria-label="Revoke public URL"
-          title="Revoke public URL"
-          onClick={() =>
-            showModal(DeletePublicDashboardModal, {
-              dashboardTitle: publicDashboard.title,
-              onConfirm: () => onDeletePublicDashboardClick(publicDashboard, hideModal),
-              onDismiss: () => {
-                onDismiss ? onDismiss() : hideModal();
-              },
-            })
-          }
-          {...rest}
-        >
-          {isLoading && loader ? loader : children}
-        </Button>
-      )}
+      {({ showModal, hideModal }) => {
+        const translatedRevocationButtonText = t('shared-dashboard-list.button.revoke-button-text', 'Revoke access');
+        return (
+          <Button
+            aria-label={translatedRevocationButtonText}
+            title={translatedRevocationButtonText}
+            onClick={() =>
+              showModal(DeletePublicDashboardModal, {
+                onConfirm: () => onDeletePublicDashboardClick(publicDashboard, hideModal),
+                onDismiss: () => {
+                  onDismiss ? onDismiss() : hideModal();
+                },
+              })
+            }
+            {...rest}
+          >
+            {isLoading && loader ? loader : children}
+          </Button>
+        );
+      }}
     </ModalsController>
   );
 };

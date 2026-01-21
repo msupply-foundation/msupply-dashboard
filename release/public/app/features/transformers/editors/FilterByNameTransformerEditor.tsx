@@ -1,5 +1,4 @@
-import { css } from '@emotion/css';
-import React from 'react';
+import * as React from 'react';
 
 import {
   DataTransformerID,
@@ -9,9 +8,17 @@ import {
   TransformerUIProps,
   getFieldDisplayName,
   stringToJsRegex,
+  TransformerCategory,
+  SelectableValue,
 } from '@grafana/data';
-import { FilterFieldsByNameTransformerOptions } from '@grafana/data/src/transformations/transformers/filterByName';
-import { Field, Input, FilterPill, HorizontalGroup } from '@grafana/ui';
+import { FilterFieldsByNameTransformerOptions } from '@grafana/data/internal';
+import { t } from '@grafana/i18n';
+import { getTemplateSrv } from '@grafana/runtime';
+import { Input, FilterPill, InlineFieldRow, InlineField, InlineSwitch, Select } from '@grafana/ui';
+
+import { getTransformationContent } from '../docs/getTransformationContent';
+import darkImage from '../images/dark/filterFieldsByName.svg';
+import lightImage from '../images/light/filterFieldsByName.svg';
 
 interface FilterByNameTransformerEditorProps extends TransformerUIProps<FilterFieldsByNameTransformerOptions> {}
 
@@ -20,6 +27,9 @@ interface FilterByNameTransformerEditorState {
   options: FieldNameInfo[];
   selected: string[];
   regex?: string;
+  variable?: string;
+  variables: SelectableValue[];
+  byVariable: boolean;
   isRegexValid?: boolean;
 }
 
@@ -36,7 +46,10 @@ export class FilterByNameTransformerEditor extends React.PureComponent<
     this.state = {
       include: props.options.include?.names || [],
       regex: props.options.include?.pattern,
+      variable: props.options.include?.variable,
+      byVariable: props.options.byVariable || false,
       options: [],
+      variables: [],
       selected: [],
       isRegexValid: true,
     };
@@ -56,6 +69,9 @@ export class FilterByNameTransformerEditor extends React.PureComponent<
     const { input, options } = this.props;
     const configuredOptions = Array.from(options.include?.names ?? []);
 
+    const variables = getTemplateSrv()
+      .getVariables()
+      .map((v) => ({ label: '$' + v.name, value: '$' + v.name }));
     const allNames: FieldNameInfo[] = [];
     const byName: KeyValue<FieldNameInfo> = {};
 
@@ -96,12 +112,18 @@ export class FilterByNameTransformerEditor extends React.PureComponent<
       this.setState({
         options: allNames,
         selected: selected.map((s) => s.name),
+        variables: variables,
+        byVariable: options.byVariable || false,
+        variable: options.include?.variable,
         regex: options.include?.pattern,
       });
     } else {
       this.setState({
         options: allNames,
         selected: allNames.map((n) => n.name),
+        variables: variables,
+        byVariable: options.byVariable || false,
+        variable: options.include?.variable,
         regex: options.include?.pattern,
       });
     }
@@ -160,28 +182,58 @@ export class FilterByNameTransformerEditor extends React.PureComponent<
     this.setState({ isRegexValid });
   };
 
+  onVariableChange = (selected: SelectableValue) => {
+    this.props.onChange({
+      ...this.props.options,
+      include: { variable: selected.value },
+    });
+
+    this.setState({ variable: selected.value });
+  };
+
+  onFromVariableChange = (e: React.FormEvent<HTMLInputElement>) => {
+    const val = e.currentTarget.checked;
+    this.props.onChange({ ...this.props.options, byVariable: val });
+    this.setState({ byVariable: val });
+  };
+
   render() {
     const { options, selected, isRegexValid } = this.state;
     return (
-      <div className="gf-form-inline">
-        <div className="gf-form gf-form--grow">
-          <div className="gf-form-label width-8">Identifier</div>
-          <HorizontalGroup spacing="xs" align="flex-start" wrap>
-            <Field
+      <div>
+        <InlineFieldRow label={t('transformers.filter-by-name-transformer-editor.label-use-variable', 'Use variable')}>
+          <InlineField label={t('transformers.filter-by-name-transformer-editor.label-from-variable', 'From variable')}>
+            <InlineSwitch value={this.state.byVariable} onChange={this.onFromVariableChange}></InlineSwitch>
+          </InlineField>
+        </InlineFieldRow>
+        {this.state.byVariable ? (
+          <InlineFieldRow>
+            <InlineField label={t('transformers.filter-by-name-transformer-editor.label-variable', 'Variable')}>
+              <Select
+                value={this.state.variable}
+                onChange={this.onVariableChange}
+                options={this.state.variables || []}
+              ></Select>
+            </InlineField>
+          </InlineFieldRow>
+        ) : (
+          <InlineFieldRow label={t('transformers.filter-by-name-transformer-editor.label-identifier', 'Identifier')}>
+            <InlineField
+              label={t('transformers.filter-by-name-transformer-editor.label-identifier', 'Identifier')}
               invalid={!isRegexValid}
               error={!isRegexValid ? 'Invalid pattern' : undefined}
-              className={css`
-                margin-bottom: 0;
-              `}
             >
               <Input
-                placeholder="Regular expression pattern"
+                placeholder={t(
+                  'transformers.filter-by-name-transformer-editor.placeholder-regular-expression-pattern',
+                  'Regular expression pattern'
+                )}
                 value={this.state.regex || ''}
                 onChange={(e) => this.setState({ regex: e.currentTarget.value })}
                 onBlur={this.onInputBlur}
                 width={25}
               />
-            </Field>
+            </InlineField>
             {options.map((o, i) => {
               const label = `${o.name}${o.count > 1 ? ' (' + o.count + ')' : ''}`;
               const isSelected = selected.indexOf(o.name) > -1;
@@ -196,17 +248,25 @@ export class FilterByNameTransformerEditor extends React.PureComponent<
                 />
               );
             })}
-          </HorizontalGroup>
-        </div>
+          </InlineFieldRow>
+        )}
       </div>
     );
   }
 }
 
-export const filterFieldsByNameTransformRegistryItem: TransformerRegistryItem<FilterFieldsByNameTransformerOptions> = {
-  id: DataTransformerID.filterFieldsByName,
-  editor: FilterByNameTransformerEditor,
-  transformation: standardTransformers.filterFieldsByNameTransformer,
-  name: 'Filter by name',
-  description: 'Removes part of the query results using a regex pattern. The pattern can be inclusive or exclusive.',
-};
+export const getFilterFieldsByNameTransformRegistryItem: () => TransformerRegistryItem<FilterFieldsByNameTransformerOptions> =
+  () => ({
+    id: DataTransformerID.filterFieldsByName,
+    editor: FilterByNameTransformerEditor,
+    transformation: standardTransformers.filterFieldsByNameTransformer,
+    name: t('transformers.filter-by-name-transformer-editor.name.filter-fields-by-name', 'Filter fields by name'),
+    description: t(
+      'transformers.filter-by-name-transformer-editor.description.remove-part-query-results-regex-pattern',
+      'Remove parts of the query results using a regex pattern.'
+    ),
+    categories: new Set([TransformerCategory.Filter]),
+    help: getTransformationContent(DataTransformerID.filterFieldsByName).helperDocs,
+    imageDark: darkImage,
+    imageLight: lightImage,
+  });

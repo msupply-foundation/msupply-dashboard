@@ -1,6 +1,8 @@
-import React from 'react';
+import { css } from '@emotion/css';
 
-import { Button, Icon, Select, Tooltip } from '@grafana/ui';
+import { GrafanaTheme2 } from '@grafana/data';
+import { Trans, t } from '@grafana/i18n';
+import { Box, Button, Icon, Select, Tooltip, useStyles2 } from '@grafana/ui';
 
 import { ResourcePermission } from './types';
 
@@ -12,45 +14,81 @@ interface Props {
   onChange: (item: ResourcePermission, permission: string) => void;
 }
 
-export const PermissionListItem = ({ item, permissionLevels, canSet, onRemove, onChange }: Props) => (
-  <tr>
-    <td style={{ width: '1%' }}>{getAvatar(item)}</td>
-    <td style={{ width: '90%' }}>{getDescription(item)}</td>
-    <td>{item.isInherited && <em className="muted no-wrap">Inherited from folder</em>}</td>
-    <td>
-      <div className="gf-form">
+export const PermissionListItem = ({ item, permissionLevels, canSet, onRemove, onChange }: Props) => {
+  const styles = useStyles2(getStyles);
+
+  return (
+    <tr>
+      <td>{getAvatar(item)}</td>
+      <td>{getDescription(item)}</td>
+      <td>
+        {item.isInherited && (
+          <em className={styles.inherited}>
+            <Trans i18nKey="access-control.permission-list-item.inherited">Inherited from folder</Trans>
+          </em>
+        )}
+      </td>
+      <td>
         <Select
-          className="width-20"
           disabled={!canSet || !item.isManaged}
           onChange={(p) => onChange(item, p.value!)}
           value={permissionLevels.find((p) => p === item.permission)}
           options={permissionLevels.map((p) => ({ value: p, label: p }))}
         />
-      </div>
-    </td>
-    <td>
-      <Tooltip content={getPermissionInfo(item)}>
-        <Icon name="info-circle" />
-      </Tooltip>
-    </td>
-    <td>
-      {item.isManaged ? (
-        <Button
-          size="sm"
-          icon="times"
-          variant="destructive"
-          disabled={!canSet}
-          onClick={() => onRemove(item)}
-          aria-label={`Remove permission for ${getName(item)}`}
-        />
-      ) : (
-        <Tooltip content={item.isInherited ? 'Inherited Permission' : 'Provisioned Permission'}>
-          <Button size="sm" icon="lock" />
-        </Tooltip>
-      )}
-    </td>
-  </tr>
-);
+      </td>
+      <td>
+        {item.warning ? (
+          <Tooltip
+            content={
+              <>
+                <Box marginBottom={1}>{item.warning}</Box>
+                {getPermissionInfo(item)}
+              </>
+            }
+          >
+            <Icon name="exclamation-triangle" className={styles.warning} />
+          </Tooltip>
+        ) : (
+          <Tooltip content={getPermissionInfo(item)}>
+            <Icon name="info-circle" />
+          </Tooltip>
+        )}
+      </td>
+      <td>
+        {item.isManaged ? (
+          <Button
+            size="sm"
+            icon="times"
+            variant="destructive"
+            disabled={!canSet}
+            onClick={() => onRemove(item)}
+            aria-label={t(
+              'access-control.permission-list-item.remove-aria-label',
+              'Remove permission for {{identifier}}',
+              {
+                identifier: getName(item),
+              }
+            )}
+          />
+        ) : (
+          <Tooltip
+            content={
+              item.isInherited
+                ? t('access-control.permission-list-item.tooltip-inherited-permission', 'Inherited permission')
+                : t('access-control.permission-list-item.tooltip-provisioned-permission', 'Provisioned permission')
+            }
+          >
+            <Button
+              size="sm"
+              icon="lock"
+              aria-label={t('access-control.permission-list-item.locked-aria-label', 'Locked permission indicator')}
+            />
+          </Tooltip>
+        )}
+      </td>
+    </tr>
+  );
+};
 
 const getAvatar = (item: ResourcePermission) => {
   if (item.teamId) {
@@ -83,3 +121,13 @@ const getDescription = (item: ResourcePermission) => {
 };
 
 const getPermissionInfo = (p: ResourcePermission) => `Actions: ${[...new Set(p.actions)].sort().join(' ')}`;
+
+const getStyles = (theme: GrafanaTheme2) => ({
+  warning: css({
+    color: theme.colors.warning.main,
+  }),
+  inherited: css({
+    color: theme.colors.text.secondary,
+    flexWrap: 'nowrap',
+  }),
+});

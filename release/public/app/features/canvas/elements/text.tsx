@@ -1,16 +1,17 @@
 import { css } from '@emotion/css';
-import React, { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import * as React from 'react';
 import { useObservable } from 'react-use';
 import { of } from 'rxjs';
 
 import { DataFrame, GrafanaTheme2 } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { Input, usePanelContext, useStyles2 } from '@grafana/ui';
 import { DimensionContext } from 'app/features/dimensions/context';
 import { ColorDimensionEditor } from 'app/features/dimensions/editors/ColorDimensionEditor';
 import { TextDimensionEditor } from 'app/features/dimensions/editors/TextDimensionEditor';
 
-import { getDataLinks } from '../../../plugins/panel/canvas/utils';
-import { CanvasElementItem, CanvasElementProps, defaultThemeTextColor } from '../element';
+import { CanvasElementItem, CanvasElementOptions, CanvasElementProps, defaultThemeTextColor } from '../element';
 import { ElementState } from '../runtime/element';
 import { Align, TextConfig, TextData, VAlign } from '../types';
 
@@ -28,7 +29,9 @@ const TextDisplay = (props: CanvasElementProps<TextConfig, TextData>) => {
   }
   return (
     <div className={styles.container}>
-      <span className={styles.span}>{data?.text ? data.text : 'Double click to set text'}</span>
+      <span className={styles.span}>
+        {data?.text ? data.text : t('canvas.text-display.double-click-to-set', 'Double click to set text')}
+      </span>
     </div>
   );
 };
@@ -95,26 +98,26 @@ const TextEdit = (props: CanvasElementProps<TextConfig, TextData>) => {
 };
 
 const getStyles = (data: TextData | undefined) => (theme: GrafanaTheme2) => ({
-  container: css`
-    position: absolute;
-    height: 100%;
-    width: 100%;
-    display: table;
-  `,
-  inlineEditorContainer: css`
-    height: 100%;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    padding: 10px;
-  `,
-  span: css`
-    display: table-cell;
-    vertical-align: ${data?.valign};
-    text-align: ${data?.align};
-    font-size: ${data?.size}px;
-    color: ${data?.color};
-  `,
+  container: css({
+    position: 'absolute',
+    height: '100%',
+    width: '100%',
+    display: 'table',
+  }),
+  inlineEditorContainer: css({
+    height: '100%',
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    padding: theme.spacing(1),
+  }),
+  span: css({
+    display: 'table-cell',
+    verticalAlign: data?.valign,
+    textAlign: data?.align,
+    fontSize: `${data?.size}px`,
+    color: data?.color,
+  }),
 });
 
 export const textItem: CanvasElementItem<TextConfig, TextData> = {
@@ -142,43 +145,48 @@ export const textItem: CanvasElementItem<TextConfig, TextData> = {
       size: 16,
     },
     placement: {
-      top: 100,
-      left: 100,
+      width: options?.placement?.width ?? 100,
+      height: options?.placement?.height ?? 100,
+      top: options?.placement?.top,
+      left: options?.placement?.left,
+      rotation: options?.placement?.rotation ?? 0,
     },
+    links: options?.links ?? [],
   }),
 
-  prepareData: (ctx: DimensionContext, cfg: TextConfig) => {
+  prepareData: (dimensionContext: DimensionContext, elementOptions: CanvasElementOptions<TextConfig>) => {
+    const textConfig = elementOptions.config;
+
     const data: TextData = {
-      text: cfg.text ? ctx.getText(cfg.text).value() : '',
-      align: cfg.align ?? Align.Center,
-      valign: cfg.valign ?? VAlign.Middle,
-      size: cfg.size,
+      text: textConfig?.text ? dimensionContext.getText(textConfig.text).value() : '',
+      field: textConfig?.text?.field,
+      align: textConfig?.align ?? Align.Center,
+      valign: textConfig?.valign ?? VAlign.Middle,
+      size: textConfig?.size,
     };
 
-    if (cfg.color) {
-      data.color = ctx.getColor(cfg.color).value();
+    if (textConfig?.color) {
+      data.color = dimensionContext.getColor(textConfig.color).value();
     }
-
-    data.links = getDataLinks(ctx, cfg, data.text);
 
     return data;
   },
 
   registerOptionsUI: (builder) => {
-    const category = ['Text'];
+    const category = [t('canvas.text-item.category-text', 'Text')];
     builder
       .addCustomEditor({
         category,
         id: 'textSelector',
         path: 'config.text',
-        name: 'Text',
+        name: t('canvas.text-item.name-text', 'Text'),
         editor: TextDimensionEditor,
       })
       .addCustomEditor({
         category,
         id: 'config.color',
         path: 'config.color',
-        name: 'Text color',
+        name: t('canvas.text-item.name-text-color', 'Text color'),
         editor: ColorDimensionEditor,
         settings: {},
         defaultValue: {},
@@ -186,12 +194,12 @@ export const textItem: CanvasElementItem<TextConfig, TextData> = {
       .addRadio({
         category,
         path: 'config.align',
-        name: 'Align text',
+        name: t('canvas.text-item.name-align-text', 'Align text'),
         settings: {
           options: [
-            { value: Align.Left, label: 'Left' },
-            { value: Align.Center, label: 'Center' },
-            { value: Align.Right, label: 'Right' },
+            { value: Align.Left, label: t('canvas.text-item.label.left', 'Left') },
+            { value: Align.Center, label: t('canvas.text-item.label.center', 'Center') },
+            { value: Align.Right, label: t('canvas.text-item.label.right', 'Right') },
           ],
         },
         defaultValue: Align.Left,
@@ -199,12 +207,12 @@ export const textItem: CanvasElementItem<TextConfig, TextData> = {
       .addRadio({
         category,
         path: 'config.valign',
-        name: 'Vertical align',
+        name: t('canvas.text-item.name-vertical-align', 'Vertical align'),
         settings: {
           options: [
-            { value: VAlign.Top, label: 'Top' },
-            { value: VAlign.Middle, label: 'Middle' },
-            { value: VAlign.Bottom, label: 'Bottom' },
+            { value: VAlign.Top, label: t('canvas.text-item.label.top', 'Top') },
+            { value: VAlign.Middle, label: t('canvas.text-item.label.middle', 'Middle') },
+            { value: VAlign.Bottom, label: t('canvas.text-item.label.bottom', 'Bottom') },
           ],
         },
         defaultValue: VAlign.Middle,
@@ -212,9 +220,9 @@ export const textItem: CanvasElementItem<TextConfig, TextData> = {
       .addNumberInput({
         category,
         path: 'config.size',
-        name: 'Text size',
+        name: t('canvas.text-item.name-text-size', 'Text size'),
         settings: {
-          placeholder: 'Auto',
+          placeholder: t('canvas.text-item.placeholder.auto', 'Auto'),
         },
       });
   },

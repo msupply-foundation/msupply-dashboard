@@ -1,44 +1,51 @@
 import { css } from '@emotion/css';
+import InfiniteViewer from 'infinite-viewer';
 import Moveable from 'moveable';
-import React, { CSSProperties } from 'react';
+import { CSSProperties } from 'react';
 import { BehaviorSubject, ReplaySubject, Subject, Subscription } from 'rxjs';
-import { first } from 'rxjs/operators';
 import Selecto from 'selecto';
 
-import { AppEvents, GrafanaTheme2, PanelData } from '@grafana/data';
-import { locationService } from '@grafana/runtime/src';
-import { Portal, stylesFactory } from '@grafana/ui';
-import { config } from 'app/core/config';
-import { CanvasFrameOptions, DEFAULT_CANVAS_ELEMENT_CONFIG } from 'app/features/canvas';
+import { AppEvents, PanelData, OneClickMode, ActionType } from '@grafana/data';
+import { locationService } from '@grafana/runtime';
 import {
   ColorDimensionConfig,
-  DimensionContext,
   ResourceDimensionConfig,
   ScalarDimensionConfig,
   ScaleDimensionConfig,
   TextDimensionConfig,
-} from 'app/features/dimensions';
+  TooltipDisplayMode,
+  DirectionDimensionConfig,
+} from '@grafana/schema';
+import { Portal } from '@grafana/ui';
+import { config } from 'app/core/config';
+import { DimensionContext } from 'app/features/dimensions/context';
 import {
   getColorDimensionFromData,
   getResourceDimensionFromData,
   getScalarDimensionFromData,
   getScaleDimensionFromData,
   getTextDimensionFromData,
+  getDirectionDimensionFromData,
 } from 'app/features/dimensions/utils';
-import { CanvasContextMenu } from 'app/plugins/panel/canvas/CanvasContextMenu';
-import { CanvasTooltip } from 'app/plugins/panel/canvas/CanvasTooltip';
-import { CONNECTION_ANCHOR_DIV_ID } from 'app/plugins/panel/canvas/ConnectionAnchors';
-import { Connections } from 'app/plugins/panel/canvas/Connections';
-import { AnchorPoint, CanvasTooltipPayload, LayerActionID } from 'app/plugins/panel/canvas/types';
+import { CanvasContextMenu } from 'app/plugins/panel/canvas/components/CanvasContextMenu';
+import { CanvasTooltip } from 'app/plugins/panel/canvas/components/CanvasTooltip';
+import { Connections } from 'app/plugins/panel/canvas/components/connections/Connections';
+import { Connections2 } from 'app/plugins/panel/canvas/components/connections/Connections2';
+import { Options } from 'app/plugins/panel/canvas/panelcfg.gen';
+import { AnchorPoint, CanvasTooltipPayload } from 'app/plugins/panel/canvas/types';
 
 import appEvents from '../../../core/app_events';
 import { CanvasPanel } from '../../../plugins/panel/canvas/CanvasPanel';
-import { HorizontalConstraint, Placement, VerticalConstraint } from '../types';
+import { isInfinityActionWithAuth } from '../../actions/utils';
+import { getDashboardSrv } from '../../dashboard/services/DashboardSrv';
+import { CanvasFrameOptions } from '../frame';
+import { DEFAULT_CANVAS_ELEMENT_CONFIG } from '../registry';
 
-import { constraintViewable, dimensionViewable, settingsViewable } from './ables';
 import { ElementState } from './element';
 import { FrameState } from './frame';
 import { RootElement } from './root';
+import { initMoveable, calculateZoomToFitScale } from './sceneAbleManagement';
+import { findElementByTarget } from './sceneElementManagement';
 
 export interface SelectionParams {
   targets: Array<HTMLElement | SVGElement>;
@@ -46,7 +53,7 @@ export interface SelectionParams {
 }
 
 export class Scene {
-  styles = getStyles(config.theme2);
+  styles = getStyles();
   readonly selection = new ReplaySubject<ElementState[]>(1);
   readonly moved = new Subject<number>(); // called after resize/drag for editor updates
   readonly byName = new Map<string, ElementState>();
@@ -57,18 +64,33 @@ export class Scene {
 
   width = 0;
   height = 0;
+  scale = 1;
+  scrollLeft = 0;
+  scrollTop = 0;
   style: CSSProperties = {};
   data?: PanelData;
   selecto?: Selecto;
   moveable?: Moveable;
+  infiniteViewer?: InfiniteViewer;
   div?: HTMLDivElement;
-  connections: Connections;
+  viewerDiv?: HTMLDivElement;
+  viewportDiv?: HTMLDivElement;
+  connections: Connections | Connections2;
   currentLayer?: FrameState;
   isEditingEnabled?: boolean;
   shouldShowAdvancedTypes?: boolean;
+  shouldPanZoom?: boolean;
+  zoomToContent?: boolean;
+  tooltipMode?: TooltipDisplayMode;
+  tooltipDisableForOneClick?: boolean;
   skipNextSelectionBroadcast = false;
   ignoreDataUpdate = false;
   panel: CanvasPanel;
+  contextMenuVisible?: boolean;
+  openContextMenu?: (position: AnchorPoint) => void;
+  contextMenuOnVisibilityChange = (visible: boolean) => {
+    this.contextMenuVisible = visible;
+  };
 
   isPanelEditing = locationService.getSearchObject().editPanel !== undefined;
 
@@ -76,9 +98,11 @@ export class Scene {
   setBackgroundCallback?: (anchorPoint: AnchorPoint) => void;
 
   tooltipCallback?: (tooltip: CanvasTooltipPayload | undefined) => void;
-  tooltip?: CanvasTooltipPayload;
+  tooltipPayload?: CanvasTooltipPayload;
 
   moveableActionCallback?: (moved: boolean) => void;
+
+  actionConfirmationCallback?: () => void;
 
   readonly editModeEnabled = new BehaviorSubject<boolean>(false);
   subscription: Subscription;
@@ -86,13 +110,16 @@ export class Scene {
   targetsToSelect = new Set<HTMLDivElement>();
 
   constructor(
-    cfg: CanvasFrameOptions,
-    enableEditing: boolean,
-    showAdvancedTypes: boolean,
+    options: Options,
     public onSave: (cfg: CanvasFrameOptions) => void,
     panel: CanvasPanel
   ) {
-    this.root = this.load(cfg, enableEditing, showAdvancedTypes);
+    // TODO: Will need to update this approach for dashboard scenes
+    // migration (new dashboard edit experience)
+    const dashboard = getDashboardSrv().getCurrent();
+    const enableEditing = options.inlineEditing && dashboard?.editable;
+
+    this.root = this.load(options, enableEditing);
 
     this.subscription = this.editModeEnabled.subscribe((open) => {
       if (!this.moveable || !this.isEditingEnabled) {
@@ -102,7 +129,7 @@ export class Scene {
     });
 
     this.panel = panel;
-    this.connections = new Connections(this);
+    this.connections = config.featureToggles.canvasPanelPanZoom ? new Connections2(this) : new Connections(this);
   }
 
   getNextElementName = (isFrame = false) => {
@@ -124,9 +151,13 @@ export class Scene {
     return !this.byName.has(v);
   };
 
-  load(cfg: CanvasFrameOptions, enableEditing: boolean, showAdvancedTypes: boolean) {
+  load(options: Options, enableEditing: boolean) {
+    const { root, showAdvancedTypes, panZoom, zoomToContent, tooltip } = options;
+    const tooltipMode = tooltip?.mode ?? TooltipDisplayMode.Single;
+    const tooltipDisableForOneClick = tooltip?.disableForOneClick ?? false;
+
     this.root = new RootElement(
-      cfg ?? {
+      root ?? {
         type: 'frame',
         elements: [DEFAULT_CANVAS_ELEMENT_CONFIG],
       },
@@ -136,14 +167,41 @@ export class Scene {
 
     this.isEditingEnabled = enableEditing;
     this.shouldShowAdvancedTypes = showAdvancedTypes;
+    this.shouldPanZoom = panZoom;
+    this.zoomToContent = zoomToContent;
+    this.tooltipMode = tooltipMode;
+    this.tooltipDisableForOneClick = tooltipDisableForOneClick;
 
     setTimeout(() => {
-      if (this.div) {
-        // If editing is enabled, clear selecto instance
-        const destroySelecto = enableEditing;
-        this.initMoveable(destroySelecto, enableEditing);
-        this.currentLayer = this.root;
-        this.selection.next([]);
+      if (config.featureToggles.canvasPanelPanZoom) {
+        if (this.viewportDiv && this.viewerDiv) {
+          if (!this.shouldPanZoom) {
+            this.scale = 1;
+            this.scrollLeft = 0;
+            this.scrollTop = 0;
+          }
+
+          // If editing is enabled, clear selecto instance
+          const destroySelecto = enableEditing;
+          initMoveable(destroySelecto, enableEditing, this);
+          this.currentLayer = this.root;
+          this.selection.next([]);
+          this.connections.select(undefined);
+          this.connections.updateState();
+          // update initial connections svg size
+          this.updateConnectionsSize();
+          this.fitContent(this, zoomToContent);
+        }
+      } else {
+        if (this.div) {
+          // If editing is enabled, clear selecto instance
+          const destroySelecto = enableEditing;
+          initMoveable(destroySelecto, enableEditing, this);
+          this.currentLayer = this.root;
+          this.selection.next([]);
+          this.connections.select(undefined);
+          this.connections.updateState();
+        }
       }
     });
     return this.root;
@@ -155,6 +213,7 @@ export class Scene {
     getScalar: (scalar: ScalarDimensionConfig) => getScalarDimensionFromData(this.data, scalar),
     getText: (text: TextDimensionConfig) => getTextDimensionFromData(this.data, text),
     getResource: (res: ResourceDimensionConfig) => getResourceDimensionFromData(this.data, res),
+    getDirection: (direction: DirectionDimensionConfig) => getDirectionDimensionFromData(this.data, direction),
     getPanelData: () => this.data,
   };
 
@@ -168,94 +227,52 @@ export class Scene {
     this.height = height;
     this.style = { width, height };
 
-    if (this.selecto?.getSelectedTargets().length) {
-      this.clearCurrentSelection();
+    if (config.featureToggles.canvasPanelPanZoom) {
+      this.updateConnectionsSize();
+      this.fitContent(this, this.zoomToContent!);
+
+      // TODO: This is a workaround to apply styles to the elements after the size update.
+      // It's a good to go approach used by movable creator, but maybe we can find a better way.
+      this.root.elements.forEach((el) => {
+        el.applyLayoutStylesToDiv(false);
+      });
+      // TODO: This is a workaround to apply styles to the elements after the size update.
+      // Remove this after dealing with the connection anchors stacking context issue.
+      if (this.connections.connectionAnchorDiv) {
+        this.connections.connectionAnchorDiv.style.display = 'none';
+      }
     }
   }
 
-  frameSelection() {
-    this.selection.pipe(first()).subscribe((currentSelectedElements) => {
-      const currentLayer = currentSelectedElements[0].parent!;
+  updateConnectionsSize() {
+    const svgConnections = this.connections.connectionsSVG;
 
-      const newLayer = new FrameState(
-        {
-          type: 'frame',
-          name: this.getNextElementName(true),
-          elements: [],
-        },
-        this,
-        currentSelectedElements[0].parent
-      );
+    if (svgConnections) {
+      const scale = this.infiniteViewer!.getZoom();
+      // NOTE: sometimes getScrollLeft and getScrollTop return NaN,
+      // so we use || 0 to ensure we have a valid number
+      const left = this.infiniteViewer!.getScrollLeft() || 0;
+      const top = this.infiniteViewer!.getScrollTop() || 0;
+      const width = this.width;
+      const height = this.height;
 
-      const framePlacement = this.generateFrameContainer(currentSelectedElements);
+      svgConnections.style.left = `${left}px`;
+      svgConnections.style.top = `${top}px`;
+      svgConnections.style.width = `${width / scale}px`;
+      svgConnections.style.height = `${height / scale}px`;
 
-      newLayer.options.placement = framePlacement;
-
-      currentSelectedElements.forEach((element: ElementState) => {
-        const elementContainer = element.div?.getBoundingClientRect();
-        element.setPlacementFromConstraint(elementContainer, framePlacement as DOMRect);
-        currentLayer.doAction(LayerActionID.Delete, element);
-        newLayer.doAction(LayerActionID.Duplicate, element, false, false);
-      });
-
-      newLayer.setPlacementFromConstraint(framePlacement as DOMRect, currentLayer.div?.getBoundingClientRect());
-
-      currentLayer.elements.push(newLayer);
-
-      this.byName.set(newLayer.getName(), newLayer);
-
-      this.save();
-    });
+      svgConnections.setAttribute('viewBox', `${left} ${top} ${width / scale} ${height / scale}`);
+    }
   }
-
-  private generateFrameContainer = (elements: ElementState[]): Placement => {
-    let minTop = Infinity;
-    let minLeft = Infinity;
-    let maxRight = 0;
-    let maxBottom = 0;
-
-    elements.forEach((element: ElementState) => {
-      const elementContainer = element.div?.getBoundingClientRect();
-
-      if (!elementContainer) {
-        return;
-      }
-
-      if (minTop > elementContainer.top) {
-        minTop = elementContainer.top;
-      }
-
-      if (minLeft > elementContainer.left) {
-        minLeft = elementContainer.left;
-      }
-
-      if (maxRight < elementContainer.right) {
-        maxRight = elementContainer.right;
-      }
-
-      if (maxBottom < elementContainer.bottom) {
-        maxBottom = elementContainer.bottom;
-      }
-    });
-
-    return {
-      top: minTop,
-      left: minLeft,
-      width: maxRight - minLeft,
-      height: maxBottom - minTop,
-    };
-  };
 
   clearCurrentSelection(skipNextSelectionBroadcast = false) {
     this.skipNextSelectionBroadcast = skipNextSelectionBroadcast;
     let event: MouseEvent = new MouseEvent('click');
-    this.selecto?.clickTarget(event, this.div);
-  }
-
-  updateCurrentLayer(newLayer: FrameState) {
-    this.currentLayer = newLayer;
-    this.clearCurrentSelection();
-    this.save();
+    if (config.featureToggles.canvasPanelPanZoom) {
+      this.selecto?.clickTarget(event, this.viewportDiv);
+    } else {
+      this.selecto?.clickTarget(event, this.div);
+    }
   }
 
   save = (updateMoveable = false) => {
@@ -263,31 +280,18 @@ export class Scene {
 
     if (updateMoveable) {
       setTimeout(() => {
-        if (this.div) {
-          this.initMoveable(true, this.isEditingEnabled);
+        if (config.featureToggles.canvasPanelPanZoom) {
+          if (this.viewportDiv && this.viewerDiv) {
+            initMoveable(true, this.isEditingEnabled, this);
+            this.updateConnectionsSize();
+          }
+        } else {
+          if (this.div) {
+            initMoveable(true, this.isEditingEnabled, this);
+          }
         }
       });
     }
-  };
-
-  findElementByTarget = (target: Element): ElementState | undefined => {
-    // We will probably want to add memoization to this as we are calling on drag / resize
-
-    const stack = [...this.root.elements];
-    while (stack.length > 0) {
-      const currentElement = stack.shift();
-
-      if (currentElement && currentElement.div && currentElement.div === target) {
-        return currentElement;
-      }
-
-      const nestedElements = currentElement instanceof FrameState ? currentElement.elements : [];
-      for (const nestedElement of nestedElements) {
-        stack.unshift(nestedElement);
-      }
-    }
-
-    return undefined;
   };
 
   setNonTargetPointerEvents = (target: Element, disablePointerEvents: boolean) => {
@@ -310,6 +314,14 @@ export class Scene {
     this.div = sceneContainer;
   };
 
+  setViewerRef = (viewerContainer: HTMLDivElement) => {
+    this.viewerDiv = viewerContainer;
+  };
+
+  setViewportRef = (viewportContainer: HTMLDivElement) => {
+    this.viewportDiv = viewportContainer;
+  };
+
   select = (selection: SelectionParams) => {
     if (this.selecto) {
       this.selecto.setSelectedTargets(selection.targets);
@@ -323,7 +335,7 @@ export class Scene {
     }
   };
 
-  private updateSelection = (selection: SelectionParams) => {
+  updateSelection = (selection: SelectionParams) => {
     this.moveable!.target = selection.targets;
     if (this.skipNextSelectionBroadcast) {
       this.skipNextSelectionBroadcast = false;
@@ -333,300 +345,9 @@ export class Scene {
     if (selection.frame) {
       this.selection.next([selection.frame]);
     } else {
-      const s = selection.targets.map((t) => this.findElementByTarget(t)!);
+      const s = selection.targets.map((t) => findElementByTarget(t, this.root.elements)!);
       this.selection.next(s);
     }
-  };
-
-  private generateTargetElements = (rootElements: ElementState[]): HTMLDivElement[] => {
-    let targetElements: HTMLDivElement[] = [];
-
-    const stack = [...rootElements];
-    while (stack.length > 0) {
-      const currentElement = stack.shift();
-
-      if (currentElement && currentElement.div) {
-        targetElements.push(currentElement.div);
-      }
-
-      const nestedElements = currentElement instanceof FrameState ? currentElement.elements : [];
-      for (const nestedElement of nestedElements) {
-        stack.unshift(nestedElement);
-      }
-    }
-
-    return targetElements;
-  };
-
-  initMoveable = (destroySelecto = false, allowChanges = true) => {
-    const targetElements = this.generateTargetElements(this.root.elements);
-
-    if (destroySelecto && this.selecto) {
-      this.selecto.destroy();
-    }
-
-    this.selecto = new Selecto({
-      container: this.div,
-      rootContainer: this.div,
-      selectableTargets: targetElements,
-      toggleContinueSelect: 'shift',
-      selectFromInside: false,
-      hitRate: 0,
-    });
-
-    this.moveable = new Moveable(this.div!, {
-      draggable: allowChanges && !this.editModeEnabled.getValue(),
-      resizable: allowChanges,
-      ables: [dimensionViewable, constraintViewable(this), settingsViewable(this)],
-      props: {
-        dimensionViewable: allowChanges,
-        constraintViewable: allowChanges,
-        settingsViewable: allowChanges,
-      },
-      origin: false,
-      className: this.styles.selected,
-    })
-      .on('click', (event) => {
-        const targetedElement = this.findElementByTarget(event.target);
-        let elementSupportsEditing = false;
-        if (targetedElement) {
-          elementSupportsEditing = targetedElement.item.hasEditMode ?? false;
-        }
-
-        if (event.isDouble && allowChanges && !this.editModeEnabled.getValue() && elementSupportsEditing) {
-          this.editModeEnabled.next(true);
-        }
-      })
-      .on('clickGroup', (event) => {
-        this.selecto!.clickTarget(event.inputEvent, event.inputTarget);
-      })
-      .on('dragStart', (event) => {
-        this.ignoreDataUpdate = true;
-        this.setNonTargetPointerEvents(event.target, true);
-      })
-      .on('dragGroupStart', (event) => {
-        this.ignoreDataUpdate = true;
-      })
-      .on('drag', (event) => {
-        const targetedElement = this.findElementByTarget(event.target);
-        if (targetedElement) {
-          targetedElement.applyDrag(event);
-
-          if (this.connections.connectionsNeedUpdate(targetedElement) && this.moveableActionCallback) {
-            this.moveableActionCallback(true);
-          }
-        }
-      })
-      .on('dragGroup', (e) => {
-        let needsUpdate = false;
-        for (let event of e.events) {
-          const targetedElement = this.findElementByTarget(event.target);
-          if (targetedElement) {
-            targetedElement.applyDrag(event);
-            if (!needsUpdate) {
-              needsUpdate = this.connections.connectionsNeedUpdate(targetedElement);
-            }
-          }
-        }
-
-        if (needsUpdate && this.moveableActionCallback) {
-          this.moveableActionCallback(true);
-        }
-      })
-      .on('dragGroupEnd', (e) => {
-        e.events.forEach((event) => {
-          const targetedElement = this.findElementByTarget(event.target);
-          if (targetedElement) {
-            targetedElement.setPlacementFromConstraint();
-          }
-        });
-
-        this.moved.next(Date.now());
-        this.ignoreDataUpdate = false;
-      })
-      .on('dragEnd', (event) => {
-        const targetedElement = this.findElementByTarget(event.target);
-        if (targetedElement) {
-          targetedElement.setPlacementFromConstraint();
-        }
-
-        this.moved.next(Date.now());
-        this.ignoreDataUpdate = false;
-        this.setNonTargetPointerEvents(event.target, false);
-      })
-      .on('resizeStart', (event) => {
-        const targetedElement = this.findElementByTarget(event.target);
-
-        if (targetedElement) {
-          targetedElement.tempConstraint = { ...targetedElement.options.constraint };
-          targetedElement.options.constraint = {
-            vertical: VerticalConstraint.Top,
-            horizontal: HorizontalConstraint.Left,
-          };
-          targetedElement.setPlacementFromConstraint();
-        }
-      })
-      .on('resize', (event) => {
-        const targetedElement = this.findElementByTarget(event.target);
-        if (targetedElement) {
-          targetedElement.applyResize(event);
-
-          if (this.connections.connectionsNeedUpdate(targetedElement) && this.moveableActionCallback) {
-            this.moveableActionCallback(true);
-          }
-        }
-        this.moved.next(Date.now()); // TODO only on end
-      })
-      .on('resizeGroup', (e) => {
-        let needsUpdate = false;
-        for (let event of e.events) {
-          const targetedElement = this.findElementByTarget(event.target);
-          if (targetedElement) {
-            targetedElement.applyResize(event);
-
-            if (!needsUpdate) {
-              needsUpdate = this.connections.connectionsNeedUpdate(targetedElement);
-            }
-          }
-        }
-
-        if (needsUpdate && this.moveableActionCallback) {
-          this.moveableActionCallback(true);
-        }
-
-        this.moved.next(Date.now()); // TODO only on end
-      })
-      .on('resizeEnd', (event) => {
-        const targetedElement = this.findElementByTarget(event.target);
-
-        if (targetedElement) {
-          if (targetedElement.tempConstraint) {
-            targetedElement.options.constraint = targetedElement.tempConstraint;
-            targetedElement.tempConstraint = undefined;
-          }
-
-          targetedElement.setPlacementFromConstraint();
-        }
-      });
-
-    let targets: Array<HTMLElement | SVGElement> = [];
-    this.selecto!.on('dragStart', (event) => {
-      const selectedTarget = event.inputEvent.target;
-
-      // If selected target is a connection control, eject to handle connection event
-      if (selectedTarget.id === CONNECTION_ANCHOR_DIV_ID) {
-        this.connections.handleConnectionDragStart(selectedTarget, event.inputEvent.clientX, event.inputEvent.clientY);
-        event.stop();
-        return;
-      }
-
-      const isTargetMoveableElement =
-        this.moveable!.isMoveableElement(selectedTarget) ||
-        targets.some((target) => target === selectedTarget || target.contains(selectedTarget));
-
-      const isTargetAlreadySelected = this.selecto
-        ?.getSelectedTargets()
-        .includes(selectedTarget.parentElement.parentElement);
-
-      // Apply grabbing cursor while dragging, applyLayoutStylesToDiv() resets it to grab when done
-      if (
-        this.isEditingEnabled &&
-        !this.editModeEnabled.getValue() &&
-        isTargetMoveableElement &&
-        this.selecto?.getSelectedTargets().length
-      ) {
-        this.selecto.getSelectedTargets()[0].style.cursor = 'grabbing';
-      }
-
-      if (isTargetMoveableElement || isTargetAlreadySelected || !this.isEditingEnabled) {
-        // Prevent drawing selection box when selected target is a moveable element or already selected
-        event.stop();
-      }
-    })
-      .on('select', () => {
-        this.editModeEnabled.next(false);
-
-        // Hide connection anchors on select
-        if (this.connections.connectionAnchorDiv) {
-          this.connections.connectionAnchorDiv.style.display = 'none';
-        }
-      })
-      .on('selectEnd', (event) => {
-        targets = event.selected;
-        this.updateSelection({ targets });
-
-        if (event.isDragStart) {
-          if (this.isEditingEnabled && !this.editModeEnabled.getValue() && this.selecto?.getSelectedTargets().length) {
-            this.selecto.getSelectedTargets()[0].style.cursor = 'grabbing';
-          }
-          event.inputEvent.preventDefault();
-          event.data.timer = setTimeout(() => {
-            this.moveable!.dragStart(event.inputEvent);
-          });
-        }
-      })
-      .on('dragEnd', (event) => {
-        clearTimeout(event.data.timer);
-      });
-  };
-
-  reorderElements = (src: ElementState, dest: ElementState, dragToGap: boolean, destPosition: number) => {
-    switch (dragToGap) {
-      case true:
-        switch (destPosition) {
-          case -1:
-            // top of the tree
-            if (src.parent instanceof FrameState) {
-              // move outside the frame
-              if (dest.parent) {
-                this.updateElements(src, dest.parent, dest.parent.elements.length);
-                src.updateData(dest.parent.scene.context);
-              }
-            } else {
-              dest.parent?.reorderTree(src, dest, true);
-            }
-            break;
-          default:
-            if (dest.parent) {
-              this.updateElements(src, dest.parent, dest.parent.elements.indexOf(dest));
-              src.updateData(dest.parent.scene.context);
-            }
-            break;
-        }
-        break;
-      case false:
-        if (dest instanceof FrameState) {
-          if (src.parent === dest) {
-            // same frame parent
-            src.parent?.reorderTree(src, dest, true);
-          } else {
-            this.updateElements(src, dest);
-            src.updateData(dest.scene.context);
-          }
-        } else if (src.parent === dest.parent) {
-          src.parent?.reorderTree(src, dest);
-        } else {
-          if (dest.parent) {
-            this.updateElements(src, dest.parent);
-            src.updateData(dest.parent.scene.context);
-          }
-        }
-        break;
-    }
-  };
-
-  private updateElements = (src: ElementState, dest: FrameState | RootElement, idx: number | null = null) => {
-    src.parent?.doAction(LayerActionID.Delete, src);
-    src.parent = dest;
-
-    const elementContainer = src.div?.getBoundingClientRect();
-    src.setPlacementFromConstraint(elementContainer, dest.div?.getBoundingClientRect());
-
-    const destIndex = idx ?? dest.elements.length - 1;
-    dest.elements.splice(destIndex, 0, src);
-    dest.scene.save();
-
-    dest.reinitializeMoveable();
   };
 
   addToSelection = () => {
@@ -639,36 +360,93 @@ export class Scene {
     }
   };
 
-  render() {
-    const canShowContextMenu = this.isPanelEditing || (!this.isPanelEditing && this.isEditingEnabled);
-    const canShowElementTooltip =
-      !this.isEditingEnabled && this.tooltip?.element && this.tooltip.element.data.links?.length > 0;
+  fitContent = (scene: Scene, zoomToContent: boolean) => {
+    const { root, viewerDiv, infiniteViewer } = scene;
+    if (zoomToContent && root.div && infiniteViewer && viewerDiv) {
+      const dimentions = calculateZoomToFitScale(Array.from(root.div.children), viewerDiv);
+      const { scale, centerX, centerY } = dimentions;
+      infiniteViewer.setZoom(scale);
+      infiniteViewer.scrollTo(centerX, centerY);
+    }
+  };
 
-    return (
-      <div key={this.revId} className={this.styles.wrap} style={this.style} ref={this.setRef}>
+  render() {
+    const hasDataLinks = this.tooltipPayload?.element?.getLinks && this.tooltipPayload.element.getLinks({}).length > 0;
+    const hasActions =
+      this.tooltipPayload?.element?.options.actions &&
+      this.tooltipPayload.element.options.actions.filter(
+        (action) => action.type === ActionType.Fetch || isInfinityActionWithAuth(action)
+      ).length > 0;
+
+    const isTooltipValid = hasDataLinks || hasActions || this.tooltipPayload?.element?.data?.field;
+    const isCanvasTooltipEnabled = this.tooltipMode !== TooltipDisplayMode.None;
+
+    const isTooltipDisabledForOneClick =
+      this.tooltipDisableForOneClick && this.tooltipPayload?.element?.oneClickMode !== OneClickMode.Off;
+    const shouldShowElementTooltip =
+      !this.isEditingEnabled && isTooltipValid && isCanvasTooltipEnabled && !isTooltipDisabledForOneClick;
+
+    const sceneDiv = (
+      <>
         {this.connections.render()}
         {this.root.render()}
-        {canShowContextMenu && (
+        {this.isEditingEnabled && (
           <Portal>
-            <CanvasContextMenu scene={this} panel={this.panel} />
+            <CanvasContextMenu
+              scene={this}
+              panel={this.panel}
+              onVisibilityChange={this.contextMenuOnVisibilityChange}
+            />
           </Portal>
         )}
-        {canShowElementTooltip && (
+        {shouldShowElementTooltip && (
           <Portal>
             <CanvasTooltip scene={this} />
           </Portal>
         )}
+      </>
+    );
+
+    return config.featureToggles.canvasPanelPanZoom ? (
+      <div className={this.styles.viewer} ref={this.setViewerRef} key={this.revId} data-testid="canvas-scene-wrapper">
+        <div
+          className={this.styles.viewport}
+          ref={this.setViewportRef}
+          key={this.revId}
+          data-testid="canvas-scene-pan-zoom"
+        >
+          {sceneDiv}
+        </div>
+      </div>
+    ) : (
+      <div
+        key={this.revId}
+        className={this.styles.wrap}
+        style={this.style}
+        ref={this.setRef}
+        data-testid="canvas-scene"
+      >
+        {sceneDiv}
       </div>
     );
   }
 }
 
-const getStyles = stylesFactory((theme: GrafanaTheme2) => ({
-  wrap: css`
-    overflow: hidden;
-    position: relative;
-  `,
-  selected: css`
-    z-index: 999 !important;
-  `,
-}));
+const getStyles = () => ({
+  wrap: css({
+    overflow: 'hidden',
+    position: 'relative',
+  }),
+  selected: css({
+    zIndex: '999 !important',
+  }),
+  viewer: css({
+    overflow: 'hidden',
+    width: '100%',
+    height: '100%',
+  }),
+  viewport: css({
+    width: '100%',
+    height: '100%',
+  }),
+});

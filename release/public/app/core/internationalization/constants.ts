@@ -1,63 +1,48 @@
 import { ResourceKey } from 'i18next';
+import { uniq } from 'lodash';
 
-export const ENGLISH_US = 'en-US';
-export const FRENCH_FRANCE = 'fr-FR';
-export const SPANISH_SPAIN = 'es-ES';
-export const GERMAN_GERMANY = 'de-DE';
-export const CHINESE_SIMPLIFIED = 'zh-Hans';
-export const PSEUDO_LOCALE = 'pseudo-LOCALE';
+import { DEFAULT_LANGUAGE, PSEUDO_LOCALE, LANGUAGES as SUPPORTED_LANGUAGES } from '@grafana/i18n';
 
-export const DEFAULT_LANGUAGE = ENGLISH_US;
+export type LocaleFileLoader = () => Promise<ResourceKey>;
 
-interface LanguageDefinitions {
-  /** IETF language tag for the language e.g. en-US */
-  code: string;
+export const GRAFANA_NAMESPACE = 'grafana' as const;
 
-  /** Language name to show in the UI. Should be formatted local to that language e.g. Français for French */
-  name: string;
-
+type BaseLanguageDefinition = (typeof SUPPORTED_LANGUAGES)[number];
+export interface LanguageDefinition<Namespace extends string = string> extends BaseLanguageDefinition {
   /** Function to load translations */
-  loader: () => Promise<ResourceKey>;
+  loader: Record<Namespace, LocaleFileLoader>;
 }
 
-export const LANGUAGES: LanguageDefinitions[] = [
-  {
-    code: ENGLISH_US,
-    name: 'English',
-    loader: () => Promise.resolve({}),
-  },
+export const LANGUAGES: LanguageDefinition[] = SUPPORTED_LANGUAGES.map((def) => {
+  // Load the Default language (en-US) as the pseudo-locale, as it will be post-processed by i18next-pseudo library
+  const locale = def.code === PSEUDO_LOCALE ? DEFAULT_LANGUAGE : def.code;
+  return {
+    ...def,
+    loader: { [GRAFANA_NAMESPACE]: () => import(`../../../locales/${locale}/grafana.json`) },
+  };
+});
 
-  {
-    code: FRENCH_FRANCE,
-    name: 'Français',
-    loader: () => import('../../../locales/fr-FR/grafana.json'),
-  },
+// Optionally load enterprise locale extensions, if they are present.
+// It is important that this happens before NAMESPACES is defined so it has the correct value
+//
+// require.context doesn't work in jest, so we don't even attempt to load enterprise translations...
+if (process.env.NODE_ENV !== 'test') {
+  const extensionRequireContext = require.context('../../', true, /app\/extensions\/locales\/localeExtensions/);
+  if (extensionRequireContext.keys().includes('app/extensions/locales/localeExtensions')) {
+    const { LOCALE_EXTENSIONS, ENTERPRISE_I18N_NAMESPACE } = extensionRequireContext(
+      'app/extensions/locales/localeExtensions'
+    );
 
-  {
-    code: SPANISH_SPAIN,
-    name: 'Español',
-    loader: () => import('../../../locales/es-ES/grafana.json'),
-  },
+    for (const language of LANGUAGES) {
+      const localeLoader = LOCALE_EXTENSIONS[language.code];
 
-  {
-    code: GERMAN_GERMANY,
-    name: 'Deutsch',
-    loader: () => import('../../../locales/de-DE/grafana.json'),
-  },
-
-  {
-    code: CHINESE_SIMPLIFIED,
-    name: '中文（简体）',
-    loader: () => import('../../../locales/zh-Hans/grafana.json'),
-  },
-];
-
-if (process.env.NODE_ENV === 'development') {
-  LANGUAGES.push({
-    code: PSEUDO_LOCALE,
-    name: 'Pseudo-locale',
-    loader: () => import('../../../locales/pseudo-LOCALE/grafana.json'),
-  });
+      if (localeLoader) {
+        language.loader[ENTERPRISE_I18N_NAMESPACE] = localeLoader;
+      }
+    }
+  }
 }
 
 export const VALID_LANGUAGES = LANGUAGES.map((v) => v.code);
+
+export const NAMESPACES = uniq(LANGUAGES.flatMap((v) => Object.keys(v.loader)));

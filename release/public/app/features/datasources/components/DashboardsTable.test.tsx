@@ -1,8 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 
-import { PluginDashboard } from 'app/types';
+import { PluginDashboard } from 'app/types/plugins';
 
 import DashboardsTable, { Props } from './DashboardsTable';
 
@@ -25,7 +24,6 @@ describe('DashboardsTable', () => {
     mockDashboard = {
       dashboardId: 0,
       description: '',
-      folderId: 0,
       imported: false,
       importedRevision: 0,
       importedUri: '',

@@ -1,12 +1,17 @@
 import { css, cx } from '@emotion/css';
-import React from 'react';
 
-import { PanelData, GrafanaTheme2, PanelModel, LinkModel, AlertState, DataLink } from '@grafana/data';
-import { Icon, PanelChrome, Tooltip, useStyles2, TimePickerTooltip } from '@grafana/ui';
+import { AlertState, DataLink, GrafanaTheme2, LinkModel, PanelData, PanelModel } from '@grafana/data';
+import { Icon, PanelChrome, TimePickerTooltip, Tooltip, useStyles2 } from '@grafana/ui';
 
 import { PanelLinks } from '../PanelLinks';
 
 import { PanelHeaderNotices } from './PanelHeaderNotices';
+
+export interface AngularNotice {
+  show: boolean;
+  isAngularPanel: boolean;
+  isAngularDatasource: boolean;
+}
 
 export interface Props {
   alertState?: string;
@@ -22,15 +27,15 @@ export function PanelHeaderTitleItems(props: Props) {
 
   // panel health
   const alertStateItem = (
-    <Tooltip content={`alerting is ${alertState}`}>
+    <Tooltip content={alertState ?? 'unknown'}>
       <PanelChrome.TitleItem
         className={cx({
           [styles.ok]: alertState === AlertState.OK,
-          [styles.pending]: alertState === AlertState.Pending,
+          [styles.pending]: alertState === AlertState.Pending || alertState === AlertState.Recovering,
           [styles.alerting]: alertState === AlertState.Alerting,
         })}
       >
-        <Icon name={alertState === 'alerting' ? 'heart-break' : 'heart'} className="panel-alert-icon" size="md" />
+        <Icon name={alertState === 'alerting' ? 'heart-break' : 'heart'} size="md" />
       </PanelChrome.TitleItem>
     </Tooltip>
   );
@@ -64,12 +69,21 @@ const getStyles = (theme: GrafanaTheme2) => {
   return {
     ok: css({
       color: theme.colors.success.text,
+      '&:hover': {
+        color: theme.colors.emphasize(theme.colors.success.text, 0.03),
+      },
     }),
     pending: css({
       color: theme.colors.warning.text,
+      '&:hover': {
+        color: theme.colors.emphasize(theme.colors.warning.text, 0.03),
+      },
     }),
     alerting: css({
       color: theme.colors.error.text,
+      '&:hover': {
+        color: theme.colors.emphasize(theme.colors.error.text, 0.03),
+      },
     }),
     timeshift: css({
       color: theme.colors.text.link,
@@ -79,6 +93,9 @@ const getStyles = (theme: GrafanaTheme2) => {
       '&:hover': {
         color: theme.colors.emphasize(theme.colors.text.link, 0.03),
       },
+    }),
+    angularNotice: css({
+      color: theme.colors.warning.text,
     }),
   };
 };

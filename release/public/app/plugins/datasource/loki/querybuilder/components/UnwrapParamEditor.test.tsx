@@ -1,14 +1,13 @@
 import { screen, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React, { ComponentProps } from 'react';
+import { ComponentProps } from 'react';
 
-import { DataFrame, DataSourceApi, DataSourcePluginMeta, FieldType, toDataFrame } from '@grafana/data';
-import {
-  QueryBuilderOperation,
-  QueryBuilderOperationParamDef,
-} from 'app/plugins/datasource/prometheus/querybuilder/shared/types';
+import { DataFrame, DataSourceApi, FieldType, toDataFrame } from '@grafana/data';
+import { QueryBuilderOperation, QueryBuilderOperationParamDef } from '@grafana/plugin-ui';
 
 import { LokiDatasource } from '../../datasource';
+import { createLokiDatasource } from '../../mocks/datasource';
+import { LokiQueryModeller } from '../LokiQueryModeller';
 import { LokiOperationId } from '../types';
 
 import { UnwrapParamEditor } from './UnwrapParamEditor';
@@ -63,7 +62,7 @@ const createProps = (
     onChange: jest.fn(),
     onRunQuery: jest.fn(),
     index: 1,
-    operationIndex: 1,
+    operationId: '1',
     query: {
       labels: [{ op: '=', label: 'foo', value: 'bar' }],
       operations: [
@@ -75,21 +74,10 @@ const createProps = (
     },
     paramDef: {} as QueryBuilderOperationParamDef,
     operation: {} as QueryBuilderOperation,
-    datasource: new LokiDatasource(
-      {
-        id: 1,
-        uid: '',
-        type: 'loki',
-        name: 'loki-test',
-        access: 'proxy',
-        url: '',
-        jsonData: {},
-        meta: {} as DataSourcePluginMeta,
-        readOnly: false,
-      },
-      undefined,
-      undefined
-    ) as DataSourceApi,
+    datasource: createLokiDatasource() as DataSourceApi,
+    queryModeller: {
+      renderQuery: jest.fn().mockReturnValue('sum_over_time({foo="bar"} | logfmt | unwrap [5m])'),
+    } as unknown as LokiQueryModeller,
   };
   const props = { ...propsDefault, ...propsOverrides };
 

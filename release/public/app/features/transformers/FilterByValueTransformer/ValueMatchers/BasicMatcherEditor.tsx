@@ -1,50 +1,41 @@
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
+import * as React from 'react';
 
 import { ValueMatcherID, BasicValueMatcherOptions } from '@grafana/data';
-import { Input } from '@grafana/ui';
+import { t } from '@grafana/i18n';
+
+import { SuggestionsInput } from '../../suggestionsInput/SuggestionsInput';
+import { getVariableSuggestions, numberOrVariableValidator } from '../../utils';
 
 import { ValueMatcherEditorConfig, ValueMatcherUIProps, ValueMatcherUIRegistryItem } from './types';
-import { convertToType } from './utils';
 
-export function basicMatcherEditor<T = any>(
+export function basicMatcherEditor(
   config: ValueMatcherEditorConfig
-): React.FC<ValueMatcherUIProps<BasicValueMatcherOptions<T>>> {
-  return function Render({ options, onChange, field }) {
-    const { validator, converter = convertToType } = config;
+): React.FC<ValueMatcherUIProps<BasicValueMatcherOptions>> {
+  return function Render({ options, onChange }) {
+    const { validator } = config;
     const { value } = options;
     const [isInvalid, setInvalid] = useState(!validator(value));
 
-    const onChangeValue = useCallback(
-      (event: React.FormEvent<HTMLInputElement>) => {
-        setInvalid(!validator(event.currentTarget.value));
-      },
-      [setInvalid, validator]
-    );
-
-    const onChangeOptions = useCallback(
-      (event: React.FocusEvent<HTMLInputElement>) => {
-        if (isInvalid) {
-          return;
-        }
-
-        const { value } = event.currentTarget;
-
+    const onChangeVariableValue = useCallback(
+      (value: string) => {
+        setInvalid(!validator(value));
         onChange({
           ...options,
-          value: converter(value, field),
+          value: value,
         });
       },
-      [options, onChange, isInvalid, field, converter]
+      [setInvalid, validator, onChange, options]
     );
 
     return (
-      <Input
-        className="flex-grow-1"
+      <SuggestionsInput
         invalid={isInvalid}
-        defaultValue={String(options.value)}
-        placeholder="Value"
-        onChange={onChangeValue}
-        onBlur={onChangeOptions}
+        value={value}
+        error={'Value needs to be a number or a variable'}
+        onChange={onChangeVariableValue}
+        placeholder={t('transformers.basic-matcher-editor.placeholder-value-or-variable', 'Value or variable')}
+        suggestions={getVariableSuggestions()}
       />
     );
   };
@@ -55,51 +46,57 @@ export const getBasicValueMatchersUI = (): Array<ValueMatcherUIRegistryItem<Basi
     {
       name: 'Is greater',
       id: ValueMatcherID.greater,
-      component: basicMatcherEditor<number>({
-        validator: (value) => !isNaN(value),
+      component: basicMatcherEditor({
+        validator: numberOrVariableValidator,
       }),
     },
     {
       name: 'Is greater or equal',
       id: ValueMatcherID.greaterOrEqual,
-      component: basicMatcherEditor<number>({
-        validator: (value) => !isNaN(value),
+      component: basicMatcherEditor({
+        validator: numberOrVariableValidator,
       }),
     },
     {
       name: 'Is lower',
       id: ValueMatcherID.lower,
-      component: basicMatcherEditor<number>({
-        validator: (value) => !isNaN(value),
+      component: basicMatcherEditor({
+        validator: numberOrVariableValidator,
       }),
     },
     {
       name: 'Is lower or equal',
       id: ValueMatcherID.lowerOrEqual,
-      component: basicMatcherEditor<number>({
-        validator: (value) => !isNaN(value),
+      component: basicMatcherEditor({
+        validator: numberOrVariableValidator,
       }),
     },
     {
       name: 'Is equal',
       id: ValueMatcherID.equal,
-      component: basicMatcherEditor<any>({
+      component: basicMatcherEditor({
         validator: () => true,
       }),
     },
     {
       name: 'Is not equal',
       id: ValueMatcherID.notEqual,
-      component: basicMatcherEditor<any>({
+      component: basicMatcherEditor({
         validator: () => true,
       }),
     },
     {
-      name: 'Regex',
-      id: ValueMatcherID.regex,
-      component: basicMatcherEditor<string>({
+      name: 'Is Substring',
+      id: ValueMatcherID.substring,
+      component: basicMatcherEditor({
         validator: () => true,
-        converter: (value) => String(value),
+      }),
+    },
+    {
+      name: 'Is not substring',
+      id: ValueMatcherID.notSubstring,
+      component: basicMatcherEditor({
+        validator: () => true,
       }),
     },
   ];

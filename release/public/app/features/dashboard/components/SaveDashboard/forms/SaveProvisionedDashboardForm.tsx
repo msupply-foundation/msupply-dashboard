@@ -1,13 +1,13 @@
 import { css } from '@emotion/css';
 import { saveAs } from 'file-saver';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 
-import { Stack } from '@grafana/experimental';
-import { Button, ClipboardButton, HorizontalGroup, TextArea } from '@grafana/ui';
+import { Trans } from '@grafana/i18n';
+import { Button, ClipboardButton, TextArea, Stack, TextLink } from '@grafana/ui';
 
 import { SaveDashboardFormProps } from '../types';
 
-export const SaveProvisionedDashboardForm = ({ dashboard, onCancel }: SaveDashboardFormProps) => {
+export const SaveProvisionedDashboardForm = ({ dashboard, onCancel }: Omit<SaveDashboardFormProps, 'isLoading'>) => {
   const [dashboardJSON, setDashboardJson] = useState(() => {
     const clone = dashboard.getSaveModelClone();
     delete clone.id;
@@ -25,23 +25,27 @@ export const SaveProvisionedDashboardForm = ({ dashboard, onCancel }: SaveDashbo
     <>
       <Stack direction="column" gap={2}>
         <div>
-          This dashboard cannot be saved from the Grafana UI because it has been provisioned from another source. Copy
-          the JSON or save it to a file below, then you can update your dashboard in the provisioning source.
+          <Trans i18nKey="dashboard.save-provisioned-dashboard-form.cannot-be-saved">
+            This dashboard cannot be saved from the Grafana UI because it has been provisioned from another source. Copy
+            the JSON or save it to a file below, then you can update your dashboard in the provisioning source.
+          </Trans>
           <br />
           <i>
-            See{' '}
-            <a
-              className="external-link"
-              href="https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards"
-              target="_blank"
-              rel="noreferrer"
-            >
-              documentation
-            </a>{' '}
-            for more information about provisioning.
+            <Trans i18nKey="dashboard.save-provisioned-dashboard-form.see-docs">
+              See{' '}
+              <TextLink href="https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards" external>
+                documentation
+              </TextLink>{' '}
+              for more information about provisioning.
+            </Trans>
           </i>
           <br /> <br />
-          <strong>File path: </strong> {dashboard.meta.provisionedExternalId}
+          <Trans
+            i18nKey="dashboard.save-provisioned-dashboard-form.file-path"
+            values={{ filePath: dashboard.meta.provisionedExternalId }}
+          >
+            <strong>File path:</strong> {'{{filePath}}'}
+          </Trans>
         </div>
         <TextArea
           spellCheck={false}
@@ -51,28 +55,30 @@ export const SaveProvisionedDashboardForm = ({ dashboard, onCancel }: SaveDashbo
           }}
           className={styles.json}
         />
-        <HorizontalGroup>
+        <Stack>
           <Button variant="secondary" onClick={onCancel} fill="outline">
-            Cancel
+            <Trans i18nKey="dashboard.save-provisioned-dashboard-form.cancel">Cancel</Trans>
           </Button>
           <ClipboardButton icon="copy" getText={() => dashboardJSON}>
-            Copy JSON to clipboard
+            <Trans i18nKey="dashboard.save-provisioned-dashboard-form.copy-json-to-clipboard">
+              Copy JSON to clipboard
+            </Trans>
           </ClipboardButton>
           <Button type="submit" onClick={saveToFile}>
-            Save JSON to file
+            <Trans i18nKey="dashboard.save-provisioned-dashboard-form.save-json-to-file">Save JSON to file</Trans>
           </Button>
-        </HorizontalGroup>
+        </Stack>
       </Stack>
     </>
   );
 };
 
 const styles = {
-  json: css`
-    height: 400px;
-    width: 100%;
-    overflow: auto;
-    resize: none;
-    font-family: monospace;
-  `,
+  json: css({
+    height: '400px',
+    width: '100%',
+    overflow: 'auto',
+    resize: 'none',
+    fontFamily: 'monospace',
+  }),
 };

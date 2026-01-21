@@ -1,51 +1,114 @@
 import { css } from '@emotion/css';
-import React, { PureComponent } from 'react';
+import { memo, ReactNode, useMemo } from 'react';
 
-import { LogRowModel, Field, LinkModel, DataFrame } from '@grafana/data';
-import { withTheme2, Themeable2 } from '@grafana/ui';
+import { LogRowModel } from '@grafana/data';
+import { GetFieldLinksFn } from 'app/plugins/panel/logs/types';
 
+import { LOG_LINE_BODY_FIELD_NAME } from './LogDetailsBody';
+import { LogRowMenuCell } from './LogRowMenuCell';
+import { LogRowStyles } from './getLogRowStyles';
 import { getAllFields } from './logParser';
 
-export interface Props extends Themeable2 {
+export interface Props {
   row: LogRowModel;
-  showDetectedFields: string[];
+  detectedFields: string[];
   wrapLogMessage: boolean;
-  getFieldLinks?: (field: Field, rowIndex: number, dataFrame: DataFrame) => Array<LinkModel<Field>>;
+  getFieldLinks?: GetFieldLinksFn;
+  styles: LogRowStyles;
+  showContextToggle?: (row: LogRowModel) => boolean;
+  onOpenContext: (row: LogRowModel) => void;
+  onPermalinkClick?: (row: LogRowModel) => Promise<void>;
+  onPinLine?: (row: LogRowModel) => void;
+  onUnpinLine?: (row: LogRowModel) => void;
+  pinned?: boolean;
+  mouseIsOver: boolean;
+  onBlur: () => void;
+  logRowMenuIconsBefore?: ReactNode[];
+  logRowMenuIconsAfter?: ReactNode[];
+  preview?: boolean;
 }
 
-class UnThemedLogRowMessageDisplayedFields extends PureComponent<Props> {
-  render() {
-    const { row, showDetectedFields, getFieldLinks, wrapLogMessage } = this.props;
-    const fields = getAllFields(row, getFieldLinks);
-    const wrapClassName = wrapLogMessage
-      ? ''
-      : css`
-          white-space: nowrap;
-        `;
-    // only single key/value rows are filterable, so we only need the first field key for filtering
-    const line = showDetectedFields
-      .map((parsedKey) => {
-        const field = fields.find((field) => {
-          const { keys } = field;
-          return keys[0] === parsedKey;
-        });
+export const LogRowMessageDisplayedFields = memo((props: Props) => {
+  const {
+    row,
+    detectedFields,
+    getFieldLinks,
+    wrapLogMessage,
+    styles,
+    mouseIsOver,
+    pinned,
+    logRowMenuIconsBefore,
+    logRowMenuIconsAfter,
+    preview,
+    ...rest
+  } = props;
+  const wrapClassName = wrapLogMessage ? '' : displayedFieldsStyles.noWrap;
+  const fields = useMemo(() => getAllFields(row, getFieldLinks), [getFieldLinks, row]);
+  // only single key/value rows are filterable, so we only need the first field key for filtering
+  const line = useMemo(() => {
+    let line = '';
+    for (let i = 0; i < detectedFields.length; i++) {
+      const parsedKey = detectedFields[i];
 
-        if (field !== undefined && field !== null) {
-          return `${parsedKey}=${field.values}`;
-        }
+      if (parsedKey === LOG_LINE_BODY_FIELD_NAME) {
+        line += ` ${row.entry}`;
+      }
 
-        if (row.labels[parsedKey] !== undefined && row.labels[parsedKey] !== null) {
-          return `${parsedKey}=${row.labels[parsedKey]}`;
-        }
+      const field = fields.find((field) => {
+        return field.keys[0] === parsedKey;
+      });
 
-        return null;
-      })
-      .filter((s) => s !== null)
-      .join(' ');
+      if (field != null) {
+        line += ` ${parsedKey}=${field.values}`;
+      }
 
-    return <td className={wrapClassName}>{line}</td>;
+      if (row.labels[parsedKey] != null && row.labels[parsedKey] != null) {
+        line += ` ${parsedKey}=${row.labels[parsedKey]}`;
+      }
+    }
+    return line.trimStart();
+  }, [detectedFields, fields, row.entry, row.labels]);
+
+  const shouldShowMenu = mouseIsOver || pinned;
+
+  if (preview) {
+    return (
+      <>
+        <td>
+          <div>{line}</div>
+        </td>
+        <td></td>
+      </>
+    );
   }
-}
 
-export const LogRowMessageDisplayedFields = withTheme2(UnThemedLogRowMessageDisplayedFields);
+  return (
+    <>
+      <td className={styles.logsRowMessage}>
+        <div className={wrapClassName}>{line}</div>
+      </td>
+      <td className={`log-row-menu-cell ${styles.logRowMenuCell}`}>
+        {shouldShowMenu && (
+          <LogRowMenuCell
+            logText={line}
+            row={row}
+            styles={styles}
+            pinned={pinned}
+            mouseIsOver={mouseIsOver}
+            addonBefore={logRowMenuIconsBefore}
+            addonAfter={logRowMenuIconsAfter}
+            {...rest}
+          />
+        )}
+      </td>
+    </>
+  );
+});
+
+const displayedFieldsStyles = {
+  noWrap: css({
+    whiteSpace: 'nowrap',
+  }),
+};
+
 LogRowMessageDisplayedFields.displayName = 'LogRowMessageDisplayedFields';

@@ -1,9 +1,8 @@
-import React from 'react';
 import { connect, ConnectedProps } from 'react-redux';
 import { useMount } from 'react-use';
 
 import { Page } from 'app/core/components/Page/Page';
-import { StoreState } from 'app/types';
+import { StoreState } from 'app/types/store';
 
 import { ChangePasswordForm } from './ChangePasswordForm';
 import { changePassword, loadUser } from './state/actions';
@@ -36,9 +35,6 @@ export function ChangePasswordPage({ loadUser, isUpdating, user, changePassword 
       <Page.Contents isLoading={!Boolean(user)}>
         {user ? (
           <>
-            <Page.OldNavOnly>
-              <h3 className="page-sub-heading">Change Your Password</h3>
-            </Page.OldNavOnly>
             <ChangePasswordForm user={user} onChangePassword={changePassword} isSaving={isUpdating} />
           </>
         ) : null}

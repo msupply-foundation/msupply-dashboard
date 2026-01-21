@@ -1,5 +1,4 @@
-import { css } from '@emotion/css';
-import React from 'react';
+import * as React from 'react';
 
 import {
   DataTransformerID,
@@ -7,9 +6,15 @@ import {
   TransformerRegistryItem,
   TransformerUIProps,
   stringToJsRegex,
+  TransformerCategory,
 } from '@grafana/data';
-import { RenameByRegexTransformerOptions } from '@grafana/data/src/transformations/transformers/renameByRegex';
-import { Field, Input } from '@grafana/ui';
+import { RenameByRegexTransformerOptions } from '@grafana/data/internal';
+import { t } from '@grafana/i18n';
+import { InlineField, Input } from '@grafana/ui';
+
+import { getTransformationContent } from '../docs/getTransformationContent';
+import darkImage from '../images/dark/renameByRegex.svg';
+import lightImage from '../images/light/renameByRegex.svg';
 
 interface RenameByRegexTransformerEditorProps extends TransformerUIProps<RenameByRegexTransformerOptions> {}
 
@@ -80,53 +85,55 @@ export class RenameByRegexTransformerEditor extends React.PureComponent<
     const { regex, renamePattern, isRegexValid } = this.state;
     return (
       <>
-        <div className="gf-form-inline">
-          <div className="gf-form gf-form--grow">
-            <div className="gf-form-label width-8">Match</div>
-            <Field
-              invalid={!isRegexValid}
-              error={!isRegexValid ? 'Invalid pattern' : undefined}
-              className={css`
-                margin-bottom: 0;
-              `}
-            >
-              <Input
-                placeholder="Regular expression pattern"
-                value={regex || ''}
-                onChange={this.handleRegexChange}
-                onBlur={this.handleRegexBlur}
-                width={25}
-              />
-            </Field>
-          </div>
-        </div>
-        <div className="gf-form-inline">
-          <div className="gf-form gf-form--grow">
-            <div className="gf-form-label width-8">Replace</div>
-            <Field
-              className={css`
-                margin-bottom: 0;
-              `}
-            >
-              <Input
-                placeholder="Replacement pattern"
-                value={renamePattern || ''}
-                onChange={this.handleRenameChange}
-                onBlur={this.handleRenameBlur}
-                width={25}
-              />
-            </Field>
-          </div>
-        </div>
+        <InlineField
+          label={t('transformers.rename-by-regex-transformer-editor.label-match', 'Match')}
+          labelWidth={16}
+          invalid={!isRegexValid}
+          error={!isRegexValid ? 'Invalid pattern' : undefined}
+        >
+          <Input
+            placeholder={t(
+              'transformers.rename-by-regex-transformer-editor.placeholder-regular-expression-pattern',
+              'Regular expression pattern'
+            )}
+            value={regex || ''}
+            onChange={this.handleRegexChange}
+            onBlur={this.handleRegexBlur}
+            width={25}
+          />
+        </InlineField>
+        <InlineField
+          label={t('transformers.rename-by-regex-transformer-editor.label-replace', 'Replace')}
+          labelWidth={16}
+        >
+          <Input
+            placeholder={t(
+              'transformers.rename-by-regex-transformer-editor.placeholder-replacement-pattern',
+              'Replacement pattern'
+            )}
+            value={renamePattern || ''}
+            onChange={this.handleRenameChange}
+            onBlur={this.handleRenameBlur}
+            width={25}
+          />
+        </InlineField>
       </>
     );
   }
 }
 
-export const renameByRegexTransformRegistryItem: TransformerRegistryItem<RenameByRegexTransformerOptions> = {
-  id: DataTransformerID.renameByRegex,
-  editor: RenameByRegexTransformerEditor,
-  transformation: standardTransformers.renameByRegexTransformer,
-  name: 'Rename by regex',
-  description: 'Renames part of the query result by using regular expression with placeholders.',
-};
+export const getRenameByRegexTransformRegistryItem: () => TransformerRegistryItem<RenameByRegexTransformerOptions> =
+  () => ({
+    id: DataTransformerID.renameByRegex,
+    editor: RenameByRegexTransformerEditor,
+    transformation: standardTransformers.renameByRegexTransformer,
+    name: t('transformers.rename-by-regex-transformer.name.rename-fields-by-regex', 'Rename fields by regex'),
+    description: t(
+      'transformers.rename-by-regex-transformer.description.rename-parts-using-regex',
+      'Rename parts of the query results using a regular expression and replacement pattern.'
+    ),
+    categories: new Set([TransformerCategory.ReorderAndRename]),
+    help: getTransformationContent(DataTransformerID.renameByRegex).helperDocs,
+    imageDark: darkImage,
+    imageLight: lightImage,
+  });

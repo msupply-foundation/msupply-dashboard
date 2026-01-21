@@ -1,7 +1,6 @@
 import { map } from 'rxjs/operators';
 
 import {
-  ArrayVector,
   DataFrame,
   DataTransformerID,
   DataTransformerInfo,
@@ -11,11 +10,12 @@ import {
   MatcherConfig,
   reduceField,
 } from '@grafana/data';
+import { t } from '@grafana/i18n';
 
 import {
-  getFieldConfigFromFrame,
+  evaluateFieldMappings,
   FieldToConfigMapping,
-  evaluteFieldMappings,
+  getFieldConfigFromFrame,
 } from '../fieldToConfigMapping/fieldToConfigMapping';
 
 export interface ConfigFromQueryTransformOptions {
@@ -43,7 +43,7 @@ export function extractConfigFromQuery(options: ConfigFromQueryTransformOptions,
     length: 1,
   };
 
-  const mappingResult = evaluteFieldMappings(configFrame, options.mappings ?? [], false);
+  const mappingResult = evaluateFieldMappings(configFrame, options.mappings ?? [], false);
 
   // reduce config frame
   for (const field of configFrame.fields) {
@@ -51,7 +51,7 @@ export function extractConfigFromQuery(options: ConfigFromQueryTransformOptions,
     const fieldName = getFieldDisplayName(field, configFrame);
     const fieldMapping = mappingResult.index[fieldName];
     const result = reduceField({ field, reducers: [fieldMapping.reducerId] });
-    newField.values = new ArrayVector([result[fieldMapping.reducerId]]);
+    newField.values = [result[fieldMapping.reducerId]];
     reducedConfigFrame.fields.push(newField);
   }
 
@@ -90,18 +90,21 @@ export function extractConfigFromQuery(options: ConfigFromQueryTransformOptions,
   return output;
 }
 
-export const configFromDataTransformer: DataTransformerInfo<ConfigFromQueryTransformOptions> = {
+export const getConfigFromDataTransformer: () => DataTransformerInfo<ConfigFromQueryTransformOptions> = () => ({
   id: DataTransformerID.configFromData,
-  name: 'Config from query results',
-  description: 'Set unit, min, max and more from data',
+  name: t('transformers.get-config-from-data-transformer.name.config-from-query-results', 'Config from query results'),
+  description: t(
+    'transformers.get-config-from-data-transformer.description.set-unit-min-max-and-more',
+    'Set unit, min, max and more.'
+  ),
   defaultOptions: {
     configRefId: 'config',
     mappings: [],
   },
 
   /**
-   * Return a modified copy of the series.  If the transform is not or should not
+   * Return a modified copy of the series. If the transform is not or should not
    * be applied, just return the input series
    */
   operator: (options) => (source) => source.pipe(map((data) => extractConfigFromQuery(options, data))),
-};
+});

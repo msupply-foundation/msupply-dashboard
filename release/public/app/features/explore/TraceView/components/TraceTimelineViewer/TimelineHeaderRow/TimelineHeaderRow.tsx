@@ -13,14 +13,12 @@
 // limitations under the License.
 
 import { css } from '@emotion/css';
-import cx from 'classnames';
-import * as React from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
+import { Trans } from '@grafana/i18n';
 import { useStyles2 } from '@grafana/ui';
 
 import { autoColor } from '../../Theme';
-import { ubFlex, ubPx2 } from '../../uberUtilityStyles';
 import Ticks from '../Ticks';
 import TimelineRow from '../TimelineRow';
 import { TUpdateViewRangeTimeFunction, ViewRangeTime, ViewRangeTimeUpdate } from '../types';
@@ -31,28 +29,31 @@ import TimelineViewingLayer from './TimelineViewingLayer';
 
 const getStyles = (theme: GrafanaTheme2) => {
   return {
-    TimelineHeaderRow: css`
-      label: TimelineHeaderRow;
-      background: ${autoColor(theme, '#ececec')};
-      border-bottom: 1px solid ${autoColor(theme, '#ccc')};
-      height: 38px;
-      line-height: 38px;
-      width: 100%;
-      z-index: 4;
-      position: relative;
-    `,
-    TimelineHeaderRowTitle: css`
-      label: TimelineHeaderRowTitle;
-      flex: 1;
-      overflow: hidden;
-      margin: 0;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    `,
-    TimelineHeaderWrapper: css`
-      label: TimelineHeaderWrapper;
-      align-items: center;
-    `,
+    TimelineHeaderRow: css({
+      label: 'TimelineHeaderRow',
+      background: autoColor(theme, '#ececec'),
+      borderBottom: `1px solid ${autoColor(theme, '#ccc')}`,
+      height: '38px',
+      lineHeight: '38px',
+      width: '100%',
+      zIndex: 4,
+      position: 'relative',
+    }),
+    TimelineHeaderRowTitle: css({
+      label: 'TimelineHeaderRowTitle',
+      flex: 1,
+      overflow: 'hidden',
+      margin: 0,
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    }),
+    TimelineHeaderWrapper: css({
+      label: 'TimelineHeaderWrapper',
+      alignItems: 'center',
+      display: 'flex',
+      paddingLeft: theme.spacing(1),
+      paddingRight: theme.spacing(1),
+    }),
   };
 };
 
@@ -90,8 +91,10 @@ export default function TimelineHeaderRow(props: TimelineHeaderRowProps) {
   const styles = useStyles2(getStyles);
   return (
     <TimelineRow className={styles.TimelineHeaderRow} data-testid="TimelineHeaderRow">
-      <TimelineRow.Cell className={cx(ubFlex, ubPx2, styles.TimelineHeaderWrapper)} width={nameColumnWidth}>
-        <h4 className={styles.TimelineHeaderRowTitle}>Service &amp; Operation</h4>
+      <TimelineRow.Cell className={styles.TimelineHeaderWrapper} width={nameColumnWidth}>
+        <h4 className={styles.TimelineHeaderRowTitle}>
+          <Trans i18nKey="explore.timeline-header-row.title">Service &amp; Operation</Trans>
+        </h4>
         <TimelineCollapser
           onCollapseAll={onCollapseAll}
           onExpandAll={onExpandAll}

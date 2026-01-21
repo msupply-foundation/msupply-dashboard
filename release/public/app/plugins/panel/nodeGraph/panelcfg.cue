@@ -18,38 +18,43 @@ composableKinds: PanelCfg: {
 	maturity: "experimental"
 
 	lineage: {
-		seqs: [
+		schemas: [{
+			version: [0, 0]
+			schema:
+			// v0.0
 			{
-				schemas: [
-					// v0.0
-					{
-						ArcOption: {
-							// Field from which to get the value. Values should be less than 1, representing fraction of a circle.
-							field?: string
-							// The color of the arc.
-							color?: string
-						} @cuetsy(kind="interface")
-						NodeOptions: {
-							// Unit for the main stat to override what ever is set in the data frame.
-							mainStatUnit?: string
-							// Unit for the secondary stat to override what ever is set in the data frame.
-							secondaryStatUnit?: string
-							// Define which fields are shown as part of the node arc (colored circle around the node).
-							arcs?: [...ArcOption]
-						}
-						EdgeOptions: {
-							// Unit for the main stat to override what ever is set in the data frame.
-							mainStatUnit?: string
-							// Unit for the secondary stat to override what ever is set in the data frame.
-							secondaryStatUnit?: string
-						}
-						PanelOptions: {
-							nodes?: NodeOptions
-							edges?: EdgeOptions
-						} @cuetsy(kind="interface")
-					},
-				]
-			},
-		]
+				ArcOption: {
+					// Field from which to get the value. Values should be less than 1, representing fraction of a circle.
+					field?: string
+					// The color of the arc.
+					color?: string
+				} @cuetsy(kind="interface")
+				NodeOptions: {
+					// Unit for the main stat to override what ever is set in the data frame.
+					mainStatUnit?: string
+					// Unit for the secondary stat to override what ever is set in the data frame.
+					secondaryStatUnit?: string
+					// Define which fields are shown as part of the node arc (colored circle around the node).
+					arcs?: [...ArcOption]
+				}
+				EdgeOptions: {
+					// Unit for the main stat to override what ever is set in the data frame.
+					mainStatUnit?: string
+					// Unit for the secondary stat to override what ever is set in the data frame.
+					secondaryStatUnit?: string
+				}
+				ZoomMode:        "cooperative" | "greedy"     @cuetsy(kind="enum")
+				LayoutAlgorithm: "layered" | "force" | "grid" @cuetsy(kind="enum")
+				Options: {
+					nodes?: NodeOptions
+					edges?: EdgeOptions
+					// How to handle zoom/scroll events in the node graph
+					zoomMode?: ZoomMode
+					// How to layout the nodes in the node graph
+					layoutAlgorithm?: LayoutAlgorithm
+				} @cuetsy(kind="interface")
+			}
+		}]
+		lenses: []
 	}
 }

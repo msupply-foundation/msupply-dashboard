@@ -1,5 +1,5 @@
 import { css, cx } from '@emotion/css';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
 import { Card, useStyles2 } from '@grafana/ui';
@@ -30,7 +30,7 @@ const RuleType = (props: Props) => {
   });
 
   return (
-    <Card className={cardStyles} isSelected={selected} onClick={() => onClick(value)} disabled={disabled}>
+    <Card noMargin className={cardStyles} isSelected={selected} onClick={() => onClick(value)} disabled={disabled}>
       <Card.Figure>
         <img src={image} alt="" />
       </Card.Figure>
@@ -41,14 +41,14 @@ const RuleType = (props: Props) => {
 };
 
 const getStyles = (theme: GrafanaTheme2) => ({
-  wrapper: css`
-    width: 380px;
-    cursor: pointer;
-    user-select: none;
-  `,
-  disabled: css`
-    opacity: 0.5;
-  `,
+  wrapper: css({
+    width: '380px',
+    cursor: 'pointer',
+    userSelect: 'none',
+  }),
+  disabled: css({
+    opacity: '0.5',
+  }),
 });
 
 export { RuleType };

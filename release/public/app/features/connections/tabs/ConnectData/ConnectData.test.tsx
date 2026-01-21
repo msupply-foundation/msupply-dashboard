@@ -1,26 +1,29 @@
-import { fireEvent, render, RenderResult, screen } from '@testing-library/react';
-import React from 'react';
-import { Provider } from 'react-redux';
+import { render, RenderResult, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { TestProvider } from 'test/helpers/TestProvider';
 
 import { PluginType } from '@grafana/data';
+import { locationService } from '@grafana/runtime';
 import { contextSrv } from 'app/core/core';
-import { getCatalogPluginMock, getPluginsStateMock } from 'app/features/plugins/admin/__mocks__';
+import { getCatalogPluginMock, getPluginsStateMock } from 'app/features/plugins/admin/mocks/mockHelpers';
 import { CatalogPlugin } from 'app/features/plugins/admin/types';
-import { configureStore } from 'app/store/configureStore';
-import { AccessControlAction } from 'app/types';
+import { AccessControlAction } from 'app/types/accessControl';
 
-import { ConnectData } from './ConnectData';
+import { AddNewConnection } from './ConnectData';
 
 jest.mock('app/features/datasources/api');
 
-const renderPage = (plugins: CatalogPlugin[] = []): RenderResult => {
-  // @ts-ignore
-  const store = configureStore({ plugins: getPluginsStateMock(plugins) });
+jest.mock('@grafana/runtime', () => ({
+  ...jest.requireActual('@grafana/runtime'),
+  useChromeHeaderHeight: jest.fn(),
+}));
 
+const renderPage = (plugins: CatalogPlugin[] = [], path = '/add-new-connection'): RenderResult => {
+  locationService.push(path);
   return render(
-    <Provider store={store}>
-      <ConnectData />
-    </Provider>
+    <TestProvider storeState={{ plugins: getPluginsStateMock(plugins) }}>
+      <AddNewConnection />
+    </TestProvider>
   );
 };
 
@@ -30,23 +33,47 @@ const mockCatalogDataSourcePlugin = getCatalogPluginMock({
   id: 'sample-data-source',
 });
 
-const originalHasPermission = contextSrv.hasPermission;
+const mockCatalogAppPlugin = getCatalogPluginMock({
+  type: PluginType.app,
+  name: 'Sample app',
+  id: 'sample-app',
+});
 
-describe('Connect Data', () => {
-  beforeEach(() => {
-    contextSrv.hasPermission = originalHasPermission;
+describe('Badges', () => {
+  test('shows enterprise and deprecated badges for plugins', async () => {
+    renderPage([
+      getCatalogPluginMock({
+        id: 'test-plugin',
+        name: 'test Plugin',
+        type: PluginType.datasource,
+        isEnterprise: true,
+      }),
+      getCatalogPluginMock({
+        id: 'test2-plugin',
+        name: 'test2 Plugin',
+        type: PluginType.datasource,
+        isDeprecated: true,
+      }),
+    ]);
+    await waitFor(() => {
+      expect(screen.queryByText('test Plugin')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Enterprise')).toBeVisible();
+    expect(screen.queryByText('Deprecated')).toBeVisible();
   });
+});
 
+describe('Add new connection', () => {
   test('renders no results if the plugins list is empty', async () => {
     renderPage();
 
-    expect(screen.queryByText('No results matching your query were found.')).toBeInTheDocument();
+    expect(screen.queryByText('No results matching your query were found')).toBeInTheDocument();
   });
 
-  test('renders no results if there is no data source plugin in the list', async () => {
-    renderPage([getCatalogPluginMock()]);
+  test('renders no results if there are no datasource or app plugins in the list', async () => {
+    renderPage([getCatalogPluginMock({ type: PluginType.panel })]);
 
-    expect(screen.queryByText('No results matching your query were found.')).toBeInTheDocument();
+    expect(screen.queryByText('No results matching your query were found')).toBeInTheDocument();
   });
 
   test('renders only data source plugins when list is populated', async () => {
@@ -55,19 +82,74 @@ describe('Connect Data', () => {
     expect(await screen.findByText('Sample data source')).toBeVisible();
   });
 
-  test('renders card if search term matches', async () => {
-    renderPage([getCatalogPluginMock(), mockCatalogDataSourcePlugin]);
-    const searchField = await screen.findByRole('textbox');
+  test('renders app plugins when list is populated', async () => {
+    renderPage([getCatalogPluginMock(), mockCatalogAppPlugin]);
 
-    fireEvent.change(searchField, { target: { value: 'ampl' } });
+    expect(await screen.findByText('Sample app')).toBeVisible();
+  });
+
+  test('renders app plugin and datasource plugin when list is populated', async () => {
+    renderPage([getCatalogPluginMock(), mockCatalogAppPlugin, mockCatalogDataSourcePlugin]);
+
+    expect(await screen.findByText('Sample app')).toBeVisible();
     expect(await screen.findByText('Sample data source')).toBeVisible();
+  });
 
-    fireEvent.change(searchField, { target: { value: 'cramp' } });
-    expect(screen.queryByText('No results matching your query were found.')).toBeInTheDocument();
+  test('should list plugins with update when filtering by update', async () => {
+    const { queryByText } = renderPage(
+      [
+        getCatalogPluginMock({
+          id: 'plugin-1',
+          name: 'Plugin 1',
+          isInstalled: true,
+          hasUpdate: true,
+          type: PluginType.datasource,
+        }),
+        getCatalogPluginMock({ id: 'plugin-2', name: 'Plugin 2', isInstalled: false }),
+        getCatalogPluginMock({
+          id: 'plugin-3',
+          name: 'Plugin 3',
+          isInstalled: true,
+          hasUpdate: true,
+          type: PluginType.datasource,
+        }),
+        getCatalogPluginMock({ id: 'plugin-4', name: 'Plugin 4', isInstalled: true, isCore: true }),
+      ],
+      '/add-new-connection?filterBy=has-update'
+    );
+
+    await waitFor(() => expect(queryByText('Plugin 1')).toBeInTheDocument());
+    expect(queryByText('Plugin 3')).toBeInTheDocument();
+
+    expect(queryByText('Plugin 2')).not.toBeInTheDocument();
+    expect(queryByText('Plugin 4')).not.toBeInTheDocument();
+  });
+
+  test('renders card if search term matches', async () => {
+    renderPage(
+      [
+        getCatalogPluginMock({ type: PluginType.datasource, id: 'test1', name: 'test33' }),
+        getCatalogPluginMock({ id: 'test2', type: PluginType.datasource, name: 'querymatches' }),
+      ],
+      '/add-new-connection?filterBy=all&sortBy=nameAsc&search=querymatches'
+    );
+    expect(await screen.findByText('querymatches')).toBeVisible();
+  });
+
+  test('renders no results if search term does not match', async () => {
+    renderPage(
+      [
+        getCatalogPluginMock({ type: PluginType.datasource, id: 'test1', name: 'test33' }),
+        getCatalogPluginMock({ id: 'test2', type: PluginType.datasource, name: 'querymatches' }),
+      ],
+      '/add-new-connection?filterBy=all&sortBy=nameAsc&search=dfvdfv'
+    );
+
+    expect(await screen.findByText('No results matching your query were found')).toBeVisible();
   });
 
   test('shows a "No access" modal if the user does not have permissions to create datasources', async () => {
-    (contextSrv.hasPermission as jest.Mock) = jest.fn().mockImplementation((permission: string) => {
+    jest.spyOn(contextSrv, 'hasPermission').mockImplementation((permission: string) => {
       if (permission === AccessControlAction.DataSourcesCreate) {
         return false;
       }
@@ -82,21 +164,7 @@ describe('Connect Data', () => {
     expect(screen.queryByText(new RegExp(exampleSentenceInModal))).not.toBeInTheDocument();
 
     // Should show the modal if the user has no permissions
-    fireEvent.click(await screen.findByText('Sample data source'));
+    await userEvent.click(await screen.findByText('Sample data source'));
     expect(screen.queryByText(new RegExp(exampleSentenceInModal))).toBeInTheDocument();
-  });
-
-  test('does not show a "No access" modal but displays the details page if the user has the right permissions', async () => {
-    (contextSrv.hasPermission as jest.Mock) = jest.fn().mockReturnValue(true);
-
-    renderPage([getCatalogPluginMock(), mockCatalogDataSourcePlugin]);
-    const exampleSentenceInModal = 'Editors cannot add new connections.';
-
-    // Should not show the modal by default
-    expect(screen.queryByText(new RegExp(exampleSentenceInModal))).not.toBeInTheDocument();
-
-    // Should not show the modal when clicking a card
-    fireEvent.click(await screen.findByText('Sample data source'));
-    expect(screen.queryByText(new RegExp(exampleSentenceInModal))).not.toBeInTheDocument();
   });
 });

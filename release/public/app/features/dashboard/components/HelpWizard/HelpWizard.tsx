@@ -1,9 +1,9 @@
 import { css } from '@emotion/css';
-import React, { useMemo, useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
 import AutoSizer from 'react-virtualized-auto-sizer';
 
-import { PanelPlugin, GrafanaTheme2, FeatureState } from '@grafana/data';
-import { Stack } from '@grafana/experimental';
+import { PanelPlugin, GrafanaTheme2 } from '@grafana/data';
+import { Trans, t } from '@grafana/i18n';
 import { config } from '@grafana/runtime';
 import {
   Drawer,
@@ -12,19 +12,18 @@ import {
   CodeEditor,
   useStyles2,
   Field,
-  HorizontalGroup,
   InlineSwitch,
   Button,
   Spinner,
   Alert,
-  FeatureBadge,
   Select,
   ClipboardButton,
-  Icon,
+  Stack,
+  TextLink,
 } from '@grafana/ui';
 import { contextSrv } from 'app/core/services/context_srv';
-import { PanelModel } from 'app/features/dashboard/state';
-import { AccessControlAction } from 'app/types';
+import { PanelModel } from 'app/features/dashboard/state/PanelModel';
+import { AccessControlAction } from 'app/types/accessControl';
 
 import { ShowMessage, SnapshotTab, SupportSnapshotService } from './SupportSnapshotService';
 
@@ -42,7 +41,6 @@ export function HelpWizard({ panel, plugin, onClose }: Props) {
     currentTab,
     loading,
     error,
-    iframeLoading,
     options,
     showMessage,
     snapshotSize,
@@ -50,59 +48,49 @@ export function HelpWizard({ panel, plugin, onClose }: Props) {
     snapshotText,
     randomize,
     panelTitle,
-    snapshotUpdate,
+    scene,
   } = service.useState();
 
   useEffect(() => {
     service.buildDebugDashboard();
   }, [service, plugin, randomize]);
 
-  useEffect(() => {
-    // Listen for messages from loaded iframe
-    return service.subscribeToIframeLoadingMessage();
-  }, [service]);
-
   if (!plugin) {
     return null;
   }
 
   const tabs = [
-    { label: 'Snapshot', value: SnapshotTab.Support },
-    { label: 'Data', value: SnapshotTab.Data },
+    { label: t('dashboard.help-wizard.tabs.label.snapshot', 'Snapshot'), value: SnapshotTab.Support },
+    { label: t('dashboard.help-wizard.tabs.label.data', 'Data'), value: SnapshotTab.Data },
   ];
 
   const hasSupportBundleAccess =
-    config.supportBundlesEnabled &&
-    contextSrv.hasAccess(AccessControlAction.ActionSupportBundlesCreate, contextSrv.isGrafanaAdmin);
+    config.supportBundlesEnabled && contextSrv.hasPermission(AccessControlAction.ActionSupportBundlesCreate);
 
   return (
     <Drawer
-      title={`Get help with this panel`}
-      width="90%"
+      title={t('dashboard.help-wizard.title-get-help-with-this-panel', 'Get help with this panel')}
+      size="lg"
       onClose={onClose}
-      expandable
-      scrollableContent
       subtitle={
         <Stack direction="column" gap={1}>
           <Stack direction="row" gap={1}>
-            <FeatureBadge featureState={FeatureState.beta} />
-            <a
-              href="https://grafana.com/docs/grafana/latest/troubleshooting/"
-              target="blank"
-              className="external-link"
-              rel="noopener noreferrer"
-            >
-              Troubleshooting docs <Icon name="external-link-alt" />
-            </a>
+            <TextLink href="https://grafana.com/docs/grafana/latest/troubleshooting/" external>
+              <Trans i18nKey="dashboard.help-wizard.troubleshooting-docs">Troubleshooting docs</Trans>
+            </TextLink>
           </Stack>
           <span className="muted">
-            To request troubleshooting help, send a snapshot of this panel to Grafana Labs Technical Support. The
-            snapshot contains query response data and panel settings.
+            <Trans i18nKey="help-wizard.troubleshooting-help">
+              To request troubleshooting help, send a snapshot of this panel to Grafana Labs Technical Support. The
+              snapshot contains query response data and panel settings.
+            </Trans>
           </span>
           {hasSupportBundleAccess && (
             <span className="muted">
-              You can also retrieve a support bundle containing information concerning your Grafana instance and
-              configured datasources in the <a href="/support-bundles">support bundles section</a>.
+              <Trans i18nKey="help-wizard.support-bundle">
+                You can also retrieve a support bundle containing information concerning your Grafana instance and
+                configured datasources in the <TextLink href="/support-bundles">support bundles section</TextLink>.
+              </Trans>
             </span>
           )}
         </Stack>
@@ -126,17 +114,17 @@ export function HelpWizard({ panel, plugin, onClose }: Props) {
       {currentTab === SnapshotTab.Data && (
         <div className={styles.code}>
           <div className={styles.opts}>
-            <Field label="Template" className={styles.field}>
+            <Field label={t('dashboard.help-wizard.label-template', 'Template')} className={styles.field}>
               <Select options={options} value={showMessage} onChange={service.onShowMessageChange} />
             </Field>
 
             {showMessage === ShowMessage.GithubComment ? (
               <ClipboardButton icon="copy" getText={service.onGetMarkdownForClipboard}>
-                Copy to clipboard
+                <Trans i18nKey="dashboard.help-wizard.copy-to-clipboard">Copy to clipboard</Trans>
               </ClipboardButton>
             ) : (
               <Button icon="download-alt" onClick={service.onDownloadDashboard}>
-                Download ({snapshotSize})
+                <Trans i18nKey="dashboard.help-wizard.download-snapshot">Download ({{ snapshotSize }})</Trans>
               </Button>
             )}
           </div>
@@ -159,72 +147,63 @@ export function HelpWizard({ panel, plugin, onClose }: Props) {
       {currentTab === SnapshotTab.Support && (
         <>
           <Field
-            label="Randomize data"
-            description="Modify the original data to hide sensitve information.  Note the lengths will stay the same, and duplicate values will be equal."
+            label={t('dashboard.help-wizard.label-obfuscate-data', 'Obfuscate data')}
+            description={t(
+              'dashboard.help-wizard.description-obfuscate-data',
+              'Modify the original data to hide sensitve information.  Note the lengths will stay the same, and duplicate values will be equal.'
+            )}
           >
-            <HorizontalGroup>
+            <Stack direction="row" gap={1}>
               <InlineSwitch
-                label="Labels"
+                label={t('dashboard.help-wizard.randomize-labels-label-labels', 'Labels')}
                 id="randomize-labels"
                 showLabel={true}
                 value={Boolean(randomize.labels)}
                 onChange={() => service.onToggleRandomize('labels')}
               />
               <InlineSwitch
-                label="Field names"
+                label={t('dashboard.help-wizard.randomize-field-names-label-field-names', 'Field names')}
                 id="randomize-field-names"
                 showLabel={true}
                 value={Boolean(randomize.names)}
                 onChange={() => service.onToggleRandomize('names')}
               />
               <InlineSwitch
-                label="String values"
+                label={t('dashboard.help-wizard.randomize-string-values-label-string-values', 'String values')}
                 id="randomize-string-values"
                 showLabel={true}
                 value={Boolean(randomize.values)}
                 onChange={() => service.onToggleRandomize('values')}
               />
-            </HorizontalGroup>
+            </Stack>
           </Field>
 
-          <Field label="Support snapshot" description={`Panel: ${panelTitle}`}>
+          <Field
+            label={t('dashboard.help-wizard.label-support-snapshot', 'Support snapshot')}
+            description={t('dashboard.help-wizard.description-support-snapshot', 'Panel: {{panelTitle}}', {
+              panelTitle,
+            })}
+          >
             <Stack>
               <Button icon="download-alt" onClick={service.onDownloadDashboard}>
-                Dashboard ({snapshotSize})
+                <Trans i18nKey="help-wizard.download-snapshot">Download snapshot ({{ snapshotSize }})</Trans>
               </Button>
               <ClipboardButton
                 icon="github"
                 getText={service.onGetMarkdownForClipboard}
-                title="Copy a complete GitHub comment to the clipboard"
+                title={t(
+                  'dashboard.help-wizard.title-complete-git-hub-comment-clipboard',
+                  'Copy a complete GitHub comment to the clipboard'
+                )}
               >
-                Copy to clipboard
+                <Trans i18nKey="help-wizard.github-comment">Copy Github comment</Trans>
               </ClipboardButton>
-              <Button
-                onClick={service.onPreviewDashboard}
-                variant="secondary"
-                title="Open support snapshot dashboard in a new tab"
-              >
-                Preview
-              </Button>
             </Stack>
           </Field>
 
           <AutoSizer disableWidth>
             {({ height }) => (
-              <>
-                <iframe
-                  title="Support snapshot preview"
-                  src={`${config.appUrl}dashboard/new?orgId=${contextSrv.user.orgId}&kiosk&${snapshotUpdate}`}
-                  width="100%"
-                  height={height - 100}
-                  frameBorder="0"
-                  style={{
-                    display: iframeLoading ? 'block' : 'none',
-                    marginTop: 16,
-                  }}
-                />
-                {!iframeLoading && <div>&nbsp;</div>}
-              </>
+              <div style={{ height, overflow: 'auto' }}>{scene && <scene.Component model={scene} />}</div>
             )}
           </AutoSizer>
         </>
@@ -234,24 +213,22 @@ export function HelpWizard({ panel, plugin, onClose }: Props) {
 }
 
 const getStyles = (theme: GrafanaTheme2) => ({
-  code: css`
-    flex-grow: 1;
-    height: 100%;
-    overflow: scroll;
-  `,
-  field: css`
-    width: 100%;
-  `,
-  opts: css`
-    display: flex;
-    display: flex;
-    width: 100%;
-    flex-grow: 0;
-    align-items: center;
-    justify-content: flex-end;
-
-    button {
-      margin-left: 8px;
-    }
-  `,
+  code: css({
+    flexGrow: 1,
+    height: '100%',
+    overflow: 'scroll',
+  }),
+  field: css({
+    width: '100%',
+  }),
+  opts: css({
+    display: 'flex',
+    width: '100%',
+    flexGrow: 0,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    button: {
+      marginLeft: '8px',
+    },
+  }),
 });

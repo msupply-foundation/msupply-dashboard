@@ -1,23 +1,22 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
-import { SelectableValue, toOption } from '@grafana/data';
+import { DataSourceApi, SelectableValue, getDefaultTimeRange, toOption } from '@grafana/data';
+import { QueryBuilderOperationParamEditorProps, VisualQueryModeller } from '@grafana/plugin-ui';
 import { Select } from '@grafana/ui';
 
-import { getOperationParamId } from '../../../prometheus/querybuilder/shared/operationUtils';
-import { QueryBuilderOperationParamEditorProps } from '../../../prometheus/querybuilder/shared/types';
-import { LokiDatasource } from '../../datasource';
-import { getLogQueryFromMetricsQuery, isValidQuery } from '../../queryUtils';
 import { extractUnwrapLabelKeysFromDataFrame } from '../../responseUtils';
-import { lokiQueryModeller } from '../LokiQueryModeller';
+import { getOperationParamId } from '../operationUtils';
 import { LokiVisualQuery } from '../types';
 
 export function UnwrapParamEditor({
   onChange,
   index,
-  operationIndex,
+  operationId,
   value,
   query,
   datasource,
+  timeRange,
+  queryModeller,
 }: QueryBuilderOperationParamEditorProps) {
   const [state, setState] = useState<{
     options?: Array<SelectableValue<string>>;
@@ -26,14 +25,12 @@ export function UnwrapParamEditor({
 
   return (
     <Select
-      inputId={getOperationParamId(operationIndex, index)}
+      inputId={getOperationParamId(operationId, index)}
       onOpenMenu={async () => {
         // This check is always true, we do it to make typescript happy
-        if (datasource instanceof LokiDatasource) {
-          setState({ isLoading: true });
-          const options = await loadUnwrapOptions(query, datasource);
-          setState({ options, isLoading: undefined });
-        }
+        setState({ isLoading: true });
+        const options = await loadUnwrapOptions(query, datasource, queryModeller, timeRange);
+        setState({ options, isLoading: undefined });
       }}
       isLoading={state.isLoading}
       allowCustomValue
@@ -52,15 +49,18 @@ export function UnwrapParamEditor({
 
 async function loadUnwrapOptions(
   query: LokiVisualQuery,
-  datasource: LokiDatasource
+  datasource: DataSourceApi,
+  queryModeller: VisualQueryModeller,
+  timeRange = getDefaultTimeRange()
 ): Promise<Array<SelectableValue<string>>> {
-  const queryExpr = lokiQueryModeller.renderQuery(query);
-  const logExpr = getLogQueryFromMetricsQuery(queryExpr);
-  if (!isValidQuery(logExpr)) {
+  const queryExpr = queryModeller.renderQuery(query);
+  if (!('getDataSamples' in datasource) || typeof datasource.getDataSamples !== 'function') {
     return [];
   }
-
-  const samples = await datasource.getDataSamples({ expr: logExpr, refId: 'unwrap_samples' });
+  // the query is a metric query, we need to set metricQueryToLogConversion to true to getSamples use the log query
+  const samples = await datasource.getDataSamples({ expr: queryExpr, refId: 'unwrap_samples' }, timeRange, {
+    convertMetricQueryToLogQuery: true,
+  });
   const unwrapLabels = extractUnwrapLabelKeysFromDataFrame(samples[0]);
 
   const labelOptions = unwrapLabels.map((label) => ({

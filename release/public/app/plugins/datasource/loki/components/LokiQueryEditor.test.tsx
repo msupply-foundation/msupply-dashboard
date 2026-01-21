@@ -1,12 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { cloneDeep, defaultsDeep } from 'lodash';
-import React from 'react';
 
 import { CoreApp } from '@grafana/data';
-import { QueryEditorMode } from 'app/plugins/datasource/prometheus/querybuilder/shared/types';
+import { QueryEditorMode } from '@grafana/plugin-ui';
 
-import { createLokiDatasource } from '../mocks';
+import { createLokiDatasource } from '../mocks/datasource';
 import { EXPLAIN_LABEL_FILTER_CONTENT } from '../querybuilder/components/LokiQueryBuilderExplained';
 import { LokiQuery, LokiQueryType } from '../types';
 
@@ -16,6 +15,9 @@ import { LokiQueryEditorProps } from './types';
 jest.mock('@grafana/runtime', () => {
   return {
     ...jest.requireActual('@grafana/runtime'),
+    getAppEvents: jest.fn().mockReturnValue({
+      subscribe: jest.fn().mockReturnValue({ unsubscribe: jest.fn() }),
+    }),
     reportInteraction: jest.fn(),
   };
 });
@@ -25,18 +27,6 @@ jest.mock('./monaco-query-field/MonacoQueryFieldWrapper', () => {
   return {
     MonacoQueryFieldWrapper: () => {
       return 'MonacoQueryFieldWrapper';
-    },
-  };
-});
-
-jest.mock('app/core/store', () => {
-  return {
-    get() {
-      return undefined;
-    },
-    set() {},
-    getObject(key: string, defaultValue: unknown) {
-      return defaultValue;
     },
   };
 });
@@ -59,6 +49,10 @@ const defaultProps = {
 };
 
 describe('LokiQueryEditorSelector', () => {
+  // We need to clear local storage after each test because we are using it to store the editor mode and enabled explain
+  afterEach(() => {
+    window.localStorage.clear();
+  });
   it('shows code editor if expr and nothing else', async () => {
     // We opt for showing code editor for queries created before this feature was added
     render(<LokiQueryEditor {...defaultProps} />);
@@ -88,21 +82,26 @@ describe('LokiQueryEditorSelector', () => {
     await expectBuilder();
   });
 
-  it('shows Run Queries button in Dashboards', async () => {
+  it('shows Run Query button in Dashboards', async () => {
     renderWithProps({}, { app: CoreApp.Dashboard });
-    await expectRunQueriesButton();
+    await expectRunQueryButton();
   });
 
-  it('hides Run Queries button in Explore', async () => {
+  it('hides Run Query button in Explore', async () => {
     renderWithProps({}, { app: CoreApp.Explore });
     await expectCodeEditor();
-    expectNoRunQueriesButton();
+    expectNoRunQueryButton();
   });
 
-  it('hides Run Queries button in Correlations Page', async () => {
+  it('hides Run Query button in Correlations Page', async () => {
     renderWithProps({}, { app: CoreApp.Correlations });
     await expectCodeEditor();
-    expectNoRunQueriesButton();
+    expectNoRunQueryButton();
+  });
+
+  it('shows Run Queries button in Dashboards when multiple queries', async () => {
+    renderWithProps({}, { app: CoreApp.Dashboard, queries: [defaultQuery, defaultQuery] });
+    await expectRunQueriesButton();
   });
 
   it('changes to builder mode', async () => {
@@ -152,7 +151,7 @@ describe('LokiQueryEditorSelector', () => {
   it('parses query when changing to builder mode', async () => {
     const { rerender } = renderWithProps({
       refId: 'A',
-      expr: 'rate({instance="host.docker.internal:3000"}[$__interval])',
+      expr: 'rate({instance="host.docker.internal:3000"}[$__auto])',
       editorMode: QueryEditorMode.Code,
     });
     await expectCodeEditor();
@@ -162,7 +161,7 @@ describe('LokiQueryEditorSelector', () => {
         {...defaultProps}
         query={{
           refId: 'A',
-          expr: 'rate({instance="host.docker.internal:3000"}[$__interval])',
+          expr: 'rate({instance="host.docker.internal:3000"}[$__auto])',
           editorMode: QueryEditorMode.Builder,
         }}
       />
@@ -170,7 +169,7 @@ describe('LokiQueryEditorSelector', () => {
 
     await screen.findByText('host.docker.internal:3000');
     expect(screen.getByText('Rate')).toBeInTheDocument();
-    expect(screen.getByText('$__interval')).toBeInTheDocument();
+    expect(screen.getByText('$__auto')).toBeInTheDocument();
   });
 
   it('renders the label browser button', async () => {
@@ -204,8 +203,12 @@ async function expectRunQueriesButton() {
   expect(await screen.findByRole('button', { name: /run queries/i })).toBeInTheDocument();
 }
 
-function expectNoRunQueriesButton() {
-  expect(screen.queryByRole('button', { name: /run queries/i })).not.toBeInTheDocument();
+async function expectRunQueryButton() {
+  expect(await screen.findByRole('button', { name: /run query/i })).toBeInTheDocument();
+}
+
+function expectNoRunQueryButton() {
+  expect(screen.queryByRole('button', { name: /run query/i })).not.toBeInTheDocument();
 }
 
 async function switchToMode(mode: QueryEditorMode) {

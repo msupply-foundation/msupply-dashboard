@@ -1,67 +1,70 @@
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
+import * as React from 'react';
 
 import { ValueMatcherID, RangeValueMatcherOptions } from '@grafana/data';
-import { Input } from '@grafana/ui';
+import { Trans, t } from '@grafana/i18n';
+import { InlineLabel } from '@grafana/ui';
+
+import { SuggestionsInput } from '../../suggestionsInput/SuggestionsInput';
+import { getVariableSuggestions, numberOrVariableValidator } from '../../utils';
 
 import { ValueMatcherEditorConfig, ValueMatcherUIProps, ValueMatcherUIRegistryItem } from './types';
-import { convertToType } from './utils';
 
 type PropNames = 'from' | 'to';
 
-export function rangeMatcherEditor<T = any>(
+export function rangeMatcherEditor<T = string | number>(
   config: ValueMatcherEditorConfig
 ): React.FC<ValueMatcherUIProps<RangeValueMatcherOptions<T>>> {
-  return function RangeMatcherEditor({ options, onChange, field }) {
+  return function RangeMatcherEditor({ options, onChange }) {
     const { validator } = config;
     const [isInvalid, setInvalid] = useState({
       from: !validator(options.from),
       to: !validator(options.to),
     });
 
-    const onChangeValue = useCallback(
-      (event: React.FormEvent<HTMLInputElement>, prop: PropNames) => {
+    const onChangeOptionsSuggestions = useCallback(
+      (value: string, prop: PropNames) => {
+        const invalid = !validator(value);
+
         setInvalid({
           ...isInvalid,
-          [prop]: !validator(event.currentTarget.value),
+          [prop]: invalid,
         });
-      },
-      [setInvalid, validator, isInvalid]
-    );
 
-    const onChangeOptions = useCallback(
-      (event: React.FocusEvent<HTMLInputElement>, prop: PropNames) => {
-        if (isInvalid[prop]) {
+        if (invalid) {
           return;
         }
 
-        const { value } = event.currentTarget;
-
         onChange({
           ...options,
-          [prop]: convertToType(value, field),
+          [prop]: value,
         });
       },
-      [options, onChange, isInvalid, field]
+      [options, onChange, isInvalid, setInvalid, validator]
     );
+
+    const suggestions = getVariableSuggestions();
 
     return (
       <>
-        <Input
-          className="flex-grow-1 gf-form-spacing"
-          invalid={isInvalid['from']}
-          defaultValue={String(options.from)}
-          placeholder="From"
-          onChange={(event) => onChangeValue(event, 'from')}
-          onBlur={(event) => onChangeOptions(event, 'from')}
+        <SuggestionsInput
+          value={String(options.from)}
+          invalid={isInvalid.from}
+          error={'Value needs to be a number or a variable'}
+          placeholder={t('transformers.range-matcher-editor.placeholder-from', 'From')}
+          onChange={(val) => onChangeOptionsSuggestions(val, 'from')}
+          suggestions={suggestions}
         />
-        <div className="gf-form-label">and</div>
-        <Input
-          className="flex-grow-1"
-          invalid={isInvalid['to']}
-          defaultValue={String(options.to)}
-          placeholder="To"
-          onChange={(event) => onChangeValue(event, 'to')}
-          onBlur={(event) => onChangeOptions(event, 'to')}
+        <InlineLabel>
+          <Trans i18nKey="transformers.range-matcher-editor.and">and</Trans>
+        </InlineLabel>
+        <SuggestionsInput
+          invalid={isInvalid.to}
+          error={'Value needs to be a number or a variable'}
+          value={String(options.to)}
+          placeholder={t('transformers.range-matcher-editor.placeholder-to', 'To')}
+          suggestions={suggestions}
+          onChange={(val) => onChangeOptionsSuggestions(val, 'to')}
         />
       </>
     );
@@ -73,10 +76,8 @@ export const getRangeValueMatchersUI = (): Array<ValueMatcherUIRegistryItem<Rang
     {
       name: 'Is between',
       id: ValueMatcherID.between,
-      component: rangeMatcherEditor<number>({
-        validator: (value) => {
-          return !isNaN(value);
-        },
+      component: rangeMatcherEditor<string | number>({
+        validator: numberOrVariableValidator,
       }),
     },
   ];

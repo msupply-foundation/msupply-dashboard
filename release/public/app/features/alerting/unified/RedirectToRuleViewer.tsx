@@ -1,17 +1,20 @@
 import { css } from '@emotion/css';
-import React from 'react';
-import { Redirect } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Navigate } from 'react-router-dom-v5-compat';
 import { useLocation } from 'react-use';
 
+import { AlertLabels } from '@grafana/alerting/unstable';
 import { GrafanaTheme2 } from '@grafana/data';
-import { config } from '@grafana/runtime';
-import { Alert, Card, Icon, LoadingPlaceholder, useStyles2, withErrorBoundary } from '@grafana/ui';
+import { Trans, t } from '@grafana/i18n';
+import { config, isFetchError } from '@grafana/runtime';
+import { Alert, Card, Icon, LoadingPlaceholder, useStyles2 } from '@grafana/ui';
 
-import { AlertLabels } from './components/AlertLabels';
 import { RuleViewerLayout } from './components/rule-viewer/RuleViewerLayout';
-import { useCombinedRulesMatching } from './hooks/useCombinedRule';
+import { useCloudCombinedRulesMatching } from './hooks/useCombinedRule';
 import { getRulesSourceByName } from './utils/datasource';
 import { createViewLink } from './utils/misc';
+import { unescapePathSeparators } from './utils/rule-id';
+import { withPageErrorBoundary } from './withPageErrorBoundary';
 
 const pageTitle = 'Find rule';
 const subUrl = config.appSubUrl;
@@ -24,44 +27,65 @@ function useRuleFindParams() {
   // Relevant issue: https://github.com/remix-run/history/issues/505#issuecomment-453175833
   // It was probably fixed in React-Router v6
   const location = useLocation();
-  const segments = location.pathname?.replace(subUrl, '').split('/') ?? []; // ["", "alerting", "{sourceName}", "{name}]
 
-  const name = decodeURIComponent(segments[3]);
-  const sourceName = decodeURIComponent(segments[2]);
+  return useMemo(() => {
+    const segments = location.pathname?.replace(subUrl, '').split('/') ?? []; // ["", "alerting", "{sourceName}", "{name}]
+    const name = unescapePathSeparators(decodeURIComponent(unescapePathSeparators(segments[3])));
+    const sourceName = decodeURIComponent(segments[2]);
 
-  return { name, sourceName };
+    const searchParams = new URLSearchParams(location.search);
+
+    return {
+      name,
+      sourceName,
+      namespace: searchParams.get('namespace') ?? undefined,
+      group: searchParams.get('group') ?? undefined,
+    };
+  }, [location]);
 }
 
 export function RedirectToRuleViewer(): JSX.Element | null {
   const styles = useStyles2(getStyles);
 
-  const { name, sourceName } = useRuleFindParams();
-  const { error, loading, result: rules, dispatched } = useCombinedRulesMatching(name, sourceName);
+  const { name, sourceName, namespace, group } = useRuleFindParams();
+  const {
+    error,
+    loading,
+    rules = [],
+  } = useCloudCombinedRulesMatching(name, sourceName, { namespace, groupName: group });
+
+  if (!name || !sourceName) {
+    return <Navigate replace to="/notfound" />;
+  }
 
   if (error) {
     return (
       <RuleViewerLayout title={pageTitle}>
-        <Alert title={`Failed to load rules from ${sourceName}`}>
-          <details className={styles.errorMessage}>
-            {error.message}
-            <br />
-            {!!error?.stack && error.stack}
-          </details>
+        <Alert
+          title={t(
+            'alerting.redirect-to-rule-viewer.title-failed-to-load',
+            'Failed to load rules from {{sourceName}}',
+            { sourceName }
+          )}
+        >
+          {isFetchError(error) && (
+            <details className={styles.errorMessage}>
+              {error.message}
+              <br />
+              {/* {!!error?.stack && error.stack} */}
+            </details>
+          )}
         </Alert>
       </RuleViewerLayout>
     );
   }
 
-  if (loading || !dispatched || !Array.isArray(rules)) {
+  if (loading) {
     return (
       <RuleViewerLayout title={pageTitle}>
-        <LoadingPlaceholder text="Loading rule..." />
+        <LoadingPlaceholder text={t('alerting.redirect-to-rule-viewer.text-loading-rule', 'Loading rule...')} />
       </RuleViewerLayout>
     );
-  }
-
-  if (!name || !sourceName) {
-    return <Redirect to="/notfound" />;
   }
 
   const rulesSource = getRulesSourceByName(sourceName);
@@ -69,7 +93,7 @@ export function RedirectToRuleViewer(): JSX.Element | null {
   if (!rulesSource) {
     return (
       <RuleViewerLayout title={pageTitle}>
-        <Alert title="Could not view rule">
+        <Alert title={t('alerting.redirect-to-rule-viewer.title-could-not-view-rule', 'Could not view rule')}>
           <details className={styles.errorMessage}>{`Could not find data source with name: ${sourceName}.`}</details>
         </Alert>
       </RuleViewerLayout>
@@ -79,19 +103,34 @@ export function RedirectToRuleViewer(): JSX.Element | null {
   if (rules.length === 1) {
     const [rule] = rules;
     const to = createViewLink(rulesSource, rule, '/alerting/list').replace(subUrl, '');
-    return <Redirect to={to} />;
+    return <Navigate replace to={to} />;
+  }
+
+  if (rules.length === 0) {
+    return (
+      <RuleViewerLayout title={pageTitle}>
+        <div data-testid="no-rules">
+          <Trans i18nKey="alerting.redirect-to-rule-viewer.no-rules-found" values={{ sourceName, name }}>
+            No rules in <span className={styles.param}>{'{{sourceName}}'}</span> matched the name{' '}
+            <span className={styles.param}>{'{{name}}'}</span>
+          </Trans>
+        </div>
+      </RuleViewerLayout>
+    );
   }
 
   return (
     <RuleViewerLayout title={pageTitle}>
       <div>
-        Several rules in <span className={styles.param}>{sourceName}</span> matched the name{' '}
-        <span className={styles.param}>{name}</span>, please select the rule you want to view.
+        <Trans i18nKey="alerting.redirect-to-rule-viewer.several-rules-found" values={{ sourceName, name }}>
+          Several rules in <span className={styles.param}>{'{{sourceName}}'}</span> matched the name{' '}
+          <span className={styles.param}>{'{{name}}'}</span>, please select the rule you want to view.
+        </Trans>
       </div>
       <div className={styles.rules}>
         {rules.map((rule, index) => {
           return (
-            <Card key={`${rule.name}-${index}`} href={createViewLink(rulesSource, rule, '/alerting/list')}>
+            <Card noMargin key={`${rule.name}-${index}`} href={createViewLink(rulesSource, rule, '/alerting/list')}>
               <Card.Heading>{rule.name}</Card.Heading>
               <Card.Meta separator={''}>
                 <Icon name="folder" />
@@ -110,20 +149,20 @@ export function RedirectToRuleViewer(): JSX.Element | null {
 
 function getStyles(theme: GrafanaTheme2) {
   return {
-    param: css`
-      font-style: italic;
-      color: ${theme.colors.text.secondary};
-    `,
-    rules: css`
-      margin-top: ${theme.spacing(2)};
-    `,
-    namespace: css`
-      margin-left: ${theme.spacing(1)};
-    `,
-    errorMessage: css`
-      white-space: pre-wrap;
-    `,
+    param: css({
+      fontStyle: 'italic',
+      color: theme.colors.text.secondary,
+    }),
+    rules: css({
+      marginTop: theme.spacing(2),
+    }),
+    namespace: css({
+      marginLeft: theme.spacing(1),
+    }),
+    errorMessage: css({
+      whiteSpace: 'pre-wrap',
+    }),
   };
 }
 
-export default withErrorBoundary(RedirectToRuleViewer, { style: 'page' });
+export default withPageErrorBoundary(RedirectToRuleViewer);

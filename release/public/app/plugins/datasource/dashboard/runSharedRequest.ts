@@ -11,9 +11,11 @@ import {
   DataTopic,
 } from '@grafana/data';
 import { getDashboardSrv } from 'app/features/dashboard/services/DashboardSrv';
+import { PanelModel } from 'app/features/dashboard/state/PanelModel';
 import { QueryRunnerOptions } from 'app/features/query/state/PanelQueryRunner';
 
-import { DashboardQuery, SHARED_DASHBOARD_QUERY } from './types';
+import { SHARED_DASHBOARD_QUERY } from './constants';
+import { DashboardQuery } from './types';
 
 export function isSharedDashboardQuery(datasource: string | DataSourceRef | DataSourceApi | null) {
   if (!datasource) {
@@ -42,7 +44,12 @@ export function runSharedRequest(options: QueryRunnerOptions, query: DashboardQu
       return undefined;
     }
 
-    const listenToPanel = dashboard?.getPanelById(listenToPanelId);
+    // Source panel might be contained in a collapsed row, in which
+    // case we need to create a PanelModel
+    let listenToPanel = dashboard?.getPanelById(listenToPanelId, true);
+    if (!(listenToPanel instanceof PanelModel)) {
+      listenToPanel = new PanelModel(listenToPanel);
+    }
 
     if (!listenToPanel) {
       subscriber.next(getQueryError('Unknown Panel: ' + listenToPanelId));
@@ -71,7 +78,10 @@ export function runSharedRequest(options: QueryRunnerOptions, query: DashboardQu
 
     // If we are in fullscreen the other panel will not execute any queries
     // So we have to trigger it from here
-    if (!listenToPanel.isInView) {
+    if (
+      (!listenToPanel.isInView && listenToPanel.refreshWhenInView) ||
+      dashboard?.otherPanelInFullscreen(listenToPanel)
+    ) {
       const { datasource, targets } = listenToPanel;
       const modified = {
         ...options,
@@ -79,6 +89,8 @@ export function runSharedRequest(options: QueryRunnerOptions, query: DashboardQu
         panelId: listenToPanelId,
         queries: targets,
       };
+
+      listenToPanel.refreshWhenInView = false;
       listenToRunner.run(modified);
     }
 

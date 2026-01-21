@@ -1,28 +1,8 @@
-import { Accept } from 'react-dropzone';
 import { Observable } from 'rxjs';
 
-import { toDataFrame } from '@grafana/data';
-import { readSpreadsheet } from 'app/core/utils/sheet';
+import { readCSV, toDataFrame } from '@grafana/data';
 
 import { FileImportResult } from './types';
-
-function getFileExtensions(acceptedFiles: Accept) {
-  const fileExtentions = new Set<string>();
-  Object.keys(acceptedFiles).forEach((v) => {
-    acceptedFiles[v].forEach((extension) => {
-      fileExtentions.add(extension);
-    });
-  });
-  return fileExtentions;
-}
-
-export function formatFileTypes(acceptedFiles: Accept) {
-  const fileExtentions = Array.from(getFileExtensions(acceptedFiles));
-  if (fileExtentions.length === 1) {
-    return fileExtentions[0];
-  }
-  return `${fileExtentions.slice(0, -1).join(', ')} or ${fileExtentions.slice(-1)}`;
-}
 
 export function filesToDataframes(files: File[]): Observable<FileImportResult> {
   return new Observable<FileImportResult>((subscriber) => {
@@ -33,12 +13,13 @@ export function filesToDataframes(files: File[]): Observable<FileImportResult> {
       reader.onload = () => {
         const result = reader.result;
         if (result && result instanceof ArrayBuffer) {
+          const decoder = new TextDecoder('utf-8');
+          const fileString = decoder.decode(result);
           if (file.type === 'application/json') {
-            const decoder = new TextDecoder('utf-8');
-            const json = JSON.parse(decoder.decode(result));
+            const json = JSON.parse(fileString);
             subscriber.next({ dataFrames: [toDataFrame(json)], file: file });
           } else {
-            subscriber.next({ dataFrames: readSpreadsheet(result), file: file });
+            subscriber.next({ dataFrames: readCSV(fileString), file: file });
           }
           if (++completedFiles >= files.length) {
             subscriber.complete();

@@ -1,14 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { TestProvider } from 'test/helpers/TestProvider';
 
-import { OrgRole, ServiceAccountDTO, ServiceAccountStateFilter } from 'app/types';
+import { OrgRole } from '@grafana/data';
+import { ServiceAccountStateFilter, ServiceAccountDTO } from 'app/types/serviceaccount';
 
 import { Props, ServiceAccountsListPageUnconnected } from './ServiceAccountsListPage';
 
 jest.mock('app/core/core', () => ({
   contextSrv: {
+    ...jest.requireActual('app/core/core').contextSrv,
     licensedAccessControlEnabled: () => false,
     hasPermission: () => true,
     hasPermissionInMetadata: () => true,
@@ -16,6 +17,7 @@ jest.mock('app/core/core', () => ({
 }));
 
 const setup = (propOverrides: Partial<Props>) => {
+  const changePageMock = jest.fn();
   const changeQueryMock = jest.fn();
   const fetchACOptionsMock = jest.fn();
   const fetchServiceAccountsMock = jest.fn();
@@ -33,6 +35,7 @@ const setup = (propOverrides: Partial<Props>) => {
     showPaging: false,
     totalPages: 1,
     serviceAccounts: [],
+    changePage: changePageMock,
     changeQuery: changeQueryMock,
     fetchACOptions: fetchACOptionsMock,
     fetchServiceAccounts: fetchServiceAccountsMock,
@@ -64,6 +67,7 @@ const setup = (propOverrides: Partial<Props>) => {
 
 const getDefaultServiceAccount: () => ServiceAccountDTO = () => ({
   id: 42,
+  uid: 'aaaaa',
   name: 'Data source scavenger',
   login: 'sa-data-source-scavenger',
   orgId: 1,
@@ -75,7 +79,7 @@ const getDefaultServiceAccount: () => ServiceAccountDTO = () => ({
 });
 
 describe('ServiceAccountsListPage tests', () => {
-  it('Should display list of service accounts', () => {
+  it('Should display list of service accounts', async () => {
     setup({
       serviceAccounts: [getDefaultServiceAccount()],
     });
@@ -135,7 +139,7 @@ describe('ServiceAccountsListPage tests', () => {
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /Disable/ }));
-    await user.click(screen.getByLabelText(/Confirm Modal Danger Button/));
+    await user.click(screen.getByRole('button', { name: 'Disable service account' }));
 
     expect(updateServiceAccountMock).toHaveBeenCalledWith({
       ...getDefaultServiceAccount(),
@@ -151,9 +155,9 @@ describe('ServiceAccountsListPage tests', () => {
     });
 
     const user = userEvent.setup();
-    await user.click(screen.getByLabelText(/Delete service account/));
-    await user.click(screen.getByLabelText(/Confirm Modal Danger Button/));
+    await user.click(screen.getByLabelText(`Delete service account ${getDefaultServiceAccount().name}`));
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
 
-    expect(deleteServiceAccountMock).toHaveBeenCalledWith(42);
+    expect(deleteServiceAccountMock).toHaveBeenCalledWith('aaaaa');
   });
 });

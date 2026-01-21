@@ -1,6 +1,5 @@
-import { RichHistorySearchFilters, RichHistorySettings } from 'app/core/utils/richHistory';
-
-import { RichHistoryQuery } from '../../types';
+import { RichHistorySearchBackendFilters, RichHistorySettings } from 'app/core/utils/richHistoryTypes';
+import { RichHistoryQuery } from 'app/types/explore';
 
 /**
  * Errors are used when the operation on Rich History was not successful.
@@ -35,7 +34,7 @@ export type RichHistoryResults = { richHistory: RichHistoryQuery[]; total?: numb
  * @alpha
  */
 export default interface RichHistoryStorage {
-  getRichHistory(filters: RichHistorySearchFilters): Promise<RichHistoryResults>;
+  getRichHistory(filters: RichHistorySearchBackendFilters): Promise<RichHistoryResults>;
 
   /**
    * Creates new RichHistoryQuery, returns object with unique id and created date

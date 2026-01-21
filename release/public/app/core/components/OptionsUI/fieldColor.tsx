@@ -1,8 +1,8 @@
 import { css } from '@emotion/css';
-import React, { CSSProperties, FC } from 'react';
+import { CSSProperties, FC } from 'react';
 
 import {
-  FieldConfigEditorProps,
+  StandardEditorProps,
   FieldColorModeId,
   SelectableValue,
   FieldColor,
@@ -13,11 +13,12 @@ import {
   FieldColorSeriesByMode,
   getFieldColorMode,
 } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { useStyles2, useTheme2, Field, RadioButtonGroup, Select } from '@grafana/ui';
 
 import { ColorValueEditor } from './color';
 
-type Props = FieldConfigEditorProps<FieldColor | undefined, FieldColorConfigSettings>;
+type Props = StandardEditorProps<FieldColor | undefined, FieldColorConfigSettings>;
 
 export const FieldColorEditor = ({ value, onChange, item, id }: Props) => {
   const theme = useTheme2();
@@ -28,20 +29,22 @@ export const FieldColorEditor = ({ value, onChange, item, id }: Props) => {
     ? fieldColorModeRegistry.list()
     : fieldColorModeRegistry.list().filter((m) => !m.isByValue);
 
-  const options = availableOptions.map((mode) => {
-    let suffix = mode.isByValue ? ' (by value)' : '';
+  const options = availableOptions
+    .filter((mode) => !mode.excludeFromPicker)
+    .map((mode) => {
+      let suffix = mode.isByValue ? ' (by value)' : '';
 
-    return {
-      value: mode.id,
-      label: `${mode.name}${suffix}`,
-      description: mode.description,
-      isContinuous: mode.isContinuous,
-      isByValue: mode.isByValue,
-      component() {
-        return <FieldColorModeViz mode={mode} theme={theme} />;
-      },
-    };
-  });
+      return {
+        value: mode.id,
+        label: `${mode.name}${suffix}`,
+        description: mode.description,
+        isContinuous: mode.isContinuous,
+        isByValue: mode.isByValue,
+        component() {
+          return <FieldColorModeViz mode={mode} theme={theme} />;
+        },
+      };
+    });
 
   const onModeChange = (newMode: SelectableValue<string>) => {
     onChange({
@@ -68,7 +71,7 @@ export const FieldColorEditor = ({ value, onChange, item, id }: Props) => {
 
   const mode = value?.mode ?? FieldColorModeId.Thresholds;
 
-  if (mode === FieldColorModeId.Fixed) {
+  if (mode === FieldColorModeId.Fixed || mode === FieldColorModeId.Shades) {
     return (
       <div className={styles.group}>
         <Select
@@ -96,7 +99,7 @@ export const FieldColorEditor = ({ value, onChange, item, id }: Props) => {
         <div style={{ marginBottom: theme.spacing(2) }}>
           <Select minMenuHeight={200} options={options} value={mode} onChange={onModeChange} inputId={id} />
         </div>
-        <Field label="Color series by">
+        <Field label={t('options-ui.field-color.color-by-label', 'Color series by')}>
           <RadioButtonGroup value={value?.seriesBy ?? 'last'} options={seriesModes} onChange={onSeriesModeChange} />
         </Field>
       </>
@@ -136,7 +139,7 @@ const FieldColorModeViz: FC<ModeProps> = ({ mode, theme }) => {
       if (gradient === '') {
         gradient = `linear-gradient(90deg, ${color} 0%`;
       } else {
-        const valuePercent = i / (colors.length - 1);
+        const valuePercent = i / colors.length;
         const pos = valuePercent * 100;
         gradient += `, ${lastColor} ${pos}%, ${color} ${pos}%`;
       }
@@ -150,12 +153,12 @@ const FieldColorModeViz: FC<ModeProps> = ({ mode, theme }) => {
 
 const getStyles = (theme: GrafanaTheme2) => {
   return {
-    group: css`
-      display: flex;
-    `,
-    select: css`
-      margin-right: 8px;
-      flex-grow: 1;
-    `,
+    group: css({
+      display: 'flex',
+    }),
+    select: css({
+      marginRight: theme.spacing(1),
+      flexGrow: 1,
+    }),
   };
 };

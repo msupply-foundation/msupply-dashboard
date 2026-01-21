@@ -1,9 +1,9 @@
 import { reducerTester } from 'test/core/redux/reducerTester';
 
 import { PluginMeta, PluginMetaInfo, PluginType, LayoutModes } from '@grafana/data';
-import { DataSourceSettingsState, DataSourcesState } from 'app/types';
+import { DataSourceSettingsState, DataSourcesState } from 'app/types/datasources';
 
-import { getMockDataSource, getMockDataSources } from '../__mocks__';
+import { getMockDataSource, getMockDataSources } from '../mocks/dataSourcesMocks';
 import { GenericDataSourcePlugin } from '../types';
 
 import {
@@ -37,7 +37,7 @@ const mockPlugin = () =>
     pinned: true,
     type: PluginType.datasource,
     module: 'path/to/module',
-  } as PluginMeta);
+  }) as PluginMeta;
 
 describe('dataSourcesReducer', () => {
   describe('when dataSourcesLoaded is dispatched', () => {

@@ -1,6 +1,7 @@
+import saveAs from 'file-saver';
+
 import {
-  ArrayVector,
-  DataFrame,
+  AbsoluteTimeRange,
   FieldType,
   Labels,
   LogLevel,
@@ -8,18 +9,30 @@ import {
   LogsModel,
   LogsSortOrder,
   MutableDataFrame,
+  DataFrame,
 } from '@grafana/data';
+import { getMockFrames } from 'app/plugins/datasource/loki/mocks/frames';
 
+import { createLogRow } from './components/mocks/logRow';
+import { logSeriesToLogsModel } from './logsModel';
 import {
   calculateLogsLabelStats,
   calculateStats,
   checkLogsError,
+  escapeUnescapedString,
+  createLogRowsMap,
   getLogLevel,
   getLogLevelFromKey,
+  getLogsVolumeMaximumRange,
   logRowsToReadableJson,
   mergeLogsVolumeDataFrames,
   sortLogsResult,
+  checkLogsSampled,
+  downloadLogs,
+  DownloadFormat,
 } from './utils';
+
+jest.mock('file-saver', () => jest.fn());
 
 describe('getLoglevel()', () => {
   it('returns no log level on empty line', () => {
@@ -58,8 +71,30 @@ describe('getLogLevelFromKey()', () => {
   it('returns correct log level when level is capitalized', () => {
     expect(getLogLevelFromKey('INFO')).toBe(LogLevel.info);
   });
-  it('returns unknown log level when level is integer', () => {
-    expect(getLogLevelFromKey(1)).toBe(LogLevel.unknown);
+  describe('Numeric log levels', () => {
+    it('returns critical', () => {
+      expect(getLogLevelFromKey(0)).toBe(LogLevel.critical);
+      expect(getLogLevelFromKey('0')).toBe(LogLevel.critical);
+      expect(getLogLevelFromKey('1')).toBe(LogLevel.critical);
+      expect(getLogLevelFromKey('2')).toBe(LogLevel.critical);
+    });
+    it('returns error', () => {
+      expect(getLogLevelFromKey('3')).toBe(LogLevel.error);
+    });
+    it('returns warning', () => {
+      expect(getLogLevelFromKey('4')).toBe(LogLevel.warning);
+    });
+    it('returns info', () => {
+      expect(getLogLevelFromKey('5')).toBe(LogLevel.info);
+      expect(getLogLevelFromKey('6')).toBe(LogLevel.info);
+    });
+    it('returns debug', () => {
+      expect(getLogLevelFromKey('7')).toBe(LogLevel.debug);
+    });
+    it('returns unknown log level when level is an unexpected integer', () => {
+      expect(getLogLevelFromKey('8')).toBe(LogLevel.unknown);
+      expect(getLogLevelFromKey(8)).toBe(LogLevel.unknown);
+    });
   });
 });
 
@@ -213,16 +248,60 @@ describe('checkLogsError()', () => {
       foo: 'boo',
     } as Labels,
   } as LogRowModel;
-  test('should return correct error if error is present', () => {
-    expect(checkLogsError(log)).toStrictEqual({ hasError: true, errorMessage: 'Error Message' });
+  test('should return the error if present', () => {
+    expect(checkLogsError(log)).toStrictEqual('Error Message');
+  });
+  test('should return undefined otherwise', () => {
+    expect(checkLogsError({ ...log, labels: {} })).toStrictEqual(undefined);
+  });
+});
+
+describe('checkLogsSampled()', () => {
+  const log = {
+    labels: {
+      __adaptive_logs_sampled__: 'true',
+      foo: 'boo',
+    } as Labels,
+  } as LogRowModel;
+  test('should return a message if is sampled', () => {
+    expect(checkLogsSampled(log)).toStrictEqual('Logs like this one have been dropped by Adaptive Logs');
+  });
+  test('should return an interpolated message if is sampled', () => {
+    expect(
+      checkLogsSampled({
+        ...log,
+        labels: {
+          __adaptive_logs_sampled__: '10',
+        },
+      })
+    ).toStrictEqual('10% of logs like this one have been dropped by Adaptive Logs');
+  });
+  test('should return undefined otherwise', () => {
+    expect(checkLogsSampled({ ...log, labels: {} })).toStrictEqual(undefined);
   });
 });
 
 describe('logRowsToReadableJson', () => {
   const testRow: LogRowModel = {
-    rowIndex: 1,
-    entryFieldIndex: 0,
-    dataFrame: new MutableDataFrame(),
+    rowIndex: 0,
+    entryFieldIndex: 1,
+    dataFrame: {
+      length: 1,
+      fields: [
+        {
+          name: 'timestamp',
+          type: FieldType.time,
+          config: {},
+          values: [1],
+        },
+        {
+          name: 'body',
+          type: FieldType.string,
+          config: {},
+          values: ['test entry'],
+        },
+      ],
+    },
     entry: 'test entry',
     hasAnsi: false,
     hasUnescapedContent: false,
@@ -238,11 +317,32 @@ describe('logRowsToReadableJson', () => {
     timeUtc: '',
     uid: '2',
   };
-  const testDf = new MutableDataFrame();
-  testDf.addField({ name: 'foo2', values: ['bar2'] });
+  const testDf: DataFrame = {
+    length: 1,
+    fields: [
+      {
+        name: 'timestamp',
+        type: FieldType.time,
+        config: {},
+        values: [1],
+      },
+      {
+        name: 'body',
+        type: FieldType.string,
+        config: {},
+        values: ['test entry'],
+      },
+      {
+        name: 'foo2',
+        type: FieldType.string,
+        config: {},
+        values: ['bar2'],
+      },
+    ],
+  };
   const testRow2: LogRowModel = {
     rowIndex: 0,
-    entryFieldIndex: -1,
+    entryFieldIndex: 1,
     dataFrame: testDf,
     entry: 'test entry',
     hasAnsi: false,
@@ -263,13 +363,22 @@ describe('logRowsToReadableJson', () => {
   it('should format a single row', () => {
     const result = logRowsToReadableJson([testRow]);
 
-    expect(result).toEqual([{ line: 'test entry', timestamp: '123456789', fields: { foo: 'bar' } }]);
+    expect(result).toEqual([
+      { date: '1970-01-01T00:00:00.010Z', line: 'test entry', timestamp: '123456789', fields: { foo: 'bar' } },
+    ]);
   });
 
   it('should format a df field row', () => {
     const result = logRowsToReadableJson([testRow2]);
 
-    expect(result).toEqual([{ line: 'test entry', timestamp: '123456789', fields: { foo: 'bar', foo2: 'bar2' } }]);
+    expect(result).toEqual([
+      {
+        date: '1970-01-01T00:00:00.010Z',
+        line: 'test entry',
+        timestamp: '123456789',
+        fields: { foo: 'bar', foo2: 'bar2' },
+      },
+    ]);
   });
 });
 
@@ -296,13 +405,15 @@ describe('mergeLogsVolumeDataFrames', () => {
     const debugVolume1 = mockLogVolume('debug', [2, 3], [2, 3]);
     const debugVolume2 = mockLogVolume('debug', [1, 5], [1, 0]);
 
-    // error 1:    - - - - - 1
-    // error 2:    1 - - - - 1
-    // total:      1 - - - - 2
+    // error 1:    1 - - - - 1
+    // error 2:    1 - - - - -
+    // total:      2 - - - - 1
     const errorVolume1 = mockLogVolume('error', [1, 6], [1, 1]);
     const errorVolume2 = mockLogVolume('error', [1], [1]);
 
-    const merged = mergeLogsVolumeDataFrames([
+    // all totals: 6 5 4 - 0 2
+
+    const { dataFrames: merged, maximum } = mergeLogsVolumeDataFrames([
       infoVolume1,
       infoVolume2,
       debugVolume1,
@@ -318,12 +429,12 @@ describe('mergeLogsVolumeDataFrames', () => {
           {
             name: 'Time',
             type: FieldType.time,
-            values: new ArrayVector([1, 2, 3]),
+            values: [1, 2, 3],
           },
           {
             name: 'Value',
             type: FieldType.number,
-            values: new ArrayVector([3, 3, 1]),
+            values: [3, 3, 1],
             config: {
               displayNameFromDS: 'info',
             },
@@ -335,12 +446,12 @@ describe('mergeLogsVolumeDataFrames', () => {
           {
             name: 'Time',
             type: FieldType.time,
-            values: new ArrayVector([1, 2, 3, 5]),
+            values: [1, 2, 3, 5],
           },
           {
             name: 'Value',
             type: FieldType.number,
-            values: new ArrayVector([1, 2, 3, 0]),
+            values: [1, 2, 3, 0],
             config: {
               displayNameFromDS: 'debug',
             },
@@ -352,12 +463,12 @@ describe('mergeLogsVolumeDataFrames', () => {
           {
             name: 'Time',
             type: FieldType.time,
-            values: new ArrayVector([1, 6]),
+            values: [1, 6],
           },
           {
             name: 'Value',
             type: FieldType.number,
-            values: new ArrayVector([2, 1]),
+            values: [2, 1],
             config: {
               displayNameFromDS: 'error',
             },
@@ -365,5 +476,185 @@ describe('mergeLogsVolumeDataFrames', () => {
         ],
       },
     ]);
+    expect(maximum).toBe(6);
+  });
+
+  it('produces merged results order by time', () => {
+    const frame1 = mockLogVolume('info', [1600000000001, 1600000000009], [1, 1]);
+    const frame2 = mockLogVolume('info', [1600000000000, 1600000000005], [1, 1]);
+
+    const { dataFrames: merged } = mergeLogsVolumeDataFrames([frame1, frame2]);
+
+    expect(merged).toMatchObject([
+      {
+        fields: [
+          {
+            name: 'Time',
+            type: FieldType.time,
+            values: [1600000000000, 1600000000001, 1600000000005, 1600000000009],
+          },
+          {
+            name: 'Value',
+            type: FieldType.number,
+            values: [1, 1, 1, 1],
+            config: {
+              displayNameFromDS: 'info',
+            },
+          },
+        ],
+      },
+    ]);
+  });
+});
+
+describe('getLogsVolumeDimensions', () => {
+  function mockLogVolumeDataFrame(values: number[], absoluteRange: AbsoluteTimeRange) {
+    return new MutableDataFrame({
+      meta: {
+        custom: {
+          absoluteRange,
+        },
+      },
+      fields: [
+        {
+          name: 'time',
+          type: FieldType.time,
+          values: [],
+        },
+        {
+          name: 'value',
+          type: FieldType.number,
+          values: values,
+        },
+      ],
+    });
+  }
+
+  it('calculates the maximum value and range of all log volumes', () => {
+    const maximumRange = getLogsVolumeMaximumRange([
+      mockLogVolumeDataFrame([], { from: 5, to: 20 }),
+      mockLogVolumeDataFrame([], { from: 10, to: 25 }),
+      mockLogVolumeDataFrame([], { from: 7, to: 23 }),
+    ]);
+
+    expect(maximumRange).toEqual({ from: 5, to: 25 });
+  });
+});
+
+describe('escapeUnescapedString', () => {
+  it('does not modify strings without unescaped characters', () => {
+    expect(escapeUnescapedString('a simple string')).toBe('a simple string');
+  });
+  it('escapes unescaped strings', () => {
+    expect(escapeUnescapedString(`\\r\\n|\\n|\\t|\\r`)).toBe(`\n|\n|\t|\n`);
+  });
+});
+
+describe('findMatchingRow', () => {
+  function setup(frames: DataFrame[]) {
+    const logsModel = logSeriesToLogsModel(frames);
+    const rows = logsModel?.rows || [];
+    const findMatchingRow = createLogRowsMap();
+    for (const row of rows) {
+      expect(findMatchingRow(row)).toBeFalsy();
+    }
+    return { rows, findMatchingRow };
+  }
+
+  it('ignores rows from different queries', () => {
+    const { logFrameA, logFrameB } = getMockFrames();
+    logFrameA.refId = 'A';
+    logFrameB.refId = 'B';
+    const { rows, findMatchingRow } = setup([logFrameA, logFrameB]);
+
+    for (const row of rows) {
+      const targetRow = { ...row, dataFrame: { ...logFrameA, refId: 'Z' } };
+      expect(findMatchingRow(targetRow)).toBeFalsy();
+    }
+  });
+
+  it('matches rows by rowId', () => {
+    const { logFrameA, logFrameB } = getMockFrames();
+    const { rows, findMatchingRow } = setup([logFrameA, logFrameB]);
+
+    for (const row of rows) {
+      const targetRow = { ...row, entry: `${Math.random()}`, timeEpochNs: `${Math.ceil(Math.random() * 1000000)}` };
+      expect(findMatchingRow(targetRow)).toBeTruthy();
+    }
+  });
+
+  it('matches rows by entry and nanosecond time', () => {
+    const { logFrameA, logFrameB } = getMockFrames();
+    logFrameA.fields[4].values = [];
+    logFrameB.fields[4].values = [];
+    const { rows, findMatchingRow } = setup([logFrameA, logFrameB]);
+
+    for (const row of rows) {
+      const targetRow = { ...row, rowId: undefined };
+      expect(findMatchingRow(targetRow)).toBeTruthy();
+    }
+  });
+});
+
+describe('downloadLogs', () => {
+  const logs = [
+    createLogRow({ timeEpochMs: 100, entry: 'test entry', labels: { label: 'value', otherLabel: 'other value' } }),
+  ];
+  describe('Text format', () => {
+    beforeEach(() => {
+      jest.mocked(saveAs).mockClear();
+    });
+
+    it('Downloads logs in txt format', async () => {
+      downloadLogs(DownloadFormat.Text, logs);
+
+      const blob = jest.mocked(saveAs).mock.calls[0][0];
+      const text = typeof blob === 'string' ? blob : await blob.text();
+
+      expect(text).toContain('test entry');
+    });
+
+    it('Downloads selected fields in txt format', async () => {
+      downloadLogs(DownloadFormat.Text, logs, [], ['label', 'otherLabel']);
+
+      const blob = jest.mocked(saveAs).mock.calls[0][0];
+      const text = typeof blob === 'string' ? blob : await blob.text();
+
+      expect(text).toContain('value other value');
+    });
+  });
+
+  describe('JSON format', () => {
+    beforeEach(() => {
+      jest.mocked(saveAs).mockClear();
+    });
+
+    it('Downloads logs in JSON format', async () => {
+      downloadLogs(DownloadFormat.Json, logs);
+
+      const blob = jest.mocked(saveAs).mock.calls[0][0];
+      const text = typeof blob === 'string' ? blob : await blob.text();
+
+      expect(JSON.parse(text)[0]).toEqual(
+        expect.objectContaining({
+          line: 'test entry',
+          fields: { label: 'value', otherLabel: 'other value' },
+        })
+      );
+    });
+
+    it('Downloads selected fields in JSON format', async () => {
+      downloadLogs(DownloadFormat.Json, logs, [], ['otherLabel']);
+
+      const blob = jest.mocked(saveAs).mock.calls[0][0];
+      const text = typeof blob === 'string' ? blob : await blob.text();
+
+      expect(JSON.parse(text)[0]).toEqual(
+        expect.objectContaining({
+          line: 'test entry',
+          fields: { otherLabel: 'other value' },
+        })
+      );
+    });
   });
 });

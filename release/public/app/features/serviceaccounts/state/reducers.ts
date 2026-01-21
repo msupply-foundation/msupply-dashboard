@@ -1,19 +1,19 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+import { Role } from 'app/types/accessControl';
+import { ApiKey } from 'app/types/apiKeys';
 import {
-  ApiKey,
-  Role,
-  ServiceAccountDTO,
   ServiceAccountProfileState,
+  ServiceAccountDTO,
   ServiceAccountsState,
   ServiceAccountStateFilter,
-} from 'app/types';
+} from 'app/types/serviceaccount';
 
 // serviceAccountsProfilePage
 export const initialStateProfile: ServiceAccountProfileState = {
   serviceAccount: {} as ServiceAccountDTO,
   isLoading: true,
-  tokens: [] as ApiKey[],
+  tokens: [],
 };
 
 export const serviceAccountProfileSlice = createSlice({
@@ -32,16 +32,28 @@ export const serviceAccountProfileSlice = createSlice({
     serviceAccountTokensLoaded: (state, action: PayloadAction<ApiKey[]>): ServiceAccountProfileState => {
       return { ...state, tokens: action.payload, isLoading: false };
     },
+    rolesFetchBegin: (state) => {
+      return { ...state, rolesLoading: true };
+    },
+    rolesFetchEnd: (state) => {
+      return { ...state, rolesLoading: false };
+    },
   },
 });
 
 export const serviceAccountProfileReducer = serviceAccountProfileSlice.reducer;
-export const { serviceAccountLoaded, serviceAccountTokensLoaded, serviceAccountFetchBegin, serviceAccountFetchEnd } =
-  serviceAccountProfileSlice.actions;
+export const {
+  serviceAccountLoaded,
+  serviceAccountTokensLoaded,
+  serviceAccountFetchBegin,
+  serviceAccountFetchEnd,
+  rolesFetchBegin,
+  rolesFetchEnd,
+} = serviceAccountProfileSlice.actions;
 
 // serviceAccountsListPage
 export const initialStateList: ServiceAccountsState = {
-  serviceAccounts: [] as ServiceAccountDTO[],
+  serviceAccounts: [],
   isLoading: true,
   roleOptions: [],
   query: '',

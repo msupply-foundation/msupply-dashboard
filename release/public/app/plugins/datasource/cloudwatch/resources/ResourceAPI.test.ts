@@ -1,4 +1,4 @@
-import { setupMockedResourcesAPI } from '../__mocks__/ResourcesAPI';
+import { setupMockedResourcesAPI } from '../mocks/ResourcesAPI';
 
 describe('ResourcesAPI', () => {
   describe('describeLogGroup', () => {
@@ -116,6 +116,56 @@ describe('ResourcesAPI', () => {
         { label: 'CPUUtilization', value: 'CPUUtilization' },
         { label: 'CPUPercentage', value: 'CPUPercentage' },
       ]);
+    });
+  });
+
+  describe('getRegions', () => {
+    it('should always return regions as an array of options', async () => {
+      const response = Promise.resolve([
+        {
+          value: {
+            name: 'us-east-2',
+          },
+        },
+        {
+          value: {
+            name: 'us-east-1',
+          },
+        },
+        {
+          value: {
+            name: 'us-west-1',
+          },
+        },
+      ]);
+
+      const { api } = setupMockedResourcesAPI({ response });
+      const expectedRegions = [
+        {
+          text: 'default',
+          value: 'default',
+          label: 'default',
+        },
+        {
+          text: 'us-east-2',
+          value: 'us-east-2',
+          label: 'us-east-2',
+        },
+        {
+          text: 'us-east-1',
+          value: 'us-east-1',
+          label: 'us-east-1',
+        },
+        {
+          text: 'us-west-1',
+          value: 'us-west-1',
+          label: 'us-west-1',
+        },
+      ];
+
+      const regions = await api.getRegions();
+
+      expect(regions).toEqual(expectedRegions);
     });
   });
 });

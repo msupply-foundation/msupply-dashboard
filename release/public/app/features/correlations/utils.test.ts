@@ -1,15 +1,16 @@
-import { DataFrame, DataSourceInstanceSettings, FieldType, toDataFrame } from '@grafana/data';
+import { DataFrame, DataFrameType, DataSourceInstanceSettings, FieldType, toDataFrame } from '@grafana/data';
+import { config, CorrelationData } from '@grafana/runtime';
 
-import { CorrelationData } from './useCorrelations';
 import { attachCorrelationsToDataFrames } from './utils';
 
 describe('correlations utils', () => {
   it('attaches correlations defined in the configuration', () => {
+    config.featureToggles.lokiLogsDataplane = false;
     const { testDataFrames, correlations, refIdMap, prometheus, elastic } = setup();
     attachCorrelationsToDataFrames(testDataFrames, correlations, refIdMap);
 
-    // Loki line (no links)
-    expect(testDataFrames[0].fields[0].config.links).toHaveLength(0);
+    // Loki line
+    expect(testDataFrames[0].fields[0].config.links).toHaveLength(1);
     // Loki traceId (linked to Prometheus and Elastic)
     expect(testDataFrames[0].fields[1].config.links).toHaveLength(2);
     expect(testDataFrames[0].fields[1].config.links).toMatchObject([
@@ -19,6 +20,7 @@ describe('correlations utils', () => {
           datasourceUid: prometheus.uid,
           datasourceName: prometheus.name,
           query: {
+            datasource: { uid: prometheus.uid },
             expr: 'target Prometheus query',
           },
         },
@@ -29,6 +31,7 @@ describe('correlations utils', () => {
           datasourceUid: elastic.uid,
           datasourceName: elastic.name,
           query: {
+            datasource: { uid: elastic.uid },
             expr: 'target Elastic query',
           },
         },
@@ -66,10 +69,29 @@ describe('correlations utils', () => {
     // Prometheus value (linked to Elastic)
     expect(testDataFrames[2].fields[0].config.links).toHaveLength(1);
   });
+
+  it('changes the config field if loki dataplane is being used and the correlation is pointing to the legacy body field (Line)', () => {
+    const originalDataplaneState = config.featureToggles.lokiLogsDataplane;
+    config.featureToggles.lokiLogsDataplane = true;
+    const { correlations, refIdMap } = setup();
+    const testDataFrame = toDataFrame({
+      name: 'Loki Logs',
+      refId: 'Loki Query',
+      fields: [
+        { name: 'timestamp', values: [], type: FieldType.time },
+        { name: 'body', values: [], type: FieldType.string },
+        { name: 'traceId', values: [], type: FieldType.string },
+      ],
+      meta: { type: DataFrameType.LogLines },
+    });
+    const dataFrameOut = attachCorrelationsToDataFrames([testDataFrame], [correlations[3]], refIdMap);
+    expect(dataFrameOut[0].fields[1].config.links).toHaveLength(1);
+    config.featureToggles.lokiLogsDataplane = originalDataplaneState;
+  });
 });
 
 function setup() {
-  const loki = { uid: 'loki-uid', name: 'loki' } as DataSourceInstanceSettings;
+  const loki = { uid: 'loki-uid', name: 'loki', meta: { id: 'loki' } } as DataSourceInstanceSettings;
   const elastic = { uid: 'elastic-uid', name: 'elastic' } as DataSourceInstanceSettings;
   const prometheus = { uid: 'prometheus-uid', name: 'prometheus' } as DataSourceInstanceSettings;
 
@@ -84,15 +106,15 @@ function setup() {
       name: 'Loki Logs',
       refId: 'Loki Query',
       fields: [
-        { name: 'line', values: [] },
-        { name: 'traceId', values: [] },
+        { name: 'Line', values: [], type: FieldType.string },
+        { name: 'traceId', values: [], type: FieldType.string },
       ],
     }),
     toDataFrame({
       name: 'Elastic Logs',
       refId: 'Elastic Query',
       fields: [
-        { name: 'line', values: [] },
+        { name: 'Line', values: [] },
         { name: 'traceId', values: [] },
       ],
     }),
@@ -109,7 +131,9 @@ function setup() {
       label: 'logs to metrics',
       source: loki,
       target: prometheus,
-      config: { type: 'query', field: 'traceId', target: { expr: 'target Prometheus query' } },
+      type: 'query',
+      config: { field: 'traceId', target: { expr: 'target Prometheus query' } },
+      provisioned: false,
     },
     // Test multiple correlations attached to the same field
     {
@@ -117,16 +141,29 @@ function setup() {
       label: 'logs to logs',
       source: loki,
       target: elastic,
-      config: { type: 'query', field: 'traceId', target: { expr: 'target Elastic query' } },
+      type: 'query',
+      config: { field: 'traceId', target: { expr: 'target Elastic query' } },
+      provisioned: false,
     },
     {
       uid: 'prometheus-to-elastic',
       label: 'metrics to logs',
       source: prometheus,
       target: elastic,
-      config: { type: 'query', field: 'value', target: { expr: 'target Elastic query' } },
+      type: 'query',
+      config: { field: 'value', target: { expr: 'target Elastic query' } },
+      provisioned: false,
+    },
+    {
+      uid: 'loki-to-loki',
+      label: 'logs to logs',
+      source: loki,
+      target: loki,
+      type: 'query',
+      config: { field: 'Line', target: { expr: 'target loki query' } },
+      provisioned: false,
     },
   ];
 
-  return { testDataFrames, correlations, refIdMap, prometheus, elastic };
+  return { testDataFrames, correlations, refIdMap, loki, prometheus, elastic };
 }

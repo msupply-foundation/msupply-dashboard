@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { Button, Form, HorizontalGroup, Select } from '@grafana/ui';
+import { OrgRole } from '@grafana/data';
+import { Trans, t } from '@grafana/i18n';
+import { Button, Select, Stack } from '@grafana/ui';
 import { CloseButton } from 'app/core/components/CloseButton/CloseButton';
+import { ServiceAccountPicker } from 'app/core/components/Select/ServiceAccountPicker';
 import { TeamPicker } from 'app/core/components/Select/TeamPicker';
 import { UserPicker } from 'app/core/components/Select/UserPicker';
-import { OrgRole } from 'app/types/acl';
 
 import { Assignments, PermissionTarget, SetPermission } from './types';
 
@@ -16,23 +18,38 @@ export interface Props {
   onAdd: (state: SetPermission) => void;
 }
 
-export const AddPermission = ({ title = 'Add Permission For', permissions, assignments, onAdd, onCancel }: Props) => {
+export const AddPermission = ({
+  title = t('access-control.add-permission.title', 'Add permission for'),
+  permissions,
+  assignments,
+  onAdd,
+  onCancel,
+}: Props) => {
   const [target, setPermissionTarget] = useState<PermissionTarget>(PermissionTarget.None);
-  const [teamId, setTeamId] = useState(0);
-  const [userId, setUserId] = useState(0);
+  const [teamUid, setTeamUid] = useState('');
+  const [userUid, setUserUid] = useState('');
   const [builtInRole, setBuiltinRole] = useState('');
   const [permission, setPermission] = useState('');
 
   const targetOptions = useMemo(() => {
     const options = [];
     if (assignments.users) {
-      options.push({ value: PermissionTarget.User, label: 'User' });
+      options.push({ value: PermissionTarget.User, label: t('access-control.add-permission.user-label', 'User') });
+    }
+    if (assignments.serviceAccounts) {
+      options.push({
+        value: PermissionTarget.ServiceAccount,
+        label: t('access-control.add-permission.serviceaccount-label', 'Service Account'),
+      });
     }
     if (assignments.teams) {
-      options.push({ value: PermissionTarget.Team, label: 'Team' });
+      options.push({ value: PermissionTarget.Team, label: t('access-control.add-permission.team-label', 'Team') });
     }
     if (assignments.builtInRoles) {
-      options.push({ value: PermissionTarget.BuiltInRole, label: 'Role' });
+      options.push({
+        value: PermissionTarget.BuiltInRole,
+        label: t('access-control.add-permission.role-label', 'Role'),
+      });
     }
     return options;
   }, [assignments]);
@@ -44,60 +61,67 @@ export const AddPermission = ({ title = 'Add Permission For', permissions, assig
   }, [permissions]);
 
   const isValid = () =>
-    (target === PermissionTarget.Team && teamId > 0) ||
-    (target === PermissionTarget.User && userId > 0) ||
+    (target === PermissionTarget.Team && teamUid) ||
+    (target === PermissionTarget.User && userUid) ||
+    (target === PermissionTarget.ServiceAccount && userUid) ||
     (PermissionTarget.BuiltInRole && OrgRole.hasOwnProperty(builtInRole));
 
   return (
-    <div className="cta-form" aria-label="Permissions slider">
+    <div
+      className="cta-form"
+      aria-label={t('access-control.add-permission.permissions-aria-label', 'Permissions slider')}
+    >
       <CloseButton onClick={onCancel} />
       <h5>{title}</h5>
 
-      <Form
+      <form
         name="addPermission"
-        maxWidth="none"
-        onSubmit={() => onAdd({ userId, teamId, builtInRole, permission, target })}
+        onSubmit={(event) => {
+          event.preventDefault();
+          onAdd({ userUid, teamUid, builtInRole, permission, target });
+        }}
       >
-        {() => (
-          <HorizontalGroup>
+        <Stack gap={1} direction="row">
+          <Select
+            aria-label={t('access-control.add-permission.role-select-aria-label', 'Role to add new permission to')}
+            value={target}
+            options={targetOptions}
+            onChange={(v) => setPermissionTarget(v.value!)}
+            disabled={targetOptions.length === 0}
+            width="auto"
+          />
+
+          {target === PermissionTarget.User && <UserPicker onSelected={(u) => setUserUid(u?.value?.uid || '')} />}
+
+          {target === PermissionTarget.ServiceAccount && (
+            <ServiceAccountPicker onSelected={(u) => setUserUid(u?.value?.uid || '')} />
+          )}
+
+          {target === PermissionTarget.Team && <TeamPicker onSelected={(t) => setTeamUid(t.value?.uid || '')} />}
+
+          {target === PermissionTarget.BuiltInRole && (
             <Select
-              aria-label="Role to add new permission to"
-              value={target}
-              options={targetOptions}
-              onChange={(v) => setPermissionTarget(v.value!)}
-              disabled={targetOptions.length === 0}
+              aria-label={t('access-control.add-permission.built-in-aria-label', 'Built-in role picker')}
+              options={Object.values(OrgRole)
+                .filter((r) => r !== OrgRole.None)
+                .map((r) => ({ value: r, label: r }))}
+              onChange={(r) => setBuiltinRole(r.value || '')}
+              width="auto"
             />
+          )}
 
-            {target === PermissionTarget.User && (
-              <UserPicker onSelected={(u) => setUserId(u.value || 0)} className={'width-20'} />
-            )}
-
-            {target === PermissionTarget.Team && (
-              <TeamPicker onSelected={(t) => setTeamId(t.value?.id || 0)} className={'width-20'} />
-            )}
-
-            {target === PermissionTarget.BuiltInRole && (
-              <Select
-                aria-label={'Built-in role picker'}
-                options={Object.values(OrgRole).map((r) => ({ value: r, label: r }))}
-                onChange={(r) => setBuiltinRole(r.value || '')}
-                width={40}
-              />
-            )}
-
-            <Select
-              aria-label="Permission Level"
-              width={25}
-              value={permissions.find((p) => p === permission)}
-              options={permissions.map((p) => ({ label: p, value: p }))}
-              onChange={(v) => setPermission(v.value || '')}
-            />
-            <Button type="submit" disabled={!isValid()}>
-              Save
-            </Button>
-          </HorizontalGroup>
-        )}
-      </Form>
+          <Select
+            aria-label={t('access-control.add-permission.level-aria-label', 'Permission level')}
+            width="auto"
+            value={permissions.find((p) => p === permission)}
+            options={permissions.map((p) => ({ label: p, value: p }))}
+            onChange={(v) => setPermission(v.value || '')}
+          />
+          <Button type="submit" disabled={!isValid()}>
+            <Trans i18nKey="access-control.add-permissions.save">Save</Trans>
+          </Button>
+        </Stack>
+      </form>
     </div>
   );
 };

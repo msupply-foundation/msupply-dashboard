@@ -15,20 +15,41 @@ import {
   DataQueryResponse,
   ExplorePanelsState,
   SupplementaryQueryType,
+  UrlQueryMap,
+  ExploreCorrelationHelperData,
+  DataLinkTransformationConfig,
 } from '@grafana/data';
+import { CorrelationData } from '@grafana/runtime';
 import { RichHistorySearchFilters, RichHistorySettings } from 'app/core/utils/richHistoryTypes';
 
-import { CorrelationData } from '../features/correlations/useCorrelations';
+export type ExploreQueryParams = UrlQueryMap;
 
-export enum ExploreId {
-  left = 'left',
-  right = 'right',
+export enum CORRELATION_EDITOR_POST_CONFIRM_ACTION {
+  CLOSE_PANE,
+  CHANGE_DATASOURCE,
+  CLOSE_EDITOR,
 }
 
-export type ExploreQueryParams = {
-  left: string;
-  right: string;
-};
+export interface CorrelationEditorDetails {
+  editorMode: boolean;
+  correlationDirty: boolean;
+  queryEditorDirty: boolean;
+  isExiting: boolean;
+  postConfirmAction?: {
+    // perform an action after a confirmation modal instead of exiting editor mode
+    exploreId: string;
+    action: CORRELATION_EDITOR_POST_CONFIRM_ACTION;
+    changeDatasourceUid?: string;
+    isActionLeft: boolean;
+  };
+  canSave?: boolean;
+  label?: string;
+  description?: string;
+  transformations?: DataLinkTransformationConfig[];
+}
+
+// updates can have any properties
+export interface CorrelationEditorDetailsUpdate extends Partial<CorrelationEditorDetails> {}
 
 /**
  * Global Explore state
@@ -38,16 +59,15 @@ export interface ExploreState {
    * True if time interval for panels are synced. Only possible with split mode.
    */
   syncedTimes: boolean;
-  /**
-   * Explore state of the left split (left is default in non-split view).
-   */
-  left: ExploreItemState;
-  /**
-   * Explore state of the right area in split view.
-   */
-  right?: ExploreItemState;
 
-  correlations?: CorrelationData[];
+  panes: Record<string, ExploreItemState | undefined>;
+
+  /**
+   * History of all queries
+   */
+  richHistory: RichHistoryQuery[];
+  richHistorySearchFilters?: RichHistorySearchFilters;
+  richHistoryTotal?: number;
 
   /**
    * Settings for rich history (note: filters are stored per each pane separately)
@@ -66,19 +86,19 @@ export interface ExploreState {
   richHistoryLimitExceededWarningShown: boolean;
 
   /**
-   * True if a warning message about failed rich history has been shown already in this session.
+   * Details on a correlation being created from explore
    */
-  richHistoryMigrationFailed: boolean;
+  correlationEditorDetails?: CorrelationEditorDetails;
 
   /**
    * On a split manual resize, we calculate which pane is larger, or if they are roughly the same size. If undefined, it is not split or they are roughly the same size
    */
-  largerExploreId?: ExploreId;
+  largerExploreId?: keyof ExploreState['panes'];
 
   /**
    * If a maximize pane button is pressed, this indicates which side was maximized. Will be undefined if not split or if it is manually resized
    */
-  maxedExploreId?: ExploreId;
+  maxedExploreId?: keyof ExploreState['panes'];
 
   /**
    * If a minimize pane button is pressed, it will do an even split of panes. Will be undefined if split or on a manual resize
@@ -98,10 +118,6 @@ export interface ExploreItemState {
    * Datasource instance that has been selected. Datasource-specific logic can be run on this object.
    */
   datasourceInstance?: DataSourceApi | null;
-  /**
-   * True if there is no datasource to be selected.
-   */
-  datasourceMissing: boolean;
   /**
    * Emitter to send events to the rest of Grafana.
    */
@@ -125,6 +141,11 @@ export interface ExploreItemState {
    */
   initialized: boolean;
   /**
+   * Query library reference identifier when editing a query from the query library
+   *
+   */
+  queryLibraryRef?: string;
+  /**
    * Log query result to be displayed in the logs result viewer.
    */
   logsResult: LogsModel | null;
@@ -144,7 +165,6 @@ export interface ExploreItemState {
    */
   scanRange?: RawTimeRange;
 
-  loading: boolean;
   /**
    * Table model that combines all query table results into a single table.
    */
@@ -175,6 +195,12 @@ export interface ExploreItemState {
    */
   isPaused: boolean;
 
+  /**
+   * Index of the last item in the list of logs
+   * when the live tailing views gets cleared.
+   */
+  clearedAtIndex: number | null;
+
   querySubscription?: Unsubscribable;
 
   queryResponse: ExplorePanelData;
@@ -189,13 +215,7 @@ export interface ExploreItemState {
   showTrace?: boolean;
   showNodeGraph?: boolean;
   showFlameGraph?: boolean;
-
-  /**
-   * History of all queries
-   */
-  richHistory: RichHistoryQuery[];
-  richHistorySearchFilters?: RichHistorySearchFilters;
-  richHistoryTotal?: number;
+  showCustom?: boolean;
 
   /**
    * We are using caching to store query responses of queries run from logs navigation.
@@ -211,7 +231,14 @@ export interface ExploreItemState {
 
   panelsState: ExplorePanelsState;
 
-  isFromCompactUrl?: boolean;
+  correlationEditorHelperData?: ExploreCorrelationHelperData;
+
+  correlations?: CorrelationData[];
+
+  /**
+   * If set to true, all query rows will be collapsed initially and the content outline will be hidden
+   */
+  compact: boolean;
 }
 
 export interface ExploreUpdateState {
@@ -250,6 +277,7 @@ export interface ExplorePanelData extends PanelData {
   tableFrames: DataFrame[];
   logsFrames: DataFrame[];
   traceFrames: DataFrame[];
+  customFrames: DataFrame[];
   nodeGraphFrames: DataFrame[];
   rawPrometheusFrames: DataFrame[];
   flameGraphFrames: DataFrame[];

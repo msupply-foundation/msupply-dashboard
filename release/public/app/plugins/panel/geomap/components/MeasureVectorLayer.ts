@@ -174,21 +174,19 @@ export class MeasureVectorLayer extends VectorLayer<VectorSource> {
 
   styleFunction(feature: FeatureLike, segments: boolean, drawType?: string, tip?: string): Style[] {
     const styles = [...this.shapeStyle];
-    const geometry = feature.getGeometry() as Geometry;
+    const geometry = feature.getGeometry();
     if (geometry) {
       const type = geometry.getType();
       let point: Point;
       let label: string;
       let line: LineString;
       if (!drawType || drawType === type) {
-        if (type === 'Polygon') {
-          const poly = geometry as Polygon;
-          point = poly.getInteriorPoint();
+        if (type === 'Polygon' && geometry instanceof Polygon) {
+          point = geometry.getInteriorPoint();
           label = this.getMapMeasurement(geometry);
-          line = new LineString(poly.getCoordinates()[0]);
-        } else if (type === 'LineString') {
-          line = geometry as LineString;
-          point = new Point(line.getLastCoordinate());
+          line = new LineString(geometry.getCoordinates()[0]);
+        } else if (type === 'LineString' && geometry instanceof LineString) {
+          point = new Point(geometry.getLastCoordinate());
           label = this.getMapMeasurement(geometry);
         }
       }
@@ -202,19 +200,24 @@ export class MeasureVectorLayer extends VectorLayer<VectorSource> {
           }
           const segmentPoint = new Point(segment.getCoordinateAt(0.5));
           this.segmentStyles[count].setGeometry(segmentPoint);
-          this.segmentStyles[count].getText().setText(label);
+          this.segmentStyles[count].getText()?.setText(label);
           styles.push(this.segmentStyles[count]);
           count++;
         });
       }
       if (label!) {
         this.labelStyle.setGeometry(point!);
-        this.labelStyle.getText().setText(label);
+        this.labelStyle.getText()?.setText(label);
         styles.push(this.labelStyle);
       }
-      if (tip && type === 'Point' && !this.modify.getOverlay().getSource().getFeatures().length) {
+      if (
+        tip &&
+        type === 'Point' &&
+        geometry instanceof Point &&
+        !this.modify.getOverlay().getSource()?.getFeatures().length
+      ) {
         this.tipPoint = geometry;
-        this.tipStyle.getText().setText(tip);
+        this.tipStyle.getText()?.setText(tip);
         styles.push(this.tipStyle);
       }
     }

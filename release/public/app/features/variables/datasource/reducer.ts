@@ -1,16 +1,23 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { DataSourceInstanceSettings } from '@grafana/data';
+import {
+  DataSourceInstanceSettings,
+  DataSourceVariableModel,
+  matchPluginId,
+  VariableOption,
+  VariableRefresh,
+} from '@grafana/data';
+import { t } from '@grafana/i18n';
 
 import { ALL_VARIABLE_TEXT, ALL_VARIABLE_VALUE } from '../constants';
 import { getInstanceState } from '../state/selectors';
 import { initialVariablesState, VariablePayload, VariablesState } from '../state/types';
-import { DataSourceVariableModel, initialVariableModelState, VariableOption, VariableRefresh } from '../types';
+import { initialVariableModelState } from '../types';
 
 export const initialDataSourceVariableModelState: DataSourceVariableModel = {
   ...initialVariableModelState,
   type: 'datasource',
-  current: {} as VariableOption,
+  current: {},
   regex: '',
   options: [],
   query: '',
@@ -36,22 +43,30 @@ export const dataSourceVariableSlice = createSlice({
 
       for (let i = 0; i < sources.length; i++) {
         const source = sources[i];
-        // must match on type
-        if (source.meta.id !== instanceState.query) {
+
+        if (!matchPluginId(instanceState.query, source.meta)) {
           continue;
         }
 
         if (isValid(source, regex)) {
-          options.push({ text: source.name, value: source.name, selected: false });
+          options.push({ text: source.name, value: source.uid, selected: false });
         }
 
         if (isDefault(source, regex)) {
-          options.push({ text: 'default', value: 'default', selected: false });
+          options.push({
+            text: t('variables.data-source-variable-slice.text.default', 'default'),
+            value: 'default',
+            selected: false,
+          });
         }
       }
 
       if (options.length === 0) {
-        options.push({ text: 'No data sources found', value: '', selected: false });
+        options.push({
+          text: t('variables.data-source-variable-slice.text.no-data-sources-found', 'No data sources found'),
+          value: '',
+          selected: false,
+        });
       }
 
       if (instanceState.includeAll) {

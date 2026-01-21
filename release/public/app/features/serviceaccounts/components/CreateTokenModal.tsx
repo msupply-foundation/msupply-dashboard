@@ -1,8 +1,9 @@
 import { css } from '@emotion/css';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { GrafanaTheme2 } from '@grafana/data';
+import { Trans, t } from '@grafana/i18n';
 import { config } from '@grafana/runtime';
 import {
   Button,
@@ -84,18 +85,15 @@ export const CreateTokenModal = ({ isOpen, token, serviceAccountLogin, onCreateT
   const modalTitle = !token ? 'Add service account token' : 'Service account token created';
 
   return (
-    <Modal
-      isOpen={isOpen}
-      title={modalTitle}
-      onDismiss={onCloseInternal}
-      className={styles.modal}
-      contentClassName={styles.modalContent}
-    >
+    <Modal isOpen={isOpen} title={modalTitle} onDismiss={onCloseInternal} className={styles.modal}>
       {!token ? (
         <div>
           <Field
-            label="Display name"
-            description="Name to easily identify the token"
+            label={t('serviceaccounts.create-token-modal.label-display-name', 'Display name')}
+            description={t(
+              'serviceaccounts.create-token-modal.description-name-to-easily-identify-the-token',
+              'Name to easily identify the token'
+            )}
             // for now this is required
             // need to make this optional in backend as well
             required={true}
@@ -109,18 +107,16 @@ export const CreateTokenModal = ({ isOpen, token, serviceAccountLogin, onCreateT
               }}
             />
           </Field>
-          {!isWithExpirationDate && (
-            <Field label="Expiration">
-              <RadioButtonGroup
-                options={EXPIRATION_OPTIONS}
-                value={isWithExpirationDate}
-                onChange={setIsWithExpirationDate}
-                size="md"
-              />
-            </Field>
-          )}
+          <Field label={t('serviceaccounts.create-token-modal.label-expiration', 'Expiration')}>
+            <RadioButtonGroup
+              options={EXPIRATION_OPTIONS}
+              value={isWithExpirationDate}
+              onChange={setIsWithExpirationDate}
+              size="md"
+            />
+          </Field>
           {isWithExpirationDate && (
-            <Field label="Expiration date">
+            <Field label={t('serviceaccounts.create-token-modal.label-expiration-date', 'Expiration date')}>
               <DatePickerWithInput
                 onChange={onExpirationDateChange}
                 value={newTokenExpirationDate}
@@ -132,15 +128,18 @@ export const CreateTokenModal = ({ isOpen, token, serviceAccountLogin, onCreateT
           )}
           <Modal.ButtonRow>
             <Button onClick={onGenerateToken} disabled={isWithExpirationDate && !isExpirationDateValid}>
-              Generate token
+              <Trans i18nKey="serviceaccounts.create-token-modal.generate-token">Generate token</Trans>
             </Button>
           </Modal.ButtonRow>
         </div>
       ) : (
         <>
           <Field
-            label="Token"
-            description="Copy the token now as you will not be able to see it again. Losing a token requires creating a new one."
+            label={t('serviceaccounts.create-token-modal.label-token', 'Token')}
+            description={t(
+              'serviceaccounts.create-token-modal.description-token',
+              'Copy the token now as you will not be able to see it again. Losing a token requires creating a new one.'
+            )}
           >
             <div className={styles.modalTokenRow}>
               <Input name="tokenValue" value={token} readOnly />
@@ -151,16 +150,18 @@ export const CreateTokenModal = ({ isOpen, token, serviceAccountLogin, onCreateT
                 icon="copy"
                 getText={() => token}
               >
-                Copy clipboard
+                <Trans i18nKey="serviceaccounts.create-token-modal.copy-clipboard">Copy to clipboard</Trans>
               </ClipboardButton>
             </div>
           </Field>
           <Modal.ButtonRow>
             <ClipboardButton variant="primary" getText={() => token} onClipboardCopy={onCloseInternal}>
-              Copy to clipboard and close
+              <Trans i18nKey="serviceaccounts.create-token-modal.copy-to-clipboard-and-close">
+                Copy to clipboard and close
+              </Trans>
             </ClipboardButton>
             <Button variant="secondary" onClick={onCloseInternal}>
-              Close
+              <Trans i18nKey="serviceaccounts.create-token-modal.close">Close</Trans>
             </Button>
           </Modal.ButtonRow>
         </>
@@ -178,17 +179,14 @@ const getSecondsToLive = (date: Date | string) => {
 
 const getStyles = (theme: GrafanaTheme2) => {
   return {
-    modal: css`
-      width: 550px;
-    `,
-    modalContent: css`
-      overflow: visible;
-    `,
-    modalTokenRow: css`
-      display: flex;
-    `,
-    modalCopyToClipboardButton: css`
-      margin-left: ${theme.spacing(0.5)};
-    `,
+    modal: css({
+      width: '550px',
+    }),
+    modalTokenRow: css({
+      display: 'flex',
+    }),
+    modalCopyToClipboardButton: css({
+      marginLeft: theme.spacing(0.5),
+    }),
   };
 };

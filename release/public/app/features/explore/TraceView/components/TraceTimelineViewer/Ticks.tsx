@@ -20,38 +20,36 @@ import { GrafanaTheme2 } from '@grafana/data';
 import { useStyles2 } from '@grafana/ui';
 
 import { autoColor } from '../Theme';
-import { TNil } from '../types';
+import TNil from '../types/TNil';
+import { formatDuration } from '../utils/date';
 
-import { formatDuration } from './utils';
-
-const getStyles = (theme: GrafanaTheme2) => {
-  return {
-    Ticks: css`
-      label: Ticks;
-      pointer-events: none;
-    `,
-    TicksTick: css`
-      label: TicksTick;
-      position: absolute;
-      height: 100%;
-      width: 1px;
-      background: ${autoColor(theme, '#d8d8d8')};
-      &:last-child {
-        width: 0;
-      }
-    `,
-    TicksTickLabel: css`
-      label: TicksTickLabel;
-      left: 0.25rem;
-      position: absolute;
-    `,
-    TicksTickLabelEndAnchor: css`
-      label: TicksTickLabelEndAnchor;
-      left: initial;
-      right: 0.25rem;
-    `,
-  };
-};
+const getStyles = (theme: GrafanaTheme2) => ({
+  Ticks: css({
+    label: 'Ticks',
+    pointerEvents: 'none',
+  }),
+  TicksTick: css({
+    label: 'TicksTick',
+    position: 'absolute',
+    height: '100%',
+    width: '1px',
+    background: autoColor(theme, '#d8d8d8'),
+    '&:last-child': {
+      width: 0,
+    },
+  }),
+  TicksTickLabel: css({
+    label: 'TicksTickLabel',
+    left: '0.25rem',
+    position: 'absolute',
+    whiteSpace: 'nowrap',
+  }),
+  TicksTickLabelEndAnchor: css({
+    label: 'TicksTickLabelEndAnchor',
+    left: 'initial',
+    right: '0.25rem',
+  }),
+});
 
 type TicksProps = {
   endTime?: number | TNil;
@@ -60,9 +58,7 @@ type TicksProps = {
   startTime?: number | TNil;
 };
 
-export default function Ticks(props: TicksProps) {
-  const { endTime, numTicks, showLabels, startTime } = props;
-
+export default function Ticks({ endTime = null, numTicks, showLabels = null, startTime = null }: TicksProps) {
   let labels: undefined | string[];
   if (showLabels) {
     labels = [];
@@ -95,9 +91,3 @@ export default function Ticks(props: TicksProps) {
   }
   return <div className={styles.Ticks}>{ticks}</div>;
 }
-
-Ticks.defaultProps = {
-  endTime: null,
-  showLabels: null,
-  startTime: null,
-};

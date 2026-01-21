@@ -1,24 +1,14 @@
-import { PlaylistItem as PlaylistItemFromSchema } from '@grafana/schema';
+import { PlaylistSpec } from '../../api/clients/playlist/v0alpha1';
+import { DashboardQueryResult } from '../search/service/types';
+export type PlaylistMode = boolean;
 
-import { DashboardQueryResult } from '../search/service';
+type PlaylistItem = PlaylistSpec['items'][number];
 
-export type PlaylistMode = boolean | 'tv';
-
-export interface PlayListItemDTO {
-  id: number;
-  title: string;
-  playlistid: string;
-  type: 'dashboard' | 'tag';
-}
-
-export interface Playlist {
-  uid: string;
-  name: string;
-  interval: string;
-  items?: PlaylistItem[];
-}
-
-export interface PlaylistItem extends PlaylistItemFromSchema {
-  // Loaded in the frontend
+export interface PlaylistItemUI extends PlaylistItem {
+  /**
+   * Loaded at runtime by the frontend.
+   *
+   * The values are not stored in the backend database.
+   */
   dashboards?: DashboardQueryResult[];
 }

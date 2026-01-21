@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Subscription } from 'rxjs';
 
 import {
@@ -11,7 +11,7 @@ import {
   PanelProps,
 } from '@grafana/data';
 import { PanelDataErrorView } from '@grafana/runtime';
-import { HideSeriesConfig, LegendDisplayMode } from '@grafana/schema';
+import { HideSeriesConfig, SortOrder, LegendDisplayMode } from '@grafana/schema';
 import {
   SeriesVisibilityChangeBehavior,
   usePanelContext,
@@ -22,7 +22,7 @@ import {
 } from '@grafana/ui';
 
 import { PieChart } from './PieChart';
-import { PieChartLegendOptions, PieChartLegendValues, PanelOptions } from './panelcfg.gen';
+import { PieChartLegendOptions, PieChartLegendValues, Options } from './panelcfg.gen';
 import { filterDisplayItems, sumDisplayItemsReducer } from './utils';
 
 const defaultLegendOptions: PieChartLegendOptions = {
@@ -33,7 +33,7 @@ const defaultLegendOptions: PieChartLegendOptions = {
   values: [PieChartLegendValues.Percent],
 };
 
-interface Props extends PanelProps<PanelOptions> {}
+interface Props extends PanelProps<Options> {}
 
 /**
  * @beta
@@ -67,6 +67,7 @@ export function PieChartPanel(props: Props) {
             fieldDisplayValues={fieldDisplayValues}
             tooltipOptions={options.tooltip}
             pieType={options.pieType}
+            sort={options.sort}
             displayLabels={options.displayLabels}
           />
         );
@@ -81,19 +82,12 @@ function getLegend(props: Props, displayValues: FieldDisplay[]) {
   if (legendOptions.showLegend === false) {
     return undefined;
   }
+
+  const sortedDisplayValues = displayValues.sort(comparePieChartItemsByValue(props.options.sort));
+
   const total = displayValues.filter(filterDisplayItems).reduce(sumDisplayItemsReducer, 0);
 
-  const legendItems: VizLegendItem[] = displayValues
-    // Since the pie chart is always sorted, let's sort the legend as well.
-    .sort((a, b) => {
-      if (isNaN(a.display.numeric)) {
-        return 1;
-      } else if (isNaN(b.display.numeric)) {
-        return -1;
-      } else {
-        return b.display.numeric - a.display.numeric;
-      }
-    })
+  const legendItems: VizLegendItem[] = sortedDisplayValues
     .map<VizLegendItem | undefined>((value: FieldDisplay, idx: number) => {
       const hideFrom: HideSeriesConfig = value.field.custom?.hideFrom ?? {};
 
@@ -127,7 +121,7 @@ function getLegend(props: Props, displayValues: FieldDisplay[]) {
               percent: percentOfTotal,
               text:
                 hideFromViz || isNaN(fractionOfTotal)
-                  ? props.fieldConfig.defaults.noValue ?? '-'
+                  ? (props.fieldConfig.defaults.noValue ?? '-')
                   : percentOfTotal.toFixed(value.field.decimals ?? 0) + '%',
               title: valuesToShow.length > 1 ? 'Percent' : '',
             });
@@ -140,13 +134,35 @@ function getLegend(props: Props, displayValues: FieldDisplay[]) {
     .filter((i): i is VizLegendItem => !!i);
 
   return (
-    <VizLegend
-      items={legendItems}
-      seriesVisibilityChangeBehavior={SeriesVisibilityChangeBehavior.Hide}
-      placement={legendOptions.placement}
-      displayMode={legendOptions.displayMode}
-    />
+    <VizLayout.Legend placement={legendOptions.placement} width={legendOptions.width}>
+      <VizLegend
+        items={legendItems}
+        seriesVisibilityChangeBehavior={SeriesVisibilityChangeBehavior.Hide}
+        placement={legendOptions.placement}
+        displayMode={legendOptions.displayMode}
+      />
+    </VizLayout.Legend>
   );
+}
+
+export function comparePieChartItemsByValue(sort: SortOrder): (a: FieldDisplay, b: FieldDisplay) => number {
+  return function (a: FieldDisplay, b: FieldDisplay) {
+    if (isNaN(a.display.numeric)) {
+      return 1;
+    }
+    if (isNaN(b.display.numeric)) {
+      return -1;
+    }
+
+    if (sort === SortOrder.Descending) {
+      return b.display.numeric - a.display.numeric;
+    }
+    if (sort === SortOrder.Ascending) {
+      return a.display.numeric - b.display.numeric;
+    }
+
+    return 0;
+  };
 }
 
 function hasFrames(fieldDisplayValues: FieldDisplay[]) {

@@ -1,5 +1,4 @@
 import {
-  ArrayVector,
   DataFrame,
   Field,
   FieldType,
@@ -8,12 +7,13 @@ import {
   outerJoinDataFrames,
   TimeRange,
 } from '@grafana/data';
-import { maybeSortFrame } from '@grafana/data/src/transformations/transformers/joinDataFrames';
-import { findField } from 'app/features/dimensions';
+import { maybeSortFrame } from '@grafana/data/internal';
+import { t } from '@grafana/i18n';
+import { findField } from 'app/features/dimensions/utils';
 
 import { prepareGraphableFields } from '../timeseries/utils';
 
-import { CandlestickOptions, CandlestickFieldMap, VizDisplayMode } from './models.gen';
+import { Options, CandlestickFieldMap, VizDisplayMode } from './types';
 
 export interface FieldPickerInfo {
   /** property name */
@@ -29,37 +29,39 @@ export interface FieldPickerInfo {
   description: string;
 }
 
-export const candlestickFieldsInfo: Record<keyof CandlestickFieldMap, FieldPickerInfo> = {
-  open: {
-    key: 'open',
-    name: 'Open',
-    defaults: ['open', 'o'],
-    description: 'Value at the start of the period',
-  },
-  high: {
-    key: 'high',
-    name: 'High',
-    defaults: ['high', 'h', 'max'],
-    description: 'Maximum value within the period',
-  },
-  low: {
-    key: 'low',
-    name: 'Low',
-    defaults: ['low', 'l', 'min'],
-    description: 'Minimum value within the period',
-  },
-  close: {
-    key: 'close',
-    name: 'Close',
-    defaults: ['close', 'c'],
-    description: 'Value at the end of the period',
-  },
-  volume: {
-    key: 'volume',
-    name: 'Volume',
-    defaults: ['volume', 'v'],
-    description: 'Sample count within the period',
-  },
+export const getCandlestickFieldsInfo: () => Record<keyof CandlestickFieldMap, FieldPickerInfo> = () => {
+  return {
+    open: {
+      key: 'open',
+      name: t('candlestick.name-open', 'Open'),
+      defaults: ['open', 'o'],
+      description: t('candlestick.description-open', 'Value at the start of the period'),
+    },
+    high: {
+      key: 'high',
+      name: t('candlestick.name-high', 'High'),
+      defaults: ['high', 'h', 'max'],
+      description: t('candlestick.description-high', 'Maximum value within the period'),
+    },
+    low: {
+      key: 'low',
+      name: t('candlestick.name-low', 'Low'),
+      defaults: ['low', 'l', 'min'],
+      description: t('candlestick.description-low', 'Minimum value within the period'),
+    },
+    close: {
+      key: 'close',
+      name: t('candlestick.name-close', 'Close'),
+      defaults: ['close', 'c'],
+      description: t('candlestick.description-close', 'Value at the end of the period'),
+    },
+    volume: {
+      key: 'volume',
+      name: t('candlestick.name-volume', 'Volume'),
+      defaults: ['volume', 'v'],
+      description: t('candlestick.description-volume', 'Sample count within the period'),
+    },
+  };
 };
 
 export interface CandlestickData {
@@ -97,13 +99,14 @@ function findFieldOrAuto(frame: DataFrame, info: FieldPickerInfo, options: Candl
 
 export function prepareCandlestickFields(
   series: DataFrame[] | undefined,
-  options: CandlestickOptions,
+  options: Partial<Options>,
   theme: GrafanaTheme2,
   timeRange?: TimeRange
 ): CandlestickData | null {
   if (!series?.length) {
     return null;
   }
+  const candlestickFieldsInfo = getCandlestickFieldsInfo();
 
   // All fields
   const fieldMap = options.fields ?? {};
@@ -120,7 +123,7 @@ export function prepareCandlestickFields(
 
   const data: CandlestickData = { aligned, frame: aligned, names: {} };
 
-  // Apply same filter as everythign else in timeseries
+  // Apply same filter as everything else in timeseries
   const timeSeriesFrames = prepareGraphableFields([aligned], theme, timeRange);
   if (!timeSeriesFrames) {
     return null;
@@ -153,11 +156,11 @@ export function prepareCandlestickFields(
 
   // Use next open as 'close' value
   if (data.open && !data.close && !fieldMap.close) {
-    const values = data.open.values.toArray().slice(1);
+    const values = data.open.values.slice(1);
     values.push(values[values.length - 1]); // duplicate last value
     data.close = {
       ...data.open,
-      values: new ArrayVector(values),
+      values: values,
       name: 'Next open',
       state: undefined,
     };
@@ -168,12 +171,12 @@ export function prepareCandlestickFields(
 
   // Use previous close as 'open' value
   if (data.close && !data.open && !fieldMap.open) {
-    const values = data.close.values.toArray().slice();
+    const values = data.close.values.slice();
     values.unshift(values[0]); // duplicate first value
     values.length = frame.length;
     data.open = {
       ...data.close,
-      values: new ArrayVector(values),
+      values: values,
       name: 'Previous close',
       state: undefined,
     };

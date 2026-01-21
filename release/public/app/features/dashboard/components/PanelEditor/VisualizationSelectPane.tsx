@@ -1,16 +1,16 @@
 import { css } from '@emotion/css';
-import React, { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useLocalStorage } from 'react-use';
 
 import { GrafanaTheme2, PanelData, SelectableValue } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
-import { Button, CustomScrollbar, FilterInput, RadioButtonGroup, useStyles2 } from '@grafana/ui';
-import { Field } from '@grafana/ui/src/components/Forms/Field';
+import { t } from '@grafana/i18n';
+import { Button, Field, FilterInput, RadioButtonGroup, ScrollContainer, useStyles2 } from '@grafana/ui';
 import { LS_VISUALIZATION_SELECT_TAB_KEY } from 'app/core/constants';
 import { PanelLibraryOptionsGroup } from 'app/features/library-panels/components/PanelLibraryOptionsGroup/PanelLibraryOptionsGroup';
 import { VisualizationSuggestions } from 'app/features/panel/components/VizTypePicker/VisualizationSuggestions';
 import { VizTypeChangeDetails } from 'app/features/panel/components/VizTypePicker/types';
-import { useDispatch, useSelector } from 'app/types';
+import { useDispatch, useSelector } from 'app/types/store';
 
 import { VizTypePicker } from '../../../panel/components/VizTypePicker/VizTypePicker';
 import { changePanelPlugin } from '../../../panel/state/actions';
@@ -28,10 +28,11 @@ interface Props {
 export const VisualizationSelectPane = ({ panel, data }: Props) => {
   const plugin = useSelector(getPanelPluginWithFallback(panel.type));
   const [searchQuery, setSearchQuery] = useState('');
-  const [listMode, setListMode] = useLocalStorage(
-    LS_VISUALIZATION_SELECT_TAB_KEY,
-    VisualizationSelectPaneTab.Visualizations
-  );
+
+  const tabKey = LS_VISUALIZATION_SELECT_TAB_KEY;
+  const defaultTab = VisualizationSelectPaneTab.Visualizations;
+
+  const [listMode, setListMode] = useLocalStorage(tabKey, defaultTab);
 
   const dispatch = useDispatch();
   const styles = useStyles2(getStyles);
@@ -58,12 +59,21 @@ export const VisualizationSelectPane = ({ panel, data }: Props) => {
   }
 
   const radioOptions: Array<SelectableValue<VisualizationSelectPaneTab>> = [
-    { label: 'Visualizations', value: VisualizationSelectPaneTab.Visualizations },
-    { label: 'Suggestions', value: VisualizationSelectPaneTab.Suggestions },
     {
-      label: 'Library panels',
+      label: t('dashboard.visualization-select-pane.radio-options.label.visualizations', 'Visualizations'),
+      value: VisualizationSelectPaneTab.Visualizations,
+    },
+    {
+      label: t('dashboard.visualization-select-pane.radio-options.label.suggestions', 'Suggestions'),
+      value: VisualizationSelectPaneTab.Suggestions,
+    },
+    {
+      label: t('dashboard.visualization-select-pane.radio-options.label.library-panels', 'Library panels'),
       value: VisualizationSelectPaneTab.LibraryPanels,
-      description: 'Reusable panels you can share between multiple dashboards.',
+      description: t(
+        'dashboard.visualization-select-pane.radio-options.description.reusable-panels-share-between-multiple-dashboards',
+        'Reusable panels you can share between multiple dashboards.'
+      ),
     },
   ];
 
@@ -76,10 +86,10 @@ export const VisualizationSelectPane = ({ panel, data }: Props) => {
             onChange={setSearchQuery}
             ref={searchRef}
             autoFocus={true}
-            placeholder="Search for..."
+            placeholder={t('dashboard.visualization-select-pane.placeholder-search-for', 'Search for...')}
           />
           <Button
-            title="Close"
+            title={t('dashboard.visualization-select-pane.title-close', 'Close')}
             variant="secondary"
             icon="angle-up"
             className={styles.closeButton}
@@ -92,32 +102,19 @@ export const VisualizationSelectPane = ({ panel, data }: Props) => {
         </Field>
       </div>
       <div className={styles.scrollWrapper}>
-        <CustomScrollbar autoHeightMin="100%">
+        <ScrollContainer>
           <div className={styles.scrollContent}>
             {listMode === VisualizationSelectPaneTab.Visualizations && (
-              <VizTypePicker
-                current={plugin.meta}
-                onChange={onVizChange}
-                searchQuery={searchQuery}
-                data={data}
-                onClose={() => {}}
-              />
+              <VizTypePicker pluginId={plugin.meta.id} onChange={onVizChange} searchQuery={searchQuery} />
             )}
             {listMode === VisualizationSelectPaneTab.Suggestions && (
-              <VisualizationSuggestions
-                current={plugin.meta}
-                onChange={onVizChange}
-                searchQuery={searchQuery}
-                panel={panel}
-                data={data}
-                onClose={() => {}}
-              />
+              <VisualizationSuggestions onChange={onVizChange} searchQuery={searchQuery} panel={panel} data={data} />
             )}
             {listMode === VisualizationSelectPaneTab.LibraryPanels && (
               <PanelLibraryOptionsGroup searchQuery={searchQuery} panel={panel} key="Panel Library" />
             )}
           </div>
-        </CustomScrollbar>
+        </ScrollContainer>
       </div>
     </div>
   );
@@ -127,46 +124,46 @@ VisualizationSelectPane.displayName = 'VisualizationSelectPane';
 
 const getStyles = (theme: GrafanaTheme2) => {
   return {
-    icon: css`
-      color: ${theme.v1.palette.gray33};
-    `,
-    wrapper: css`
-      display: flex;
-      flex-direction: column;
-      flex: 1 1 0;
-      height: 100%;
-    `,
-    vizButton: css`
-      text-align: left;
-    `,
-    scrollWrapper: css`
-      flex-grow: 1;
-      min-height: 0;
-    `,
-    scrollContent: css`
-      padding: ${theme.spacing(1)};
-    `,
-    openWrapper: css`
-      display: flex;
-      flex-direction: column;
-      flex: 1 1 100%;
-      height: 100%;
-      background: ${theme.colors.background.primary};
-      border: 1px solid ${theme.colors.border.weak};
-    `,
-    searchRow: css`
-      display: flex;
-      margin-bottom: ${theme.spacing(1)};
-    `,
-    closeButton: css`
-      margin-left: ${theme.spacing(1)};
-    `,
-    customFieldMargin: css`
-      margin-bottom: ${theme.spacing(1)};
-    `,
-    formBox: css`
-      padding: ${theme.spacing(1)};
-      padding-bottom: 0;
-    `,
+    icon: css({
+      color: theme.v1.palette.gray33,
+    }),
+    wrapper: css({
+      display: 'flex',
+      flexDirection: 'column',
+      flex: '1 1 0',
+      height: '100%',
+    }),
+    vizButton: css({
+      textAlign: 'left',
+    }),
+    scrollWrapper: css({
+      flexGrow: 1,
+      minHeight: 0,
+    }),
+    scrollContent: css({
+      padding: theme.spacing(1),
+    }),
+    openWrapper: css({
+      display: 'flex',
+      flexDirection: 'column',
+      flex: '1 1 100%',
+      height: '100%',
+      background: theme.colors.background.primary,
+      border: `1px solid ${theme.colors.border.weak}`,
+    }),
+    searchRow: css({
+      display: 'flex',
+      marginBottom: theme.spacing(1),
+    }),
+    closeButton: css({
+      marginLeft: theme.spacing(1),
+    }),
+    customFieldMargin: css({
+      marginBottom: theme.spacing(1),
+    }),
+    formBox: css({
+      padding: theme.spacing(1),
+      paddingBottom: 0,
+    }),
   };
 };

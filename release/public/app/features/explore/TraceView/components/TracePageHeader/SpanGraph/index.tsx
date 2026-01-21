@@ -12,17 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import cx from 'classnames';
+import { css } from '@emotion/css';
 import memoizeOne from 'memoize-one';
-import * as React from 'react';
+import { memo } from 'react';
 
-import { TUpdateViewRangeTimeFunction, ViewRange, ViewRangeTimeUpdate } from '../../index';
-import { TraceSpan, Trace } from '../../types';
-import { ubPb2, ubPx2, ubRelative } from '../../uberUtilityStyles';
+import { ViewRange, TUpdateViewRangeTimeFunction, ViewRangeTimeUpdate } from '../../TraceTimelineViewer/types';
+import { Trace, TraceSpan } from '../../types/trace';
 
 import CanvasSpanGraph from './CanvasSpanGraph';
 import TickLabels from './TickLabels';
 import ViewingLayer from './ViewingLayer';
+
+const getStyles = () => {
+  return {
+    container: css({
+      padding: '0 0.5rem 0.5rem 0.5rem',
+    }),
+    canvasContainer: css({
+      position: 'relative',
+    }),
+  };
+};
 
 const DEFAULT_HEIGHT = 60;
 export const TIMELINE_TICK_INTERVAL = 4;
@@ -55,27 +65,24 @@ function getItems(trace: Trace): SpanItem[] {
 
 const memoizedGetitems = memoizeOne(getItems);
 
-export default class SpanGraph extends React.PureComponent<SpanGraphProps> {
-  static defaultProps = {
-    height: DEFAULT_HEIGHT,
-  };
+const SpanGraph = memo(
+  ({ height = DEFAULT_HEIGHT, trace, viewRange, updateNextViewRangeTime, updateViewRangeTime }: SpanGraphProps) => {
+    const styles = getStyles();
 
-  render() {
-    const { height, trace, viewRange, updateNextViewRangeTime, updateViewRangeTime } = this.props;
     if (!trace) {
       return <div />;
     }
 
     const items = memoizedGetitems(trace);
     return (
-      <div className={cx(ubPb2, ubPx2)}>
+      <div className={styles.container}>
         <TickLabels numTicks={TIMELINE_TICK_INTERVAL} duration={trace.duration} />
-        <div className={ubRelative}>
+        <div className={styles.canvasContainer}>
           <CanvasSpanGraph valueWidth={trace.duration} items={items} />
           <ViewingLayer
             viewRange={viewRange}
             numTicks={TIMELINE_TICK_INTERVAL}
-            height={height || DEFAULT_HEIGHT}
+            height={height}
             updateViewRangeTime={updateViewRangeTime}
             updateNextViewRangeTime={updateNextViewRangeTime}
           />
@@ -83,4 +90,8 @@ export default class SpanGraph extends React.PureComponent<SpanGraphProps> {
       </div>
     );
   }
-}
+);
+
+SpanGraph.displayName = 'SpanGraph';
+
+export default SpanGraph;

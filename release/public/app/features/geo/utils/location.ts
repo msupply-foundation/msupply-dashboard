@@ -9,6 +9,7 @@ import {
   getFieldDisplayName,
   FieldType,
 } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { FrameGeometrySource, FrameGeometrySourceMode } from '@grafana/schema';
 
 import { getGeoFieldFromGazetteer, pointFieldFromGeohash, pointFieldFromLonLat } from '../format/utils';
@@ -82,11 +83,10 @@ export async function getLocationMatchers(src?: FrameGeometrySource): Promise<Lo
       }
       break;
     case FrameGeometrySourceMode.Lookup:
-      if (src?.lookup) {
-        info.lookup = getFieldFinder(getFieldMatcher({ id: FieldMatcherID.byName, options: src.lookup }));
-      } else {
-        info.lookup = () => undefined; // In manual mode, don't automatically find field
-      }
+      const m = src?.lookup?.length
+        ? getFieldMatcher({ id: FieldMatcherID.byName, options: src.lookup })
+        : getFieldMatcher({ id: FieldMatcherID.byType, options: FieldType.string });
+      info.lookup = getFieldFinder(m);
       break;
     case FrameGeometrySourceMode.Coords:
       if (src?.latitude) {
@@ -113,7 +113,7 @@ export interface LocationFields {
   h3?: Field;
   wkt?: Field;
   lookup?: Field;
-  geo?: Field<Geometry>;
+  geo?: Field<Geometry | undefined>;
 }
 
 export function getLocationFields(frame: DataFrame, location: LocationFieldMatchers): LocationFields {
@@ -179,7 +179,7 @@ export function getGeometryField(frame: DataFrame, location: LocationFieldMatche
         };
       }
       return {
-        warning: 'Unable to find location fields',
+        warning: t('geo.get-geometry-field.warning-unable-to-find', 'Unable to find location fields'),
       };
 
     case FrameGeometrySourceMode.Coords:
@@ -191,7 +191,7 @@ export function getGeometryField(frame: DataFrame, location: LocationFieldMatche
         };
       }
       return {
-        warning: 'Select latitude/longitude fields',
+        warning: t('geo.get-geometry-field.warning-select-lat-long', 'Select latitude/longitude fields'),
       };
 
     case FrameGeometrySourceMode.Geohash:
@@ -203,7 +203,7 @@ export function getGeometryField(frame: DataFrame, location: LocationFieldMatche
         };
       }
       return {
-        warning: 'Select geohash field',
+        warning: t('geo.get-geometry-field.warning-select-geohash', 'Select geohash field'),
       };
 
     case FrameGeometrySourceMode.Lookup:
@@ -216,13 +216,13 @@ export function getGeometryField(frame: DataFrame, location: LocationFieldMatche
           };
         }
         return {
-          warning: 'Gazetteer not found',
+          warning: t('geo.get-geometry-field.warning-gazetteer-not-found', 'Gazetteer not found'),
         };
       }
       return {
-        warning: 'Select lookup field',
+        warning: t('geo.get-geometry-field.warning-select-lookup', 'Select lookup field'),
       };
   }
 
-  return { warning: 'unable to find geometry' };
+  return { warning: t('geo.get-geometry-field.warning-no-geometry', 'unable to find geometry') };
 }

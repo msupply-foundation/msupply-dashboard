@@ -1,12 +1,13 @@
 import { css } from '@emotion/css';
-import React from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
+import { t } from '@grafana/i18n';
+import { ScalarDimensionConfig } from '@grafana/schema';
 import { useStyles2 } from '@grafana/ui';
-import { DimensionContext, ScalarDimensionConfig } from 'app/features/dimensions';
-import { ScalarDimensionEditor } from 'app/features/dimensions/editors';
+import { DimensionContext } from 'app/features/dimensions/context';
+import { ScalarDimensionEditor } from 'app/features/dimensions/editors/ScalarDimensionEditor';
 
-import { CanvasElementItem, CanvasElementProps, defaultBgColor } from '../element';
+import { CanvasElementItem, CanvasElementOptions, CanvasElementProps, defaultBgColor } from '../element';
 
 interface DroneSideData {
   pitchAngle?: number;
@@ -67,7 +68,7 @@ const DroneSideDisplay = ({ data }: CanvasElementProps<DroneSideConfig, DroneSid
   );
 };
 
-export const droneSideItem: CanvasElementItem<any, any> = {
+export const droneSideItem: CanvasElementItem = {
   id: 'droneSide',
   name: 'Drone Side',
   description: 'Drone Side',
@@ -91,32 +92,38 @@ export const droneSideItem: CanvasElementItem<any, any> = {
       height: options?.placement?.height ?? 26,
       top: options?.placement?.top,
       left: options?.placement?.left,
+      rotation: options?.placement?.rotation ?? 0,
     },
+    links: options?.links ?? [],
   }),
 
   // Called when data changes
-  prepareData: (ctx: DimensionContext, cfg: DroneSideConfig) => {
+  prepareData: (dimensionContext: DimensionContext, elementOptions: CanvasElementOptions<DroneSideConfig>) => {
+    const droneSideConfig = elementOptions.config;
+
     const data: DroneSideData = {
-      pitchAngle: cfg?.pitchAngle ? ctx.getScalar(cfg.pitchAngle).value() : 0,
+      pitchAngle: droneSideConfig?.pitchAngle ? dimensionContext.getScalar(droneSideConfig.pitchAngle).value() : 0,
     };
 
     return data;
   },
 
   registerOptionsUI: (builder) => {
-    const category = ['Drone Side'];
+    const category = [t('canvas.drone-side-item.category-drone-side', 'Drone Side')];
     builder.addCustomEditor({
       category,
       id: 'pitchAngle',
       path: 'config.pitchAngle',
-      name: 'Pitch Angle',
+      name: t('canvas.drone-side-item.name-pitch-angle', 'Pitch Angle'),
       editor: ScalarDimensionEditor,
     });
   },
 };
 
 const getStyles = (theme: GrafanaTheme2) => ({
-  droneSide: css`
-    transition: transform 0.4s;
-  `,
+  droneSide: css({
+    // TODO: figure out what styles to apply when prefers-reduced-motion is set
+    // eslint-disable-next-line @grafana/no-unreduced-motion
+    transition: 'transform 0.4s',
+  }),
 });

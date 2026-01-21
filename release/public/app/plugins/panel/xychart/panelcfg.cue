@@ -16,64 +16,70 @@ package grafanaplugin
 
 import (
 	"github.com/grafana/grafana/packages/grafana-schema/src/common"
-	"github.com/grafana/grafana/pkg/plugins/pfs"
 )
-
-// This file (with its sibling .cue files) implements pfs.GrafanaPlugin
-pfs.GrafanaPlugin
 
 composableKinds: PanelCfg: {
 	maturity: "experimental"
 
 	lineage: {
-		seqs: [
-			{
-				schemas: [
-					{
+		schemas: [{
+			version: [0, 0]
+			schema: {
+				PointShape:    "circle" | "square"                 @cuetsy(kind="enum")
+				SeriesMapping: "auto" | "manual"                   @cuetsy(kind="enum")
+				XYShowMode:    "points" | "lines" | "points+lines" @cuetsy(kind="enum", memberNames="Points|Lines|PointsAndLines")
 
-						SeriesMapping: "auto" | "manual"                   @cuetsy(kind="enum")
-						ScatterShow:   "points" | "lines" | "points+lines" @cuetsy(kind="enum", memberNames="Points|Lines|PointsAndLines")
+				// NOTE: (copied from dashboard_kind.cue, since not exported)
+				// Matcher is a predicate configuration. Based on the config a set of field(s) or values is filtered in order to apply override / transformation.
+				// It comes with in id ( to resolve implementation from registry) and a configuration that’s specific to a particular matcher type.
+				#MatcherConfig: {
+					// The matcher id. This is used to find the matcher implementation from registry.
+					id: string | *"" @grafanamaturity(NeedsExpertReview)
+					// The matcher options. This is specific to the matcher implementation.
+					options?: _ @grafanamaturity(NeedsExpertReview)
+				} @cuetsy(kind="interface") @grafana(TSVeneer="type")
 
-						XYDimensionConfig: {
-							frame: int32 & >=0
-							x?:    string
-							exclude?: [...string]
-						} @cuetsy(kind="interface")
+				FieldConfig: {
+					common.HideableFieldConfig
+					common.AxisConfig
 
-						ScatterFieldConfig: {
-							common.HideableFieldConfig
-							common.AxisConfig
+					show?: XYShowMode & (*"points" | _)
 
-							show?: ScatterShow | *"points"
+					pointSize?: {
+						fixed?: int32 & >=0
+						min?:   int32 & >=0
+						max?:   int32 & >=0
+					}
 
-							pointSize?:  common.ScaleDimensionConfig
-							lineColor?:  common.ColorDimensionConfig
-							pointColor?: common.ColorDimensionConfig
-							labelValue?: common.TextDimensionConfig
+					pointShape?: PointShape
 
-							lineWidth?: int32 & >=0
-							lineStyle?: common.LineStyle
-							label?:     common.VisibilityMode | *"auto"
-						} @cuetsy(kind="interface",TSVeneer="type")
+					pointStrokeWidth?: int32 & >=0
 
-						ScatterSeriesConfig: {
-							ScatterFieldConfig
-							x?:    string
-							y?:    string
-							name?: string
-						} @cuetsy(kind="interface")
+					fillOpacity?: uint32 & <=100 | *50
 
-						PanelOptions: {
-							common.OptionsWithLegend
-							common.OptionsWithTooltip
+					lineWidth?: int32 & >=0
+					lineStyle?: common.LineStyle
+				} @cuetsy(kind="interface",TSVeneer="type")
 
-							seriesMapping?: SeriesMapping
-							dims:           XYDimensionConfig
-							series: [...ScatterSeriesConfig]
-						} @cuetsy(kind="interface")
-					},
-				]
-			},
-		]
+				XYSeriesConfig: {
+					name?: {fixed?: string}
+					frame?: {matcher: #MatcherConfig}
+					x?: {matcher: #MatcherConfig}
+					y?: {matcher: #MatcherConfig}
+					color?: {matcher: #MatcherConfig}
+					size?: {matcher: #MatcherConfig}
+				} @cuetsy(kind="interface")
+
+				Options: {
+					common.OptionsWithLegend
+					common.OptionsWithTooltip
+
+					mapping: SeriesMapping
+
+					series: [...XYSeriesConfig]
+				} @cuetsy(kind="interface")
+			}
+		}]
+		lenses: []
 	}
 }

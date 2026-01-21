@@ -3,6 +3,8 @@ import { usePointerMovedSinceMount } from 'kbar/lib/utils';
 import * as React from 'react';
 import { useVirtual } from 'react-virtual';
 
+import { URLCallback } from './types';
+
 // From https://github.com/timc1/kbar/blob/main/src/KBarResults.tsx
 // TODO: Go back to KBarResults from kbar when https://github.com/timc1/kbar/issues/281 is fixed
 // Remember to remove dependency on react-virtual when removing this file
@@ -69,7 +71,7 @@ export const KBarResults = (props: KBarResultsProps) => {
           }
           return nextIndex;
         });
-      } else if (event.key === 'Enter') {
+      } else if (event.key === 'Enter' && !event.metaKey) {
         event.preventDefault();
         // storing the active dom element in a ref prevents us from
         // having to calculate the current action to perform based
@@ -119,8 +121,15 @@ export const KBarResults = (props: KBarResultsProps) => {
       const url = (item as ActionImpl & { url?: string }).url;
 
       if (item.command) {
+        if (url) {
+          // If the item also has a url we should block navigation.
+          ev.preventDefault();
+        }
         item.command.perform(item);
-        query.toggle();
+        // TODO: ideally the perform method would return some marker or we would have something like preventDefault()
+        if (!item.id.startsWith('scopes/') || item.id === 'scopes/apply') {
+          query.toggle();
+        }
       } else if (url) {
         if (!(ev.ctrlKey || ev.metaKey || ev.shiftKey)) {
           query.toggle();
@@ -157,7 +166,7 @@ export const KBarResults = (props: KBarResultsProps) => {
         {rowVirtualizer.virtualItems.map((virtualRow) => {
           // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
           const item = itemsRef.current[virtualRow.index] as ActionImpl & {
-            url?: string;
+            url?: string | URLCallback;
             target?: React.HTMLAttributeAnchorTarget;
           };
 
@@ -202,7 +211,7 @@ export const KBarResults = (props: KBarResultsProps) => {
             return (
               <a
                 key={virtualRow.index}
-                href={url}
+                href={typeof url === 'function' ? url(search) : url}
                 target={target}
                 // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
                 ref={active ? (activeRef as React.RefObject<HTMLAnchorElement>) : null}

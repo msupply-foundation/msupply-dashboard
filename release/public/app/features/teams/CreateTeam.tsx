@@ -1,58 +1,71 @@
-import React, { useState } from 'react';
+import { JSX, useState } from 'react';
+import { useForm } from 'react-hook-form';
 
 import { NavModelItem } from '@grafana/data';
+import { Trans, t } from '@grafana/i18n';
 import { getBackendSrv, locationService } from '@grafana/runtime';
-import { Button, Form, Field, Input, FieldSet } from '@grafana/ui';
+import { Button, Field, Input, FieldSet, Stack } from '@grafana/ui';
 import { Page } from 'app/core/components/Page/Page';
 import { TeamRolePicker } from 'app/core/components/RolePicker/TeamRolePicker';
 import { updateTeamRoles } from 'app/core/components/RolePicker/api';
 import { useRoleOptions } from 'app/core/components/RolePicker/hooks';
 import { contextSrv } from 'app/core/core';
-import { AccessControlAction, Role, TeamDTO } from 'app/types';
+import { Role, AccessControlAction } from 'app/types/accessControl';
+import { TeamDTO } from 'app/types/teams';
 
 const pageNav: NavModelItem = {
   icon: 'users-alt',
   id: 'team-new',
   text: 'New team',
   subTitle: 'Create a new team. Teams let you grant permissions to a group of users.',
-  breadcrumbs: [{ title: 'Configuration', url: 'org/teams' }],
 };
 
 export const CreateTeam = (): JSX.Element => {
   const currentOrgId = contextSrv.user.orgId;
   const [pendingRoles, setPendingRoles] = useState<Role[]>([]);
   const [{ roleOptions }] = useRoleOptions(currentOrgId);
+  const {
+    handleSubmit,
+    register,
+    formState: { errors },
+  } = useForm<TeamDTO>();
 
   const canUpdateRoles =
     contextSrv.hasPermission(AccessControlAction.ActionUserRolesAdd) &&
     contextSrv.hasPermission(AccessControlAction.ActionUserRolesRemove);
 
   const createTeam = async (formModel: TeamDTO) => {
-    const newTeam = await getBackendSrv().post('/api/teams', formModel);
-    if (newTeam.teamId) {
-      try {
+    try {
+      const newTeam = await getBackendSrv().post('/api/teams', formModel);
+      if (newTeam.teamId) {
         await contextSrv.fetchUserPermissions();
         if (contextSrv.licensedAccessControlEnabled() && canUpdateRoles) {
           await updateTeamRoles(pendingRoles, newTeam.teamId, newTeam.orgId);
         }
-      } catch (e) {
-        console.error(e);
+        locationService.push(`/org/teams/edit/${newTeam.uid}`);
       }
-      locationService.push(`/org/teams/edit/${newTeam.teamId}`);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   return (
     <Page navId="teams" pageNav={pageNav}>
       <Page.Contents>
-        <Form onSubmit={createTeam}>
-          {({ register, errors }) => (
-            <FieldSet>
-              <Field label="Name" required invalid={!!errors.name} error="Team name is required">
+        <form onSubmit={handleSubmit(createTeam)} style={{ maxWidth: '600px' }}>
+          <FieldSet>
+            <Stack direction="column" gap={2}>
+              <Field
+                noMargin
+                label={t('teams.create-team.label-name', 'Name')}
+                required
+                invalid={!!errors.name}
+                error="Team name is required"
+              >
                 <Input {...register('name', { required: true })} id="team-name" />
               </Field>
               {contextSrv.licensedAccessControlEnabled() && (
-                <Field label="Role">
+                <Field noMargin label={t('teams.create-team.label-role', 'Role')}>
                   <TeamRolePicker
                     teamId={0}
                     roleOptions={roleOptions}
@@ -65,19 +78,22 @@ export const CreateTeam = (): JSX.Element => {
                 </Field>
               )}
               <Field
-                label={'Email'}
-                description={'This is optional and is primarily used for allowing custom team avatars.'}
+                noMargin
+                label={t('teams.create-team.label-email', 'Email')}
+                description={t(
+                  'teams.create-team.description-email',
+                  'This is optional and is primarily used for allowing custom team avatars'
+                )}
               >
+                {/* eslint-disable-next-line @grafana/i18n/no-untranslated-strings */}
                 <Input {...register('email')} type="email" id="team-email" placeholder="email@test.com" />
               </Field>
-              <div className="gf-form-button-row">
-                <Button type="submit" variant="primary">
-                  Create
-                </Button>
-              </div>
-            </FieldSet>
-          )}
-        </Form>
+            </Stack>
+          </FieldSet>
+          <Button type="submit" variant="primary">
+            <Trans i18nKey="teams.create-team.create">Create</Trans>
+          </Button>
+        </form>
       </Page.Contents>
     </Page>
   );

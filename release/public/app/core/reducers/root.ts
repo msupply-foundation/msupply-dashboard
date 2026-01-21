@@ -1,9 +1,15 @@
+import { ReducersMapObject } from '@reduxjs/toolkit';
 import { AnyAction, combineReducers } from 'redux';
 
+import { notificationsAPIv0alpha1, rulesAPIv0alpha1 } from '@grafana/alerting/unstable';
+import { allReducers as allApiClientReducers } from '@grafana/api-clients/rtkq';
+import { generatedAPI as legacyAPI } from '@grafana/api-clients/rtkq/legacy';
 import sharedReducers from 'app/core/reducers';
 import ldapReducers from 'app/features/admin/state/reducers';
 import alertingReducers from 'app/features/alerting/state/reducers';
-import apiKeysReducers from 'app/features/api-keys/state/reducers';
+import authConfigReducers from 'app/features/auth-config/state/reducers';
+import { browseDashboardsAPI } from 'app/features/browse-dashboards/api/browseDashboardsAPI';
+import browseDashboardsReducers from 'app/features/browse-dashboards/state/slice';
 import { publicDashboardApi } from 'app/features/dashboard/api/publicDashboardApi';
 import panelEditorReducers from 'app/features/dashboard/components/PanelEditor/state/reducers';
 import dashboardReducers from 'app/features/dashboard/state/reducers';
@@ -29,7 +35,6 @@ const rootReducers = {
   ...sharedReducers,
   ...alertingReducers,
   ...teamsReducers,
-  ...apiKeysReducers,
   ...foldersReducers,
   ...dashboardReducers,
   ...exploreReducers,
@@ -39,20 +44,27 @@ const rootReducers = {
   ...userReducers,
   ...invitesReducers,
   ...organizationReducers,
+  ...browseDashboardsReducers,
   ...ldapReducers,
   ...importDashboardReducers,
   ...panelEditorReducers,
   ...panelsReducers,
   ...templatingReducers,
   ...supportBundlesReducer,
+  ...authConfigReducers,
+  [legacyAPI.reducerPath]: legacyAPI.reducer,
   plugins: pluginsReducer,
   [alertingApi.reducerPath]: alertingApi.reducer,
+  [notificationsAPIv0alpha1.reducerPath]: notificationsAPIv0alpha1.reducer,
+  [rulesAPIv0alpha1.reducerPath]: rulesAPIv0alpha1.reducer,
   [publicDashboardApi.reducerPath]: publicDashboardApi.reducer,
+  [browseDashboardsAPI.reducerPath]: browseDashboardsAPI.reducer,
+  ...allApiClientReducers,
 };
 
 const addedReducers = {};
 
-export const addReducer = (newReducers: any) => {
+export const addReducer = (newReducers: ReducersMapObject) => {
   Object.assign(addedReducers, newReducers);
 };
 
@@ -62,7 +74,7 @@ export const createRootReducer = () => {
     ...addedReducers,
   });
 
-  return (state: any, action: AnyAction) => {
+  return (state: Parameters<typeof appReducer>[0], action: AnyAction) => {
     if (action.type !== cleanUpAction.type) {
       return appReducer(state, action);
     }

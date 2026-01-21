@@ -1,11 +1,11 @@
 import { css } from '@emotion/css';
-import React from 'react';
 
 import { selectors } from '@grafana/e2e-selectors';
+import { t } from '@grafana/i18n';
 import { ToolbarButton, ButtonGroup } from '@grafana/ui';
-import { useDispatch, useSelector } from 'app/types';
+import { useDispatch, useSelector } from 'app/types/store';
 
-import { PanelModel } from '../../state';
+import { PanelModel } from '../../state/PanelModel';
 import { getPanelPluginWithFallback } from '../../state/selectors';
 
 import { updatePanelEditorUIState } from './state/actions';
@@ -38,22 +38,35 @@ export const VisualizationButton = ({ panel }: Props) => {
       <ButtonGroup>
         <ToolbarButton
           className={styles.vizButton}
-          tooltip="Click to change visualization"
+          tooltip={t(
+            'dashboard.visualization-button.tooltip-click-to-change-visualization',
+            'Click to change visualization'
+          )}
           imgSrc={plugin.meta.info.logos.small}
           isOpen={isVizPickerOpen}
           onClick={onToggleOpen}
-          aria-label={selectors.components.PanelEditor.toggleVizPicker}
+          data-testid={selectors.components.PanelEditor.toggleVizPicker}
+          aria-label={t('dashboard.visualization-button.aria-label-change-visualization', 'Change visualization')}
           variant="canvas"
           fullWidth
         >
           {plugin.meta.name}
         </ToolbarButton>
         <ToolbarButton
-          tooltip={isPanelOptionsVisible ? 'Close options pane' : 'Show options pane'}
+          tooltip={
+            isPanelOptionsVisible
+              ? t('dashboard.visualization-button.tooltip-close', 'Close options pane')
+              : t('dashboard.visualization-button.tooltip-show', 'Show options pane')
+          }
           icon={isPanelOptionsVisible ? 'angle-right' : 'angle-left'}
           onClick={onToggleOptionsPane}
           variant="canvas"
-          aria-label={selectors.components.PanelEditor.toggleVizOptions}
+          data-testid={selectors.components.PanelEditor.toggleVizOptions}
+          aria-label={
+            isPanelOptionsVisible
+              ? t('dashboard.visualization-button.aria-label-close', 'Close options pane')
+              : t('dashboard.visualization-button.aria-label-show', 'Show options pane')
+          }
         />
       </ButtonGroup>
     </div>
@@ -63,11 +76,11 @@ export const VisualizationButton = ({ panel }: Props) => {
 VisualizationButton.displayName = 'VisualizationTab';
 
 const styles = {
-  wrapper: css`
-    display: flex;
-    flex-direction: column;
-  `,
-  vizButton: css`
-    text-align: left;
-  `,
+  wrapper: css({
+    display: 'flex',
+    flexDirection: 'column',
+  }),
+  vizButton: css({
+    textAlign: 'left',
+  }),
 };

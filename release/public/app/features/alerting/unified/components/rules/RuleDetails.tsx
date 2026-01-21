@@ -1,19 +1,20 @@
 import { css } from '@emotion/css';
-import React from 'react';
 
+import { AlertLabels } from '@grafana/alerting/unstable';
 import { GrafanaTheme2, dateTime, dateTimeFormat } from '@grafana/data';
-import { useStyles2, Tooltip } from '@grafana/ui';
+import { Trans, t } from '@grafana/i18n';
+import { Tooltip, useStyles2 } from '@grafana/ui';
 import { Time } from 'app/features/explore/Time';
 import { CombinedRule } from 'app/types/unified-alerting';
 
+import { usePendingPeriod } from '../../hooks/rules/usePendingPeriod';
 import { useCleanAnnotations } from '../../utils/annotations';
-import { isRecordingRulerRule } from '../../utils/rules';
+import { prometheusRuleType, rulerRuleType } from '../../utils/rules';
 import { isNullDate } from '../../utils/time';
-import { AlertLabels } from '../AlertLabels';
 import { DetailsField } from '../DetailsField';
 
-import { RuleDetailsActionButtons } from './RuleDetailsActionButtons';
 import { RuleDetailsAnnotations } from './RuleDetailsAnnotations';
+import RuleDetailsButtons from './RuleDetailsButtons';
 import { RuleDetailsDataSources } from './RuleDetailsDataSources';
 import { RuleDetailsExpression } from './RuleDetailsExpression';
 import { RuleDetailsMatchingInstances } from './RuleDetailsMatchingInstances';
@@ -25,7 +26,7 @@ interface Props {
 // The limit is set to 15 in order to upkeep the good performance
 // and to encourage users to go to the rule details page to see the rest of the instances
 // We don't want to paginate the instances list on the alert list page
-const INSTANCES_DISPLAY_LIMIT = 15;
+export const INSTANCES_DISPLAY_LIMIT = 15;
 
 export const RuleDetails = ({ rule }: Props) => {
   const styles = useStyles2(getStyles);
@@ -35,14 +36,17 @@ export const RuleDetails = ({ rule }: Props) => {
 
   const annotations = useCleanAnnotations(rule.annotations);
 
+  const isAlertingRule =
+    rulerRuleType.any.alertingRule(rule.rulerRule) || prometheusRuleType.alertingRule(rule.promRule);
+
   return (
     <div>
-      <RuleDetailsActionButtons rule={rule} rulesSource={rulesSource} isViewMode={false} />
+      <RuleDetailsButtons rule={rule} rulesSource={rulesSource} />
       <div className={styles.wrapper}>
         <div className={styles.leftSide}>
           {<EvaluationBehaviorSummary rule={rule} />}
           {!!rule.labels && !!Object.keys(rule.labels).length && (
-            <DetailsField label="Labels" horizontal={true}>
+            <DetailsField label={t('alerting.rule-details.label-labels', 'Labels')} horizontal={true}>
               <AlertLabels labels={rule.labels} />
             </DetailsField>
           )}
@@ -53,7 +57,11 @@ export const RuleDetails = ({ rule }: Props) => {
           <RuleDetailsDataSources rulesSource={rulesSource} rule={rule} />
         </div>
       </div>
-      <RuleDetailsMatchingInstances rule={rule} itemsDisplayLimit={INSTANCES_DISPLAY_LIMIT} />
+      {isAlertingRule && (
+        <DetailsField label={t('alerting.rule-details.label-instances', 'Instances')} horizontal={true}>
+          <RuleDetailsMatchingInstances rule={rule} itemsDisplayLimit={INSTANCES_DISPLAY_LIMIT} />
+        </DetailsField>
+      )}
     </div>
   );
 };
@@ -63,45 +71,78 @@ interface EvaluationBehaviorSummaryProps {
 }
 
 const EvaluationBehaviorSummary = ({ rule }: EvaluationBehaviorSummaryProps) => {
-  let forDuration: string | undefined;
-  let every = rule.group.interval;
-  let lastEvaluation = rule.promRule?.lastEvaluation;
-  let lastEvaluationDuration = rule.promRule?.evaluationTime;
+  const interval = rule.group.interval;
+  const lastEvaluation = rule.promRule?.lastEvaluation;
+  const lastEvaluationDuration = rule.promRule?.evaluationTime;
+  const metric = rulerRuleType.grafana.recordingRule(rule.rulerRule)
+    ? rule.rulerRule?.grafana_alert.record?.metric
+    : undefined;
 
-  // recording rules don't have a for duration
-  if (!isRecordingRulerRule(rule.rulerRule)) {
-    forDuration = rule.rulerRule?.for;
-  }
+  const pendingPeriod = usePendingPeriod(rule);
+
+  const keepFiringFor = rulerRuleType.grafana.alertingRule(rule.rulerRule) ? rule.rulerRule.keep_firing_for : undefined;
 
   return (
     <>
-      {every && (
-        <DetailsField label="Evaluate" horizontal={true}>
-          Every {every}
+      {metric && (
+        <DetailsField label={t('alerting.evaluation-behavior-summary.label-metric', 'Metric')} horizontal={true}>
+          {metric}
         </DetailsField>
       )}
-      {forDuration && (
-        <DetailsField label="For" horizontal={true}>
-          {forDuration}
+      {interval && (
+        <DetailsField label={t('alerting.evaluation-behavior-summary.label-evaluate', 'Evaluate')} horizontal={true}>
+          <Trans i18nKey="alerting.evaluation-behavior-summary.evaluate" values={{ interval }}>
+            Every {{ interval }}
+          </Trans>
+        </DetailsField>
+      )}
+
+      {pendingPeriod && (
+        <DetailsField
+          label={t('alerting.evaluation-behavior-summary.label-pending-period', 'Pending period')}
+          horizontal={true}
+        >
+          {pendingPeriod}
+        </DetailsField>
+      )}
+      {keepFiringFor && (
+        <DetailsField label={t('alerting.rule-details.keep-firing-for', 'Keep firing for')} horizontal={true}>
+          {keepFiringFor}
         </DetailsField>
       )}
 
       {lastEvaluation && !isNullDate(lastEvaluation) && (
-        <DetailsField label="Last evaluation" horizontal={true}>
+        <DetailsField
+          label={t('alerting.evaluation-behavior-summary.label-last-evaluation', 'Last evaluation')}
+          horizontal={true}
+        >
           <Tooltip
             placement="top"
+            // eslint-disable-next-line @grafana/i18n/no-untranslated-strings
             content={`${dateTimeFormat(lastEvaluation, { format: 'YYYY-MM-DD HH:mm:ss' })}`}
             theme="info"
           >
-            <span>{`${dateTime(lastEvaluation).locale('en').fromNow(true)} ago`}</span>
+            <span>
+              {t('alerting.rule-details.last-evaluation-ago', '{{time}} ago', {
+                time: dateTime(lastEvaluation).locale('en').fromNow(true),
+              })}
+            </span>
           </Tooltip>
         </DetailsField>
       )}
 
       {lastEvaluation && !isNullDate(lastEvaluation) && lastEvaluationDuration !== undefined && (
-        <DetailsField label="Evaluation time" horizontal={true}>
-          <Tooltip placement="top" content={`${lastEvaluationDuration}s`} theme="info">
-            <span>{Time({ timeInMs: lastEvaluationDuration * 1000, humanize: true })}</span>
+        <DetailsField
+          label={t('alerting.evaluation-behavior-summary.label-evaluation-time', 'Evaluation time')}
+          horizontal={true}
+        >
+          <Tooltip
+            placement="top"
+            // eslint-disable-next-line @grafana/i18n/no-untranslated-strings
+            content={`${lastEvaluationDuration}s`}
+            theme="info"
+          >
+            <span>{Time({ timeInMs: lastEvaluationDuration, humanize: true })}</span>
           </Tooltip>
         </DetailsField>
       )}
@@ -110,21 +151,21 @@ const EvaluationBehaviorSummary = ({ rule }: EvaluationBehaviorSummaryProps) => 
 };
 
 export const getStyles = (theme: GrafanaTheme2) => ({
-  wrapper: css`
-    display: flex;
-    flex-direction: row;
+  wrapper: css({
+    display: 'flex',
+    flexDirection: 'row',
 
-    ${theme.breakpoints.down('md')} {
-      flex-direction: column;
-    }
-  `,
-  leftSide: css`
-    flex: 1;
-  `,
-  rightSide: css`
-    ${theme.breakpoints.up('md')} {
-      padding-left: 90px;
-      width: 300px;
-    }
-  `,
+    [theme.breakpoints.down('md')]: {
+      flexDirection: 'column',
+    },
+  }),
+  leftSide: css({
+    flex: 1,
+  }),
+  rightSide: css({
+    [theme.breakpoints.up('md')]: {
+      paddingLeft: '90px',
+      width: '300px',
+    },
+  }),
 });

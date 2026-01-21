@@ -1,13 +1,12 @@
-import React from 'react';
-
 import { DataQueryError } from '@grafana/data';
+import { Trans } from '@grafana/i18n';
 import { Alert, JSONFormatter } from '@grafana/ui';
 
 interface InspectErrorTabProps {
   errors?: DataQueryError[];
 }
 
-const parseErrorMessage = (message: string): { msg: string; json?: any } => {
+const parseErrorMessage = (message: string) => {
   try {
     const [msg, json] = message.split(/(\{.+)/);
     const jsonError = JSON.parse(json);
@@ -34,15 +33,31 @@ function renderError(error: DataQueryError) {
     if (!json) {
       return (
         <>
-          {error.status && <>Status: {error.status}. Message: </>}
+          {error.status && (
+            <Trans i18nKey="inspector.inspect-error-tab.error-status-message" values={{ errorStatus: error.status }}>
+              Status: {'{{errorStatus}}'}. Message:
+            </Trans>
+          )}{' '}
           {msg}
+          {error.traceId != null && (
+            <>
+              <br />
+              <Trans i18nKey="inspector.inspect-error-tab.error-trace-message" values={{ errorTrace: error.traceId }}>
+                (Trace ID: {'{{errorTrace}}'})
+              </Trans>
+            </>
+          )}
         </>
       );
     } else {
       return (
         <>
           {msg !== '' && <h3>{msg}</h3>}
-          {error.status && <>Status: {error.status}</>}
+          {error.status && (
+            <Trans i18nKey="inspector.inspect-error-tab.error-status-no-message" values={{ errorStatus: error.status }}>
+              Status: {'{{errorStatus}}'}
+            </Trans>
+          )}
           <JSONFormatter json={json} open={5} />
         </>
       );
@@ -61,7 +76,7 @@ export const InspectErrorTab = ({ errors }: InspectErrorTabProps) => {
   return (
     <>
       {errors.map((error, index) => (
-        <Alert title={error.refId || `Query ${index + 1}`} severity="error" key={index}>
+        <Alert title={error.refId || `Error ${index + 1}`} severity="error" key={index}>
           {renderError(error)}
         </Alert>
       ))}

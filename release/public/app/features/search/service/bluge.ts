@@ -1,5 +1,4 @@
 import {
-  ArrayVector,
   DataFrame,
   DataFrameJSON,
   DataFrameView,
@@ -7,12 +6,12 @@ import {
   SelectableValue,
   toDataFrame,
 } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { config, getBackendSrv } from '@grafana/runtime';
 import { TermCount } from 'app/core/components/TagFilter/TagFilter';
 
+import { DashboardQueryResult, GrafanaSearcher, QueryResponse, SearchQuery, SearchResultMeta } from './types';
 import { replaceCurrentFolderQuery } from './utils';
-
-import { DashboardQueryResult, GrafanaSearcher, QueryResponse, SearchQuery, SearchResultMeta } from '.';
 
 // The backend returns an empty frame with a special name to indicate that the indexing engine is being rebuilt,
 // and that it can not serve any search requests. We are temporarily using the old SQL Search API as a fallback when that happens.
@@ -86,11 +85,16 @@ export class BlugeSearcher implements GrafanaSearcher {
     return [];
   }
 
+  async getLocationInfo() {
+    // TODO: Implement location info, or deprecate this entire file(?)
+    return {};
+  }
+
   // This should eventually be filled by an API call, but hardcoded is a good start
   getSortOptions(): Promise<SelectableValue[]> {
     const opts: SelectableValue[] = [
-      { value: folderViewSort, label: 'Alphabetically (A-Z)' },
-      { value: '-name_sort', label: 'Alphabetically (Z-A)' },
+      { value: folderViewSort, label: t('search.bluge-searcher.opts.label.alphabetically-az', 'Alphabetically (A-Z)') },
+      { value: '-name_sort', label: t('search.bluge-searcher.opts.label.alphabetically-za', 'Alphabetically (Z-A)') },
     ];
 
     if (config.licenseInfo.enabledFeatures.analytics) {
@@ -181,8 +185,8 @@ export class BlugeSearcher implements GrafanaSearcher {
         // Append the raw values to the same array buffer
         const length = frame.length + view.dataFrame.length;
         for (let i = 0; i < frame.fields.length; i++) {
-          const values = (view.dataFrame.fields[i].values as ArrayVector).buffer;
-          values.push(...frame.fields[i].values.toArray());
+          const values = view.dataFrame.fields[i].values;
+          values.push(...frame.fields[i].values);
         }
         view.dataFrame.length = length;
 
@@ -227,7 +231,7 @@ function getTermCountsFrom(frame: DataFrame): TermCount[] {
   const vals = frame.fields[1].values;
   const counts: TermCount[] = [];
   for (let i = 0; i < frame.length; i++) {
-    counts.push({ term: keys.get(i), count: vals.get(i) });
+    counts.push({ term: keys[i], count: vals[i] });
   }
   return counts;
 }

@@ -1,8 +1,15 @@
 import { map, Observable, defer, mergeMap } from 'rxjs';
 
-import { DataFrameJSON, DataQueryRequest, DataQueryResponse, LiveChannelScope, LoadingState } from '@grafana/data';
-import { getGrafanaLiveSrv } from '@grafana/runtime';
-import { StreamingDataFrame } from 'app/features/live/data/StreamingDataFrame';
+import {
+  DataFrameJSON,
+  DataQueryRequest,
+  DataQueryResponse,
+  LiveChannelEvent,
+  LiveChannelScope,
+  LoadingState,
+  StreamingDataFrame,
+} from '@grafana/data';
+import { getGrafanaLiveSrv, config } from '@grafana/runtime';
 
 import { LokiDatasource } from './datasource';
 import { LokiQuery } from './types';
@@ -18,7 +25,7 @@ export async function getLiveStreamKey(query: LokiQuery): Promise<string> {
   const msgUint8 = new TextEncoder().encode(str); // encode as (utf-8) Uint8Array
   const hashBuffer = await crypto.subtle.digest('SHA-1', msgUint8); // hash the message
   const hashArray = Array.from(new Uint8Array(hashBuffer.slice(0, 8))); // first 8 bytes
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  return `${query.datasource?.uid}/${hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')}/${config.bootData.user.orgId}`;
 }
 
 // This will get both v1 and v2 result formats
@@ -37,9 +44,9 @@ export function doLokiChannelStream(
   }
 
   let frame: StreamingDataFrame | undefined = undefined;
-  const updateFrame = (msg: any) => {
-    if (msg?.message) {
-      const p = msg.message as DataFrameJSON;
+  const updateFrame = (msg: LiveChannelEvent<unknown>) => {
+    if ('message' in msg && msg.message) {
+      const p: DataFrameJSON = msg.message;
       if (!frame) {
         frame = StreamingDataFrame.fromDataFrameJSON(p, {
           maxLength,
@@ -56,7 +63,7 @@ export function doLokiChannelStream(
   return defer(() => getLiveStreamKey(query)).pipe(
     mergeMap((key) => {
       return getGrafanaLiveSrv()
-        .getStream<any>({
+        .getStream({
           scope: LiveChannelScope.DataSource,
           namespace: ds.uid,
           path: `tail/${key}`,
@@ -80,3 +87,12 @@ export function doLokiChannelStream(
     })
   );
 }
+
+export const convertToWebSocketUrl = (url: string) => {
+  const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+  let backend = `${protocol}${window.location.host}${config.appSubUrl}`;
+  if (backend.endsWith('/')) {
+    backend = backend.slice(0, -1);
+  }
+  return `${backend}${url}`;
+};

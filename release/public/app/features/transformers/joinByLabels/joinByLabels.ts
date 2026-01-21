@@ -1,13 +1,7 @@
 import { map } from 'rxjs/operators';
 
-import {
-  ArrayVector,
-  DataFrame,
-  DataTransformerID,
-  Field,
-  FieldType,
-  SynchronousDataTransformerInfo,
-} from '@grafana/data';
+import { DataFrame, DataTransformerID, Field, FieldType, SynchronousDataTransformerInfo } from '@grafana/data';
+import { t } from '@grafana/i18n';
 
 import { getDistinctLabels } from '../utils';
 
@@ -16,14 +10,17 @@ export interface JoinByLabelsTransformOptions {
   join?: string[];
 }
 
-export const joinByLabelsTransformer: SynchronousDataTransformerInfo<JoinByLabelsTransformOptions> = {
+export const getJoinByLabelsTransformer: () => SynchronousDataTransformerInfo<JoinByLabelsTransformOptions> = () => ({
   id: DataTransformerID.joinByLabels,
-  name: 'Join by labels',
-  description: 'Flatten labeled results into a table joined by labels',
+  name: t('transformers.get-join-by-labels-transformer.name.join-by-labels', 'Join by labels'),
+  description: t(
+    'transformers.get-join-by-labels-transformer.description.flatten-labeled-results-table-joined-labels',
+    'Flatten labeled results into a table joined by labels.'
+  ),
   defaultOptions: {},
 
   operator: (options, ctx) => (source) =>
-    source.pipe(map((data) => joinByLabelsTransformer.transformer(options, ctx)(data))),
+    source.pipe(map((data) => getJoinByLabelsTransformer().transformer(options, ctx)(data))),
 
   transformer: (options: JoinByLabelsTransformOptions) => {
     return (data: DataFrame[]) => {
@@ -33,7 +30,7 @@ export const joinByLabelsTransformer: SynchronousDataTransformerInfo<JoinByLabel
       return [joinByLabels(options, data)];
     };
   },
-};
+});
 
 interface JoinValues {
   keys: string[];
@@ -42,7 +39,7 @@ interface JoinValues {
 
 export function joinByLabels(options: JoinByLabelsTransformOptions, data: DataFrame[]): DataFrame {
   if (!options.value?.length) {
-    return getErrorFrame('No value labele configured');
+    return getErrorFrame('No value label configured');
   }
   const distinctLabels = getDistinctLabels(data);
   if (distinctLabels.size < 1) {
@@ -72,7 +69,7 @@ export function joinByLabels(options: JoinByLabelsTransformOptions, data: DataFr
           found.set(key, item);
         }
         const name = field.labels[options.value];
-        const vals = field.values.toArray();
+        const vals = field.values;
         const old = item.values[name];
         if (old) {
           item.values[name] = old.concat(vals);
@@ -111,13 +108,17 @@ export function joinByLabels(options: JoinByLabelsTransformOptions, data: DataFr
     }
   }
 
-  const frame: DataFrame = { fields: [], length: nameValues[0].length };
+  const frame: DataFrame = {
+    fields: [],
+    length: nameValues[0].length,
+    refId: `${DataTransformerID.joinByLabels}-${data.map((frame) => frame.refId).join('-')}`,
+  };
   for (let i = 0; i < join.length; i++) {
     frame.fields.push({
       name: join[i],
       config: {},
       type: FieldType.string,
-      values: new ArrayVector(joinValues[i]),
+      values: joinValues[i],
     });
   }
 
@@ -127,7 +128,7 @@ export function joinByLabels(options: JoinByLabelsTransformOptions, data: DataFr
       name: allNames[i],
       config: {},
       type: old.type ?? FieldType.number,
-      values: new ArrayVector(nameValues[i]),
+      values: nameValues[i],
     });
   }
 
@@ -139,7 +140,7 @@ function getErrorFrame(text: string): DataFrame {
     meta: {
       notices: [{ severity: 'error', text }],
     },
-    fields: [{ name: 'Error', type: FieldType.string, config: {}, values: new ArrayVector([text]) }],
+    fields: [{ name: 'Error', type: FieldType.string, config: {}, values: [text] }],
     length: 0,
   };
 }

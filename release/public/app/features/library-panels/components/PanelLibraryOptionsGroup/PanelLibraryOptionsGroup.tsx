@@ -1,12 +1,13 @@
 import { css } from '@emotion/css';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { PanelPluginMeta } from '@grafana/data';
-import { Button, VerticalGroup } from '@grafana/ui';
+import { Trans } from '@grafana/i18n';
+import { Button, Stack } from '@grafana/ui';
 import { getDashboardSrv } from 'app/features/dashboard/services/DashboardSrv';
-import { PanelModel } from 'app/features/dashboard/state';
+import { PanelModel } from 'app/features/dashboard/state/PanelModel';
 import { changeToLibraryPanel } from 'app/features/panel/state/actions';
-import { useDispatch } from 'app/types';
+import { useDispatch } from 'app/types/store';
 
 import { PanelTypeFilter } from '../../../../core/components/PanelTypeFilter/PanelTypeFilter';
 import { LibraryElementDTO } from '../../types';
@@ -43,15 +44,16 @@ export const PanelLibraryOptionsGroup = ({ panel, searchQuery }: Props) => {
 
   const onAddToPanelLibrary = () => setShowingAddPanelModal(true);
   const onDismissChangeToPanel = () => setChangeToPanel(undefined);
-
   return (
-    <VerticalGroup spacing="md">
+    <Stack direction="column" gap={2}>
       {!panel.libraryPanel && (
-        <VerticalGroup align="center">
+        <Stack alignItems="center">
           <Button icon="plus" onClick={onAddToPanelLibrary} variant="secondary" fullWidth>
-            Create new library panel
+            <Trans i18nKey="library-panels.panel-library-options-group.create-new-library-panel">
+              Create new library panel
+            </Trans>
           </Button>
-        </VerticalGroup>
+        </Stack>
       )}
 
       <PanelTypeFilter onChange={onPanelFilterChange} />
@@ -78,12 +80,12 @@ export const PanelLibraryOptionsGroup = ({ panel, searchQuery }: Props) => {
       {changeToPanel && (
         <ChangeLibraryPanelModal panel={panel} onDismiss={onDismissChangeToPanel} onConfirm={useLibraryPanel} />
       )}
-    </VerticalGroup>
+    </Stack>
   );
 };
 
 const styles = {
-  libraryPanelsView: css`
-    width: 100%;
-  `,
+  libraryPanelsView: css({
+    width: '100%',
+  }),
 };

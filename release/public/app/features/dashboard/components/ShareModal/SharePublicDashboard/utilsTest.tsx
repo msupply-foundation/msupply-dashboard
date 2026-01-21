@@ -1,11 +1,13 @@
 import { fireEvent, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
-import { rest } from 'msw';
-import React from 'react';
+import { http, HttpResponse } from 'msw';
+import * as React from 'react';
 import { Provider } from 'react-redux';
 
+import { DashboardInitPhase } from 'app/types/dashboard';
+
 import { configureStore } from '../../../../../store/configureStore';
-import { DashboardInitPhase } from '../../../../../types';
-import { DashboardModel, PanelModel } from '../../../state';
+import { DashboardModel } from '../../../state/DashboardModel';
+import { PanelModel } from '../../../state/PanelModel';
 import { createDashboardModelFixture } from '../../../state/__fixtures__/dashboardFixtures';
 import { ShareModal } from '../ShareModal';
 
@@ -32,15 +34,14 @@ export const pubdashResponse: sharePublicDashboardUtils.PublicDashboard = {
 };
 
 export const getExistentPublicDashboardResponse = (publicDashboard?: Partial<PublicDashboard>) =>
-  rest.get('/api/dashboards/uid/:dashboardUid/public-dashboards', (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json({
-        ...pubdashResponse,
-        ...publicDashboard,
-        dashboardUid: req.params.dashboardUid,
-      })
-    );
+  http.get('/api/dashboards/uid/:dashboardUid/public-dashboards', ({ request }) => {
+    const url = new URL(request.url);
+    const dashboardUid = url.searchParams.get('dashboardUid');
+    return HttpResponse.json({
+      ...pubdashResponse,
+      ...publicDashboard,
+      dashboardUid,
+    });
   });
 
 export const renderSharePublicDashboard = async (
@@ -50,7 +51,6 @@ export const renderSharePublicDashboard = async (
   const store = configureStore({
     dashboard: {
       getModel: () => props?.dashboard || mockDashboard,
-      permissions: [],
       initError: null,
       initPhase: DashboardInitPhase.Completed,
     },
@@ -58,7 +58,6 @@ export const renderSharePublicDashboard = async (
 
   const newProps = Object.assign(
     {
-      panel: mockPanel,
       dashboard: mockDashboard,
       onDismiss: () => {},
     },

@@ -1,6 +1,7 @@
 import { Observable, Subscriber, Subscription } from 'rxjs';
 
 import {
+  CoreApp,
   DataFrame,
   DataQueryRequest,
   DataQueryResponse,
@@ -11,12 +12,15 @@ import {
   PanelData,
 } from '@grafana/data';
 import { setEchoSrv } from '@grafana/runtime';
+import { ExpressionDatasourceRef } from '@grafana/runtime/internal';
+import { DataQuery } from '@grafana/schema';
 
 import { deepFreeze } from '../../../../test/core/redux/reducerTester';
 import { Echo } from '../../../core/services/echo/Echo';
 import { createDashboardModelFixture } from '../../dashboard/state/__fixtures__/dashboardFixtures';
 
-import { runRequest } from './runRequest';
+import { getMockDataSource, TestQuery } from './mocks/mockDataSource';
+import { callQueryMethodWithMigration, runRequest } from './runRequest';
 
 jest.mock('app/core/services/backend_srv');
 
@@ -30,6 +34,20 @@ jest.mock('app/features/dashboard/services/DashboardSrv', () => ({
       getCurrent: () => dashboardModel,
     };
   },
+}));
+
+jest.mock('app/features/expressions/ExpressionDatasource', () => ({
+  dataSource: {
+    query: jest.fn(),
+  },
+}));
+
+let isMigrationHandlerMock = jest.fn().mockReturnValue(false);
+let migrateRequestMock = jest.fn();
+jest.mock('@grafana/runtime', () => ({
+  ...jest.requireActual('@grafana/runtime'),
+  isMigrationHandler: () => isMigrationHandlerMock(),
+  migrateRequest: () => migrateRequestMock(),
 }));
 
 class ScenarioCtx {
@@ -223,6 +241,49 @@ describe('runRequest', () => {
     });
   });
 
+  runRequestScenario('When the response contains traceIds', (ctx) => {
+    ctx.setup(() => {
+      ctx.start();
+      ctx.emitPacket({
+        data: [{ name: 'data-a', refId: 'A' } as DataFrame],
+      });
+      ctx.emitPacket({
+        data: [{ name: 'data-b', refId: 'B' } as DataFrame],
+      });
+      ctx.emitPacket({
+        data: [{ name: 'data-c', refId: 'C' } as DataFrame],
+        traceIds: ['t1', 't2'],
+      });
+      ctx.emitPacket({
+        data: [{ name: 'data-d', refId: 'D' } as DataFrame],
+      });
+      ctx.emitPacket({
+        data: [{ name: 'data-e', refId: 'E' } as DataFrame],
+        traceIds: ['t3', 't4'],
+      });
+      ctx.emitPacket({
+        data: [{ name: 'data-e', refId: 'E' } as DataFrame],
+        traceIds: ['t4', 't4'],
+      });
+    });
+    it('should collect traceIds correctly', () => {
+      const { results } = ctx;
+      expect(results).toHaveLength(6);
+      expect(results[0].traceIds).toBeUndefined();
+
+      // this is the result of adding no-traces data to no-traces state
+      expect(results[1].traceIds).toBeUndefined();
+      // this is the result of adding with-traces data to no-traces state
+      expect(results[2].traceIds).toStrictEqual(['t1', 't2']);
+      // this is the result of adding no-traces data to with-traces state
+      expect(results[3].traceIds).toStrictEqual(['t1', 't2']);
+      // this is the result of adding with-traces data to with-traces state
+      expect(results[4].traceIds).toStrictEqual(['t1', 't2', 't3', 't4']);
+      // this is the result of adding with-traces data to with-traces state with duplicate traceIds
+      expect(results[5].traceIds).toStrictEqual(['t1', 't2', 't3', 't4']);
+    });
+  });
+
   runRequestScenario('After response with state Streaming', (ctx) => {
     ctx.setup(() => {
       ctx.start();
@@ -326,6 +387,263 @@ describe('runRequest', () => {
     it('should separate annotations results', () => {
       expect(ctx.results[1].annotations?.length).toBe(1);
       expect(ctx.results[1].series.length).toBe(1);
+    });
+  });
+
+  runRequestScenario('When some queries are hidden', (ctx) => {
+    ctx.setup(() => {
+      ctx.request.targets = [{ refId: 'A', hide: true }, { refId: 'B' }];
+      ctx.start();
+      ctx.emitPacket({
+        data: [
+          { name: 'DataA-1', refId: 'A' },
+          { name: 'DataA-2', refId: 'A' },
+          { name: 'DataB-1', refId: 'B' },
+          { name: 'DataB-2', refId: 'B' },
+        ],
+        key: 'A',
+      });
+    });
+
+    it('should filter out responses that are associated with the hidden queries', () => {
+      expect(ctx.results[0].series.length).toBe(2);
+      expect(ctx.results[0].series[0].name).toBe('DataB-1');
+      expect(ctx.results[0].series[1].name).toBe('DataB-2');
+    });
+  });
+});
+
+describe('callQueryMethodWithMigration', () => {
+  let request: DataQueryRequest<TestQuery>;
+  let filterQuerySpy: jest.SpyInstance;
+  let querySpy: jest.SpyInstance;
+  let defaultQuerySpy: jest.SpyInstance;
+  let ds: DataSourceApi;
+
+  const setup = ({
+    targets,
+    filterQuery,
+    getDefaultQuery,
+    queryFunction,
+    migrateRequest,
+  }: {
+    targets: TestQuery[];
+    getDefaultQuery?: (app: CoreApp) => Partial<TestQuery>;
+    filterQuery?: typeof ds.filterQuery;
+    queryFunction?: typeof ds.query;
+    migrateRequest?: jest.Mock;
+  }) => {
+    request = {
+      range: {
+        from: dateTime(),
+        to: dateTime(),
+        raw: { from: '1h', to: 'now' },
+      },
+      targets,
+      requestId: '',
+      interval: '',
+      intervalMs: 0,
+      scopedVars: {},
+      timezone: '',
+      app: '',
+      startTime: 0,
+    };
+
+    const ds = getMockDataSource();
+    if (filterQuery) {
+      ds.filterQuery = filterQuery;
+      filterQuerySpy = jest.spyOn(ds, 'filterQuery');
+    }
+    if (getDefaultQuery) {
+      ds.getDefaultQuery = getDefaultQuery;
+      defaultQuerySpy = jest.spyOn(ds, 'getDefaultQuery');
+    }
+    if (migrateRequest) {
+      isMigrationHandlerMock = jest.fn().mockReturnValue(true);
+      migrateRequestMock = migrateRequest;
+    }
+    querySpy = jest.spyOn(ds, 'query');
+    return callQueryMethodWithMigration(ds, request, queryFunction);
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('Should call filterQuery and exclude them from the request', async () => {
+    setup({
+      targets: [
+        {
+          refId: 'A',
+          q: 'SUM(foo)',
+        },
+        {
+          refId: 'B',
+          q: 'SUM(foo2)',
+        },
+        {
+          refId: 'C',
+          q: 'SUM(foo3)',
+        },
+      ],
+      filterQuery: (query: DataQuery) => query.refId !== 'A',
+    });
+    expect(filterQuerySpy).toHaveBeenCalledTimes(3);
+    expect(querySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targets: [
+          { q: 'SUM(foo2)', refId: 'B' },
+          { q: 'SUM(foo3)', refId: 'C' },
+        ],
+      })
+    );
+  });
+
+  it('Should not call query function in case targets are empty', async () => {
+    setup({
+      targets: [
+        {
+          refId: 'A',
+          q: 'SUM(foo)',
+        },
+        {
+          refId: 'B',
+          q: 'SUM(foo2)',
+        },
+        {
+          refId: 'C',
+          q: 'SUM(foo3)',
+        },
+      ],
+      filterQuery: (_: DataQuery) => false,
+    });
+    expect(filterQuerySpy).toHaveBeenCalledTimes(3);
+    expect(querySpy).not.toHaveBeenCalled();
+  });
+
+  it('Should not call filterQuery in case a custom query method is provided', async () => {
+    const queryFunctionMock = jest.fn().mockResolvedValue({ data: [] });
+    setup({
+      targets: [
+        {
+          refId: 'A',
+          q: 'SUM(foo)',
+        },
+        {
+          refId: 'B',
+          q: 'SUM(foo2)',
+        },
+        {
+          refId: 'C',
+          q: 'SUM(foo3)',
+        },
+      ],
+      queryFunction: queryFunctionMock,
+      filterQuery: (query: DataQuery) => query.refId !== 'A',
+    });
+    expect(filterQuerySpy).not.toHaveBeenCalled();
+    expect(queryFunctionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targets: [
+          { q: 'SUM(foo)', refId: 'A' },
+          { q: 'SUM(foo2)', refId: 'B' },
+          { q: 'SUM(foo3)', refId: 'C' },
+        ],
+      })
+    );
+  });
+
+  it('Should not call filterQuery when targets include expression query', async () => {
+    setup({
+      targets: [
+        {
+          refId: 'A',
+          q: 'SUM(foo)',
+        },
+        {
+          refId: 'B',
+          q: 'SUM(foo2)',
+        },
+        {
+          datasource: ExpressionDatasourceRef,
+          refId: 'C',
+          q: 'SUM(foo3)',
+        },
+      ],
+      filterQuery: (query: DataQuery) => query.refId !== 'A',
+    });
+    expect(filterQuerySpy).not.toHaveBeenCalled();
+  });
+
+  it('Should get ds default query when query is empty', async () => {
+    setup({
+      targets: [
+        {
+          refId: 'A',
+        },
+        {
+          refId: 'B',
+        },
+        {
+          refId: 'C',
+          q: 'SUM(foo3)',
+        },
+      ],
+      getDefaultQuery: (_: CoreApp) => ({
+        q: 'SUM(foo2)',
+      }),
+    });
+    expect(defaultQuerySpy).toHaveBeenCalledTimes(2);
+    expect(querySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targets: [
+          { q: 'SUM(foo2)', refId: 'A' },
+          { q: 'SUM(foo2)', refId: 'B' },
+          { q: 'SUM(foo3)', refId: 'C' },
+        ],
+      })
+    );
+  });
+
+  it('Should migrate a request if defined', (done) => {
+    const migrateRequest = jest.fn();
+    const res = setup({
+      targets: [
+        {
+          refId: 'A',
+          q: 'SUM(foo)',
+        },
+      ],
+      migrateRequest: migrateRequest.mockResolvedValue({
+        range: {
+          from: dateTime(),
+          to: dateTime(),
+          raw: { from: '1h', to: 'now' },
+        },
+        targets: [
+          {
+            refId: 'A',
+            qMigrated: 'SUM(foo)',
+          },
+        ],
+        requestId: '',
+        interval: '',
+        intervalMs: 0,
+        scopedVars: {},
+        timezone: '',
+        app: '',
+        startTime: 0,
+      }),
+    });
+    expect(migrateRequest).toHaveBeenCalledTimes(1);
+    res.subscribe((res) => {
+      expect(res).toBeDefined();
+      expect(querySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targets: [{ qMigrated: 'SUM(foo)', refId: 'A' }],
+        })
+      );
+      done();
     });
   });
 });

@@ -1,17 +1,20 @@
 import { css } from '@emotion/css';
-import React, { useCallback, useState } from 'react';
+import * as React from 'react';
+import { useCallback, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useMountedState } from 'react-use';
 import { takeWhile } from 'rxjs/operators';
 
-import { dateTimeFormatISO, GrafanaTheme2, LoadingState } from '@grafana/data';
+import { GrafanaTheme2, LoadingState, dateTimeFormatISO } from '@grafana/data';
+import { Trans, t } from '@grafana/i18n';
 import { getDataSourceSrv } from '@grafana/runtime';
-import { Alert, Button, HorizontalGroup, useStyles2 } from '@grafana/ui';
+import { Alert, Button, Stack, useStyles2 } from '@grafana/ui';
 
 import { previewAlertRule } from '../../api/preview';
 import { useAlertQueriesStatus } from '../../hooks/useAlertQueriesStatus';
 import { PreviewRuleRequest, PreviewRuleResponse } from '../../types/preview';
 import { RuleFormType, RuleFormValues } from '../../types/rule-form';
+import { isDataSourceManagedRuleByType } from '../../utils/rules';
 
 import { PreviewRuleResult } from './PreviewRuleResult';
 
@@ -24,7 +27,7 @@ export function PreviewRule(): React.ReactElement | null {
   const [type, condition, queries] = watch(['type', 'condition', 'queries']);
   const { allDataSourcesAvailable } = useAlertQueriesStatus(queries);
 
-  if (type === RuleFormType.cloudRecording || type === RuleFormType.cloudAlerting) {
+  if (!type || isDataSourceManagedRuleByType(type)) {
     return null;
   }
 
@@ -32,18 +35,23 @@ export function PreviewRule(): React.ReactElement | null {
 
   return (
     <div className={styles.container}>
-      <HorizontalGroup>
+      <Stack>
         {allDataSourcesAvailable && (
           <Button disabled={!isPreviewAvailable} type="button" variant="primary" onClick={onPreview}>
-            Preview alerts
+            <Trans i18nKey="alerting.preview-rule.preview-alerts">Preview alerts</Trans>
           </Button>
         )}
         {!allDataSourcesAvailable && (
-          <Alert title="Preview is not available" severity="warning">
-            Cannot display the query preview. Some of the data sources used in the queries are not available.
+          <Alert
+            title={t('alerting.preview-rule.title-preview-is-not-available', 'Preview is not available')}
+            severity="warning"
+          >
+            <Trans i18nKey="alerting.preview-rule.body-preview-is-not-available">
+              Cannot display the query preview. Some of the data sources used in the queries are not available.
+            </Trans>
           </Alert>
         )}
-      </HorizontalGroup>
+      </Stack>
       <PreviewRuleResult preview={preview} />
     </div>
   );
@@ -112,9 +120,9 @@ function isCompleted(response: PreviewRuleResponse): boolean {
 
 function getStyles(theme: GrafanaTheme2) {
   return {
-    container: css`
-      margin-top: ${theme.spacing(2)};
-      max-width: ${theme.breakpoints.values.xxl}px;
-    `,
+    container: css({
+      marginTop: theme.spacing(2),
+      maxWidth: `${theme.breakpoints.values.xxl}px`,
+    }),
   };
 }

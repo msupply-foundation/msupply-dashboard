@@ -1,28 +1,36 @@
-import React, { useMemo, useState } from 'react';
+import { css } from '@emotion/css';
+import { useMemo, useState } from 'react';
 
+import { GrafanaTheme2 } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
-import { Stack } from '@grafana/experimental';
-import { Button, Checkbox, Form, TextArea } from '@grafana/ui';
-import { DashboardModel } from 'app/features/dashboard/state';
+import { Trans, t } from '@grafana/i18n';
+import { config } from '@grafana/runtime';
+import { Dashboard } from '@grafana/schema';
+import { Button, Checkbox, TextArea, useStyles2, Stack } from '@grafana/ui';
+import { DashboardModel } from 'app/features/dashboard/state/DashboardModel';
+import { SaveDashboardResponseDTO } from 'app/types/dashboard';
 
+import { GenAIDashboardChangesButton } from '../../GenAI/GenAIDashboardChangesButton';
 import { SaveDashboardData, SaveDashboardOptions } from '../types';
-
-interface FormDTO {
-  message: string;
-}
 
 export type SaveProps = {
   dashboard: DashboardModel; // original
+  isLoading: boolean;
   saveModel: SaveDashboardData; // already cloned
   onCancel: () => void;
   onSuccess: () => void;
-  onSubmit?: (clone: DashboardModel, options: SaveDashboardOptions, dashboard: DashboardModel) => Promise<any>;
+  onSubmit?: (
+    saveModel: Dashboard,
+    options: SaveDashboardOptions,
+    dashboard: DashboardModel
+  ) => Promise<SaveDashboardResponseDTO>;
   options: SaveDashboardOptions;
   onOptionsChange: (opts: SaveDashboardOptions) => void;
 };
 
 export const SaveDashboardForm = ({
   dashboard,
+  isLoading,
   saveModel,
   options,
   onSubmit,
@@ -31,94 +39,127 @@ export const SaveDashboardForm = ({
   onOptionsChange,
 }: SaveProps) => {
   const hasTimeChanged = useMemo(() => dashboard.hasTimeChanged(), [dashboard]);
-  const hasVariableChanged = useMemo(() => dashboard.hasVariableValuesChanged(), [dashboard]);
+  const hasVariableChanged = useMemo(() => dashboard.hasVariablesChanged(), [dashboard]);
 
   const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(options.message);
+  const styles = useStyles2(getStyles);
 
   return (
-    <Form
-      onSubmit={async (data: FormDTO) => {
+    <form
+      onSubmit={async (event) => {
+        event.preventDefault();
         if (!onSubmit) {
           return;
         }
         setSaving(true);
-        options = { ...options, message: data.message };
+        options = { ...options, message };
         const result = await onSubmit(saveModel.clone, options, dashboard);
         if (result.status === 'success') {
-          if (options.saveVariables) {
-            dashboard.resetOriginalVariables();
-          }
-          if (options.saveTimerange) {
-            dashboard.resetOriginalTime();
-          }
           onSuccess();
         } else {
           setSaving(false);
         }
       }}
+      style={{ maxWidth: 600 }}
     >
-      {({ register, errors }) => {
-        const messageProps = register('message');
-        return (
-          <Stack gap={2}>
-            {hasTimeChanged && (
-              <Checkbox
-                checked={!!options.saveTimerange}
-                onChange={() =>
-                  onOptionsChange({
-                    ...options,
-                    saveTimerange: !options.saveTimerange,
-                  })
-                }
-                label="Save current time range as dashboard default"
-                aria-label={selectors.pages.SaveDashboardModal.saveTimerange}
-              />
+      <Stack gap={2} direction="column" alignItems="flex-start">
+        {hasTimeChanged && (
+          <Checkbox
+            checked={!!options.saveTimerange}
+            onChange={() =>
+              onOptionsChange({
+                ...options,
+                saveTimerange: !options.saveTimerange,
+              })
+            }
+            label={t(
+              'dashboard.save-dashboard-form.label-current-range-dashboard-default',
+              'Save current time range as dashboard default'
             )}
-            {hasVariableChanged && (
-              <Checkbox
-                checked={!!options.saveVariables}
-                onChange={() =>
-                  onOptionsChange({
-                    ...options,
-                    saveVariables: !options.saveVariables,
-                  })
-                }
-                label="Save current variable values as dashboard default"
-                aria-label={selectors.pages.SaveDashboardModal.saveVariables}
-              />
+            aria-label={selectors.pages.SaveDashboardModal.saveTimerange}
+          />
+        )}
+        {hasVariableChanged && (
+          <Checkbox
+            checked={!!options.saveVariables}
+            onChange={() =>
+              onOptionsChange({
+                ...options,
+                saveVariables: !options.saveVariables,
+              })
+            }
+            label={t(
+              'dashboard.save-dashboard-form.label-current-variable-values-dashboard-default',
+              'Save current variable values as dashboard default'
             )}
-            <TextArea
-              {...messageProps}
-              aria-label="message"
-              value={options.message}
-              onChange={(e) => {
+            aria-label={selectors.pages.SaveDashboardModal.saveVariables}
+          />
+        )}
+        <div className={styles.message}>
+          {config.featureToggles.aiGeneratedDashboardChanges && (
+            <GenAIDashboardChangesButton
+              dashboard={dashboard}
+              onGenerate={(text) => {
                 onOptionsChange({
                   ...options,
-                  message: e.currentTarget.value,
+                  message: text,
                 });
-                messageProps.onChange(e);
+                setMessage(text);
               }}
-              placeholder="Add a note to describe your changes."
-              autoFocus
-              rows={5}
+              disabled={!saveModel.hasChanges}
             />
-            <Stack alignItems="center">
-              <Button variant="secondary" onClick={onCancel} fill="outline">
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={!saveModel.hasChanges}
-                icon={saving ? 'fa fa-spinner' : undefined}
-                aria-label={selectors.pages.SaveDashboardModal.save}
-              >
-                Save
-              </Button>
-              {!saveModel.hasChanges && <div>No changes to save</div>}
-            </Stack>
-          </Stack>
-        );
-      }}
-    </Form>
+          )}
+          <TextArea
+            value={message}
+            onChange={(e) => {
+              onOptionsChange({
+                ...options,
+                message: e.currentTarget.value,
+              });
+              setMessage(e.currentTarget.value);
+            }}
+            placeholder={t(
+              'dashboard.save-dashboard-form.placeholder-describe-changes',
+              'Add a note to describe your changes.'
+            )}
+            autoFocus
+            rows={5}
+          />
+        </div>
+
+        <Stack alignItems="center">
+          <Button variant="secondary" onClick={onCancel} fill="outline">
+            <Trans i18nKey="dashboard.save-dashboard-form.cancel">Cancel</Trans>
+          </Button>
+          <Button
+            type="submit"
+            disabled={!saveModel.hasChanges || isLoading}
+            icon={saving ? 'spinner' : undefined}
+            aria-label={selectors.pages.SaveDashboardModal.save}
+          >
+            {isLoading
+              ? t('dashboard.save-dashboard-form.saving', 'Saving...')
+              : t('dashboard.save-dashboard-form.save', 'Save')}
+          </Button>
+          {!saveModel.hasChanges && (
+            <div>
+              <Trans i18nKey="dashboard.save-dashboard-form.no-changes-to-save">No changes to save</Trans>
+            </div>
+          )}
+        </Stack>
+      </Stack>
+    </form>
   );
 };
+
+function getStyles(theme: GrafanaTheme2) {
+  return {
+    message: css({
+      display: 'flex',
+      alignItems: 'end',
+      flexDirection: 'column',
+      width: '100%',
+    }),
+  };
+}

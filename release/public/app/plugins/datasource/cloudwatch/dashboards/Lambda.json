@@ -678,7 +678,7 @@
               "expression": "REMOVE_EMPTY(SEARCH('{AWS/Lambda,FunctionName} MetricName=\"Errors\"', 'Sum', $period))/$period",
               "id": "",
               "matchExact": true,
-              "metricName": "Invocations",
+              "metricName": "Errors",
               "namespace": "AWS/Lambda",
               "period": "$period",
               "refId": "A",
@@ -880,7 +880,6 @@
   ],
   "refresh": false,
   "schemaVersion": 21,
-  "style": "dark",
   "tags": ["Amazon", "AWS", "CloudWatch", "Lambda"],
   "templating": {
     "list": [

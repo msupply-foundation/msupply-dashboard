@@ -1,34 +1,30 @@
-import { css } from '@emotion/css';
-import React, { PureComponent } from 'react';
+import { cloneDeep } from 'lodash';
+import { PureComponent } from 'react';
 import AutoSizer from 'react-virtualized-auto-sizer';
 
 import {
   applyFieldOverrides,
   applyRawFieldOverrides,
   CoreApp,
-  CSVConfig,
   DataFrame,
   DataTransformerID,
-  MutableDataFrame,
+  FieldConfigSource,
   SelectableValue,
   TimeZone,
   transformDataFrame,
 } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
-import { reportInteraction } from '@grafana/runtime';
+import { Trans, t } from '@grafana/i18n';
+import { getTemplateSrv, reportInteraction } from '@grafana/runtime';
 import { Button, Spinner, Table } from '@grafana/ui';
 import { config } from 'app/core/config';
-import { t, Trans } from 'app/core/internationalization';
-import { dataFrameToLogsModel } from 'app/core/logsModel';
-import { PanelModel } from 'app/features/dashboard/state';
 import { GetDataOptions } from 'app/features/query/state/PanelQueryRunner';
-import { transformToJaeger } from 'app/plugins/datasource/jaeger/responseTransform';
-import { transformToOTLP } from 'app/plugins/datasource/tempo/resultTransformer';
-import { transformToZipkin } from 'app/plugins/datasource/zipkin/utils/transforms';
+
+import { dataFrameToLogsModel } from '../logs/logsModel';
 
 import { InspectDataOptions } from './InspectDataOptions';
 import { getPanelInspectorStyles } from './styles';
-import { downloadAsJson, downloadDataFrameAsCsv, downloadLogsModelAsTxt } from './utils/download';
+import { downloadAsJson, downloadDataFrameAsCsv, downloadLogsModelAsTxt, downloadTraceAsJson } from './utils/download';
 
 interface Props {
   isLoading: boolean;
@@ -36,7 +32,12 @@ interface Props {
   timeZone: TimeZone;
   app?: CoreApp;
   data?: DataFrame[];
-  panel?: PanelModel;
+  /** The title of the panel or other context name */
+  dataName: string;
+  panelPluginId?: string;
+  fieldConfig?: FieldConfigSource;
+  hasTransformations?: boolean;
+  formattedDataDescription?: string;
   onOptionsChange?: (options: GetDataOptions) => void;
 }
 
@@ -47,7 +48,7 @@ interface State {
   dataFrameIndex: number;
   transformationOptions: Array<SelectableValue<DataTransformerID>>;
   transformedData: DataFrame[];
-  downloadForExcel: boolean;
+  excelCompatibilityMode: boolean;
 }
 
 export class InspectDataTab extends PureComponent<Props, State> {
@@ -60,7 +61,7 @@ export class InspectDataTab extends PureComponent<Props, State> {
       transformId: DataTransformerID.noop,
       transformationOptions: buildTransformationOptions(),
       transformedData: props.data ?? [],
-      downloadForExcel: false,
+      excelCompatibilityMode: false,
     };
   }
 
@@ -92,15 +93,20 @@ export class InspectDataTab extends PureComponent<Props, State> {
     }
   }
 
-  exportCsv = (dataFrame: DataFrame, csvConfig: CSVConfig = {}) => {
-    const { panel } = this.props;
+  exportCsv(dataFrames: DataFrame[], hasLogs: boolean) {
+    const { dataName } = this.props;
     const { transformId } = this.state;
+    const dataFrame = dataFrames[this.state.dataFrameIndex];
 
-    downloadDataFrameAsCsv(dataFrame, panel ? panel.getDisplayTitle() : 'Explore', csvConfig, transformId);
-  };
+    if (hasLogs) {
+      reportInteraction('grafana_logs_download_clicked', { app: this.props.app, format: 'csv' });
+    }
 
-  exportLogsAsTxt = () => {
-    const { data, panel, app } = this.props;
+    downloadDataFrameAsCsv(dataFrame, dataName, {}, transformId, this.state.excelCompatibilityMode);
+  }
+
+  onExportLogsAsTxt = () => {
+    const { data, dataName, app } = this.props;
 
     reportInteraction('grafana_logs_download_logs_clicked', {
       app,
@@ -109,11 +115,11 @@ export class InspectDataTab extends PureComponent<Props, State> {
     });
 
     const logsModel = dataFrameToLogsModel(data || []);
-    downloadLogsModelAsTxt(logsModel, panel ? panel.getDisplayTitle() : 'Explore');
+    downloadLogsModelAsTxt(logsModel, dataName);
   };
 
-  exportTracesAsJson = () => {
-    const { data, panel, app } = this.props;
+  onExportTracesAsJson = () => {
+    const { data, dataName, app } = this.props;
 
     if (!data) {
       return;
@@ -124,28 +130,8 @@ export class InspectDataTab extends PureComponent<Props, State> {
       if (df.meta?.preferredVisualisationType !== 'trace') {
         continue;
       }
-      let traceFormat = 'otlp';
 
-      switch (df.meta?.custom?.traceFormat) {
-        case 'jaeger': {
-          let res = transformToJaeger(new MutableDataFrame(df));
-          downloadAsJson(res, (panel ? panel.getDisplayTitle() : 'Explore') + '-traces');
-          traceFormat = 'jaeger';
-          break;
-        }
-        case 'zipkin': {
-          let res = transformToZipkin(new MutableDataFrame(df));
-          downloadAsJson(res, (panel ? panel.getDisplayTitle() : 'Explore') + '-traces');
-          traceFormat = 'zipkin';
-          break;
-        }
-        case 'otlp':
-        default: {
-          let res = transformToOTLP(new MutableDataFrame(df));
-          downloadAsJson(res, (panel ? panel.getDisplayTitle() : 'Explore') + '-traces');
-          break;
-        }
-      }
+      const traceFormat = downloadTraceAsJson(df, dataName + '-traces');
 
       reportInteraction('grafana_traces_download_traces_clicked', {
         app,
@@ -156,8 +142,9 @@ export class InspectDataTab extends PureComponent<Props, State> {
     }
   };
 
-  exportServiceGraph = () => {
-    const { data, panel, app } = this.props;
+  onExportServiceGraph = () => {
+    const { data, dataName, app } = this.props;
+
     reportInteraction('grafana_traces_download_service_graph_clicked', {
       app,
       grafana_version: config.buildInfo.version,
@@ -168,7 +155,7 @@ export class InspectDataTab extends PureComponent<Props, State> {
       return;
     }
 
-    downloadAsJson(data, panel ? panel.getDisplayTitle() : 'Explore');
+    downloadAsJson(data, dataName);
   };
 
   onDataFrameChange = (item: SelectableValue<DataTransformerID | number>) => {
@@ -180,42 +167,90 @@ export class InspectDataTab extends PureComponent<Props, State> {
     });
   };
 
-  toggleDownloadForExcel = () => {
+  onToggleExcelCompatibilityMode = () => {
     this.setState((prevState) => ({
-      downloadForExcel: !prevState.downloadForExcel,
+      excelCompatibilityMode: !prevState.excelCompatibilityMode,
     }));
   };
 
   getProcessedData(): DataFrame[] {
-    const { options, panel, timeZone } = this.props;
+    const { options, panelPluginId, fieldConfig, timeZone } = this.props;
     const data = this.state.transformedData;
 
-    if (!options.withFieldConfig || !panel) {
+    if (!options.withFieldConfig) {
       return applyRawFieldOverrides(data);
     }
 
-    // We need to apply field config even though it was already applied in the PanelQueryRunner.
-    // That's because transformers create new fields and data frames, so i.e. display processor is no longer there
+    let fieldConfigCleaned = fieldConfig ?? { defaults: {}, overrides: [] };
+    // Because we visualize this data in a table we have to remove any custom table display settings
+    if (panelPluginId === 'table' && fieldConfig) {
+      fieldConfigCleaned = this.cleanTableConfigFromFieldConfig(fieldConfig);
+    }
+
+    // We need to apply field config as it's not done by PanelQueryRunner (even when withFieldConfig is true).
+    // It's because transformers create new fields and data frames, and we need to clean field config of any table settings.
     return applyFieldOverrides({
       data,
       theme: config.theme2,
-      fieldConfig: panel.fieldConfig,
+      fieldConfig: fieldConfigCleaned,
       timeZone,
-      replaceVariables: (value: string) => {
-        return value;
-      },
+      replaceVariables: (value, scopedVars, format) => getTemplateSrv().replace(value, scopedVars, format),
     });
   }
 
+  // Because we visualize this data in a table we have to remove any custom table display settings
+  cleanTableConfigFromFieldConfig(fieldConfig: FieldConfigSource): FieldConfigSource {
+    fieldConfig = cloneDeep(fieldConfig);
+    // clear all table specific options
+    fieldConfig.defaults.custom = {};
+
+    // clear all table override properties
+    for (const override of fieldConfig.overrides) {
+      for (const prop of override.properties) {
+        if (prop.id.startsWith('custom.')) {
+          const index = override.properties.indexOf(prop);
+          override.properties.slice(index, 1);
+        }
+      }
+    }
+
+    return fieldConfig;
+  }
+
+  renderActions(dataFrames: DataFrame[], hasLogs: boolean, hasTraces: boolean, hasServiceGraph: boolean) {
+    return (
+      <>
+        <Button variant="primary" onClick={() => this.exportCsv(dataFrames, hasLogs)} size="sm">
+          <Trans i18nKey="dashboard.inspect-data.download-csv">Download CSV</Trans>
+        </Button>
+        {hasLogs && !config.exploreHideLogsDownload && (
+          <Button variant="primary" onClick={this.onExportLogsAsTxt} size="sm">
+            <Trans i18nKey="dashboard.inspect-data.download-logs">Download logs</Trans>
+          </Button>
+        )}
+        {hasTraces && (
+          <Button variant="primary" onClick={this.onExportTracesAsJson} size="sm">
+            <Trans i18nKey="dashboard.inspect-data.download-traces">Download traces</Trans>
+          </Button>
+        )}
+        {hasServiceGraph && (
+          <Button variant="primary" onClick={this.onExportServiceGraph} size="sm">
+            <Trans i18nKey="dashboard.inspect-data.download-service">Download service graph</Trans>
+          </Button>
+        )}
+      </>
+    );
+  }
+
   render() {
-    const { isLoading, options, data, panel, onOptionsChange, app } = this.props;
-    const { dataFrameIndex, transformId, transformationOptions, selectedDataFrame, downloadForExcel } = this.state;
+    const { isLoading, options, data, formattedDataDescription, onOptionsChange, hasTransformations } = this.props;
+    const { dataFrameIndex, transformationOptions, selectedDataFrame, excelCompatibilityMode } = this.state;
     const styles = getPanelInspectorStyles();
 
     if (isLoading) {
       return (
         <div>
-          <Spinner inline={true} /> Loading
+          <Spinner inline={true} /> <Trans i18nKey="inspector.inspect-data-tab.loading">Loading</Trans>
         </div>
       );
     }
@@ -223,7 +258,11 @@ export class InspectDataTab extends PureComponent<Props, State> {
     const dataFrames = this.getProcessedData();
 
     if (!dataFrames || !dataFrames.length) {
-      return <div>No Data</div>;
+      return (
+        <div>
+          <Trans i18nKey="inspector.inspect-data-tab.no-data">No data</Trans>
+        </div>
+      );
     }
 
     // let's make sure we don't try to render a frame that doesn't exists
@@ -238,70 +277,18 @@ export class InspectDataTab extends PureComponent<Props, State> {
         <div className={styles.toolbar}>
           <InspectDataOptions
             data={data}
-            panel={panel}
+            hasTransformations={hasTransformations}
             options={options}
             dataFrames={dataFrames}
-            transformId={transformId}
             transformationOptions={transformationOptions}
             selectedDataFrame={selectedDataFrame}
-            downloadForExcel={downloadForExcel}
+            formattedDataDescription={formattedDataDescription}
             onOptionsChange={onOptionsChange}
             onDataFrameChange={this.onDataFrameChange}
-            toggleDownloadForExcel={this.toggleDownloadForExcel}
+            excelCompatibilityMode={excelCompatibilityMode}
+            toggleExcelCompatibilityMode={this.onToggleExcelCompatibilityMode}
+            actions={this.renderActions(dataFrames, hasLogs, hasTraces, hasServiceGraph)}
           />
-          <Button
-            variant="primary"
-            onClick={() => {
-              if (hasLogs) {
-                reportInteraction('grafana_logs_download_clicked', {
-                  app,
-                  format: 'csv',
-                });
-              }
-              this.exportCsv(dataFrames[dataFrameIndex], { useExcelHeader: this.state.downloadForExcel });
-            }}
-            className={css`
-              margin-bottom: 10px;
-            `}
-          >
-            <Trans i18nKey="dashboard.inspect-data.download-csv">Download CSV</Trans>
-          </Button>
-          {hasLogs && (
-            <Button
-              variant="primary"
-              onClick={this.exportLogsAsTxt}
-              className={css`
-                margin-bottom: 10px;
-                margin-left: 10px;
-              `}
-            >
-              <Trans i18nKey="dashboard.inspect-data.download-logs">Download logs</Trans>
-            </Button>
-          )}
-          {hasTraces && (
-            <Button
-              variant="primary"
-              onClick={this.exportTracesAsJson}
-              className={css`
-                margin-bottom: 10px;
-                margin-left: 10px;
-              `}
-            >
-              <Trans i18nKey="dashboard.inspect-data.download-traces">Download traces</Trans>
-            </Button>
-          )}
-          {hasServiceGraph && (
-            <Button
-              variant="primary"
-              onClick={this.exportServiceGraph}
-              className={css`
-                margin-bottom: 10px;
-                margin-left: 10px;
-              `}
-            >
-              <Trans i18nKey="dashboard.inspect-data.download-service">Download service graph</Trans>
-            </Button>
-          )}
         </div>
         <div className={styles.content}>
           <AutoSizer>
@@ -310,11 +297,7 @@ export class InspectDataTab extends PureComponent<Props, State> {
                 return null;
               }
 
-              return (
-                <div style={{ width, height }}>
-                  <Table width={width} height={height} data={dataFrame} showTypeIcons={true} />
-                </div>
-              );
+              return <Table width={width} height={height} data={dataFrame} showTypeIcons={true} />;
             }}
           </AutoSizer>
         </div>

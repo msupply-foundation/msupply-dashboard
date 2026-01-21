@@ -1,16 +1,14 @@
-import React, { PureComponent } from 'react';
+import { PureComponent } from 'react';
+import * as React from 'react';
 
-import { Spinner, HorizontalGroup } from '@grafana/ui';
-import { Page } from 'app/core/components/PageNew/Page';
+import { Spinner, Stack } from '@grafana/ui';
+import { Page } from 'app/core/components/Page/Page';
+import { historySrv, RevisionsModel } from 'app/features/dashboard-scene/settings/version-history/HistorySrv';
+import { VersionsHistoryButtons } from 'app/features/dashboard-scene/settings/version-history/VersionHistoryButtons';
+import { VersionHistoryHeader } from 'app/features/dashboard-scene/settings/version-history/VersionHistoryHeader';
 
-import {
-  historySrv,
-  RevisionsModel,
-  VersionHistoryTable,
-  VersionHistoryHeader,
-  VersionsHistoryButtons,
-  VersionHistoryComparison,
-} from '../VersionHistory';
+import { VersionHistoryComparison } from '../VersionHistory/VersionHistoryComparison';
+import { VersionHistoryTable } from '../VersionHistory/VersionHistoryTable';
 
 import { SettingsPageProps } from './types';
 
@@ -21,7 +19,7 @@ type State = {
   isAppending: boolean;
   versions: DecoratedRevisionModel[];
   viewMode: 'list' | 'compare';
-  diffData: { lhs: unknown; rhs: unknown };
+  diffData: { lhs: string; rhs: string };
   newInfo?: DecoratedRevisionModel;
   baseInfo?: DecoratedRevisionModel;
   isNewLatest: boolean;
@@ -37,11 +35,13 @@ export const VERSIONS_FETCH_LIMIT = 10;
 export class VersionsSettings extends PureComponent<Props, State> {
   limit: number;
   start: number;
+  continueToken: string;
 
   constructor(props: Props) {
     super(props);
     this.limit = VERSIONS_FETCH_LIMIT;
     this.start = 0;
+    this.continueToken = '';
     this.state = {
       isAppending: true,
       isLoading: true,
@@ -49,8 +49,8 @@ export class VersionsSettings extends PureComponent<Props, State> {
       viewMode: 'list',
       isNewLatest: false,
       diffData: {
-        lhs: {},
-        rhs: {},
+        lhs: '',
+        rhs: '',
       },
     };
   }
@@ -61,14 +61,20 @@ export class VersionsSettings extends PureComponent<Props, State> {
 
   getVersions = (append = false) => {
     this.setState({ isAppending: append });
+    const requestOptions = this.continueToken
+      ? { limit: this.limit, start: this.start, continueToken: this.continueToken }
+      : { limit: this.limit, start: this.start };
+
     historySrv
-      .getHistoryList(this.props.dashboard, { limit: this.limit, start: this.start })
+      .getHistoryList(this.props.dashboard.uid, requestOptions)
       .then((res) => {
         this.setState({
           isLoading: false,
-          versions: [...this.state.versions, ...this.decorateVersions(res)],
+          versions: [...(this.state.versions ?? []), ...this.decorateVersions(res.versions)],
         });
         this.start += this.limit;
+        // Update the continueToken for the next request, if available
+        this.continueToken = res.continueToken ?? '';
       })
       .catch((err) => console.log(err))
       .finally(() => this.setState({ isAppending: false }));
@@ -83,8 +89,9 @@ export class VersionsSettings extends PureComponent<Props, State> {
       isLoading: true,
     });
 
-    const lhs = await historySrv.getDashboardVersion(this.props.dashboard.uid, baseInfo.version);
-    const rhs = await historySrv.getDashboardVersion(this.props.dashboard.uid, newInfo.version);
+    // the id here is the resource version in k8s, use this instead to get the specific version
+    let lhs = await historySrv.getDashboardVersion(this.props.dashboard.uid, baseInfo.id);
+    let rhs = await historySrv.getDashboardVersion(this.props.dashboard.uid, newInfo.id);
 
     this.setState({
       baseInfo,
@@ -108,7 +115,11 @@ export class VersionsSettings extends PureComponent<Props, State> {
     }));
 
   isLastPage() {
-    return this.state.versions.find((rev) => rev.version === 1);
+    return (
+      this.state.versions.find((rev) => rev.version === 1) ||
+      this.state.versions.length % this.limit !== 0 ||
+      this.continueToken === ''
+    );
   }
 
   onCheck = (ev: React.FormEvent<HTMLInputElement>, versionId: number) => {
@@ -120,11 +131,12 @@ export class VersionsSettings extends PureComponent<Props, State> {
   };
 
   reset = () => {
+    this.continueToken = '';
     this.setState({
       baseInfo: undefined,
       diffData: {
-        lhs: {},
-        rhs: {},
+        lhs: '',
+        rhs: '',
       },
       isNewLatest: false,
       newInfo: undefined,
@@ -138,10 +150,11 @@ export class VersionsSettings extends PureComponent<Props, State> {
     const canCompare = versions.filter((version) => version.checked).length === 2;
     const showButtons = versions.length > 1;
     const hasMore = versions.length >= this.limit;
+    const pageNav = this.props.sectionNav.node.parentItem;
 
     if (viewMode === 'compare') {
       return (
-        <Page navModel={this.props.sectionNav}>
+        <Page navModel={this.props.sectionNav} pageNav={pageNav}>
           <VersionHistoryHeader
             onClick={this.reset}
             baseVersion={baseInfo?.version}
@@ -163,7 +176,7 @@ export class VersionsSettings extends PureComponent<Props, State> {
     }
 
     return (
-      <Page navModel={this.props.sectionNav}>
+      <Page navModel={this.props.sectionNav} pageNav={pageNav}>
         {isLoading ? (
           <VersionsHistorySpinner msg="Fetching history list&hellip;" />
         ) : (
@@ -184,9 +197,9 @@ export class VersionsSettings extends PureComponent<Props, State> {
   }
 }
 
-const VersionsHistorySpinner = ({ msg }: { msg: string }) => (
-  <HorizontalGroup>
+export const VersionsHistorySpinner = ({ msg }: { msg: string }) => (
+  <Stack>
     <Spinner />
     <em>{msg}</em>
-  </HorizontalGroup>
+  </Stack>
 );

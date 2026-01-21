@@ -1,5 +1,5 @@
-import { cloneDeep, find, first as _first, isNumber, isObject, isString, map as _map } from 'lodash';
-import { generate, lastValueFrom, Observable, of, throwError } from 'rxjs';
+import { cloneDeep, first as _first, isNumber, isString, map as _map, isObject } from 'lodash';
+import { from, generate, lastValueFrom, Observable, of } from 'rxjs';
 import { catchError, first, map, mergeMap, skipWhile, throwIfEmpty, tap } from 'rxjs/operators';
 import { SemVer } from 'semver';
 
@@ -14,7 +14,6 @@ import {
   DataSourceWithSupplementaryQueriesSupport,
   DateTime,
   dateTime,
-  Field,
   getDefaultTimeRange,
   AbstractQuery,
   LogLevel,
@@ -22,21 +21,35 @@ import {
   MetricFindValue,
   ScopedVars,
   TimeRange,
-  toUtc,
   QueryFixAction,
   CoreApp,
   SupplementaryQueryType,
+  DataQueryError,
+  rangeUtil,
+  LogRowContextQueryDirection,
+  LogRowContextOptions,
+  SupplementaryQueryOptions,
+  toUtc,
+  AnnotationEvent,
+  DataSourceWithToggleableQueryFiltersSupport,
+  QueryFilterOptions,
+  ToggleFilterAction,
+  DataSourceGetTagValuesOptions,
+  AdHocVariableFilter,
+  DataSourceWithQueryModificationSupport,
+  AdHocVariableModel,
+  TypedVariableModel,
 } from '@grafana/data';
-import { BackendSrvRequest, DataSourceWithBackend, getBackendSrv, getDataSourceSrv, config } from '@grafana/runtime';
-import { queryLogsVolume } from 'app/core/logsModel';
-import { getTimeSrv, TimeSrv } from 'app/features/dashboard/services/TimeSrv';
-import { getTemplateSrv, TemplateSrv } from 'app/features/templating/template_srv';
+import {
+  DataSourceWithBackend,
+  getDataSourceSrv,
+  BackendSrvRequest,
+  TemplateSrv,
+  getTemplateSrv,
+  config,
+} from '@grafana/runtime';
 
-import { RowContextOptions } from '../../../features/logs/components/LogRowContextProvider';
-import { getLogLevelFromKey } from '../../../features/logs/utils';
-
-import { ElasticResponse } from './ElasticResponse';
-import { IndexPattern } from './IndexPattern';
+import { IndexPattern, intervalMap } from './IndexPattern';
 import LanguageProvider from './LanguageProvider';
 import { ElasticQueryBuilder } from './QueryBuilder';
 import { ElasticsearchAnnotationsQueryEditor } from './components/QueryEditor/AnnotationQueryEditor';
@@ -47,12 +60,33 @@ import {
   isPipelineAggregationWithMultipleBucketPaths,
 } from './components/QueryEditor/MetricAggregationsEditor/aggregations';
 import { metricAggregationConfig } from './components/QueryEditor/MetricAggregationsEditor/utils';
-import { defaultBucketAgg, hasMetricOfType } from './queryDef';
-import { trackQuery } from './tracking';
-import { Logs, BucketAggregation, DataLinkConfig, ElasticsearchOptions, ElasticsearchQuery, TermsQuery } from './types';
-import { getScriptValue, isSupportedVersion, unsupportedVersionMessage } from './utils';
+import { ElasticsearchDataQuery, BucketAggregation } from './dataquery.gen';
+import { isMetricAggregationWithMeta } from './guards';
+import {
+  addAddHocFilter,
+  addFilterToQuery,
+  addStringFilterToQuery,
+  queryHasFilter,
+  removeFilterFromQuery,
+} from './modifyQuery';
+import { trackAnnotationQuery, trackQuery } from './tracking';
+import {
+  Logs,
+  DataLinkConfig,
+  ElasticsearchOptions,
+  TermsQuery,
+  Interval,
+  ElasticsearchAnnotationQuery,
+  RangeMap,
+  isElasticsearchResponseWithAggregations,
+  isElasticsearchResponseWithHits,
+  ElasticsearchHits,
+} from './types';
+import { getScriptValue, isTimeSeriesQuery } from './utils';
 
 export const REF_ID_STARTER_LOG_VOLUME = 'log-volume-';
+export const REF_ID_STARTER_LOG_SAMPLE = 'log-sample-';
+
 // Those are metadata fields as defined in https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-fields.html#_identity_metadata_fields.
 // custom fields can start with underscores, therefore is not safe to exclude anything that starts with one.
 const ELASTIC_META_FIELDS = [
@@ -68,11 +102,13 @@ const ELASTIC_META_FIELDS = [
 ];
 
 export class ElasticDatasource
-  extends DataSourceWithBackend<ElasticsearchQuery, ElasticsearchOptions>
+  extends DataSourceWithBackend<ElasticsearchDataQuery, ElasticsearchOptions>
   implements
     DataSourceWithLogsContextSupport,
-    DataSourceWithQueryImportSupport<ElasticsearchQuery>,
-    DataSourceWithSupplementaryQueriesSupport<ElasticsearchQuery>
+    DataSourceWithQueryImportSupport<ElasticsearchDataQuery>,
+    DataSourceWithSupplementaryQueriesSupport<ElasticsearchDataQuery>,
+    DataSourceWithToggleableQueryFiltersSupport<ElasticsearchDataQuery>,
+    DataSourceWithQueryModificationSupport<ElasticsearchDataQuery>
 {
   basicAuth?: string;
   withCredentials?: boolean;
@@ -80,18 +116,16 @@ export class ElasticDatasource
   name: string;
   index: string;
   timeField: string;
-  xpack: boolean;
   interval: string;
   maxConcurrentShardRequests?: number;
   queryBuilder: ElasticQueryBuilder;
   indexPattern: IndexPattern;
-  logMessageField?: string;
+  intervalPattern?: Interval;
   logLevelField?: string;
   dataLinks: DataLinkConfig[];
   languageProvider: LanguageProvider;
   includeFrozen: boolean;
   isProxyAccess: boolean;
-  timeSrv: TimeSrv;
   databaseVersion: SemVer | null;
 
   constructor(
@@ -103,90 +137,51 @@ export class ElasticDatasource
     this.withCredentials = instanceSettings.withCredentials;
     this.url = instanceSettings.url!;
     this.name = instanceSettings.name;
-    this.index = instanceSettings.database ?? '';
     this.isProxyAccess = instanceSettings.access === 'proxy';
-    const settingsData = instanceSettings.jsonData || ({} as ElasticsearchOptions);
-
+    const settingsData = instanceSettings.jsonData || {};
+    // instanceSettings.database is deprecated and should be removed in the future
+    this.index = settingsData.index ?? instanceSettings.database ?? '';
     this.timeField = settingsData.timeField;
-    this.xpack = Boolean(settingsData.xpack);
     this.indexPattern = new IndexPattern(this.index, settingsData.interval);
+    this.intervalPattern = settingsData.interval;
     this.interval = settingsData.timeInterval;
     this.maxConcurrentShardRequests = settingsData.maxConcurrentShardRequests;
     this.queryBuilder = new ElasticQueryBuilder({
       timeField: this.timeField,
     });
-    this.logMessageField = settingsData.logMessageField || '';
     this.logLevelField = settingsData.logLevelField || '';
     this.dataLinks = settingsData.dataLinks || [];
     this.includeFrozen = settingsData.includeFrozen ?? false;
+    // we want to cache the database version so we don't have to ask for it every time
     this.databaseVersion = null;
     this.annotations = {
       QueryEditor: ElasticsearchAnnotationsQueryEditor,
     };
 
-    if (this.logMessageField === '') {
-      this.logMessageField = undefined;
-    }
-
     if (this.logLevelField === '') {
       this.logLevelField = undefined;
     }
     this.languageProvider = new LanguageProvider(this);
-    this.timeSrv = getTimeSrv();
   }
 
-  private request(
-    method: string,
-    url: string,
-    data?: undefined,
-    headers?: BackendSrvRequest['headers']
-  ): Observable<any> {
-    if (!this.isProxyAccess) {
-      const error = new Error(
-        'Browser access mode in the Elasticsearch datasource is no longer available. Switch to server access mode.'
-      );
-      return throwError(() => error);
-    }
-
-    const options: BackendSrvRequest = {
-      url: this.url + '/' + url,
-      method,
-      data,
-      headers,
-    };
-
-    if (this.basicAuth || this.withCredentials) {
-      options.withCredentials = true;
-    }
-    if (this.basicAuth) {
-      options.headers = {
-        Authorization: this.basicAuth,
-      };
-    }
-
-    return getBackendSrv()
-      .fetch<any>(options)
-      .pipe(
-        map((results) => {
-          results.data.$$config = results.config;
-          return results.data;
-        }),
-        catchError((err) => {
-          if (err.data) {
-            const message = err.data.error?.reason ?? err.data.message ?? 'Unknown error';
-
-            return throwError({
-              message: 'Elasticsearch error: ' + message,
-              error: err.data.error,
-            });
-          }
-
-          return throwError(err);
-        })
-      );
+  getResourceRequest(path: string, params?: BackendSrvRequest['params'], options?: Partial<BackendSrvRequest>) {
+    return this.getResource(path, params, options);
   }
 
-  async importFromAbstractQueries(abstractQueries: AbstractQuery[]): Promise<ElasticsearchQuery[]> {
+  postResourceRequest(path: string, data?: BackendSrvRequest['data'], options?: Partial<BackendSrvRequest>) {
+    const resourceOptions = options ?? {};
+    resourceOptions.headers = resourceOptions.headers ?? {};
+    resourceOptions.headers['content-type'] = 'application/x-ndjson';
+
+    return this.postResource(path, data, resourceOptions);
+  }
+
+  /**
+   * Implemented as part of DataSourceWithQueryImportSupport.
+   * Imports queries from AbstractQuery objects when switching between different data source types.
+   * @returns A Promise that resolves to an array of ES queries.
+   */
+  async importFromAbstractQueries(abstractQueries: AbstractQuery[]): Promise<ElasticsearchDataQuery[]> {
     return abstractQueries.map((abstractQuery) => this.languageProvider.importFromAbstractQuery(abstractQuery));
   }
 
@@ -195,23 +190,27 @@ export class ElasticDatasource
    *
    * When multiple indices span the provided time range, the request is sent starting from the newest index,
    * and then going backwards until an index is found.
-   *
-   * @param url the url to query the index on, for example `/_mapping`.
    */
-  private get(url: string, range = getDefaultTimeRange()): Observable<any> {
+  private requestAllIndices(range = getDefaultTimeRange()) {
     let indexList = this.indexPattern.getIndexList(range.from, range.to);
     if (!Array.isArray(indexList)) {
       indexList = [this.indexPattern.getIndexForToday()];
     }
 
-    const indexUrlList = indexList.map((index) => index + url);
+    const url = config.featureToggles.elasticsearchCrossClusterSearch ? '_field_caps' : '_mapping';
 
-    return this.requestAllIndices(indexUrlList);
-  }
+    const indexUrlList = indexList.map((index) => {
+      // make sure `index` does not end with a slash
+      index = index.replace(/\/$/, '');
+      if (index === '') {
+        return url;
+      }
 
-  private requestAllIndices(indexList: string[]): Observable<any> {
+      return `${index}/${url}`;
+    });
+
     const maxTraversals = 7; // do not go beyond one week (for a daily pattern)
-    const listLen = indexList.length;
+    const listLen = indexUrlList.length;
 
     return generate({
       initialState: 0,
@@ -220,7 +219,8 @@ export class ElasticDatasource
     }).pipe(
       mergeMap((index) => {
         // catch all errors and emit an object with an err property to simplify checks later in the pipeline
-        return this.request('GET', indexList[listLen - index - 1]).pipe(catchError((err) => of({ err })));
+        const path = indexUrlList[listLen - index - 1];
+        return from(this.getResource(path)).pipe(catchError((err) => of({ err })));
       }),
       skipWhile((resp) => resp?.err?.status === 404), // skip all requests that fail because missing Elastic index
       throwIfEmpty(() => 'Could not find an available index for this time range.'), // when i === Math.min(listLen, maxTraversals) generate will complete but without emitting any values which means we didn't find a valid index
@@ -235,14 +235,47 @@ export class ElasticDatasource
     );
   }
 
-  private post(url: string, data: any): Observable<any> {
-    return this.request('POST', url, data, { 'Content-Type': 'application/x-ndjson' });
+  /**
+   * Implemented as part of the DataSourceAPI. It allows the datasource to serve as a source of annotations for a dashboard.
+   * @returns A promise that resolves to an array of AnnotationEvent objects representing the annotations for the dashboard.
+   * @todo This is deprecated and it is recommended to use the `AnnotationSupport` feature for annotations.
+   */
+  annotationQuery(options: any): Promise<AnnotationEvent[]> {
+    const payload = this.prepareAnnotationRequest(options);
+    trackAnnotationQuery(options.annotation);
+    // TODO: We should migrate this to use query and not resource call
+    // The plan is to look at this when we start to work on raw query editor for ES
+    // as we will have to explore how to handle any query
+    const annotationObservable = from(this.postResourceRequest('_msearch', payload));
+    return lastValueFrom(
+      annotationObservable.pipe(
+        map((res: unknown) => {
+          if (!isElasticsearchResponseWithHits(res)) {
+            return [];
+          }
+          const hits = res?.responses[0].hits?.hits ?? [];
+          return this.processHitsToAnnotationEvents(options.annotation, hits);
+        })
+      )
+    );
   }
 
-  annotationQuery(options: any): Promise<any> {
+  // Private method used in the `annotationQuery` to prepare the payload for the Elasticsearch annotation request
+  private prepareAnnotationRequest(options: {
+    annotation: ElasticsearchAnnotationQuery;
+    // Should be DashboardModel but cannot import that here from the main app. This is a temporary solution as we need to move from deprecated annotations.
+    dashboard: { getVariables: () => TypedVariableModel[] };
+    range: TimeRange;
+  }) {
     const annotation = options.annotation;
     const timeField = annotation.timeField || '@timestamp';
     const timeEndField = annotation.timeEndField || null;
+    const dashboard = options.dashboard;
+
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    const adhocVariables = dashboard.getVariables().filter((v) => v.type === 'adhoc') as AdHocVariableModel[];
+    const annotationRelatedVariables = adhocVariables.filter((v) => v.datasource?.uid === annotation.datasource.uid);
+    const filters = annotationRelatedVariables.map((v) => v.filters).flat();
 
     // the `target.query` is the "new" location for the query.
     // normally we would write this code as
@@ -253,12 +286,10 @@ export class ElasticDatasource
     // both the old and the new place are set,
     // and in that scenario the old place needs
     // to have priority.
-    const queryString = annotation.query ?? annotation.target?.query;
-    const tagsField = annotation.tagsField || 'tags';
-    const textField = annotation.textField || null;
+    const queryString = annotation.query ?? annotation.target?.query ?? '';
 
     const dateRanges = [];
-    const rangeStart: any = {};
+    const rangeStart: RangeMap = {};
     rangeStart[timeField] = {
       from: options.range.from.valueOf(),
       to: options.range.to.valueOf(),
@@ -267,7 +298,7 @@ export class ElasticDatasource
     dateRanges.push({ range: rangeStart });
 
     if (timeEndField) {
-      const rangeEnd: any = {};
+      const rangeEnd: RangeMap = {};
       rangeEnd[timeEndField] = {
         from: options.range.from.valueOf(),
         to: options.range.to.valueOf(),
@@ -277,7 +308,11 @@ export class ElasticDatasource
     }
 
     const queryInterpolated = this.interpolateLuceneQuery(queryString);
-    const query: any = {
+    const finalQuery = this.addAdHocFilters(queryInterpolated, filters);
+
+    const query: {
+      bool: { filter: Array<Record<string, Record<string, string | number | Array<{ range: RangeMap }>>>> };
+    } = {
       bool: {
         filter: [
           {
@@ -290,24 +325,25 @@ export class ElasticDatasource
       },
     };
 
-    if (queryInterpolated) {
+    if (finalQuery) {
       query.bool.filter.push({
         query_string: {
-          query: queryInterpolated,
+          query: finalQuery,
         },
       });
     }
-    const data: any = {
+    const data = {
       query,
       size: 10000,
     };
 
-    const header: any = {
+    const header: Record<string, string | string[] | boolean> = {
       search_type: 'query_then_fetch',
       ignore_unavailable: true,
     };
 
-    // old elastic annotations had index specified on them
+    // @deprecated
+    // Field annotation.index is deprecated and will be removed in the future
     if (annotation.index) {
       header.index = annotation.index;
     } else {
@@ -315,123 +351,98 @@ export class ElasticDatasource
     }
 
     const payload = JSON.stringify(header) + '\n' + JSON.stringify(data) + '\n';
-
-    return lastValueFrom(
-      this.post('_msearch', payload).pipe(
-        map((res) => {
-          const list = [];
-          const hits = res.responses[0].hits.hits;
-
-          const getFieldFromSource = (source: any, fieldName: any) => {
-            if (!fieldName) {
-              return;
-            }
-
-            const fieldNames = fieldName.split('.');
-            let fieldValue = source;
-
-            for (let i = 0; i < fieldNames.length; i++) {
-              fieldValue = fieldValue[fieldNames[i]];
-              if (!fieldValue) {
-                console.log('could not find field in annotation: ', fieldName);
-                return '';
-              }
-            }
-
-            return fieldValue;
-          };
-
-          for (let i = 0; i < hits.length; i++) {
-            const source = hits[i]._source;
-            let time = getFieldFromSource(source, timeField);
-            if (typeof hits[i].fields !== 'undefined') {
-              const fields = hits[i].fields;
-              if (isString(fields[timeField]) || isNumber(fields[timeField])) {
-                time = fields[timeField];
-              }
-            }
-
-            const event: {
-              annotation: any;
-              time: number;
-              timeEnd?: number;
-              text: string;
-              tags: string | string[];
-            } = {
-              annotation: annotation,
-              time: toUtc(time).valueOf(),
-              text: getFieldFromSource(source, textField),
-              tags: getFieldFromSource(source, tagsField),
-            };
-
-            if (timeEndField) {
-              const timeEnd = getFieldFromSource(source, timeEndField);
-              if (timeEnd) {
-                event.timeEnd = toUtc(timeEnd).valueOf();
-              }
-            }
-
-            // legacy support for title tield
-            if (annotation.titleField) {
-              const title = getFieldFromSource(source, annotation.titleField);
-              if (title) {
-                event.text = title + '\n' + event.text;
-              }
-            }
-
-            if (typeof event.tags === 'string') {
-              event.tags = event.tags.split(',');
-            }
-
-            list.push(event);
-          }
-          return list;
-        })
-      )
-    );
+    return payload;
   }
 
-  private interpolateLuceneQuery(queryString: string, scopedVars?: ScopedVars) {
+  // Private method used in the `annotationQuery` to process Elasticsearch hits into AnnotationEvents
+  private processHitsToAnnotationEvents(annotation: ElasticsearchAnnotationQuery, hits: ElasticsearchHits) {
+    const timeField = annotation.timeField || '@timestamp';
+    const timeEndField = annotation.timeEndField || null;
+    const textField = annotation.textField || 'tags';
+    const tagsField = annotation.tagsField || null;
+    const list: AnnotationEvent[] = [];
+
+    const getFieldFromSource = (source: any, fieldName: string | null) => {
+      if (!fieldName) {
+        return;
+      }
+
+      const fieldNames = fieldName.split('.');
+      let fieldValue = source;
+
+      for (let i = 0; i < fieldNames.length; i++) {
+        fieldValue = fieldValue[fieldNames[i]];
+        if (!fieldValue) {
+          return '';
+        }
+      }
+
+      return fieldValue;
+    };
+
+    for (let i = 0; i < hits.length; i++) {
+      const source = hits[i]._source;
+      let time = getFieldFromSource(source, timeField);
+      if (typeof hits[i].fields !== 'undefined') {
+        const fields = hits[i].fields;
+        if (typeof fields === 'object' && (isString(fields[timeField]) || isNumber(fields[timeField]))) {
+          time = fields[timeField];
+        }
+      }
+
+      const event: AnnotationEvent = {
+        annotation: annotation,
+        time: toUtc(time).valueOf(),
+        text: getFieldFromSource(source, textField),
+      };
+
+      if (timeEndField) {
+        const timeEnd = getFieldFromSource(source, timeEndField);
+        if (timeEnd) {
+          event.timeEnd = toUtc(timeEnd).valueOf();
+        }
+      }
+
+      // legacy support for title field
+      if (annotation.titleField) {
+        const title = getFieldFromSource(source, annotation.titleField);
+        if (title) {
+          event.text = title + '\n' + event.text;
+        }
+      }
+
+      const tags = getFieldFromSource(source, tagsField);
+      if (typeof tags === 'string') {
+        event.tags = tags.split(',');
+      } else {
+        event.tags = tags;
+      }
+
+      list.push(event);
+    }
+    return list;
+  }
+
+  // Replaces variables in a Lucene query string
+  interpolateLuceneQuery(queryString: string, scopedVars?: ScopedVars) {
     return this.templateSrv.replace(queryString, scopedVars, 'lucene');
   }
 
-  interpolateVariablesInQueries(queries: ElasticsearchQuery[], scopedVars: ScopedVars | {}): ElasticsearchQuery[] {
-    return queries.map((q) => this.applyTemplateVariables(q, scopedVars));
+  /**
+   * Implemented as a part of DataSourceApi. Interpolates variables and adds ad hoc filters to a list of ES queries.
+   * @returns An array of ES queries with interpolated variables and ad hoc filters using `applyTemplateVariables`.
+   */
+  interpolateVariablesInQueries(
+    queries: ElasticsearchDataQuery[],
+    scopedVars: ScopedVars,
+    filters?: AdHocVariableFilter[]
+  ): ElasticsearchDataQuery[] {
+    return queries.map((q) => this.applyTemplateVariables(q, scopedVars, filters));
   }
 
-  async testDatasource() {
-    // we explicitly ask for uncached, "fresh" data here
-    const dbVersion = await this.getDatabaseVersion(false);
-    // if we are not able to determine the elastic-version, we assume it is a good version.
-    const isSupported = dbVersion != null ? isSupportedVersion(dbVersion) : true;
-    const versionMessage = isSupported ? '' : `WARNING: ${unsupportedVersionMessage} `;
-    // validate that the index exist and has date field
-    return lastValueFrom(
-      this.getFields(['date']).pipe(
-        mergeMap((dateFields) => {
-          const timeField: any = find(dateFields, { text: this.timeField });
-          if (!timeField) {
-            return of({
-              status: 'error',
-              message: 'No date field named ' + this.timeField + ' found',
-            });
-          }
-          return of({ status: 'success', message: `${versionMessage}Index OK. Time field name OK` });
-        }),
-        catchError((err) => {
-          console.error(err);
-          if (err.message) {
-            return of({ status: 'error', message: err.message });
-          } else {
-            return of({ status: 'error', message: err.status });
-          }
-        })
-      )
-    );
-  }
-
-  getQueryHeader(searchType: any, timeFrom?: DateTime, timeTo?: DateTime): string {
-    const queryHeader: any = {
+  // Private method used in `getTerms` to get the header for the Elasticsearch query
+  private getQueryHeader(searchType: string, timeFrom?: DateTime, timeTo?: DateTime): string {
+    const queryHeader = {
       search_type: searchType,
       ignore_unavailable: true,
       index: this.indexPattern.getIndexList(timeFrom, timeTo),
@@ -440,7 +451,12 @@ export class ElasticDatasource
     return JSON.stringify(queryHeader);
   }
 
-  getQueryDisplayText(query: ElasticsearchQuery) {
+  /**
+   * Implemented as part of DataSourceApi. Converts a ES query to a simple text string.
+   * Used, for example, in Query history.
+   * @returns A text representation of the query.
+   */
+  getQueryDisplayText(query: ElasticsearchDataQuery) {
     // TODO: This might be refactored a bit.
     const metricAggs = query.metrics;
     const bucketAggs = query.bucketAggs;
@@ -491,99 +507,70 @@ export class ElasticDatasource
     return text;
   }
 
-  showContextToggle(): boolean {
-    return true;
-  }
-
-  getLogRowContext = async (row: LogRowModel, options?: RowContextOptions): Promise<{ data: DataFrame[] }> => {
-    const sortField = row.dataFrame.fields.find((f) => f.name === 'sort');
-    const searchAfter = sortField?.values.get(row.rowIndex) || [row.timeEpochMs];
-    const sort = options?.direction === 'FORWARD' ? 'asc' : 'desc';
-
-    const header =
-      options?.direction === 'FORWARD'
-        ? this.getQueryHeader('query_then_fetch', dateTime(row.timeEpochMs))
-        : this.getQueryHeader('query_then_fetch', undefined, dateTime(row.timeEpochMs));
-
-    const limit = options?.limit ?? 10;
-    const esQuery = JSON.stringify({
-      size: limit,
-      query: {
-        bool: {
-          filter: [
-            {
-              range: {
-                [this.timeField]: {
-                  [options?.direction === 'FORWARD' ? 'gte' : 'lte']: row.timeEpochMs,
-                  format: 'epoch_millis',
-                },
-              },
-            },
-          ],
-        },
-      },
-      sort: [{ [this.timeField]: sort }, { _doc: sort }],
-      search_after: searchAfter,
-    });
-    const payload = [header, esQuery].join('\n') + '\n';
-    const url = this.getMultiSearchUrl();
-    const response = await lastValueFrom(this.post(url, payload));
-    const targets: ElasticsearchQuery[] = [{ refId: `${row.dataFrame.refId}`, metrics: [{ type: 'logs', id: '1' }] }];
-    const elasticResponse = new ElasticResponse(targets, transformHitsBasedOnDirection(response, sort));
-    const logResponse = elasticResponse.getLogs(this.logMessageField, this.logLevelField);
-    const dataFrame = _first(logResponse.data);
-    if (!dataFrame) {
-      return { data: [] };
-    }
-    /**
-     * The LogRowContextProvider requires there is a field in the dataFrame.fields
-     * named `ts` for timestamp and `line` for the actual log line to display.
-     * Unfortunatly these fields are hardcoded and are required for the lines to
-     * be properly displayed. This code just copies the fields based on this.timeField
-     * and this.logMessageField and recreates the dataFrame so it works.
-     */
-    const timestampField = dataFrame.fields.find((f: Field) => f.name === this.timeField);
-    const lineField = dataFrame.fields.find((f: Field) => f.name === this.logMessageField);
-    if (timestampField && lineField) {
-      return {
-        data: [
-          {
-            ...dataFrame,
-            fields: [...dataFrame.fields, { ...timestampField, name: 'ts' }, { ...lineField, name: 'line' }],
-          },
-        ],
-      };
-    }
-    return logResponse;
+  /**
+   * Part of `DataSourceWithLogsContextSupport`, used to retrieve log context for a log row.
+   * @returns A promise that resolves to an object containing the log context data as DataFrames.
+   */
+  getLogRowContext = async (row: LogRowModel, options?: LogRowContextOptions): Promise<{ data: DataFrame[] }> => {
+    const contextRequest = this.makeLogContextDataRequest(row, options);
+    return lastValueFrom(
+      this.query(contextRequest).pipe(
+        catchError((err) => {
+          const error: DataQueryError = {
+            message: 'Error during context query. Please check JS console logs.',
+            status: err.status,
+            statusText: err.statusText,
+          };
+          throw error;
+        })
+      )
+    );
   };
 
-  getDataProvider(
+  /**
+   * Implemented for DataSourceWithSupplementaryQueriesSupport.
+   * It generates a DataQueryRequest for a specific supplementary query type.
+   * @returns A DataQueryRequest for the supplementary queries or undefined if not supported.
+   */
+  getSupplementaryRequest(
     type: SupplementaryQueryType,
-    request: DataQueryRequest<ElasticsearchQuery>
-  ): Observable<DataQueryResponse> | undefined {
-    if (!this.getSupportedSupplementaryQueryTypes().includes(type)) {
-      return undefined;
-    }
+    request: DataQueryRequest<ElasticsearchDataQuery>
+  ): DataQueryRequest<ElasticsearchDataQuery> | undefined {
     switch (type) {
       case SupplementaryQueryType.LogsVolume:
         return this.getLogsVolumeDataProvider(request);
+      case SupplementaryQueryType.LogsSample:
+        return this.getLogsSampleDataProvider(request);
       default:
         return undefined;
     }
   }
 
+  /**
+   * Implemented for DataSourceWithSupplementaryQueriesSupport.
+   * It returns the supplementary types that the data source supports.
+   * @returns An array of supported supplementary query types.
+   */
   getSupportedSupplementaryQueryTypes(): SupplementaryQueryType[] {
-    return [SupplementaryQueryType.LogsVolume];
+    return [SupplementaryQueryType.LogsVolume, SupplementaryQueryType.LogsSample];
   }
 
-  getSupplementaryQuery(type: SupplementaryQueryType, query: ElasticsearchQuery): ElasticsearchQuery | undefined {
-    if (!this.getSupportedSupplementaryQueryTypes().includes(type)) {
+  /**
+   * Implemented for DataSourceWithSupplementaryQueriesSupport.
+   * It retrieves supplementary queries based on the provided options and ES query.
+   * @returns A supplemented ES query or undefined if unsupported.
+   */
+  getSupplementaryQuery(
+    options: SupplementaryQueryOptions,
+    query: ElasticsearchDataQuery
+  ): ElasticsearchDataQuery | undefined {
+    let isQuerySuitable = false;
+
+    if (query.hide) {
       return undefined;
     }
 
-    let isQuerySuitable = false;
-
-    switch (type) {
+    switch (options.type) {
       case SupplementaryQueryType.LogsVolume:
         // it has to be a logs-producing range-query
         isQuerySuitable = !!(query.metrics?.length === 1 && query.metrics[0].type === 'logs');
@@ -626,134 +613,116 @@ export class ElasticDatasource
           bucketAggs,
         };
 
+      case SupplementaryQueryType.LogsSample:
+        isQuerySuitable = isTimeSeriesQuery(query);
+
+        if (!isQuerySuitable) {
+          return undefined;
+        }
+
+        if (options.limit) {
+          return {
+            refId: `${REF_ID_STARTER_LOG_SAMPLE}${query.refId}`,
+            query: query.query,
+            metrics: [{ type: 'logs', id: '1', settings: { limit: options.limit.toString() } }],
+          };
+        }
+
+        return {
+          refId: `${REF_ID_STARTER_LOG_SAMPLE}${query.refId}`,
+          query: query.query,
+          metrics: [{ type: 'logs', id: '1' }],
+        };
+
       default:
         return undefined;
     }
   }
 
-  getLogsVolumeDataProvider(request: DataQueryRequest<ElasticsearchQuery>): Observable<DataQueryResponse> | undefined {
+  /**
+   * Private method used in the `getDataProvider` for DataSourceWithSupplementaryQueriesSupport, specifically for Logs volume queries.
+   * @returns An Observable of DataQueryResponse or undefined if no suitable queries are found.
+   */
+  private getLogsVolumeDataProvider(
+    request: DataQueryRequest<ElasticsearchDataQuery>
+  ): DataQueryRequest<ElasticsearchDataQuery> | undefined {
     const logsVolumeRequest = cloneDeep(request);
     const targets = logsVolumeRequest.targets
-      .map((target) => this.getSupplementaryQuery(SupplementaryQueryType.LogsVolume, target))
-      .filter((query): query is ElasticsearchQuery => !!query);
+      .map((target) => this.getSupplementaryQuery({ type: SupplementaryQueryType.LogsVolume }, target))
+      .filter((query): query is ElasticsearchDataQuery => !!query);
 
     if (!targets.length) {
       return undefined;
     }
 
-    return queryLogsVolume(
-      this,
-      { ...logsVolumeRequest, targets },
-      {
-        range: request.range,
-        targets: request.targets,
-        extractLevel: (dataFrame) => getLogLevelFromKey(dataFrame.name || ''),
-      }
-    );
+    return { ...logsVolumeRequest, targets };
   }
 
-  query(request: DataQueryRequest<ElasticsearchQuery>): Observable<DataQueryResponse> {
-    // Run request through backend if it is coming from Explore and disableElasticsearchBackendExploreQuery is not set
-    // or if elasticsearchBackendMigration feature toggle is enabled
-    const { elasticsearchBackendMigration, disableElasticsearchBackendExploreQuery } = config.featureToggles;
-    const shouldRunTroughBackend =
-      (request.app === CoreApp.Explore && !disableElasticsearchBackendExploreQuery) || elasticsearchBackendMigration;
+  /**
+   * Private method used in the `getDataProvider` for DataSourceWithSupplementaryQueriesSupport, specifically for Logs sample queries.
+   * @returns An Observable of DataQueryResponse or undefined if no suitable queries are found.
+   */
+  private getLogsSampleDataProvider(
+    request: DataQueryRequest<ElasticsearchDataQuery>
+  ): DataQueryRequest<ElasticsearchDataQuery> | undefined {
+    const logsSampleRequest = cloneDeep(request);
+    const targets = logsSampleRequest.targets;
+    const queries = targets.map((query) => {
+      return this.getSupplementaryQuery({ type: SupplementaryQueryType.LogsSample, limit: 100 }, query);
+    });
+    const elasticQueries = queries.filter((query): query is ElasticsearchDataQuery => !!query);
 
-    if (shouldRunTroughBackend) {
-      const start = new Date();
-      return super.query(request).pipe(tap((response) => trackQuery(response, request, start)));
+    if (!elasticQueries.length) {
+      return undefined;
     }
-    let payload = '';
-    const targets = this.interpolateVariablesInQueries(cloneDeep(request.targets), request.scopedVars);
-    const sentTargets: ElasticsearchQuery[] = [];
-    let targetsContainsLogsQuery = targets.some((target) => hasMetricOfType(target, 'logs'));
+    return { ...logsSampleRequest, targets: elasticQueries };
+  }
 
-    const logLimits: Array<number | undefined> = [];
-
-    for (const target of targets) {
-      if (target.hide) {
-        continue;
-      }
-
-      let queryObj;
-      if (hasMetricOfType(target, 'logs')) {
-        // FIXME: All this logic here should be in the query builder.
-        // When moving to the BE-only implementation we should remove this and let the BE
-        // Handle this.
-        // TODO: defaultBucketAgg creates a dete_histogram aggregation without a field, so it fallbacks to
-        // the configured timeField. we should allow people to use a different time field here.
-        target.bucketAggs = [defaultBucketAgg()];
-
-        const log = target.metrics?.find((m) => m.type === 'logs') as Logs;
-        const limit = log.settings?.limit ? parseInt(log.settings?.limit, 10) : 500;
-        logLimits.push(limit);
-
-        target.metrics = [];
-        // Setting this for metrics queries that are typed as logs
-        queryObj = this.queryBuilder.getLogsQuery(target, limit);
-      } else {
-        logLimits.push();
-        if (target.alias) {
-          target.alias = this.interpolateLuceneQuery(target.alias, request.scopedVars);
-        }
-
-        queryObj = this.queryBuilder.build(target);
-      }
-
-      const esQuery = JSON.stringify(queryObj);
-
-      const searchType = 'query_then_fetch';
-      const header = this.getQueryHeader(searchType, request.range.from, request.range.to);
-      payload += header + '\n';
-
-      payload += esQuery + '\n';
-
-      sentTargets.push(target);
-    }
-
-    if (sentTargets.length === 0) {
-      return of({ data: [] });
-    }
-
-    // We replace the range here for actual values. We need to replace it together with enclosing "" so that we replace
-    // it as an integer not as string with digits. This is because elastic will convert the string only if the time
-    // field is specified as type date (which probably should) but can also be specified as integer (millisecond epoch)
-    // and then sending string will error out.
-    payload = payload.replace(/"\$timeFrom"/g, request.range.from.valueOf().toString());
-    payload = payload.replace(/"\$timeTo"/g, request.range.to.valueOf().toString());
-    payload = this.templateSrv.replace(payload, request.scopedVars);
-
-    const url = this.getMultiSearchUrl();
-
+  /**
+   * Required by DataSourceApi. It executes queries based on the provided DataQueryRequest.
+   * @returns An Observable of DataQueryResponse containing the query results.
+   */
+  query(request: DataQueryRequest<ElasticsearchDataQuery>): Observable<DataQueryResponse> {
     const start = new Date();
-    return this.post(url, payload).pipe(
-      map((res) => {
-        const er = new ElasticResponse(sentTargets, res);
-
-        // TODO: This needs to be revisited, it seems wrong to process ALL the sent queries as logs if only one of them was a log query
-        if (targetsContainsLogsQuery) {
-          const response = er.getLogs(this.logMessageField, this.logLevelField);
-
-          response.data.forEach((dataFrame, index) => {
-            enhanceDataFrame(dataFrame, this.dataLinks, logLimits[index]);
-          });
-          return response;
-        }
-
-        return er.getTimeSeries();
-      }),
-      tap((response) => trackQuery(response, request, start))
+    return super.query(request).pipe(
+      tap((response) => trackQuery(response, request, start)),
+      map((response) => {
+        response.data.forEach((dataFrame) => {
+          enhanceDataFrameWithDataLinks(dataFrame, this.dataLinks);
+        });
+        return response;
+      })
     );
   }
 
-  isMetadataField(fieldName: string) {
+  /**
+   * Filters out queries that are hidden. Used when running queries through backend.
+   * It is called from DatasourceWithBackend.
+   * @returns `true` if the query is not hidden.
+   */
+  filterQuery(query: ElasticsearchDataQuery): boolean {
+    if (query.hide) {
+      return false;
+    }
+    return true;
+  }
+
+  // Private method used in the `getFields` to check if a field is a metadata field.
+  private isMetadataField(fieldName: string) {
     return ELASTIC_META_FIELDS.includes(fieldName);
   }
 
-  // TODO: instead of being a string, this could be a custom type representing all the elastic types
-  // FIXME: This doesn't seem to return actual MetricFindValues, we should either change the return type
-  // or fix the implementation.
+  /**
+   * Get the list of the fields to display in query editor or used for example in getTagKeys.
+   * @todo instead of being a string, this could be a custom type representing all the elastic types
+   * @fixme This doesn't seem to return actual MetricFindValues, we should either change the return type
+   * or fix the implementation.
+   */
   getFields(type?: string[], range?: TimeRange): Observable<MetricFindValue[]> {
+    if (config.featureToggles.elasticsearchCrossClusterSearch) {
+      return this.getFieldsCrossCluster(type, range);
+    }
+
     const typeMap: Record<string, string> = {
       float: 'number',
       double: 'number',
@@ -767,7 +736,7 @@ export class ElasticDatasource
       nested: 'nested',
       histogram: 'number',
     };
-    return this.get('/_mapping', range).pipe(
+    return this.requestAllIndices(range).pipe(
       map((result) => {
         const shouldAddField = (obj: any, key: string) => {
           if (this.isMetadataField(key)) {
@@ -778,13 +747,13 @@ export class ElasticDatasource
             return true;
           }
 
-          // equal query type filter, or via typemap translation
+          // equal query type filter, or via type map translation
           return type.includes(obj.type) || type.includes(typeMap[obj.type]);
         };
 
         // Store subfield names: [system, process, cpu, total] -> system.process.cpu.total
-        const fieldNameParts: any = [];
-        const fields: any = {};
+        const fieldNameParts: string[] = [];
+        const fields: Record<string, { text: string; type: string }> = {};
 
         function getFieldsRecursively(obj: any) {
           for (const key in obj) {
@@ -834,7 +803,76 @@ export class ElasticDatasource
     );
   }
 
-  getTerms(queryDef: TermsQuery, range = getDefaultTimeRange()): Observable<MetricFindValue[]> {
+  getFieldsCrossCluster(type?: string[], range?: TimeRange): Observable<MetricFindValue[]> {
+    const typeMap: Record<string, string> = {
+      float: 'number',
+      double: 'number',
+      integer: 'number',
+      long: 'number',
+      date: 'date',
+      date_nanos: 'date',
+      string: 'string',
+      text: 'string',
+      scaled_float: 'number',
+      nested: 'nested',
+      histogram: 'number',
+    };
+    return this.requestAllIndices(range).pipe(
+      map((result) => {
+        interface FieldInfo {
+          metadata_field: string;
+        }
+        const shouldAddField = (obj: Record<string, Record<string, FieldInfo>>) => {
+          // equal query type filter, or via type map translation
+          for (const objField in obj) {
+            if (objField === 'object') {
+              continue;
+            }
+            if (obj[objField].metadata_field) {
+              continue;
+            }
+
+            if (!type || type.length === 0) {
+              return true;
+            }
+
+            if (type.includes(objField) || type.includes(typeMap[objField])) {
+              return true;
+            }
+          }
+          return false;
+        };
+
+        const fields: Record<string, { text: string; type: string }> = {};
+
+        const fieldsData = result['fields'];
+        for (const fieldName in fieldsData) {
+          const fieldInfo = fieldsData[fieldName];
+          if (shouldAddField(fieldInfo)) {
+            fields[fieldName] = {
+              text: fieldName,
+              type: fieldInfo.type,
+            };
+          }
+        }
+
+        // transform to array
+        return _map(fields, (value) => {
+          return value;
+        });
+      })
+    );
+  }
+
+  /**
+   * Get values for a given field.
+   * Used for example in getTagValues.
+   */
+  getTerms(
+    queryDef: TermsQuery,
+    range = getDefaultTimeRange(),
+    isTagValueQuery = false
+  ): Observable<MetricFindValue[]> {
     const searchType = 'query_then_fetch';
     const header = this.getQueryHeader(searchType, range.from, range.to);
     let esQuery = JSON.stringify(this.queryBuilder.getTermsQuery(queryDef));
@@ -845,23 +883,28 @@ export class ElasticDatasource
 
     const url = this.getMultiSearchUrl();
 
-    return this.post(url, esQuery).pipe(
-      map((res) => {
-        if (!res.responses[0].aggregations) {
+    return from(this.postResourceRequest(url, esQuery)).pipe(
+      map((res: unknown) => {
+        if (!isElasticsearchResponseWithAggregations(res)) {
+          return [];
+        }
+        if (!res || !res.responses[0].aggregations) {
           return [];
         }
 
         const buckets = res.responses[0].aggregations['1'].buckets;
         return _map(buckets, (bucket) => {
+          const keyString = String(bucket.key);
           return {
-            text: bucket.key_as_string || bucket.key,
-            value: bucket.key,
+            text: bucket.key_as_string || keyString,
+            value: isTagValueQuery ? keyString : bucket.key,
           };
         });
       })
     );
   }
 
+  // Method used to create URL that includes correct parameters based on ES data source config.
   getMultiSearchUrl() {
     const searchParams = new URLSearchParams();
 
@@ -869,14 +912,18 @@ export class ElasticDatasource
       searchParams.append('max_concurrent_shard_requests', `${this.maxConcurrentShardRequests}`);
     }
 
-    if (this.xpack && this.includeFrozen) {
+    if (this.includeFrozen) {
       searchParams.append('ignore_throttled', 'false');
     }
 
     return ('_msearch?' + searchParams.toString()).replace(/\?$/, '');
   }
 
-  metricFindQuery(query: string, options?: any): Promise<MetricFindValue[]> {
+  /**
+   * Implemented as part of DataSourceAPI and used for template variable queries.
+   * @returns A Promise that resolves to an array of results from the metric find query.
+   */
+  metricFindQuery(query: string, options?: { range: TimeRange }): Promise<MetricFindValue[]> {
     const range = options?.range;
     const parsedQuery = JSON.parse(query);
     if (query) {
@@ -895,77 +942,129 @@ export class ElasticDatasource
     return Promise.resolve([]);
   }
 
+  /**
+   * Implemented as part of the DataSourceAPI. Retrieves tag keys that can be used for ad-hoc filtering.
+   * @returns A Promise that resolves to an array of label names represented as MetricFindValue objects.
+   */
   getTagKeys() {
     return lastValueFrom(this.getFields());
   }
 
-  getTagValues(options: any) {
-    const range = this.timeSrv.timeRange();
-    return lastValueFrom(this.getTerms({ field: options.key }, range));
+  /**
+   * Implemented as part of the DataSourceAPI. Retrieves tag values that can be used for ad-hoc filtering.
+   * @returns A Promise that resolves to an array of label values represented as MetricFindValue objects
+   */
+  getTagValues(options: DataSourceGetTagValuesOptions<ElasticsearchDataQuery>) {
+    return lastValueFrom(this.getTerms({ field: options.key }, options.timeRange, true));
   }
 
-  targetContainsTemplate(target: any) {
+  /**
+   * Implemented as part of the DataSourceAPI.
+   * Used by alerting to check if query contains template variables.
+   */
+  targetContainsTemplate(target: ElasticsearchDataQuery) {
     if (this.templateSrv.containsTemplate(target.query) || this.templateSrv.containsTemplate(target.alias)) {
       return true;
     }
 
-    for (const bucketAgg of target.bucketAggs) {
-      if (this.templateSrv.containsTemplate(bucketAgg.field) || this.objectContainsTemplate(bucketAgg.settings)) {
-        return true;
+    if (target.bucketAggs) {
+      for (const bucketAgg of target.bucketAggs) {
+        if (isBucketAggregationWithField(bucketAgg) && this.templateSrv.containsTemplate(bucketAgg.field)) {
+          return true;
+        }
+        if (this.objectContainsTemplate(bucketAgg.settings)) {
+          return true;
+        }
       }
     }
 
-    for (const metric of target.metrics) {
-      if (
-        this.templateSrv.containsTemplate(metric.field) ||
-        this.objectContainsTemplate(metric.settings) ||
-        this.objectContainsTemplate(metric.meta)
-      ) {
-        return true;
+    if (target.metrics) {
+      for (const metric of target.metrics) {
+        if (!isMetricAggregationWithField(metric)) {
+          continue;
+        }
+        if (metric.field && this.templateSrv.containsTemplate(metric.field)) {
+          return true;
+        }
+        if (metric.settings && this.objectContainsTemplate(metric.settings)) {
+          return true;
+        }
+        if (isMetricAggregationWithMeta(metric) && this.objectContainsTemplate(metric.meta)) {
+          return true;
+        }
       }
     }
 
     return false;
   }
 
-  private isPrimitive(obj: any) {
-    if (obj === null || obj === undefined) {
-      return true;
-    }
-    if (['string', 'number', 'boolean'].some((type) => type === typeof true)) {
-      return true;
-    }
-
-    return false;
-  }
-
+  // Private method used in the `targetContainsTemplate` to check if an object contains template variables.
   private objectContainsTemplate(obj: any) {
-    if (!obj) {
+    if (typeof obj === 'string') {
+      return this.templateSrv.containsTemplate(obj);
+    }
+    if (!obj || typeof obj !== 'object') {
       return false;
     }
 
-    for (const key of Object.keys(obj)) {
-      if (this.isPrimitive(obj[key])) {
-        if (this.templateSrv.containsTemplate(obj[key])) {
-          return true;
-        }
-      } else if (Array.isArray(obj[key])) {
+    for (const key in obj) {
+      if (Array.isArray(obj[key])) {
         for (const item of obj[key]) {
           if (this.objectContainsTemplate(item)) {
             return true;
           }
         }
-      } else {
-        if (this.objectContainsTemplate(obj[key])) {
-          return true;
-        }
+      } else if (this.objectContainsTemplate(obj[key])) {
+        return true;
       }
     }
 
     return false;
   }
 
-  modifyQuery(query: ElasticsearchQuery, action: QueryFixAction): ElasticsearchQuery {
+  /**
+   * Implemented for `DataSourceWithToggleableQueryFiltersSupport`. Toggles a filter on or off based on the provided filter action.
+   * It is used for example in Explore to toggle fields on and off trough log details.
+   * @returns A new ES query with the filter toggled as specified.
+   */
+  toggleQueryFilter(query: ElasticsearchDataQuery, filter: ToggleFilterAction): ElasticsearchDataQuery {
+    let expression = query.query ?? '';
+    switch (filter.type) {
+      case 'FILTER_FOR': {
+        // This gives the user the ability to toggle a filter on and off.
+        expression = queryHasFilter(expression, filter.options.key, filter.options.value)
+          ? removeFilterFromQuery(expression, filter.options.key, filter.options.value)
+          : addFilterToQuery(expression, filter.options.key, filter.options.value);
+        break;
+      }
+      case 'FILTER_OUT': {
+        // If the opposite filter is present, remove it before adding the new one.
+        if (queryHasFilter(expression, filter.options.key, filter.options.value)) {
+          expression = removeFilterFromQuery(expression, filter.options.key, filter.options.value);
+        }
+        expression = addFilterToQuery(expression, filter.options.key, filter.options.value, '-');
+        break;
+      }
+    }
+
+    return { ...query, query: expression };
+  }
+
+  /**
+   * Implemented for `DataSourceWithToggleableQueryFiltersSupport`. Checks if a query expression contains a filter based on the provided filter options.
+   * @returns A boolean value indicating whether the filter exists in the query expression.
+   */
+  queryHasFilter(query: ElasticsearchDataQuery, options: QueryFilterOptions): boolean {
+    let expression = query.query ?? '';
+    return queryHasFilter(expression, options.key, options.value);
+  }
+
+  /**
+   * Implemented as part of `DataSourceWithQueryModificationSupport`. Used to modify a query based on the provided action.
+   * It is used, for example, in the Query Builder to apply hints such as parsers, operations, etc.
+   * @returns A new ES query with the specified modification applied.
+   */
+  modifyQuery(query: ElasticsearchDataQuery, action: QueryFixAction): ElasticsearchDataQuery {
     if (!action.options) {
       return query;
     }
@@ -973,56 +1072,60 @@ export class ElasticDatasource
     let expression = query.query ?? '';
     switch (action.type) {
       case 'ADD_FILTER': {
-        if (expression.length > 0) {
-          expression += ' AND ';
-        }
-        expression += `${action.options.key}:"${action.options.value}"`;
+        expression = addFilterToQuery(expression, action.options.key, action.options.value);
         break;
       }
       case 'ADD_FILTER_OUT': {
-        if (expression.length > 0) {
-          expression += ' AND ';
-        }
-        expression += `-${action.options.key}:"${action.options.value}"`;
+        expression = addFilterToQuery(expression, action.options.key, action.options.value, '-');
+        break;
+      }
+      case 'ADD_STRING_FILTER': {
+        expression = addStringFilterToQuery(expression, action.options.value);
+        break;
+      }
+      case 'ADD_STRING_FILTER_OUT': {
+        expression = addStringFilterToQuery(expression, action.options.value, false);
         break;
       }
     }
+
     return { ...query, query: expression };
   }
 
-  addAdHocFilters(query: string) {
-    const adhocFilters = this.templateSrv.getAdhocFilters(this.name);
-    if (adhocFilters.length === 0) {
+  /**
+   * Implemented as part of `DataSourceWithQueryModificationSupport`. Returns a list of operation
+   * types that are supported by `modifyQuery()`.
+   */
+  getSupportedQueryModifications() {
+    return ['ADD_FILTER', 'ADD_FILTER_OUT', 'ADD_STRING_FILTER', 'ADD_STRING_FILTER_OUT'];
+  }
+
+  /**
+   * Adds ad hoc filters to a query expression, handling proper escaping of filter values.
+   * @returns The query expression with ad hoc filters and correctly escaped values.
+   */
+  addAdHocFilters(query: string, adhocFilters?: AdHocVariableFilter[]) {
+    if (!adhocFilters) {
       return query;
     }
-    const esFilters = adhocFilters.map((filter) => {
-      const { key, operator, value } = filter;
-      if (!key || !value) {
-        return;
-      }
-      switch (operator) {
-        case '=':
-          return `${key}:"${value}"`;
-        case '!=':
-          return `-${key}:"${value}"`;
-        case '=~':
-          return `${key}:/${value}/`;
-        case '!~':
-          return `-${key}:/${value}/`;
-        case '>':
-          return `${key}:>${value}`;
-        case '<':
-          return `${key}:<${value}`;
-      }
-      return;
+    let finalQuery = query;
+    adhocFilters.forEach((filter) => {
+      finalQuery = addAddHocFilter(finalQuery, filter, this.logLevelField);
     });
 
-    const finalQuery = [query, ...esFilters].filter((f) => f).join(' AND ');
     return finalQuery;
   }
 
-  // Used when running queries through backend
-  applyTemplateVariables(query: ElasticsearchQuery, scopedVars: ScopedVars): ElasticsearchQuery {
+  /**
+   * Applies template variables and add hoc filters to a query. Used when running queries through backend.
+   * It is called from DatasourceWithBackend.
+   * @returns A modified ES query with template variables and ad hoc filters applied.
+   */
+  applyTemplateVariables(
+    query: ElasticsearchDataQuery,
+    scopedVars: ScopedVars,
+    filters?: AdHocVariableFilter[]
+  ): ElasticsearchDataQuery {
     // We need a separate interpolation format for lucene queries, therefore we first interpolate any
     // lucene query string and then everything else
     const interpolateBucketAgg = (bucketAgg: BucketAggregation): BucketAggregation => {
@@ -1045,7 +1148,7 @@ export class ElasticDatasource
     const expandedQuery = {
       ...query,
       datasource: this.getRef(),
-      query: this.addAdHocFilters(this.interpolateLuceneQuery(query.query || '', scopedVars)),
+      query: this.addAdHocFilters(this.interpolateLuceneQuery(query.query || '', scopedVars), filters),
       bucketAggs: query.bucketAggs?.map(interpolateBucketAgg),
     };
 
@@ -1053,9 +1156,11 @@ export class ElasticDatasource
     return finalQuery;
   }
 
+  // Private method used in the `getDatabaseVersion` to get the database version from the Elasticsearch API.
   private getDatabaseVersionUncached(): Promise<SemVer | null> {
     // we want this function to never fail
-    return lastValueFrom(this.request('GET', '/')).then(
+    const getDbVersionObservable = from(this.getResourceRequest(''));
+    return lastValueFrom(getDbVersionObservable).then(
       (data) => {
         const versionNumber = data?.version?.number;
         if (typeof versionNumber !== 'string') {
@@ -1075,6 +1180,11 @@ export class ElasticDatasource
     );
   }
 
+  /**
+   * Method used to get the database version from cache or from the Elasticsearch API.
+   * Elasticsearch data source supports only certain versions of Elasticsearch and we
+   * want to check the version and notify the user if the version is not supported.
+   * */
   async getDatabaseVersion(useCachedData = true): Promise<SemVer | null> {
     if (useCachedData) {
       const cached = this.databaseVersion;
@@ -1087,20 +1197,55 @@ export class ElasticDatasource
     this.databaseVersion = freshDatabaseVersion;
     return freshDatabaseVersion;
   }
+
+  // private method used in the `getLogRowContext` to create a log context data request.
+  private makeLogContextDataRequest = (row: LogRowModel, options?: LogRowContextOptions) => {
+    const direction = options?.direction || LogRowContextQueryDirection.Backward;
+    const logQuery: Logs = {
+      type: 'logs',
+      id: '1',
+      settings: {
+        limit: options?.limit ? options?.limit.toString() : '10',
+        // Sorting of results in the context query
+        sortDirection: direction === LogRowContextQueryDirection.Backward ? 'desc' : 'asc',
+        // Used to get the next log lines before/after the current log line using sort field of selected log line
+        searchAfter: row.dataFrame.fields.find((f) => f.name === 'sort')?.values[row.rowIndex] ?? [row.timeEpochMs],
+      },
+    };
+
+    const query: ElasticsearchDataQuery = {
+      refId: `log-context-${row.dataFrame.refId}-${direction}`,
+      metrics: [logQuery],
+      query: '',
+    };
+
+    const timeRange = createContextTimeRange(row.timeEpochMs, direction, this.intervalPattern);
+    const range = {
+      from: timeRange.from,
+      to: timeRange.to,
+      raw: timeRange,
+    };
+
+    const interval = rangeUtil.calculateInterval(range, 1);
+
+    const contextRequest: DataQueryRequest<ElasticsearchDataQuery> = {
+      requestId: `log-context-request-${row.dataFrame.refId}-${options?.direction}`,
+      targets: [query],
+      interval: interval.interval,
+      intervalMs: interval.intervalMs,
+      range,
+      scopedVars: {},
+      timezone: 'UTC',
+      app: CoreApp.Explore,
+      startTime: Date.now(),
+      hideFromInspector: true,
+    };
+    return contextRequest;
+  };
 }
 
-/**
- * Modifies dataframe and adds dataLinks from the config.
- * Exported for tests.
- */
-export function enhanceDataFrame(dataFrame: DataFrame, dataLinks: DataLinkConfig[], limit?: number) {
-  if (limit) {
-    dataFrame.meta = {
-      ...dataFrame.meta,
-      limit,
-    };
-  }
-
+// Function to enhance the data frame with data links configured in the data source settings.
+export function enhanceDataFrameWithDataLinks(dataFrame: DataFrame, dataLinks: DataLinkConfig[]) {
   if (!dataLinks.length) {
     return;
   }
@@ -1140,21 +1285,34 @@ function generateDataLink(linkConfig: DataLinkConfig): DataLink {
   }
 }
 
-function transformHitsBasedOnDirection(response: any, direction: 'asc' | 'desc') {
-  if (direction === 'desc') {
-    return response;
+function createContextTimeRange(rowTimeEpochMs: number, direction: string, intervalPattern: Interval | undefined) {
+  const offset = 7;
+  // For log context, we want to request data from 7 subsequent/previous indices
+  if (intervalPattern) {
+    const intervalInfo = intervalMap[intervalPattern];
+    if (direction === LogRowContextQueryDirection.Forward) {
+      return {
+        from: dateTime(rowTimeEpochMs).utc(),
+        to: dateTime(rowTimeEpochMs).add(offset, intervalInfo.amount).utc().startOf(intervalInfo.startOf),
+      };
+    } else {
+      return {
+        from: dateTime(rowTimeEpochMs).subtract(offset, intervalInfo.amount).utc().startOf(intervalInfo.startOf),
+        to: dateTime(rowTimeEpochMs).utc(),
+      };
+    }
+    // If we don't have an interval pattern, we can't do this, so we just request data from 7h before/after
+  } else {
+    if (direction === LogRowContextQueryDirection.Forward) {
+      return {
+        from: dateTime(rowTimeEpochMs).utc(),
+        to: dateTime(rowTimeEpochMs).add(offset, 'hours').utc(),
+      };
+    } else {
+      return {
+        from: dateTime(rowTimeEpochMs).subtract(offset, 'hours').utc(),
+        to: dateTime(rowTimeEpochMs).utc(),
+      };
+    }
   }
-  const actualResponse = response.responses[0];
-  return {
-    ...response,
-    responses: [
-      {
-        ...actualResponse,
-        hits: {
-          ...actualResponse.hits,
-          hits: actualResponse.hits.hits.reverse(),
-        },
-      },
-    ],
-  };
 }

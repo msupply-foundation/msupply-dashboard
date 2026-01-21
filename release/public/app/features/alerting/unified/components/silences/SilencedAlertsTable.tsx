@@ -1,7 +1,7 @@
 import { css, cx } from '@emotion/css';
-import React from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
+import { Trans } from '@grafana/i18n';
 import { useStyles2 } from '@grafana/ui';
 import { AlertmanagerAlert } from 'app/plugins/datasource/alertmanager/types';
 
@@ -28,10 +28,14 @@ const SilencedAlertsTable = ({ silencedAlerts }: Props) => {
         </colgroup>
         <thead>
           <tr>
-            <th></th>
-            <th>State</th>
-            <th></th>
-            <th>Alert name</th>
+            <th />
+            <th>
+              <Trans i18nKey="silences-table.header.state">State</Trans>
+            </th>
+            <th />
+            <th>
+              <Trans i18nKey="silences-table.header.alert-name">Alert name</Trans>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -53,15 +57,15 @@ const SilencedAlertsTable = ({ silencedAlerts }: Props) => {
 };
 
 const getStyles = (theme: GrafanaTheme2) => ({
-  tableMargin: css`
-    margin-bottom: ${theme.spacing(1)};
-  `,
-  colState: css`
-    width: 110px;
-  `,
-  colName: css`
-    width: 65%;
-  `,
+  tableMargin: css({
+    marginBottom: theme.spacing(1),
+  }),
+  colState: css({
+    width: '110px',
+  }),
+  colName: css({
+    width: '65%',
+  }),
 });
 
 export default SilencedAlertsTable;

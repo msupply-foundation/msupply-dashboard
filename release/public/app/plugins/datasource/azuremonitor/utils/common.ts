@@ -1,10 +1,9 @@
 import { map } from 'lodash';
 
-import { rangeUtil } from '@grafana/data';
-import { VariableWithMultiSupport } from 'app/features/variables/types';
+import { ScopedVars, SelectableValue, VariableWithMultiSupport } from '@grafana/data';
+import { TemplateSrv, VariableInterpolation } from '@grafana/runtime';
 
-import TimegrainConverter from '../time_grain_converter';
-import { AzureMonitorOption, VariableOptionGroup } from '../types';
+import { AzureMonitorOption, VariableOptionGroup } from '../types/types';
 
 export const hasOption = (options: AzureMonitorOption[], value: string): boolean =>
   options.some((v) => (v.options ? hasOption(v.options, value) : v.value === value));
@@ -23,7 +22,7 @@ export const findOptions = (options: AzureMonitorOption[], values: string[] = []
 export const toOption = (v: { text: string; value: string }) => ({ value: v.value, label: v.text });
 
 export const addValueToOptions = (
-  values: AzureMonitorOption[],
+  values: Array<AzureMonitorOption | SelectableValue>,
   variableOptionGroup: VariableOptionGroup,
   value?: string
 ) => {
@@ -37,16 +36,6 @@ export const addValueToOptions = (
   return options;
 };
 
-export function convertTimeGrainsToMs<T extends { value: string }>(timeGrains: T[]) {
-  const allowedTimeGrainsMs: number[] = [];
-  timeGrains.forEach((tg: any) => {
-    if (tg.value !== 'auto') {
-      allowedTimeGrainsMs.push(rangeUtil.intervalToMs(TimegrainConverter.createKbnUnitFromISO8601Duration(tg.value)));
-    }
-  });
-  return allowedTimeGrainsMs;
-}
-
 // Route definitions shared with the backend.
 // Check: /pkg/tsdb/azuremonitor/azuremonitor-resource-handler.go <registerRoutes>
 export const routeNames = {
@@ -56,7 +45,10 @@ export const routeNames = {
   resourceGraph: 'resourcegraph',
 };
 
-export function interpolateVariable(value: any, variable: VariableWithMultiSupport) {
+export function interpolateVariable(
+  value: string | number | Array<string | number>,
+  variable: VariableWithMultiSupport
+) {
   if (typeof value === 'string') {
     // When enabling multiple responses, quote the value to mimic the array result below
     // even if only one response is selected. This does not apply if only the "include all"
@@ -80,4 +72,48 @@ export function interpolateVariable(value: any, variable: VariableWithMultiSuppo
     return "'" + val + "'";
   });
   return quotedValues.join(',');
+}
+
+export function replaceTemplateVariables<T extends { [K in keyof T]: string }>(
+  templateSrv: TemplateSrv,
+  query: T,
+  scopedVars?: ScopedVars
+) {
+  const workingQueries: Array<{ [K in keyof T]: string }> = [{ ...query }];
+  const keys = Object.keys(query) as Array<keyof T>;
+  keys.forEach((key) => {
+    const rawValue = workingQueries[0][key];
+    let interpolated: VariableInterpolation[] = [];
+    const replaced = templateSrv.replace(rawValue, scopedVars, 'raw', interpolated);
+    if (interpolated.length > 0) {
+      for (const variable of interpolated) {
+        if (variable.found === false) {
+          continue;
+        }
+        if (variable.value.includes(',')) {
+          const multiple = variable.value.split(',');
+          const currentQueries = [...workingQueries];
+          multiple.forEach((value, i) => {
+            currentQueries.forEach((q) => {
+              if (i === 0) {
+                q[key] = rawValue.replace(variable.match, value);
+              } else {
+                workingQueries.push({ ...q, [key]: rawValue.replace(variable.match, value) });
+              }
+            });
+          });
+        } else {
+          workingQueries.forEach((q) => {
+            q[key] = replaced;
+          });
+        }
+      }
+    } else {
+      workingQueries.forEach((q) => {
+        q[key] = replaced;
+      });
+    }
+  });
+
+  return workingQueries;
 }

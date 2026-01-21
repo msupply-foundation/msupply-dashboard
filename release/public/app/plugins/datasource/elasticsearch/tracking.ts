@@ -1,10 +1,11 @@
 import { CoreApp, DashboardLoadedEvent, DataQueryRequest, DataQueryResponse } from '@grafana/data';
 import { config, reportInteraction } from '@grafana/runtime';
-import { variableRegex } from 'app/features/variables/utils';
 
+import { ElasticsearchDataQuery } from './dataquery.gen';
 import { REF_ID_STARTER_LOG_VOLUME } from './datasource';
 import pluginJson from './plugin.json';
-import { ElasticsearchQuery } from './types';
+import { ElasticsearchAnnotationQuery } from './types';
+import { variableRegex } from './utils';
 
 type ElasticSearchOnDashboardLoadedTrackingEvent = {
   grafana_version?: string;
@@ -38,10 +39,10 @@ type ElasticSearchOnDashboardLoadedTrackingEvent = {
 
 export const onDashboardLoadedHandler = ({
   payload: { dashboardId, orgId, grafanaVersion, queries },
-}: DashboardLoadedEvent<ElasticsearchQuery>) => {
+}: DashboardLoadedEvent<ElasticsearchDataQuery>) => {
   try {
     // We only want to track visible ElasticSearch queries
-    const elasticsearchQueries = queries[pluginJson.id].filter((query) => !query.hide);
+    const elasticsearchQueries = queries[pluginJson.id]?.filter((query) => !query.hide);
     if (!elasticsearchQueries?.length) {
       return;
     }
@@ -74,7 +75,7 @@ export const onDashboardLoadedHandler = ({
   }
 };
 
-const getQueryType = (query: ElasticsearchQuery): string | undefined => {
+const getQueryType = (query: ElasticsearchDataQuery): string | undefined => {
   if (!query.metrics || !query.metrics.length) {
     return undefined;
   }
@@ -85,7 +86,7 @@ const getQueryType = (query: ElasticsearchQuery): string | undefined => {
   return 'metric';
 };
 
-const getLineLimit = (query: ElasticsearchQuery): number | undefined => {
+const getLineLimit = (query: ElasticsearchDataQuery): number | undefined => {
   if (query.metrics?.[0]?.type !== 'logs') {
     return undefined;
   }
@@ -94,12 +95,12 @@ const getLineLimit = (query: ElasticsearchQuery): number | undefined => {
   return lineLimit ? parseInt(lineLimit, 10) : undefined;
 };
 
-const isQueryWithChangedLineLimit = (query: ElasticsearchQuery): boolean => {
+const isQueryWithChangedLineLimit = (query: ElasticsearchDataQuery): boolean => {
   const lineLimit = getLineLimit(query);
   return lineLimit !== undefined && lineLimit !== 500;
 };
 
-const isQueryWithTemplateVariables = (query: ElasticsearchQuery): boolean => {
+const isQueryWithTemplateVariables = (query: ElasticsearchDataQuery): boolean => {
   return variableRegex.test(query.query ?? '');
 };
 
@@ -112,7 +113,7 @@ const shouldNotReportBasedOnRefId = (refId: string): boolean => {
 
 export function trackQuery(
   response: DataQueryResponse,
-  request: DataQueryRequest<ElasticsearchQuery> & { targets: ElasticsearchQuery[] },
+  request: DataQueryRequest<ElasticsearchDataQuery> & { targets: ElasticsearchDataQuery[] },
   startTime: Date
 ): void {
   const { targets: queries, app } = request;
@@ -139,4 +140,17 @@ export function trackQuery(
       time_taken: Date.now() - startTime.getTime(),
     });
   }
+}
+
+export function trackAnnotationQuery(annotation: ElasticsearchAnnotationQuery): void {
+  reportInteraction('grafana_elasticsearch_annotation_query_executed', {
+    grafana_version: config.buildInfo.version,
+    has_target_query: !!annotation.target?.query,
+    has_query: !!annotation.query,
+    has_time_field: !!annotation.timeField,
+    has_time_end_field: !!annotation.timeEndField,
+    has_tags_field: !!annotation.tagsField,
+    has_text_field: !!annotation.textField,
+    has_index: !!annotation.index,
+  });
 }

@@ -1,19 +1,20 @@
-/* eslint-disable react/jsx-no-undef */
 import { css } from '@emotion/css';
-import React, { useEffect, useMemo, useRef, useCallback, useState, CSSProperties } from 'react';
-import { useTable, Column, TableOptions, Cell, useAbsoluteLayout } from 'react-table';
+import { useEffect, useMemo, useRef, useCallback, useState, CSSProperties } from 'react';
+import * as React from 'react';
+import { useTable, Column, TableOptions, Cell } from 'react-table';
 import { FixedSizeList } from 'react-window';
 import InfiniteLoader from 'react-window-infinite-loader';
 import { Observable } from 'rxjs';
 
 import { Field, GrafanaTheme2 } from '@grafana/data';
+import { Trans, t } from '@grafana/i18n';
 import { TableCellHeight } from '@grafana/schema';
 import { useStyles2, useTheme2 } from '@grafana/ui';
-import { TableCell } from '@grafana/ui/src/components/Table/TableCell';
-import { useTableStyles } from '@grafana/ui/src/components/Table/styles';
+import { useTableStyles, TableCell } from '@grafana/ui/internal';
+import { useCustomFlexLayout } from 'app/features/browse-dashboards/components/customFlexTableLayout';
 
 import { useSearchKeyboardNavigation } from '../../hooks/useSearchKeyboardSelection';
-import { QueryResponse } from '../../service';
+import { QueryResponse } from '../../service/types';
 import { SelectionChecker, SelectionToggle } from '../selection';
 
 import { generateColumns } from './columns';
@@ -35,7 +36,7 @@ export type TableColumn = Column & {
   field?: Field;
 };
 
-const HEADER_HEIGHT = 36; // pixels
+const ROW_HEIGHT = 36; // pixels
 
 export const SearchResultsTable = React.memo(
   ({
@@ -101,21 +102,44 @@ export const SearchResultsTable = React.memo(
       [memoizedColumns, memoizedData]
     );
 
-    const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable(options, useAbsoluteLayout);
+    const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable(options, useCustomFlexLayout);
+
+    const handleLoadMore = useCallback(
+      async (startIndex: number, endIndex: number) => {
+        await response.loadMoreItems(startIndex, endIndex);
+
+        // After we load more items, select them if the "select all" checkbox
+        // is selected
+        const isAllSelected = selection?.('*', '*');
+        if (!selectionToggle || !selection || !isAllSelected) {
+          return;
+        }
+
+        for (let index = startIndex; index < response.view.length; index++) {
+          const item = response.view.get(index);
+          const itemIsSelected = selection(item.kind, item.uid);
+          if (!itemIsSelected) {
+            selectionToggle(item.kind, item.uid);
+          }
+        }
+      },
+      [response, selection, selectionToggle]
+    );
 
     const RenderRow = useCallback(
       ({ index: rowIndex, style }: { index: number; style: CSSProperties }) => {
         const row = rows[rowIndex];
         prepareRow(row);
 
-        const url = response.view.fields.url?.values.get(rowIndex);
+        const url = response.view.fields.url?.values[rowIndex];
         let className = styles.rowContainer;
         if (rowIndex === highlightIndex.y) {
           className += ' ' + styles.selectedRow;
         }
+        const { key, ...rowProps } = row.getRowProps({ style });
 
         return (
-          <div {...row.getRowProps({ style })} className={className}>
+          <div key={key} {...rowProps} className={className}>
             {row.cells.map((cell: Cell, index: number) => {
               return (
                 <TableCell
@@ -124,47 +148,65 @@ export const SearchResultsTable = React.memo(
                   cell={cell}
                   columnIndex={index}
                   columnCount={row.cells.length}
-                  userProps={{ href: url, onClick: onClickItem }}
+                  userProps={{ href: onClickItem ? url : undefined, onClick: onClickItem }}
+                  frame={response.view.dataFrame}
                 />
               );
             })}
           </div>
         );
       },
-      [rows, prepareRow, response.view.fields.url?.values, highlightIndex, styles, tableStyles, onClickItem]
+      [
+        rows,
+        prepareRow,
+        response.view.fields.url?.values,
+        highlightIndex,
+        styles,
+        tableStyles,
+        onClickItem,
+        response.view.dataFrame,
+      ]
     );
 
     if (!rows.length) {
-      return <div className={styles.noData}>No data</div>;
+      return (
+        <div className={styles.noData}>
+          <Trans i18nKey="search.search-results-table.no-data">No values</Trans>
+        </div>
+      );
     }
 
     return (
-      <div {...getTableProps()} aria-label="Search results table" role="table">
-        <div>
-          {headerGroups.map((headerGroup) => {
-            const { key, ...headerGroupProps } = headerGroup.getHeaderGroupProps();
+      <div
+        {...getTableProps()}
+        aria-label={t('search.search-results-table.aria-label-search-results-table', 'Search results table')}
+        role="table"
+      >
+        {headerGroups.map((headerGroup) => {
+          const { key, ...headerGroupProps } = headerGroup.getHeaderGroupProps({
+            style: { width },
+          });
 
-            return (
-              <div key={key} {...headerGroupProps} className={styles.headerRow}>
-                {headerGroup.headers.map((column) => {
-                  const { key, ...headerProps } = column.getHeaderProps();
-                  return (
-                    <div key={key} {...headerProps} role="columnheader" className={styles.headerCell}>
-                      {column.render('Header')}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
+          return (
+            <div key={key} {...headerGroupProps} className={styles.headerRow}>
+              {headerGroup.headers.map((column) => {
+                const { key, ...headerProps } = column.getHeaderProps();
+                return (
+                  <div key={key} {...headerProps} role="columnheader" className={styles.headerCell}>
+                    {column.render('Header')}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
 
         <div {...getTableBodyProps()}>
           <InfiniteLoader
             ref={infiniteLoaderRef}
             isItemLoaded={response.isItemLoaded}
             itemCount={rows.length}
-            loadMoreItems={response.loadMoreItems}
+            loadMoreItems={handleLoadMore}
           >
             {({ onItemsRendered, ref }) => (
               <FixedSizeList
@@ -173,10 +215,10 @@ export const SearchResultsTable = React.memo(
                   setListEl(innerRef);
                 }}
                 onItemsRendered={onItemsRendered}
-                height={height - HEADER_HEIGHT}
+                height={height - ROW_HEIGHT}
                 itemCount={rows.length}
                 itemSize={tableStyles.rowHeight}
-                width="100%"
+                width={width}
                 style={{ overflow: 'hidden auto' }}
               >
                 {RenderRow}
@@ -191,121 +233,106 @@ export const SearchResultsTable = React.memo(
 SearchResultsTable.displayName = 'SearchResultsTable';
 
 const getStyles = (theme: GrafanaTheme2) => {
-  const rowHoverBg = theme.colors.emphasize(theme.colors.background.primary, 0.03);
+  const rowHoverBg = theme.colors.action.hover;
 
   return {
-    noData: css`
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-    `,
-    headerCell: css`
-      padding: ${theme.spacing(1)};
-    `,
-    headerRow: css`
-      background-color: ${theme.colors.background.secondary};
-      height: ${HEADER_HEIGHT}px;
-      align-items: center;
-    `,
-    selectedRow: css`
-      background-color: ${rowHoverBg};
-      box-shadow: inset 3px 0px ${theme.colors.primary.border};
-    `,
-    rowContainer: css`
-      label: row;
-      &:hover {
-        background-color: ${rowHoverBg};
-      }
+    noData: css({
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100%',
+    }),
+    headerCell: css({
+      alignItems: 'center',
+      display: 'flex',
+      overflo: 'hidden',
+      padding: theme.spacing(1),
+    }),
+    headerRow: css({
+      backgroundColor: theme.colors.background.secondary,
+      display: 'flex',
+      gap: theme.spacing(1),
+      height: `${ROW_HEIGHT}px`,
+    }),
+    selectedRow: css({
+      backgroundColor: rowHoverBg,
+      boxShadow: `inset 3px 0px ${theme.colors.primary.border}`,
+    }),
+    rowContainer: css({
+      display: 'flex',
+      gap: theme.spacing(1),
+      height: `${ROW_HEIGHT}px`,
+      label: 'row',
+      '&:hover': {
+        backgroundColor: rowHoverBg,
+      },
 
-      &:not(:hover) div[role='cell'] {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-    `,
+      "&:not(:hover) div[role='cell']": {
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      },
+    }),
   };
 };
 
 // CSS for columns from react table
 const getColumnStyles = (theme: GrafanaTheme2) => {
   return {
-    nameCellStyle: css`
-      border-right: none;
-      padding: ${theme.spacing(1)} ${theme.spacing(1)} ${theme.spacing(1)} ${theme.spacing(2)};
-      overflow: hidden;
-      text-overflow: ellipsis;
-      user-select: text;
-      white-space: nowrap;
-      &:hover {
-        box-shadow: none;
-      }
-    `,
-    headerNameStyle: css`
-      padding-left: ${theme.spacing(1)};
-    `,
-
-    typeIcon: css`
-      margin-left: 5px;
-      margin-right: 9.5px;
-      vertical-align: middle;
-      display: inline-block;
-      margin-bottom: ${theme.v1.spacing.xxs};
-      fill: ${theme.colors.text.secondary};
-    `,
-    datasourceItem: css`
-      span {
-        &:hover {
-          color: ${theme.colors.text.link};
-        }
-      }
-    `,
-    missingTitleText: css`
-      color: ${theme.colors.text.disabled};
-      font-style: italic;
-    `,
-    invalidDatasourceItem: css`
-      color: ${theme.colors.error.main};
-      text-decoration: line-through;
-    `,
-    typeText: css`
-      color: ${theme.colors.text.secondary};
-      padding-top: ${theme.spacing(1)};
-    `,
-    locationItem: css`
-      color: ${theme.colors.text.secondary};
-      margin-right: 12px;
-    `,
-    sortedHeader: css`
-      text-align: right;
-      padding-right: ${theme.spacing(2)};
-    `,
-    sortedItems: css`
-      text-align: right;
-      padding: ${theme.spacing(1)} ${theme.spacing(3)} ${theme.spacing(1)} ${theme.spacing(1)};
-    `,
-    explainItem: css`
-      text-align: right;
-      padding: ${theme.spacing(1)} ${theme.spacing(3)} ${theme.spacing(1)} ${theme.spacing(1)};
-      cursor: pointer;
-    `,
-    locationCellStyle: css`
-      padding-top: ${theme.spacing(1)};
-      padding-right: ${theme.spacing(1)};
-    `,
-    checkboxHeader: css`
-      margin-left: 2px;
-    `,
-    checkbox: css`
-      margin-left: 10px;
-      margin-right: 10px;
-      margin-top: 5px;
-    `,
-    tagList: css`
-      padding-top: ${theme.spacing(0.5)};
-      justify-content: flex-start;
-      flex-wrap: nowrap;
-    `,
+    cell: css({
+      padding: theme.spacing(1),
+      overflow: 'hidden', // Required so flex children can do text-overflow: ellipsis
+      display: 'flex',
+      alignItems: 'center',
+    }),
+    nameCellStyle: css({
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      userSelect: 'text',
+      whiteSpace: 'nowrap',
+    }),
+    typeCell: css({
+      gap: theme.spacing(0.5),
+    }),
+    typeIcon: css({
+      fill: theme.colors.text.secondary,
+    }),
+    datasourceItem: css({
+      span: {
+        '&:hover': {
+          color: theme.colors.text.link,
+        },
+      },
+    }),
+    missingTitleText: css({
+      color: theme.colors.text.disabled,
+      fontStyle: 'italic',
+    }),
+    invalidDatasourceItem: css({
+      color: theme.colors.error.main,
+      textDecoration: 'line-through',
+    }),
+    locationContainer: css({
+      display: 'flex',
+      flexWrap: 'nowrap',
+      gap: theme.spacing(1),
+      overflow: 'hidden',
+    }),
+    locationItem: css({
+      alignItems: 'center',
+      color: theme.colors.text.secondary,
+      display: 'flex',
+      flexWrap: 'nowrap',
+      gap: '4px',
+      overflow: 'hidden',
+    }),
+    explainItem: css({
+      cursor: 'pointer',
+    }),
+    tagList: css({
+      justifyContent: 'flex-start',
+      flexWrap: 'nowrap',
+    }),
   };
 };

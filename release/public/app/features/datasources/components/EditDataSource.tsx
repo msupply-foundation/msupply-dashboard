@@ -1,19 +1,22 @@
 import { AnyAction } from '@reduxjs/toolkit';
-import React from 'react';
+import { useMemo } from 'react';
+import * as React from 'react';
 
 import {
   DataSourcePluginContextProvider,
   DataSourcePluginMeta,
   DataSourceSettings as DataSourceSettingsType,
+  PluginExtensionPoints,
+  PluginExtensionDataSourceConfigContext,
+  DataSourceUpdatedSuccessfully,
 } from '@grafana/data';
-import { getDataSourceSrv } from '@grafana/runtime';
+import { getDataSourceSrv, usePluginComponents, UsePluginComponentsResult } from '@grafana/runtime';
+import appEvents from 'app/core/app_events';
 import PageLoader from 'app/core/components/PageLoader/PageLoader';
-import { DataSourceSettingsState, useDispatch } from 'app/types';
+import { DataSourceSettingsState } from 'app/types/datasources';
+import { useDispatch } from 'app/types/store';
 
 import {
-  dataSourceLoaded,
-  setDataSourceName,
-  setIsDefault,
   useDataSource,
   useDataSourceExploreUrl,
   useDataSourceMeta,
@@ -23,7 +26,9 @@ import {
   useInitDataSourceSettings,
   useTestDataSource,
   useUpdateDatasource,
-} from '../state';
+} from '../state/hooks';
+import { setIsDefault, setDataSourceName, dataSourceLoaded } from '../state/reducers';
+import { trackDsConfigClicked, trackDsConfigUpdated } from '../tracking';
 import { DataSourceRights } from '../types';
 
 import { BasicSettings } from './BasicSettings';
@@ -109,32 +114,57 @@ export function EditDataSourceView({
 }: ViewProps) {
   const { plugin, loadError, testingStatus, loading } = dataSourceSettings;
   const { readOnly, hasWriteRights, hasDeleteRights } = dataSourceRights;
-  const hasDataSource = dataSource.id > 0;
+  const hasDataSource = dataSource.id > 0 && dataSource.uid;
+  const { components, isLoading } = useDataSourceConfigPluginExtensions();
+  // This is a workaround to avoid race-conditions between the `setSecureJsonData()` and `setJsonData()` calls instantiated by the extension components.
+  // Both those exposed functions are calling `onOptionsChange()` with the new jsonData and secureJsonData, and if they are called in the same tick, the Redux store
+  // (which provides the `datasource` object) won't be updated yet, and they override each others `jsonData` value.
+  let currentJsonData = dataSource.jsonData;
+  let currentSecureJsonData = dataSource.secureJsonData;
+
+  const isPDCInjected = components.some((component) => component.meta.pluginId === 'grafana-pdc-app');
+
+  const dataSourceWithIsPDCInjected = {
+    ...dataSource,
+    jsonData: {
+      ...dataSource.jsonData,
+      pdcInjected: isPDCInjected,
+    },
+  };
 
   const dsi = getDataSourceSrv()?.getInstanceSettings(dataSource.uid);
 
-  const hasAlertingEnabled = Boolean(dsi?.meta?.alerting ?? false);
-  const isAlertManagerDatasource = dsi?.type === 'alertmanager';
-  const alertingSupported = hasAlertingEnabled || isAlertManagerDatasource;
-
   const onSubmit = async (e: React.MouseEvent<HTMLButtonElement> | React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    await onUpdate({ ...dataSource });
+    trackDsConfigClicked('save_and_test');
+
+    try {
+      await onUpdate({ ...dataSource });
+      trackDsConfigUpdated({ item: 'success' });
+      appEvents.publish(new DataSourceUpdatedSuccessfully());
+    } catch (error) {
+      trackDsConfigUpdated({ item: 'fail' });
+      return;
+    }
 
     onTest();
   };
 
-  if (loadError) {
-    return <DataSourceLoadError dataSourceRights={dataSourceRights} onDelete={onDelete} />;
-  }
-
-  if (loading) {
+  if (loading || isLoading) {
     return <PageLoader />;
   }
 
-  // TODO - is this needed?
-  if (!hasDataSource || !dsi) {
-    return null;
+  if (loadError || !hasDataSource || !dsi) {
+    return (
+      <DataSourceLoadError
+        notFound={!hasDataSource || !dsi}
+        dataSourceRights={dataSourceRights}
+        onDelete={() => {
+          trackDsConfigClicked('delete');
+          onDelete();
+        }}
+      />
+    );
   }
 
   if (pageId) {
@@ -158,7 +188,6 @@ export function EditDataSourceView({
         isDefault={dataSource.isDefault}
         onDefaultChange={onDefaultChange}
         onNameChange={onNameChange}
-        alertingSupported={alertingSupported}
         disabled={readOnly || !hasWriteRights}
       />
 
@@ -166,23 +195,83 @@ export function EditDataSourceView({
         <DataSourcePluginContextProvider instanceSettings={dsi}>
           <DataSourcePluginSettings
             plugin={plugin}
-            dataSource={dataSource}
+            dataSource={dataSourceWithIsPDCInjected}
             dataSourceMeta={dataSourceMeta}
             onModelChange={onOptionsChange}
           />
         </DataSourcePluginContextProvider>
       )}
 
-      <DataSourceTestingStatus testingStatus={testingStatus} />
+      {/* Extension point */}
+      {components.map((Component) => {
+        return (
+          <div key={Component.meta.id}>
+            <Component
+              context={{
+                dataSource,
+                dataSourceMeta,
+                testingStatus,
+                setJsonData: (jsonData) => {
+                  currentJsonData = { ...currentJsonData, ...jsonData };
+                  onOptionsChange({
+                    ...dataSource,
+                    secureJsonData: { ...currentSecureJsonData },
+                    jsonData: currentJsonData,
+                  });
+                },
+                setSecureJsonData: (secureJsonData) => {
+                  currentSecureJsonData = { ...currentSecureJsonData, ...secureJsonData };
+                  onOptionsChange({
+                    ...dataSource,
+                    jsonData: { ...currentJsonData },
+                    secureJsonData: currentSecureJsonData,
+                  });
+                },
+              }}
+            />
+          </div>
+        );
+      })}
+
+      <DataSourceTestingStatus testingStatus={testingStatus} exploreUrl={exploreUrl} dataSource={dataSource} />
 
       <ButtonRow
         onSubmit={onSubmit}
-        onDelete={onDelete}
-        onTest={onTest}
-        exploreUrl={exploreUrl}
-        canSave={!readOnly && hasWriteRights}
+        onDelete={() => {
+          trackDsConfigClicked('delete');
+          onDelete();
+        }}
+        onTest={() => {
+          trackDsConfigClicked('test');
+          onTest();
+        }}
         canDelete={!readOnly && hasDeleteRights}
+        canSave={!readOnly && hasWriteRights}
       />
     </form>
   );
+}
+
+type DataSourceConfigPluginExtensionProps = {
+  context: PluginExtensionDataSourceConfigContext;
+};
+
+function useDataSourceConfigPluginExtensions(): UsePluginComponentsResult<DataSourceConfigPluginExtensionProps> {
+  const { components, isLoading } = usePluginComponents<DataSourceConfigPluginExtensionProps>({
+    extensionPointId: PluginExtensionPoints.DataSourceConfig,
+  });
+
+  return useMemo(() => {
+    const allowedComponents = components.filter((component) => {
+      switch (component.meta.pluginId) {
+        case 'grafana-pdc-app':
+        case 'grafana-auth-app':
+          return true;
+        default:
+          return false;
+      }
+    });
+
+    return { components: allowedComponents, isLoading };
+  }, [components, isLoading]);
 }

@@ -1,23 +1,29 @@
-import { within } from '@testing-library/dom';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
-import React from 'react';
+import { render } from 'test/test-utils';
 
-import { OrgRole } from '@grafana/data';
+import { type ComponentTypeWithExtensionMeta, OrgRole } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
+import { setPluginComponentsHook, usePluginComponents } from '@grafana/runtime';
 
-import { TestProvider } from '../../../test/helpers/TestProvider';
 import { backendSrv } from '../../core/services/backend_srv';
-import { TeamPermissionLevel } from '../../types';
-import { getMockTeam } from '../teams/__mocks__/teamMocks';
+import { createComponentWithMeta } from '../plugins/extensions/usePluginComponents';
+import { getMockTeam } from '../teams/mocks/teamMocks';
 
 import { Props, UserProfileEditPage } from './UserProfileEditPage';
 import { initialUserState } from './state/reducers';
+
+jest.mock('app/features/dashboard/api/dashboard_api', () => ({
+  getDashboardAPI: () => ({
+    getDashboardDTO: jest.fn().mockResolvedValue({}),
+  }),
+}));
 
 const defaultProps: Props = {
   ...initialUserState,
   user: {
     id: 1,
+    uid: 'aaaaaa',
     name: 'Test User',
     email: 'test@test.com',
     login: 'test',
@@ -26,12 +32,11 @@ const defaultProps: Props = {
     orgId: 0,
   },
   teams: [
-    getMockTeam(0, {
+    getMockTeam(0, 'aaaaaa', {
       name: 'Team One',
       email: 'team.one@test.com',
       avatarUrl: '/avatar/07d881f402480a2a511a9a15b5fa82c0',
       memberCount: 2000,
-      permission: TeamPermissionLevel.Admin,
     }),
   ],
   orgs: [
@@ -92,10 +97,72 @@ function getSelectors() {
       within(sessionsTable()).getByRole('row', {
         name: /now January 1, 2021 localhost chrome on mac os x 11/i,
       }),
+    /**
+     * using queryByTestId instead of getByTestId because the tabs are not always rendered
+     * and getByTestId throws an TestingLibraryElementError error if the element is not found
+     * whereas queryByTestId returns null if the element is not found. There are some test cases
+     * where we'd explicitly like to assert that the tabs are not rendered.
+     */
+    extensionPointTabs: () => screen.queryByTestId(selectors.components.UserProfile.extensionPointTabs),
+    /**
+     * here lets use getByTestId because a specific tab should always be rendered within the tabs container
+     */
+    extensionPointTab: (tabId: string) =>
+      within(screen.getByTestId(selectors.components.UserProfile.extensionPointTabs)).getByTestId(
+        selectors.components.UserProfile.extensionPointTab(tabId)
+      ),
   };
 }
 
-async function getTestContext(overrides: Partial<Props> = {}) {
+enum ExtensionPointComponentId {
+  One = '1',
+  Two = '2',
+  Three = '3',
+}
+
+enum ExtensionPointComponentTabs {
+  One = '1',
+  Two = '2',
+}
+
+const _createTabName = (tab: ExtensionPointComponentTabs) => tab;
+const _createTabContent = (tabId: ExtensionPointComponentId) => `this is settings for component ${tabId}`;
+
+const generalTabName = 'General';
+const generalTestId = 'user-profile-edit-page';
+const tabOneName = _createTabName(ExtensionPointComponentTabs.One);
+const tabTwoName = _createTabName(ExtensionPointComponentTabs.Two);
+
+const _createPluginExtensionPointComponent = (
+  id: ExtensionPointComponentId,
+  tab: ExtensionPointComponentTabs
+): ComponentTypeWithExtensionMeta =>
+  createComponentWithMeta<{}>(
+    {
+      title: _createTabName(tab),
+      description: '', // description isn't used here..
+      component: () => <p>{_createTabContent(id)}</p>,
+      pluginId: 'grafana-plugin',
+    },
+    id
+  );
+
+const PluginExtensionPointComponent1 = _createPluginExtensionPointComponent(
+  ExtensionPointComponentId.One,
+  ExtensionPointComponentTabs.One
+);
+const PluginExtensionPointComponent2 = _createPluginExtensionPointComponent(
+  ExtensionPointComponentId.Two,
+  ExtensionPointComponentTabs.One
+);
+const PluginExtensionPointComponent3 = _createPluginExtensionPointComponent(
+  ExtensionPointComponentId.Three,
+  ExtensionPointComponentTabs.Two
+);
+
+async function getTestContext(overrides: Partial<Props & { components: ComponentTypeWithExtensionMeta[] }> = {}) {
+  const components = overrides.components || [];
+
   jest.clearAllMocks();
   const putSpy = jest.spyOn(backendSrv, 'put');
   const getSpy = jest
@@ -103,12 +170,12 @@ async function getTestContext(overrides: Partial<Props> = {}) {
     .mockResolvedValue({ timezone: 'UTC', homeDashboardUID: 'home-dashboard', theme: 'dark' });
   const searchSpy = jest.spyOn(backendSrv, 'search').mockResolvedValue([]);
 
+  const getter: typeof usePluginComponents = jest.fn().mockReturnValue({ components, isLoading: false });
+
+  setPluginComponentsHook(getter);
+
   const props = { ...defaultProps, ...overrides };
-  const { rerender } = render(
-    <TestProvider>
-      <UserProfileEditPage {...props} />
-    </TestProvider>
-  );
+  const { rerender } = render(<UserProfileEditPage {...props} />);
 
   await waitFor(() => expect(props.initUserProfilePage).toHaveBeenCalledTimes(1));
 
@@ -253,6 +320,69 @@ describe('UserProfileEditPage', () => {
 
         await waitFor(() => expect(props.revokeUserSession).toHaveBeenCalledTimes(1));
         expect(props.revokeUserSession).toHaveBeenCalledWith(0);
+      });
+    });
+
+    describe('and a plugin registers a component against the user profile settings extension point', () => {
+      const components = [
+        PluginExtensionPointComponent1,
+        PluginExtensionPointComponent2,
+        PluginExtensionPointComponent3,
+      ];
+
+      it('should not show tabs when no components are registered', async () => {
+        await getTestContext();
+        const { extensionPointTabs } = getSelectors();
+        expect(extensionPointTabs()).not.toBeInTheDocument();
+      });
+
+      it('should group registered components into tabs', async () => {
+        await getTestContext({ components });
+        const { extensionPointTabs, extensionPointTab } = getSelectors();
+
+        const _assertTab = (tabId: string, isDefault = false) => {
+          const tab = extensionPointTab(tabId);
+          expect(tab).toBeInTheDocument();
+          expect(tab).toHaveAttribute('aria-selected', isDefault.toString());
+        };
+
+        expect(extensionPointTabs()).toBeInTheDocument();
+        _assertTab(generalTabName.toLowerCase(), true);
+        _assertTab(tabOneName.toLowerCase());
+        _assertTab(tabTwoName.toLowerCase());
+      });
+
+      it('should change the active tab when a tab is clicked and update the "tab" query param', async () => {
+        await getTestContext({ components });
+        const { extensionPointTab } = getSelectors();
+
+        /**
+         * Tab one has two extension components registered against it, they'll both be registered in the same tab
+         * Tab two only has one extension component registered against it.
+         */
+        const tabOneContent1 = _createTabContent(ExtensionPointComponentId.One);
+        const tabOneContent2 = _createTabContent(ExtensionPointComponentId.Two);
+        const tabTwoContent = _createTabContent(ExtensionPointComponentId.Three);
+
+        // "General" should be the default content
+        expect(screen.queryByTestId(generalTestId)).toBeInTheDocument();
+        expect(screen.queryByText(tabOneContent1)).toBeNull();
+        expect(screen.queryByText(tabOneContent2)).toBeNull();
+        expect(screen.queryByText(tabTwoContent)).toBeNull();
+
+        await userEvent.click(extensionPointTab(tabOneName.toLowerCase()));
+
+        expect(screen.queryByTestId(generalTestId)).toBeNull();
+        expect(screen.queryByText(tabOneContent1)).toBeInTheDocument();
+        expect(screen.queryByText(tabOneContent2)).toBeInTheDocument();
+        expect(screen.queryByText(tabTwoContent)).toBeNull();
+
+        await userEvent.click(extensionPointTab(tabTwoName.toLowerCase()));
+
+        expect(screen.queryByTestId(generalTestId)).toBeNull();
+        expect(screen.queryByText(tabOneContent1)).toBeNull();
+        expect(screen.queryByText(tabOneContent2)).toBeNull();
+        expect(screen.queryByText(tabTwoContent)).toBeInTheDocument();
       });
     });
   });

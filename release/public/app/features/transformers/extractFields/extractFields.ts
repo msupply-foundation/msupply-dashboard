@@ -2,15 +2,16 @@ import { isString, get } from 'lodash';
 import { map } from 'rxjs/operators';
 
 import {
-  ArrayVector,
   DataFrame,
   DataTransformerID,
   Field,
   FieldType,
   getFieldTypeFromValue,
+  getUniqueFieldName,
   SynchronousDataTransformerInfo,
 } from '@grafana/data';
-import { findField } from 'app/features/dimensions';
+import { config } from '@grafana/runtime';
+import { findField } from 'app/features/dimensions/utils';
 
 import { fieldExtractors } from './fieldExtractors';
 import { ExtractFieldsOptions, FieldExtractorID, JSONPath } from './types';
@@ -19,7 +20,9 @@ export const extractFieldsTransformer: SynchronousDataTransformerInfo<ExtractFie
   id: DataTransformerID.extractFields,
   name: 'Extract fields',
   description: 'Parse fields from the contends of another',
-  defaultOptions: {},
+  defaultOptions: {
+    delimiter: ',',
+  },
 
   operator: (options, ctx) => (source) =>
     source.pipe(map((data) => extractFieldsTransformer.transformer(options, ctx)(data))),
@@ -31,7 +34,7 @@ export const extractFieldsTransformer: SynchronousDataTransformerInfo<ExtractFie
   },
 };
 
-function addExtractedFields(frame: DataFrame, options: ExtractFieldsOptions): DataFrame {
+export function addExtractedFields(frame: DataFrame, options: ExtractFieldsOptions): DataFrame {
   if (!options.source) {
     return frame;
   }
@@ -50,17 +53,22 @@ function addExtractedFields(frame: DataFrame, options: ExtractFieldsOptions): Da
 
   const count = frame.length;
   const names: string[] = []; // keep order
-  const values = new Map<string, any[]>();
+  const values = new Map<string, unknown[]>();
+  const parse = ext.getParser(options);
 
   for (let i = 0; i < count; i++) {
-    let obj = source.values.get(i);
+    let obj = source.values[i];
 
     if (isString(obj)) {
       try {
-        obj = ext.parse(obj);
+        obj = parse(obj);
       } catch {
         obj = {}; // empty
       }
+    }
+
+    if (obj == null) {
+      continue;
     }
 
     if (options.format === FieldExtractorID.JSON && options.jsonPaths && options.jsonPaths?.length > 0) {
@@ -81,7 +89,7 @@ function addExtractedFields(frame: DataFrame, options: ExtractFieldsOptions): Da
     for (const [key, val] of Object.entries(obj)) {
       let buffer = values.get(key);
       if (buffer == null) {
-        buffer = new Array(count);
+        buffer = new Array(count).fill(undefined);
         values.set(key, buffer);
         names.push(key);
       }
@@ -91,12 +99,20 @@ function addExtractedFields(frame: DataFrame, options: ExtractFieldsOptions): Da
 
   const fields = names.map((name) => {
     const buffer = values.get(name);
-    return {
+    // this should never happen, but let's be safe
+    if (!buffer) {
+      throw new Error(`Could not find field with name: ${name}`);
+    }
+    const field: Field = {
       name,
-      values: new ArrayVector(buffer),
+      values: buffer,
       type: buffer ? getFieldTypeFromValue(buffer.find((v) => v != null)) : FieldType.other,
       config: {},
-    } as Field;
+    };
+    if (config.featureToggles.extractFieldsNameDeduplication) {
+      field.name = getUniqueFieldName(field, frame);
+    }
+    return field;
   });
 
   if (options.keepTime) {

@@ -1,18 +1,13 @@
-import React, { useCallback } from 'react';
+import { debounce } from 'lodash';
+import { useCallback, useMemo } from 'react';
 
 import { SelectableValue } from '@grafana/data';
-import { config } from '@grafana/runtime';
-import PageActionBar from 'app/core/components/PageActionBar/PageActionBar';
-import { contextSrv } from 'app/core/core';
-import { StoreState, useSelector, useDispatch, AccessControlAction } from 'app/types';
+import PageActionBar, { FilterCheckbox } from 'app/core/components/PageActionBar/PageActionBar';
+import { StoreState, useSelector, useDispatch } from 'app/types/store';
 
-import {
-  getDataSourcesSearchQuery,
-  getDataSourcesSort,
-  setDataSourcesSearchQuery,
-  setIsSortAscending,
-  useDataSourcesRoutes,
-} from '../state';
+import { setDataSourcesSearchQuery, setIsSortAscending } from '../state/reducers';
+import { getDataSourcesSearchQuery, getDataSourcesSort } from '../state/selectors';
+import { trackDsSearched } from '../tracking';
 
 const ascendingSortValue = 'alpha-asc';
 const descendingSortValue = 'alpha-desc';
@@ -25,23 +20,31 @@ const sortOptions = [
   { label: 'Sort by Z–A', value: descendingSortValue },
 ];
 
-export function DataSourcesListHeader() {
-  const dispatch = useDispatch();
-  const setSearchQuery = useCallback((q: string) => dispatch(setDataSourcesSearchQuery(q)), [dispatch]);
-  const searchQuery = useSelector(({ dataSources }: StoreState) => getDataSourcesSearchQuery(dataSources));
+export interface DataSourcesListHeaderProps {
+  filterCheckbox?: FilterCheckbox;
+}
 
-  // TODO remove this logic adding the link button once topnav is live
-  // instead use the actions in DataSourcesListPage
-  const canCreateDataSource = contextSrv.hasPermission(AccessControlAction.DataSourcesCreate);
-  const dataSourcesRoutes = useDataSourcesRoutes();
-  const isTopnav = config.featureToggles.topnav;
-  const linkButton =
-    !isTopnav && canCreateDataSource
-      ? {
-          href: dataSourcesRoutes.New,
-          title: 'Add new data source',
-        }
-      : undefined;
+export function DataSourcesListHeader({ filterCheckbox }: DataSourcesListHeaderProps) {
+  const dispatch = useDispatch();
+
+  const debouncedTrackSearch = useMemo(
+    () =>
+      debounce((q) => {
+        trackDsSearched({ query: q });
+      }, 300),
+    []
+  );
+
+  const setSearchQuery = useCallback(
+    (q: string) => {
+      dispatch(setDataSourcesSearchQuery(q));
+      if (q) {
+        debouncedTrackSearch(q);
+      }
+    },
+    [dispatch, debouncedTrackSearch]
+  );
+  const searchQuery = useSelector(({ dataSources }: StoreState) => getDataSourcesSearchQuery(dataSources));
 
   const setSort = useCallback(
     (sort: SelectableValue) => dispatch(setIsSortAscending(sort.value === ascendingSortValue)),
@@ -61,7 +64,7 @@ export function DataSourcesListHeader() {
       setSearchQuery={setSearchQuery}
       key="action-bar"
       sortPicker={sortPicker}
-      linkButton={linkButton}
+      filterCheckbox={filterCheckbox}
     />
   );
 }

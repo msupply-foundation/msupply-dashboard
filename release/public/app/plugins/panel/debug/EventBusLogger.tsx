@@ -1,4 +1,4 @@
-import React, { PureComponent } from 'react';
+import { PureComponent } from 'react';
 import { PartialObserver, Unsubscribable } from 'rxjs';
 
 import {
@@ -52,7 +52,7 @@ export class EventBusLoggerPanel extends PureComponent<Props, State> {
 
   eventObserver: PartialObserver<BusEvent> = {
     next: (event: BusEvent) => {
-      const origin = event.origin as any;
+      const origin: any = event.origin;
       this.history.add({
         key: counter++,
         type: event.type,
@@ -67,6 +67,7 @@ export class EventBusLoggerPanel extends PureComponent<Props, State> {
     return (
       <CustomScrollbar autoHeightMin="100%" autoHeightMax="100%">
         {this.history.map((v, idx) => (
+          // eslint-disable-next-line @grafana/i18n/no-untranslated-strings
           <div key={v.key}>
             {JSON.stringify(v.path)} {v.type} / X:{JSON.stringify(v.payload.x)} / Y:{JSON.stringify(v.payload.y)}
           </div>

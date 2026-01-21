@@ -4,17 +4,17 @@
 //     public/app/plugins/gen.go
 // Using jennies:
 //     TSTypesJenny
-//     PluginTSTypesJenny
+//     PluginTsTypesJenny
 //
 // Run 'make gen-cue' from repository root to regenerate.
 
 import * as common from '@grafana/schema';
 
-export const PanelCfgModelVersion = Object.freeze([0, 0]);
-
-export interface PanelOptions extends common.OptionsWithTimezones {
+export interface Options extends common.OptionsWithTimezones {
   legend: common.VizLegendOptions;
+  orientation?: common.VizOrientation;
+  timeCompare?: common.TimeCompareOptions;
   tooltip: common.VizTooltipOptions;
 }
 
-export interface PanelFieldConfig extends common.GraphFieldConfig {}
+export interface FieldConfig extends common.GraphFieldConfig {}

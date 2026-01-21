@@ -7,18 +7,27 @@ import {
   isPipelineAggregation,
   isPipelineAggregationWithMultipleBucketPaths,
 } from './components/QueryEditor/MetricAggregationsEditor/aggregations';
-import { defaultBucketAgg, defaultMetricAgg, findMetricById, highlightTags } from './queryDef';
 import {
-  ElasticsearchQuery,
-  TermsQuery,
+  DateHistogram,
+  ElasticsearchDataQuery,
   Filters,
-  Terms,
+  Histogram,
   MetricAggregation,
   MetricAggregationWithInlineScript,
-  Histogram,
-  DateHistogram,
-} from './types';
+  Terms,
+} from './dataquery.gen';
+import {
+  defaultBucketAgg,
+  defaultMetricAgg,
+  findMetricById,
+  highlightTags,
+  defaultGeoHashPrecisionString,
+} from './queryDef';
+import { TermsQuery } from './types';
 import { convertOrderByToMetricId, getScriptValue } from './utils';
+
+// Omitting 1m, 1h, 1d for now, as these cover the main use cases for calendar_interval
+export const calendarIntervals: string[] = ['1w', '1M', '1q', '1y'];
 
 export class ElasticQueryBuilder {
   timeField: string;
@@ -28,17 +37,22 @@ export class ElasticQueryBuilder {
   }
 
   getRangeFilter() {
-    const filter: any = {};
-    filter[this.timeField] = {
-      gte: '$timeFrom',
-      lte: '$timeTo',
-      format: 'epoch_millis',
+    const filter = {
+      [this.timeField]: {
+        gte: '$timeFrom',
+        lte: '$timeTo',
+        format: 'epoch_millis',
+      },
     };
 
     return filter;
   }
 
-  buildTermsAgg(aggDef: Terms, queryNode: { terms?: any; aggs?: any }, target: ElasticsearchQuery) {
+  buildTermsAgg(
+    aggDef: Terms,
+    queryNode: { terms?: any; aggs?: Record<string, unknown> },
+    target: ElasticsearchDataQuery
+  ) {
     queryNode.terms = { field: aggDef.field };
 
     if (!aggDef.settings) {
@@ -92,7 +106,7 @@ export class ElasticQueryBuilder {
   }
 
   getDateHistogramAgg(aggDef: DateHistogram) {
-    const esAgg: any = {};
+    const esAgg: Record<string, unknown> = {};
     const settings = aggDef.settings || {};
 
     esAgg.field = aggDef.field || this.timeField;
@@ -109,17 +123,21 @@ export class ElasticQueryBuilder {
 
     const interval = settings.interval === 'auto' ? '${__interval_ms}ms' : settings.interval;
 
-    esAgg.fixed_interval = interval;
+    if (interval !== undefined && calendarIntervals.includes(interval)) {
+      esAgg.calendar_interval = interval;
+    } else {
+      esAgg.fixed_interval = interval;
+    }
 
     return esAgg;
   }
 
   getHistogramAgg(aggDef: Histogram) {
-    const esAgg: any = {};
-    const settings = aggDef.settings || {};
-    esAgg.interval = settings.interval;
-    esAgg.field = aggDef.field;
-    esAgg.min_doc_count = settings.min_doc_count || 0;
+    const esAgg = {
+      interval: aggDef.settings?.interval,
+      field: aggDef.field,
+      min_doc_count: aggDef.settings?.min_doc_count || 0,
+    };
 
     return esAgg;
   }
@@ -154,7 +172,7 @@ export class ElasticQueryBuilder {
     return query;
   }
 
-  build(target: ElasticsearchQuery) {
+  build(target: ElasticsearchDataQuery) {
     // make sure query has defaults;
     target.metrics = target.metrics || [defaultMetricAgg()];
     target.bucketAggs = target.bucketAggs || [defaultBucketAgg()];
@@ -231,7 +249,7 @@ export class ElasticQueryBuilder {
         case 'geohash_grid': {
           esAgg['geohash_grid'] = {
             field: aggDef.field,
-            precision: aggDef.settings?.precision,
+            precision: aggDef.settings?.precision || defaultGeoHashPrecisionString,
           };
           break;
         }
@@ -434,7 +452,7 @@ export class ElasticQueryBuilder {
     return query;
   }
 
-  getLogsQuery(target: ElasticsearchQuery, limit: number) {
+  getLogsQuery(target: ElasticsearchDataQuery, limit: number) {
     let query: any = {
       size: 0,
       query: {

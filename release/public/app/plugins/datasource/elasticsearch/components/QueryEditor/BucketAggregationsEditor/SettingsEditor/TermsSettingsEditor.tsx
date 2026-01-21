@@ -1,17 +1,22 @@
 import { uniqueId } from 'lodash';
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 
 import { SelectableValue } from '@grafana/data';
 import { InlineField, Select, Input } from '@grafana/ui';
+import {
+  Terms,
+  ExtendedStats,
+  ExtendedStatMetaType,
+  Percentiles,
+  MetricAggregation,
+} from 'app/plugins/datasource/elasticsearch/dataquery.gen';
 
 import { useDispatch } from '../../../../hooks/useStatelessReducer';
-import { MetricAggregation, Percentiles, ExtendedStatMetaType, ExtendedStats, Terms } from '../../../../types';
 import { describeMetric } from '../../../../utils';
-import { useCreatableSelectPersistedBehaviour } from '../../../hooks/useCreatableSelectPersistedBehaviour';
 import { useQuery } from '../../ElasticsearchQueryContext';
 import { isPipelineAggregation } from '../../MetricAggregationsEditor/aggregations';
 import { changeBucketAggregationSetting } from '../state/actions';
-import { bucketAggregationConfig, orderByOptions, orderOptions, sizeOptions } from '../utils';
+import { bucketAggregationConfig, orderByOptions, orderOptions } from '../utils';
 
 import { inlineFieldProps } from '.';
 
@@ -23,6 +28,12 @@ export const TermsSettingsEditor = ({ bucketAgg }: Props) => {
   const { metrics } = useQuery();
   const orderBy = createOrderByOptions(metrics);
   const { current: baseId } = useRef(uniqueId('es-terms-'));
+  let size = bucketAgg.settings?.size || bucketAggregationConfig.terms.defaultSettings?.size;
+  if (!size || size === '') {
+    size = '10';
+  } else if (size === '0') {
+    size = '500';
+  }
 
   const dispatch = useDispatch();
 
@@ -40,16 +51,12 @@ export const TermsSettingsEditor = ({ bucketAgg }: Props) => {
       </InlineField>
 
       <InlineField label="Size" {...inlineFieldProps}>
-        <Select
-          inputId={`${baseId}-size`}
-          // TODO: isValidNewOption should only allow numbers & template variables
-          {...useCreatableSelectPersistedBehaviour({
-            options: sizeOptions,
-            value: bucketAgg.settings?.size || bucketAggregationConfig.terms.defaultSettings?.size,
-            onChange({ value }) {
-              dispatch(changeBucketAggregationSetting({ bucketAgg, settingName: 'size', newValue: value }));
-            },
-          })}
+        <Input
+          id={`${baseId}-size`}
+          onBlur={(e) =>
+            dispatch(changeBucketAggregationSetting({ bucketAgg, settingName: 'size', newValue: e.target.value }))
+          }
+          defaultValue={size}
         />
       </InlineField>
 
@@ -102,7 +109,7 @@ function createOrderByOptionsForExtendedStats(metric: ExtendedStats): Selectable
   return metaKeys
     .filter((key) => metric.meta?.[key])
     .map((key) => {
-      let method = key as string;
+      let method: string = key;
       // The bucket path for std_deviation_bounds.lower and std_deviation_bounds.upper
       // is accessed via std_lower and std_upper, respectively.
       if (key === 'std_deviation_bounds_lower') {

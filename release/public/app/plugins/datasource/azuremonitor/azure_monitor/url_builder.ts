@@ -1,16 +1,15 @@
 import { TemplateSrv } from '@grafana/runtime';
 
-import { AzureMonitorResource, GetMetricNamespacesQuery, GetMetricNamesQuery } from '../types';
+import { AzureMonitorResource } from '../types/query';
+import { GetMetricNamespacesQuery, GetMetricNamesQuery } from '../types/types';
 
 export default class UrlBuilder {
-  static buildResourceUri(templateSrv: TemplateSrv, resource: AzureMonitorResource) {
+  static buildResourceUri(templateSrv: TemplateSrv, resource: AzureMonitorResource, multipleResources?: boolean) {
     const urlArray = [];
     const { subscription, resourceGroup, metricNamespace, resourceName } = resource;
-
     if (subscription) {
       urlArray.push('/subscriptions', subscription);
-
-      if (resourceGroup) {
+      if (resourceGroup && !multipleResources) {
         urlArray.push('resourceGroups', resourceGroup);
 
         if (metricNamespace && resourceName) {
@@ -53,7 +52,8 @@ export default class UrlBuilder {
     apiVersion: string,
     query: GetMetricNamespacesQuery,
     globalRegion: boolean,
-    templateSrv: TemplateSrv
+    templateSrv: TemplateSrv,
+    region?: string
   ) {
     let resourceUri: string;
 
@@ -70,7 +70,7 @@ export default class UrlBuilder {
     }
 
     return `${baseUrl}${resourceUri}/providers/microsoft.insights/metricNamespaces?api-version=${apiVersion}${
-      globalRegion ? '&region=global' : ''
+      region ? `&region=${region}` : globalRegion ? '&region=global' : ''
     }`;
   }
 
@@ -78,26 +78,49 @@ export default class UrlBuilder {
     baseUrl: string,
     apiVersion: string,
     query: GetMetricNamesQuery,
-    templateSrv: TemplateSrv
+    templateSrv: TemplateSrv,
+    multipleResources?: boolean,
+    region?: string
   ) {
     let resourceUri: string;
-    const { customNamespace } = query;
+    const { customNamespace, metricNamespace } = query;
     if ('resourceUri' in query) {
       resourceUri = query.resourceUri;
     } else {
       const { subscription, resourceGroup, metricNamespace, resourceName } = query;
-      resourceUri = UrlBuilder.buildResourceUri(templateSrv, {
-        subscription,
-        resourceGroup,
-        metricNamespace,
-        resourceName,
-      });
+      resourceUri = UrlBuilder.buildResourceUri(
+        templateSrv,
+        {
+          subscription,
+          resourceGroup,
+          metricNamespace,
+          resourceName,
+        },
+        multipleResources
+      );
     }
     let url = `${baseUrl}${resourceUri}/providers/microsoft.insights/metricdefinitions?api-version=${apiVersion}`;
     if (customNamespace) {
       url += `&metricnamespace=${encodeURIComponent(customNamespace)}`;
     }
 
+    if (multipleResources && !customNamespace && metricNamespace) {
+      url += `&metricnamespace=${encodeURIComponent(metricNamespace)}`;
+    }
+
+    if (region && multipleResources) {
+      url += `&region=${region}`;
+    }
+
     return url;
+  }
+
+  static buildAzureMonitorGetLogsTableUrl(
+    baseUrl: string,
+    resourceUri: string,
+    tableName: string,
+    apiVersion = '2025-02-01'
+  ) {
+    return `${baseUrl}${resourceUri}/tables/${tableName}?api-version=${apiVersion}`;
   }
 }

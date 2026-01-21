@@ -5,7 +5,7 @@ import {
 } from '../components/MetricsQueryEditor/setQueryValue';
 import { parseResourceDetails } from '../components/ResourcePicker/utils';
 import TimegrainConverter from '../time_grain_converter';
-import { AzureMetricDimension, AzureMonitorQuery, AzureQueryType } from '../types';
+import { AzureMetricDimension, AzureMonitorQuery, AzureQueryType } from '../types/query';
 
 const OLD_DEFAULT_DROPDOWN_VALUE = 'select';
 
@@ -42,6 +42,26 @@ export default function migrateQuery(query: AzureMonitorQuery): AzureMonitorQuer
     };
 
     delete workingQuery.azureLogAnalytics?.resource;
+  }
+
+  if (workingQuery.azureLogAnalytics && workingQuery.azureLogAnalytics.dashboardTime === undefined) {
+    if (workingQuery.azureLogAnalytics.intersectTime) {
+      workingQuery = {
+        ...workingQuery,
+        azureLogAnalytics: {
+          ...workingQuery.azureLogAnalytics,
+          dashboardTime: true,
+        },
+      };
+    } else {
+      workingQuery = {
+        ...workingQuery,
+        azureLogAnalytics: {
+          ...workingQuery.azureLogAnalytics,
+          dashboardTime: false,
+        },
+      };
+    }
   }
 
   return workingQuery;

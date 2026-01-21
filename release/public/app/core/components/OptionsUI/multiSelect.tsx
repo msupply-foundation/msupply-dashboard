@@ -1,6 +1,6 @@
-import React from 'react';
+import { PureComponent } from 'react';
 
-import { FieldConfigEditorProps, SelectFieldConfigSettings, SelectableValue } from '@grafana/data';
+import { StandardEditorProps, SelectFieldConfigSettings, SelectableValue } from '@grafana/data';
 import { MultiSelect } from '@grafana/ui';
 
 interface State<T> {
@@ -8,13 +8,13 @@ interface State<T> {
   options: Array<SelectableValue<T>>;
 }
 
-type Props<T> = FieldConfigEditorProps<T[], SelectFieldConfigSettings<T>>;
+type Props<T> = StandardEditorProps<T[], SelectFieldConfigSettings<T>>;
 
 /**
  * MultiSelect for options UI
  * @alpha
  */
-export class MultiSelectValueEditor<T> extends React.PureComponent<Props<T>, State<T>> {
+export class MultiSelectValueEditor<T> extends PureComponent<Props<T>, State<T>> {
   state: State<T> = {
     isLoading: true,
     options: [],
@@ -55,11 +55,12 @@ export class MultiSelectValueEditor<T> extends React.PureComponent<Props<T>, Sta
 
   render() {
     const { options, isLoading } = this.state;
-    const { value, onChange, item } = this.props;
+    const { value, onChange, item, id } = this.props;
 
     const { settings } = item;
     return (
       <MultiSelect<T>
+        inputId={id}
         isLoading={isLoading}
         value={value}
         defaultValue={value}

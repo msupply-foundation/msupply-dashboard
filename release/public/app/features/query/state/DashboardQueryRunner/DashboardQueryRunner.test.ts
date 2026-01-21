@@ -1,9 +1,19 @@
 import { throwError } from 'rxjs';
 import { delay, first } from 'rxjs/operators';
 
-import { AlertState, AlertStateInfo } from '@grafana/data';
+import { AlertState } from '@grafana/data';
 import { DataSourceSrv, setDataSourceSrv } from '@grafana/runtime';
+import {
+  grantUserPermissions,
+  mockPromAlertingRule,
+  mockPromRuleGroup,
+  mockPromRuleNamespace,
+} from 'app/features/alerting/unified/mocks';
+import { Annotation } from 'app/features/alerting/unified/utils/constants';
 import { TimeSrv } from 'app/features/dashboard/services/TimeSrv';
+import * as store from 'app/store/store';
+import { AccessControlAction } from 'app/types/accessControl';
+import { PromAlertingRuleState, PromRulesResponse, PromRuleType } from 'app/types/unified-alerting-dto';
 
 import { silenceConsoleOutput } from '../../../../../test/core/utils/silenceConsoleOutput';
 import { backendSrv } from '../../../../core/services/backend_srv';
@@ -18,6 +28,43 @@ jest.mock('@grafana/runtime', () => ({
   getBackendSrv: () => backendSrv,
 }));
 
+const nameSpaces = [
+  mockPromRuleNamespace({
+    groups: [
+      mockPromRuleGroup({
+        name: 'my-group',
+        rules: [
+          mockPromAlertingRule({
+            name: 'my alert',
+            state: PromAlertingRuleState.Firing,
+            annotations: {
+              [Annotation.dashboardUID]: '1',
+              [Annotation.panelID]: '1',
+            },
+          }),
+        ],
+      }),
+      mockPromRuleGroup({
+        name: 'another-group',
+        rules: [
+          mockPromAlertingRule({
+            name: 'another alert',
+            state: PromAlertingRuleState.Firing,
+            annotations: {
+              [Annotation.dashboardUID]: '1',
+              [Annotation.panelID]: '2',
+            },
+          }),
+        ],
+      }),
+    ],
+  }),
+];
+
+beforeEach(() => {
+  grantUserPermissions([AccessControlAction.AlertingRuleRead, AccessControlAction.AlertingRuleExternalRead]);
+});
+
 function getTestContext() {
   jest.clearAllMocks();
   const timeSrvMock = { timeRange: jest.fn() } as unknown as TimeSrv;
@@ -25,10 +72,52 @@ function getTestContext() {
   // These tests are setup so all the workers and runners are invoked once, this wouldn't be the case in real life
   const runner = createDashboardQueryRunner({ dashboard: options.dashboard, timeSrv: timeSrvMock });
 
-  const getResults: AlertStateInfo[] = [
-    { id: 1, state: AlertState.Alerting, dashboardId: 1, panelId: 1 },
-    { id: 2, state: AlertState.Alerting, dashboardId: 1, panelId: 2 },
-  ];
+  const getResults: PromRulesResponse = {
+    status: 'success',
+    data: {
+      groups: [
+        {
+          name: 'my-group',
+          rules: [
+            {
+              name: 'my alert',
+              state: PromAlertingRuleState.Firing,
+              query: 'foo > 1',
+              type: PromRuleType.Alerting,
+              annotations: {
+                [Annotation.dashboardUID]: '1',
+                [Annotation.panelID]: '1',
+              },
+              health: 'ok',
+              labels: {},
+            },
+          ],
+          interval: 300,
+          file: 'my-namespace',
+        },
+        {
+          name: 'another-group',
+          rules: [
+            {
+              name: 'another alert',
+              query: 'foo > 1',
+              state: PromAlertingRuleState.Firing,
+              type: PromRuleType.Alerting,
+              annotations: {
+                [Annotation.dashboardUID]: '1',
+                [Annotation.panelID]: '2',
+              },
+              health: 'ok',
+              labels: {},
+            },
+          ],
+          interval: 300,
+          file: 'my-namespace',
+        },
+      ],
+    },
+  };
+
   const getMock = jest.spyOn(backendSrv, 'get').mockResolvedValue(getResults);
   const executeAnnotationQueryMock = jest
     .spyOn(annotationsSrv, 'executeAnnotationQuery')
@@ -52,8 +141,9 @@ function getTestContext() {
     },
   } as DataSourceSrv;
   setDataSourceSrv(dataSourceSrvMock);
+  const dispatchMock = jest.spyOn(store, 'dispatch');
 
-  return { runner, options, annotationQueryMock, executeAnnotationQueryMock, getMock };
+  return { runner, options, annotationQueryMock, executeAnnotationQueryMock, getMock, dispatchMock };
 }
 
 function expectOnResults(args: {
@@ -81,7 +171,8 @@ function expectOnResults(args: {
 describe('DashboardQueryRunnerImpl', () => {
   describe('when calling run and all workers succeed', () => {
     it('then it should return the correct results', (done) => {
-      const { runner, options, annotationQueryMock, executeAnnotationQueryMock, getMock } = getTestContext();
+      const { dispatchMock, runner, options, annotationQueryMock, executeAnnotationQueryMock } = getTestContext();
+      dispatchMock.mockResolvedValue({ data: nameSpaces });
 
       expectOnResults({
         runner,
@@ -93,7 +184,7 @@ describe('DashboardQueryRunnerImpl', () => {
           expect(results).toEqual(getExpectedForAllResult());
           expect(annotationQueryMock).toHaveBeenCalledTimes(1);
           expect(executeAnnotationQueryMock).toHaveBeenCalledTimes(1);
-          expect(getMock).toHaveBeenCalledTimes(1);
+          expect(dispatchMock).toHaveBeenCalledTimes(1);
         },
       });
 
@@ -103,10 +194,10 @@ describe('DashboardQueryRunnerImpl', () => {
 
   describe('when calling run and all workers succeed but take longer than 200ms', () => {
     it('then it should return the empty results', (done) => {
-      const { runner, options, annotationQueryMock, executeAnnotationQueryMock, getMock } = getTestContext();
+      const { runner, options, annotationQueryMock, executeAnnotationQueryMock, dispatchMock } = getTestContext();
       const wait = 201;
       executeAnnotationQueryMock.mockReturnValue(toAsyncOfResult({ events: [{ id: 'NextGen' }] }).pipe(delay(wait)));
-
+      dispatchMock.mockResolvedValue({ data: nameSpaces });
       expectOnResults({
         runner,
         panelId: 1,
@@ -117,7 +208,7 @@ describe('DashboardQueryRunnerImpl', () => {
           expect(results).toEqual({ annotations: [] });
           expect(annotationQueryMock).toHaveBeenCalledTimes(1);
           expect(executeAnnotationQueryMock).toHaveBeenCalledTimes(1);
-          expect(getMock).toHaveBeenCalledTimes(1);
+          expect(dispatchMock).toHaveBeenCalledTimes(1);
         },
       });
 
@@ -127,8 +218,8 @@ describe('DashboardQueryRunnerImpl', () => {
 
   describe('when calling run and all workers succeed but the subscriber subscribes after the run', () => {
     it('then it should return the last results', (done) => {
-      const { runner, options, annotationQueryMock, executeAnnotationQueryMock, getMock } = getTestContext();
-
+      const { runner, options, annotationQueryMock, executeAnnotationQueryMock, dispatchMock } = getTestContext();
+      dispatchMock.mockResolvedValue({ data: nameSpaces });
       runner.run(options);
 
       setTimeout(
@@ -143,7 +234,7 @@ describe('DashboardQueryRunnerImpl', () => {
               expect(results).toEqual(getExpectedForAllResult());
               expect(annotationQueryMock).toHaveBeenCalledTimes(1);
               expect(executeAnnotationQueryMock).toHaveBeenCalledTimes(1);
-              expect(getMock).toHaveBeenCalledTimes(1);
+              expect(dispatchMock).toHaveBeenCalledTimes(1);
             },
           }),
         200
@@ -154,8 +245,8 @@ describe('DashboardQueryRunnerImpl', () => {
   describe('when calling run and all workers fail', () => {
     silenceConsoleOutput();
     it('then it should return the correct results', (done) => {
-      const { runner, options, annotationQueryMock, executeAnnotationQueryMock, getMock } = getTestContext();
-      getMock.mockRejectedValue({ message: 'Get error' });
+      const { runner, options, annotationQueryMock, executeAnnotationQueryMock, dispatchMock } = getTestContext();
+      dispatchMock.mockResolvedValue({ error: { message: 'Get error' } });
       annotationQueryMock.mockRejectedValue({ message: 'Legacy error' });
       executeAnnotationQueryMock.mockReturnValue(throwError({ message: 'NextGen error' }));
 
@@ -170,7 +261,6 @@ describe('DashboardQueryRunnerImpl', () => {
           expect(results).toEqual(expected);
           expect(annotationQueryMock).toHaveBeenCalledTimes(1);
           expect(executeAnnotationQueryMock).toHaveBeenCalledTimes(1);
-          expect(getMock).toHaveBeenCalledTimes(1);
         },
       });
 
@@ -181,8 +271,8 @@ describe('DashboardQueryRunnerImpl', () => {
   describe('when calling run and AlertStatesWorker fails', () => {
     silenceConsoleOutput();
     it('then it should return the correct results', (done) => {
-      const { runner, options, annotationQueryMock, executeAnnotationQueryMock, getMock } = getTestContext();
-      getMock.mockRejectedValue({ message: 'Get error' });
+      const { runner, options, annotationQueryMock, executeAnnotationQueryMock, dispatchMock } = getTestContext();
+      dispatchMock.mockResolvedValue({ message: 'Get error' });
 
       expectOnResults({
         runner,
@@ -196,7 +286,6 @@ describe('DashboardQueryRunnerImpl', () => {
           expect(results).toEqual(expected);
           expect(annotationQueryMock).toHaveBeenCalledTimes(1);
           expect(executeAnnotationQueryMock).toHaveBeenCalledTimes(1);
-          expect(getMock).toHaveBeenCalledTimes(1);
         },
       });
 
@@ -206,7 +295,8 @@ describe('DashboardQueryRunnerImpl', () => {
     describe('when calling run and AnnotationsWorker fails', () => {
       silenceConsoleOutput();
       it('then it should return the correct results', (done) => {
-        const { runner, options, annotationQueryMock, executeAnnotationQueryMock, getMock } = getTestContext();
+        const { runner, options, annotationQueryMock, executeAnnotationQueryMock, dispatchMock } = getTestContext();
+        dispatchMock.mockResolvedValue({ data: nameSpaces });
         annotationQueryMock.mockRejectedValue({ message: 'Legacy error' });
         executeAnnotationQueryMock.mockReturnValue(throwError({ message: 'NextGen error' }));
 
@@ -222,7 +312,6 @@ describe('DashboardQueryRunnerImpl', () => {
             expect(results).toEqual(expected);
             expect(annotationQueryMock).toHaveBeenCalledTimes(1);
             expect(executeAnnotationQueryMock).toHaveBeenCalledTimes(1);
-            expect(getMock).toHaveBeenCalledTimes(1);
           },
         });
 
@@ -233,7 +322,8 @@ describe('DashboardQueryRunnerImpl', () => {
 
   describe('when calling run twice', () => {
     it('then it should cancel previous run', (done) => {
-      const { runner, options, annotationQueryMock, executeAnnotationQueryMock, getMock } = getTestContext();
+      const { runner, options, annotationQueryMock, executeAnnotationQueryMock, dispatchMock } = getTestContext();
+      dispatchMock.mockResolvedValue({ data: nameSpaces });
       executeAnnotationQueryMock.mockReturnValueOnce(
         toAsyncOfResult({ events: [{ id: 'NextGen' }] }).pipe(delay(10000))
       );
@@ -250,7 +340,7 @@ describe('DashboardQueryRunnerImpl', () => {
           expect(results).toEqual(expected);
           expect(annotationQueryMock).toHaveBeenCalledTimes(2);
           expect(executeAnnotationQueryMock).toHaveBeenCalledTimes(2);
-          expect(getMock).toHaveBeenCalledTimes(2);
+          expect(dispatchMock).toHaveBeenCalledTimes(2);
         },
       });
 
@@ -261,7 +351,8 @@ describe('DashboardQueryRunnerImpl', () => {
 
   describe('when calling cancel', () => {
     it('then it should cancel matching workers', (done) => {
-      const { runner, options, annotationQueryMock, executeAnnotationQueryMock, getMock } = getTestContext();
+      const { runner, options, annotationQueryMock, executeAnnotationQueryMock, dispatchMock } = getTestContext();
+      dispatchMock.mockResolvedValue({ data: nameSpaces });
       executeAnnotationQueryMock.mockReturnValueOnce(
         toAsyncOfResult({ events: [{ id: 'NextGen' }] }).pipe(delay(10000))
       );
@@ -277,7 +368,6 @@ describe('DashboardQueryRunnerImpl', () => {
           expect(results).toEqual({ alertState, annotations: [annotations[0], annotations[2]] });
           expect(annotationQueryMock).toHaveBeenCalledTimes(1);
           expect(executeAnnotationQueryMock).toHaveBeenCalledTimes(1);
-          expect(getMock).toHaveBeenCalledTimes(1);
         },
       });
 
@@ -294,7 +384,7 @@ function getExpectedForAllResult(): DashboardQueryRunnerResult {
   return {
     alertState: {
       dashboardId: 1,
-      id: 1,
+      id: 0,
       panelId: 1,
       state: AlertState.Alerting,
     },

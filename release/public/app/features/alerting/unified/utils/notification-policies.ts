@@ -1,75 +1,37 @@
-import { AlertmanagerGroup, MatcherOperator, ObjectMatcher, Route } from 'app/plugins/datasource/alertmanager/types';
+import { findMatchingRoutes } from '@grafana/alerting';
+import { AlertmanagerGroup, Route, RouteWithID } from 'app/plugins/datasource/alertmanager/types';
 
-import { normalizeMatchers } from './amroutes';
+import { normalizeMatchers, unquoteWithUnescape } from './matchers';
+import { routeAdapter } from './routeAdapter';
 
-export type Label = [string, string];
-type OperatorPredicate = (labelValue: string, matcherValue: string) => boolean;
-
-const OperatorFunctions: Record<MatcherOperator, OperatorPredicate> = {
-  [MatcherOperator.equal]: (lv, mv) => lv === mv,
-  [MatcherOperator.notEqual]: (lv, mv) => lv !== mv,
-  [MatcherOperator.regex]: (lv, mv) => Boolean(lv.match(new RegExp(mv))),
-  [MatcherOperator.notRegex]: (lv, mv) => !Boolean(lv.match(new RegExp(mv))),
-};
-
-function isLabelMatch(matcher: ObjectMatcher, label: Label) {
-  const [labelKey, labelValue] = label;
-  const [matcherKey, operator, matcherValue] = matcher;
-
-  // not interested, keys don't match
-  if (labelKey !== matcherKey) {
-    return false;
+// This is a performance improvement to normalize matchers only once and use the normalized version later on
+export function normalizeRoute<T extends Route>(rootRoute: T): T {
+  function normalizeRoute<T extends Route>(route: T) {
+    route.object_matchers = normalizeMatchers(route);
+    delete route.matchers;
+    delete route.match;
+    delete route.match_re;
+    route.routes?.forEach(normalizeRoute);
   }
 
-  const matchFunction = OperatorFunctions[operator];
-  if (!matchFunction) {
-    throw new Error(`no such operator: ${operator}`);
-  }
+  const normalizedRootRoute = structuredClone(rootRoute);
+  normalizeRoute(normalizedRootRoute);
 
-  return matchFunction(labelValue, matcherValue);
+  return normalizedRootRoute;
 }
 
-// check if every matcher returns "true" for the set of labels
-function matchLabels(matchers: ObjectMatcher[], labels: Label[]) {
-  return matchers.every((matcher) => {
-    return labels.some((label) => isLabelMatch(matcher, label));
-  });
-}
-
-// Match does a depth-first left-to-right search through the route tree
-// and returns the matching routing nodes.
-function findMatchingRoutes<T extends Route>(root: T, labels: Label[]): T[] {
-  let matches: T[] = [];
-
-  // If the current node is not a match, return nothing
-  const normalizedMatchers = normalizeMatchers(root);
-  if (!matchLabels(normalizedMatchers, labels)) {
-    return [];
+export function unquoteRouteMatchers<T extends Route>(route: T): T {
+  function unquoteRoute(route: Route) {
+    route.object_matchers = route.object_matchers?.map(([name, operator, value]) => {
+      return [unquoteWithUnescape(name), operator, unquoteWithUnescape(value)];
+    });
+    route.routes?.forEach(unquoteRoute);
   }
 
-  // If the current node matches, recurse through child nodes
-  if (root.routes) {
-    for (let index = 0; index < root.routes.length; index++) {
-      let child = root.routes[index];
-      let matchingChildren = findMatchingRoutes(child, labels);
+  const unwrappedRootRoute = structuredClone(route);
+  unquoteRoute(unwrappedRootRoute);
 
-      // TODO how do I solve this typescript thingy? It looks correct to me /shrug
-      // @ts-ignore
-      matches = matches.concat(matchingChildren);
-
-      // we have matching children and we don't want to continue, so break here
-      if (matchingChildren.length && !child.continue) {
-        break;
-      }
-    }
-  }
-
-  // If no child nodes were matches, the current node itself is a match.
-  if (matches.length === 0) {
-    matches.push(root);
-  }
-
-  return matches;
+  return unwrappedRootRoute;
 }
 
 /**
@@ -77,17 +39,27 @@ function findMatchingRoutes<T extends Route>(root: T, labels: Label[]): T[] {
  * (and their grouping) for the given route
  */
 function findMatchingAlertGroups(
-  routeTree: Route,
-  route: Route,
+  routeTree: RouteWithID,
+  route: RouteWithID,
   alertGroups: AlertmanagerGroup[]
 ): AlertmanagerGroup[] {
   const matchingGroups: AlertmanagerGroup[] = [];
+
+  // Convert routes once outside the loop for efficiency
+  // findMatchingRoutes expects the alerting package Route type, so we need to convert
+  const alertingRouteTree = routeAdapter.toPackage(routeTree);
+  const alertingRoute = routeAdapter.toPackage(route);
 
   return alertGroups.reduce((acc, group) => {
     // find matching alerts in the current group
     const matchingAlerts = group.alerts.filter((alert) => {
       const labels = Object.entries(alert.labels);
-      return findMatchingRoutes(routeTree, labels).some((matchingRoute) => matchingRoute === route);
+      const matchingRoutes = findMatchingRoutes(alertingRouteTree, labels);
+
+      // Compare routes by id - we must use ID comparison because routeAdapter.toPackage()
+      // creates new objects, so reference equality would always be false.
+      // The ID is preserved during conversion and uniquely identifies each route.
+      return matchingRoutes.some((matchingRoute) => matchingRoute.route.id === alertingRoute.id);
     });
 
     // if the groups has any alerts left after matching, add it to the results
@@ -102,4 +74,21 @@ function findMatchingAlertGroups(
   }, matchingGroups);
 }
 
-export { findMatchingAlertGroups, findMatchingRoutes, matchLabels };
+// recursive function to rename receivers in all routes (notification policies)
+function renameReceiverInRoute(route: Route, oldName: string, newName: string) {
+  const updated: Route = {
+    ...route,
+  };
+
+  if (updated.receiver === oldName) {
+    updated.receiver = newName;
+  }
+
+  if (updated.routes) {
+    updated.routes = updated.routes.map((route) => renameReceiverInRoute(route, oldName, newName));
+  }
+
+  return updated;
+}
+
+export { findMatchingAlertGroups, renameReceiverInRoute };

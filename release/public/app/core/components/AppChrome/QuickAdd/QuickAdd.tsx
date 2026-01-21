@@ -1,33 +1,26 @@
-import { css } from '@emotion/css';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { GrafanaTheme2 } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { reportInteraction } from '@grafana/runtime';
-import { Menu, Dropdown, useStyles2, useTheme2, ToolbarButton } from '@grafana/ui';
-import { useMediaQueryChange } from 'app/core/hooks/useMediaQueryChange';
-import { useSelector } from 'app/types';
+import { Menu, Dropdown, ToolbarButton } from '@grafana/ui';
+import { useSelector } from 'app/types/store';
 
-import { NavToolbarSeparator } from '../NavToolbarSeparator';
+import { NavToolbarSeparator } from '../NavToolbar/NavToolbarSeparator';
 
 import { findCreateActions } from './utils';
 
 export interface Props {}
 
 export const QuickAdd = ({}: Props) => {
-  const styles = useStyles2(getStyles);
-  const theme = useTheme2();
   const navBarTree = useSelector((state) => state.navBarTree);
-  const breakpoint = theme.breakpoints.values.sm;
+  const [isOpen, setIsOpen] = useState(false);
 
-  const [isSmallScreen, setIsSmallScreen] = useState(!window.matchMedia(`(min-width: ${breakpoint}px)`).matches);
   const createActions = useMemo(() => findCreateActions(navBarTree), [navBarTree]);
+  const showQuickAdd = createActions.length > 0;
 
-  useMediaQueryChange({
-    breakpoint,
-    onChange: (e) => {
-      setIsSmallScreen(!e.matches);
-    },
-  });
+  if (!showQuickAdd) {
+    return null;
+  }
 
   const MenuActions = () => {
     return (
@@ -44,35 +37,17 @@ export const QuickAdd = ({}: Props) => {
     );
   };
 
-  return createActions.length > 0 ? (
+  return showQuickAdd ? (
     <>
-      <Dropdown overlay={MenuActions} placement="bottom-end">
-        {(isOpen) =>
-          isSmallScreen ? (
-            <ToolbarButton iconOnly icon="plus-circle" aria-label="New" />
-          ) : (
-            <ToolbarButton iconOnly icon="plus" isOpen={isOpen} aria-label="New" />
-          )
-        }
+      <Dropdown overlay={MenuActions} placement="bottom-end" onVisibleChange={setIsOpen}>
+        <ToolbarButton
+          iconOnly
+          icon={'plus'}
+          isOpen={isOpen}
+          aria-label={t('navigation.quick-add.aria-label', 'New')}
+        />
       </Dropdown>
-      <NavToolbarSeparator className={styles.separator} />
+      <NavToolbarSeparator />
     </>
   ) : null;
 };
-
-const getStyles = (theme: GrafanaTheme2) => ({
-  buttonContent: css({
-    alignItems: 'center',
-    display: 'flex',
-  }),
-  buttonText: css({
-    [theme.breakpoints.down('md')]: {
-      display: 'none',
-    },
-  }),
-  separator: css({
-    [theme.breakpoints.down('sm')]: {
-      display: 'none',
-    },
-  }),
-});

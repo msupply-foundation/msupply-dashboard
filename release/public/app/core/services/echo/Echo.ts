@@ -59,7 +59,11 @@ export class Echo implements EchoSrv {
         backend.addEvent(_event);
       }
     }
-    echoLog('Reporting event', false, _event);
+
+    echoLog(`${event.type} event`, false, {
+      ...event.payload,
+      meta: _event.meta,
+    });
   };
 
   getMeta = (): EchoMeta => {
@@ -68,6 +72,8 @@ export class Echo implements EchoSrv {
       userId: contextSrv.user.id,
       userLogin: contextSrv.user.login,
       userSignedIn: contextSrv.user.isSignedIn,
+      orgRole: contextSrv.user.orgRole,
+      orgId: contextSrv.user.orgId,
       screenSize: {
         width: window.innerWidth,
         height: window.innerHeight,
@@ -79,6 +85,7 @@ export class Echo implements EchoSrv {
       userAgent: window.navigator.userAgent,
       ts: new Date().getTime(),
       timeSinceNavigationStart: performance.now(),
+      path: window.location.pathname,
       url: window.location.href,
     };
   };

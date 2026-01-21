@@ -1,5 +1,6 @@
 import { AnnotationQuery, BusEventBase, BusEventWithPayload, eventFactory } from '@grafana/data';
 import { IconName, ButtonVariant } from '@grafana/ui';
+import { HistoryEntryView } from 'app/core/components/AppChrome/types';
 
 /**
  * Event Payloads
@@ -27,6 +28,18 @@ export interface ShowModalReactPayload {
   props?: any;
 }
 
+export interface OpenExtensionSidebarPayload {
+  props?: Record<string, unknown>;
+  pluginId: string;
+  componentTitle: string;
+}
+
+export interface ToggleExtensionSidebarPayload {
+  props?: Record<string, unknown>;
+  pluginId: string;
+  componentTitle: string;
+}
+
 export interface ShowConfirmModalPayload {
   title?: string;
   text?: string;
@@ -44,33 +57,8 @@ export interface ShowConfirmModalPayload {
   onAltAction?: () => void;
 }
 
-export interface DataSourceResponse<T> {
-  data: T;
-  readonly status: number;
-  readonly statusText: string;
-  readonly ok: boolean;
-  readonly headers: Headers;
-  readonly redirected: boolean;
-  readonly type: ResponseType;
-  readonly url: string;
-  readonly config: any;
-}
-
-type DataSourceResponsePayload = DataSourceResponse<any>;
-
 export interface ToggleKioskModePayload {
   exit?: boolean;
-}
-
-export interface GraphClickedPayload {
-  pos: any;
-  panel: any;
-  item: any;
-}
-
-export interface ThresholdChangedPayload {
-  threshold: any;
-  handleIndex: any;
 }
 
 export interface DashScrollPayload {
@@ -85,15 +73,7 @@ export interface PanelChangeViewPayload {}
  * Events
  */
 
-export const dsRequestResponse = eventFactory<DataSourceResponsePayload>('ds-request-response');
-export const dsRequestError = eventFactory<any>('ds-request-error');
 export const templateVariableValueUpdated = eventFactory('template-variable-value-updated');
-export const graphClicked = eventFactory<GraphClickedPayload>('graph-click');
-
-/**
- * @internal
- */
-export const thresholdChanged = eventFactory<ThresholdChangedPayload>('threshold-changed');
 
 /**
  * Used for syncing queries badge count in panel edit queries tab
@@ -160,7 +140,23 @@ export class ShiftTimeEvent extends BusEventWithPayload<ShiftTimeEventPayload> {
   static type = 'shift-time';
 }
 
-export class AbsoluteTimeEvent extends BusEventBase {
+export class CopyTimeEvent extends BusEventBase {
+  static type = 'copy-time';
+}
+
+interface PasteTimeEventPayload {
+  updateUrl?: boolean;
+}
+
+export class PasteTimeEvent extends BusEventWithPayload<PasteTimeEventPayload> {
+  static type = 'paste-time';
+}
+
+interface AbsoluteTimeEventPayload {
+  updateUrl: boolean;
+}
+
+export class AbsoluteTimeEvent extends BusEventWithPayload<AbsoluteTimeEventPayload> {
   static type = 'absolute-time';
 }
 
@@ -181,6 +177,18 @@ export class ShowConfirmModalEvent extends BusEventWithPayload<ShowConfirmModalP
 
 export class ShowModalReactEvent extends BusEventWithPayload<ShowModalReactPayload> {
   static type = 'show-react-modal';
+}
+
+export class OpenExtensionSidebarEvent extends BusEventWithPayload<OpenExtensionSidebarPayload> {
+  static type = 'open-extension-sidebar';
+}
+
+export class CloseExtensionSidebarEvent extends BusEventBase {
+  static type = 'close-extension-sidebar';
+}
+
+export class ToggleExtensionSidebarEvent extends BusEventWithPayload<ToggleExtensionSidebarPayload> {
+  static type = 'toggle-extension-sidebar';
 }
 
 /**
@@ -208,4 +216,8 @@ export class PanelEditEnteredEvent extends BusEventWithPayload<number> {
 
 export class PanelEditExitedEvent extends BusEventWithPayload<number> {
   static type = 'panel-edit-finished';
+}
+
+export class RecordHistoryEntryEvent extends BusEventWithPayload<HistoryEntryView> {
+  static type = 'record-history-entry';
 }

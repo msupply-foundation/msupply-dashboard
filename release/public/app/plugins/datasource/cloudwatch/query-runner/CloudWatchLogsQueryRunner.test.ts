@@ -1,29 +1,27 @@
-import { interval, lastValueFrom, of } from 'rxjs';
+import { lastValueFrom, of } from 'rxjs';
 
 import {
-  DataQueryErrorType,
+  DataQueryRequest,
+  DataQueryResponse,
+  Field,
   FieldType,
   LogLevel,
+  LogRowContextQueryDirection,
   LogRowModel,
-  MutableDataFrame,
-  dateTime,
-  DataQueryRequest,
 } from '@grafana/data';
-import { getTimeSrv } from 'app/features/dashboard/services/TimeSrv';
+
+import { regionVariable } from '../mocks/CloudWatchDataSource';
+import { setupMockedLogsQueryRunner } from '../mocks/LogsQueryRunner';
+import { LogsRequestMock } from '../mocks/Request';
+import { validLogsQuery } from '../mocks/queries';
+import { TimeRangeMock } from '../mocks/timeRange';
+import { CloudWatchLogsAnomaliesQuery, CloudWatchLogsQuery, LogsMode } from '../types'; // Add this import statement
 
 import {
-  CloudWatchSettings,
-  limitVariable,
-  logGroupNamesVariable,
-  regionVariable,
-} from '../__mocks__/CloudWatchDataSource';
-import { genMockFrames, genMockCloudWatchLogsRequest, setupMockedLogsQueryRunner } from '../__mocks__/LogsQueryRunner';
-import { LogsRequestMock } from '../__mocks__/Request';
-import { validLogsQuery } from '../__mocks__/queries';
-import { CloudWatchLogsQuery, LogAction, StartQueryRequest } from '../types';
-import * as rxjsUtils from '../utils/rxjs/increasingInterval';
-
-import { LOG_IDENTIFIER_INTERNAL, LOGSTREAM_IDENTIFIER_INTERNAL } from './CloudWatchLogsQueryRunner';
+  LOGSTREAM_IDENTIFIER_INTERNAL,
+  LOG_IDENTIFIER_INTERNAL,
+  convertTrendHistogramToSparkline,
+} from './CloudWatchLogsQueryRunner';
 
 describe('CloudWatchLogsQueryRunner', () => {
   beforeEach(() => {
@@ -32,18 +30,19 @@ describe('CloudWatchLogsQueryRunner', () => {
 
   describe('getLogRowContext', () => {
     it('replaces parameters correctly in the query', async () => {
-      const { runner, fetchMock } = setupMockedLogsQueryRunner();
+      const { runner, queryMock } = setupMockedLogsQueryRunner({ variables: [regionVariable] });
       const row: LogRowModel = {
         entryFieldIndex: 0,
         rowIndex: 0,
-        dataFrame: new MutableDataFrame({
+        dataFrame: {
           refId: 'B',
+          length: 1,
           fields: [
-            { name: 'ts', type: FieldType.time, values: [1] },
-            { name: LOG_IDENTIFIER_INTERNAL, type: FieldType.string, values: ['foo'], labels: {} },
-            { name: LOGSTREAM_IDENTIFIER_INTERNAL, type: FieldType.string, values: ['bar'], labels: {} },
+            { name: 'ts', type: FieldType.time, values: [1], config: {} },
+            { name: LOG_IDENTIFIER_INTERNAL, type: FieldType.string, values: ['foo'], labels: {}, config: {} },
+            { name: LOGSTREAM_IDENTIFIER_INTERNAL, type: FieldType.string, values: ['bar'], labels: {}, config: {} },
           ],
-        }),
+        },
         entry: '4',
         labels: {},
         hasAnsi: false,
@@ -57,263 +56,872 @@ describe('CloudWatchLogsQueryRunner', () => {
         timeUtc: '',
         uid: '1',
       };
-      await runner.getLogRowContext(row);
-      expect(fetchMock.mock.calls[0][0].data.queries[0].endTime).toBe(4);
-      expect(fetchMock.mock.calls[0][0].data.queries[0].region).toBe(undefined);
+      await runner.getLogRowContext(row, undefined, queryMock);
+      expect(queryMock.mock.calls[0][0].targets[0].endTime).toBe(4);
+      // sets the default region if region is empty
+      expect(queryMock.mock.calls[0][0].targets[0].region).toBe('us-west-1');
 
-      await runner.getLogRowContext(row, { direction: 'FORWARD' }, { ...validLogsQuery, region: 'eu-east' });
-      expect(fetchMock.mock.calls[1][0].data.queries[0].startTime).toBe(4);
-      expect(fetchMock.mock.calls[1][0].data.queries[0].region).toBe('eu-east');
+      await runner.getLogRowContext(row, { direction: LogRowContextQueryDirection.Forward }, queryMock, {
+        ...validLogsQuery,
+        region: '$region',
+      });
+      expect(queryMock.mock.calls[1][0].targets[0].startTime).toBe(4);
+      expect(queryMock.mock.calls[1][0].targets[0].region).toBe('templatedRegion');
     });
   });
-
-  describe('logs query', () => {
-    beforeEach(() => {
-      jest.spyOn(rxjsUtils, 'increasingInterval').mockImplementation(() => interval(100));
-    });
-
-    it('should stop querying when timed out', async () => {
-      const { runner } = setupMockedLogsQueryRunner();
-      const fakeFrames = genMockFrames(20);
-      const initialRecordsMatched = fakeFrames[0].meta!.stats!.find((stat) => stat.displayName === 'Records scanned')!
-        .value!;
-      for (let i = 1; i < 4; i++) {
-        fakeFrames[i].meta!.stats = [
-          {
-            displayName: 'Records scanned',
-            value: initialRecordsMatched,
-          },
-        ];
-      }
-
-      const finalRecordsMatched = fakeFrames[9].meta!.stats!.find((stat) => stat.displayName === 'Records scanned')!
-        .value!;
-      for (let i = 10; i < fakeFrames.length; i++) {
-        fakeFrames[i].meta!.stats = [
-          {
-            displayName: 'Records scanned',
-            value: finalRecordsMatched,
-          },
-        ];
-      }
-
-      let i = 0;
-      jest.spyOn(runner, 'makeLogActionRequest').mockImplementation((subtype: LogAction) => {
-        if (subtype === 'GetQueryResults') {
-          const mockObservable = of([fakeFrames[i]]);
-          i++;
-          return mockObservable;
-        } else {
-          return of([]);
-        }
-      });
-
-      const iterations = 15;
-      // Times out after 15 passes for consistent testing
-      const timeoutFunc = () => {
-        return i >= iterations;
-      };
-      const myResponse = await lastValueFrom(
-        runner.logsQuery([{ queryId: 'fake-query-id', region: 'default', refId: 'A' }], timeoutFunc)
-      );
-
-      const expectedData = [
-        {
-          ...fakeFrames[14],
-          meta: {
-            custom: {
-              Status: 'Cancelled',
-            },
-            stats: fakeFrames[14].meta!.stats,
-          },
-        },
-      ];
-
-      expect(myResponse).toEqual({
-        data: expectedData,
-        key: 'test-key',
-        state: 'Done',
-        error: {
-          type: DataQueryErrorType.Timeout,
-          message: `error: query timed out after 5 attempts`,
-        },
-      });
-      expect(i).toBe(iterations);
-    });
-
-    it('should continue querying as long as new data is being received', async () => {
-      const { runner } = setupMockedLogsQueryRunner();
-      const fakeFrames = genMockFrames(15);
-
-      let i = 0;
-      jest.spyOn(runner, 'makeLogActionRequest').mockImplementation((subtype: LogAction) => {
-        if (subtype === 'GetQueryResults') {
-          const mockObservable = of([fakeFrames[i]]);
-          i++;
-          return mockObservable;
-        } else {
-          return of([]);
-        }
-      });
-
-      const startTime = new Date();
-      const timeoutFunc = () => {
-        return Date.now() >= startTime.valueOf() + 6000;
-      };
-      const myResponse = await lastValueFrom(
-        runner.logsQuery([{ queryId: 'fake-query-id', region: 'default', refId: 'A' }], timeoutFunc)
-      );
-      expect(myResponse).toEqual({
-        data: [fakeFrames[fakeFrames.length - 1]],
-        key: 'test-key',
-        state: 'Done',
-      });
-      expect(i).toBe(15);
-    });
-
-    it('should stop querying when results come back with status "Complete"', async () => {
-      const { runner } = setupMockedLogsQueryRunner();
-      const fakeFrames = genMockFrames(3);
-      let i = 0;
-      jest.spyOn(runner, 'makeLogActionRequest').mockImplementation((subtype: LogAction) => {
-        if (subtype === 'GetQueryResults') {
-          const mockObservable = of([fakeFrames[i]]);
-          i++;
-          return mockObservable;
-        } else {
-          return of([]);
-        }
-      });
-
-      const startTime = new Date();
-      const timeoutFunc = () => {
-        return Date.now() >= startTime.valueOf() + 6000;
-      };
-      const myResponse = await lastValueFrom(
-        runner.logsQuery([{ queryId: 'fake-query-id', region: 'default', refId: 'A' }], timeoutFunc)
-      );
-
-      expect(myResponse).toEqual({
-        data: [fakeFrames[2]],
-        key: 'test-key',
-        state: 'Done',
-      });
-      expect(i).toBe(3);
-    });
-  });
-
-  const legacyLogGroupNamesQuery: CloudWatchLogsQuery = {
-    queryMode: 'Logs',
-    logGroupNames: ['group-A', 'templatedGroup-1', `$${logGroupNamesVariable.name}`],
-    hide: false,
-    id: '',
-    region: 'us-east-2',
-    refId: 'A',
-    expression: `fields @timestamp, @message | sort @timestamp desc | limit $${limitVariable.name}`,
-  };
-
-  const logGroupNamesQuery: CloudWatchLogsQuery = {
-    queryMode: 'Logs',
-    logGroups: [
-      { arn: 'arn:aws:logs:us-east-2:123456789012:log-group:group-A:*', name: 'group-A' },
-      { arn: `$${logGroupNamesVariable.name}`, name: logGroupNamesVariable.name },
-    ],
-    hide: false,
-    id: '',
-    region: '$' + regionVariable.name,
-    refId: 'A',
-    expression: `fields @timestamp, @message | sort @timestamp desc | limit 1`,
-  };
-
-  const logsScopedVarQuery: CloudWatchLogsQuery = {
-    queryMode: 'Logs',
-    logGroups: [{ arn: `$${logGroupNamesVariable.name}`, name: logGroupNamesVariable.name }],
-    hide: false,
-    id: '',
-    region: '$' + regionVariable.name,
-    refId: 'A',
-    expression: `stats count(*) by queryType, bin($__interval)`,
-  };
 
   describe('handleLogQueries', () => {
-    it('should map log queries to start query requests correctly', async () => {
-      const { runner } = setupMockedLogsQueryRunner({
-        variables: [logGroupNamesVariable, regionVariable, limitVariable],
-        settings: {
-          ...CloudWatchSettings,
-          jsonData: {
-            ...CloudWatchSettings.jsonData,
-            logsTimeout: '500ms',
-          },
-        },
-        mockGetVariableName: false,
+    it('appends -logs to the requestId', async () => {
+      const { runner, queryMock } = setupMockedLogsQueryRunner();
+
+      const request = {
+        ...LogsRequestMock,
+        requestId: 'mockId',
+      };
+      await expect(runner.handleLogQueries(LogsRequestMock.targets, request, queryMock)).toEmitValuesWith(() => {
+        expect(queryMock.mock.calls[0][0].requestId).toEqual('mockId-logs');
       });
-      const spy = jest.spyOn(runner, 'makeLogActionRequest');
-      await lastValueFrom(
-        runner.handleLogQueries([legacyLogGroupNamesQuery, logGroupNamesQuery, logsScopedVarQuery], LogsRequestMock)
+    });
+
+    it('does not append -logs to the requestId if requestId is not provided', async () => {
+      const { runner, queryMock } = setupMockedLogsQueryRunner();
+
+      const request = {
+        ...LogsRequestMock,
+      };
+      await expect(runner.handleLogQueries(LogsRequestMock.targets, request, queryMock)).toEmitValuesWith(() => {
+        expect(queryMock.mock.calls[0][0].requestId).toEqual('');
+      });
+    });
+
+    it('should request to start each query and then request to get the query results', async () => {
+      const { runner } = setupMockedLogsQueryRunner();
+
+      const options: DataQueryRequest<CloudWatchLogsQuery> = {
+        ...LogsRequestMock,
+        targets: rawLogQueriesStub,
+      };
+
+      const queryFn = jest
+        .fn()
+        .mockReturnValueOnce(of(startQuerySuccessResponseStub))
+        .mockReturnValueOnce(of(getQuerySuccessResponseStub));
+
+      const response = runner.handleLogQueries(rawLogQueriesStub, options, queryFn);
+      const results = await lastValueFrom(response);
+      expect(queryFn).toHaveBeenCalledTimes(2);
+      expect(queryFn).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'StartQuery' })]),
+        })
       );
-      const startQueryRequests: StartQueryRequest[] = [
-        {
-          queryString: `fields @timestamp, @message | sort @timestamp desc | limit ${limitVariable.current.value}`,
-          logGroupNames: ['group-A', ...logGroupNamesVariable.current.text],
-          logGroups: [],
-          refId: legacyLogGroupNamesQuery.refId,
-          region: legacyLogGroupNamesQuery.region,
-        },
-        {
-          queryString: logGroupNamesQuery.expression!,
-          logGroupNames: [],
-          logGroups: [
-            {
-              arn: 'arn:aws:logs:us-east-2:123456789012:log-group:group-A:*',
-              name: 'arn:aws:logs:us-east-2:123456789012:log-group:group-A:*',
-            },
-            ...(logGroupNamesVariable.current.value as string[]).map((v) => ({ arn: v, name: v })),
-          ],
-          refId: legacyLogGroupNamesQuery.refId,
-          region: regionVariable.current.value as string,
-        },
-        {
-          queryString: `stats count(*) by queryType, bin(20s)`,
-          logGroupNames: [],
-          logGroups: [...(logGroupNamesVariable.current.value as string[]).map((v) => ({ arn: v, name: v }))],
-          refId: legacyLogGroupNamesQuery.refId,
-          region: regionVariable.current.value as string,
-        },
-      ];
-      expect(spy).toHaveBeenNthCalledWith(1, 'StartQuery', startQueryRequests, LogsRequestMock);
+      expect(queryFn).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'GetQueryResults' })]),
+        })
+      );
+
+      expect(results).toEqual({
+        ...getQuerySuccessResponseStub,
+        errors: [],
+        key: 'test-key',
+      });
+    });
+
+    it('should call getQueryResults until the query returns with a status of complete', async () => {
+      const { runner } = setupMockedLogsQueryRunner();
+
+      const options: DataQueryRequest<CloudWatchLogsQuery> = {
+        ...LogsRequestMock,
+        targets: rawLogQueriesStub,
+      };
+
+      const queryFn = jest
+        .fn()
+        .mockReturnValueOnce(of(startQuerySuccessResponseStub))
+        .mockReturnValueOnce(of(getQueryLoadingResponseStub))
+        .mockReturnValueOnce(of(getQueryLoadingResponseStub))
+        .mockReturnValueOnce(of(getQueryLoadingResponseStub))
+        .mockReturnValueOnce(of(getQuerySuccessResponseStub));
+
+      const response = runner.handleLogQueries(rawLogQueriesStub, options, queryFn);
+      const results = await lastValueFrom(response);
+      expect(queryFn).toHaveBeenCalledTimes(5);
+
+      // first call to start query
+      expect(queryFn).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'StartQuery' })]),
+        })
+      );
+      // second call we try to get the results
+      expect(queryFn).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'GetQueryResults' })]),
+        })
+      );
+      // after getting a loading response we wait and try again
+      expect(queryFn).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'GetQueryResults' })]),
+        })
+      );
+      // after getting a loading response we wait and try again
+      expect(queryFn).toHaveBeenNthCalledWith(
+        4,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'GetQueryResults' })]),
+        })
+      );
+      // after getting a loading response we wait and try again
+      expect(queryFn).toHaveBeenNthCalledWith(
+        5,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'GetQueryResults' })]),
+        })
+      );
+
+      expect(results).toEqual({
+        ...getQuerySuccessResponseStub,
+        errors: [],
+        key: 'test-key',
+      });
+    });
+
+    it('should call getQueryResults until the query returns even if it the startQuery gets a rate limiting error from aws', async () => {
+      const { runner } = setupMockedLogsQueryRunner();
+
+      const options: DataQueryRequest<CloudWatchLogsQuery> = {
+        ...LogsRequestMock,
+        targets: rawLogQueriesStub,
+      };
+
+      const queryFn = jest
+        .fn()
+        .mockReturnValueOnce(of(startQueryErrorWhenRateLimitedResponseStub))
+        .mockReturnValueOnce(of(startQuerySuccessResponseStub))
+        .mockReturnValueOnce(of(getQuerySuccessResponseStub));
+
+      const response = runner.handleLogQueries(rawLogQueriesStub, options, queryFn);
+      const results = await lastValueFrom(response);
+      expect(queryFn).toHaveBeenCalledTimes(3);
+
+      // first call
+      expect(queryFn).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'StartQuery' })]),
+        })
+      );
+      // we retry because the first call failed with the rate limiting error
+      expect(queryFn).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'StartQuery' })]),
+        })
+      );
+      // we get results because second call was successful
+      expect(queryFn).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'GetQueryResults' })]),
+        })
+      );
+
+      expect(results).toEqual({
+        ...getQuerySuccessResponseStub,
+        errors: [],
+        key: 'test-key',
+      });
+    });
+
+    it('should call getQueryResults until the query returns even if it the startQuery gets a throttling error from aws', async () => {
+      const { runner } = setupMockedLogsQueryRunner();
+
+      const options: DataQueryRequest<CloudWatchLogsQuery> = {
+        ...LogsRequestMock,
+        targets: rawLogQueriesStub,
+      };
+
+      const queryFn = jest
+        .fn()
+        .mockReturnValueOnce(of(startQueryErrorWhenThrottlingResponseStub))
+        .mockReturnValueOnce(of(startQuerySuccessResponseStub))
+        .mockReturnValueOnce(of(getQuerySuccessResponseStub));
+
+      const response = runner.handleLogQueries(rawLogQueriesStub, options, queryFn);
+      const results = await lastValueFrom(response);
+      expect(queryFn).toHaveBeenCalledTimes(3);
+
+      // first call
+      expect(queryFn).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'StartQuery' })]),
+        })
+      );
+      // we retry because the first call failed with the rate limiting error
+      expect(queryFn).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'StartQuery' })]),
+        })
+      );
+      // we get results because second call was successful
+      expect(queryFn).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'GetQueryResults' })]),
+        })
+      );
+
+      expect(results).toEqual({
+        ...getQuerySuccessResponseStub,
+        errors: [],
+        key: 'test-key',
+      });
+    });
+
+    it('should return an error if it timesout before the start queries can get past a rate limiting error', async () => {
+      const { runner } = setupMockedLogsQueryRunner();
+      // first time timeout is called it will not be timed out, second time it will be timed out
+      const timeoutFunc = jest
+        .fn()
+        .mockImplementationOnce(() => false)
+        .mockImplementationOnce(() => true);
+      runner.createTimeoutFn = jest.fn(() => timeoutFunc);
+
+      const options: DataQueryRequest<CloudWatchLogsQuery> = {
+        ...LogsRequestMock,
+        targets: rawLogQueriesStub,
+      };
+
+      // running query fn will always return the rate limit
+      const queryFn = jest.fn().mockReturnValue(of(startQueryErrorWhenRateLimitedResponseStub));
+
+      const response = runner.handleLogQueries(rawLogQueriesStub, options, queryFn);
+      const results = await lastValueFrom(response);
+
+      expect(queryFn).toHaveBeenCalledTimes(2);
+
+      // first call starts the query, but it fails with rate limiting error
+      expect(queryFn).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'StartQuery' })]),
+        })
+      );
+
+      // we retry because the first call failed with the rate limiting error and we haven't timed out yet
+      expect(queryFn).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'StartQuery' })]),
+        })
+      );
+
+      expect(results).toEqual({
+        ...startQueryErrorWhenRateLimitedResponseStub,
+        key: 'test-key',
+        state: 'Done',
+      });
+    });
+
+    it('should return an error if the start query fails with an error that is not a rate limiting error', async () => {
+      const { runner } = setupMockedLogsQueryRunner();
+
+      const options: DataQueryRequest<CloudWatchLogsQuery> = {
+        ...LogsRequestMock,
+        targets: rawLogQueriesStub,
+      };
+
+      const queryFn = jest.fn().mockReturnValueOnce(of(startQueryErrorWhenBadSyntaxResponseStub));
+
+      const response = runner.handleLogQueries(rawLogQueriesStub, options, queryFn);
+      const results = await lastValueFrom(response);
+
+      // only one query is made, it gets the error and returns the error
+      expect(queryFn).toHaveBeenCalledTimes(1);
+      expect(queryFn).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'StartQuery' })]),
+        })
+      );
+      expect(results).toEqual({
+        ...startQueryErrorWhenBadSyntaxResponseStub,
+        key: 'test-key',
+        state: 'Done',
+      });
+    });
+
+    it('should return an error and stop querying if get query results has finished with errors', async () => {
+      const { runner } = setupMockedLogsQueryRunner();
+
+      const options: DataQueryRequest<CloudWatchLogsQuery> = {
+        ...LogsRequestMock,
+        targets: rawLogQueriesStub,
+      };
+
+      const queryFn = jest
+        .fn()
+        .mockReturnValueOnce(of(startQuerySuccessResponseStub))
+        .mockReturnValueOnce(of(getQueryLoadingResponseStub))
+        .mockReturnValueOnce(of(getQueryErrorResponseStub))
+        .mockReturnValueOnce(of(stopQueryResponseStub));
+
+      const response = runner.handleLogQueries(rawLogQueriesStub, options, queryFn);
+      const results = await lastValueFrom(response);
+
+      expect(queryFn).toHaveBeenCalledTimes(4);
+      expect(queryFn).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'StartQuery' })]),
+        })
+      );
+      expect(queryFn).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'GetQueryResults' })]),
+        })
+      );
+      expect(queryFn).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'GetQueryResults' })]),
+        })
+      );
+      expect(queryFn).toHaveBeenNthCalledWith(
+        4,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'StopQuery' })]),
+        })
+      );
+      expect(results).toEqual({
+        ...getQueryErrorResponseStub,
+        key: 'test-key',
+        state: 'Done',
+      });
+    });
+
+    it('should return an error and any partial data if it timesout before getting back all the results', async () => {
+      const { runner } = setupMockedLogsQueryRunner();
+      // mocking running for a while and then timing out
+      const timeoutFunc = jest
+        .fn()
+        .mockImplementationOnce(() => false)
+        .mockImplementationOnce(() => false)
+        .mockImplementationOnce(() => false)
+        .mockImplementationOnce(() => true);
+      runner.createTimeoutFn = jest.fn(() => timeoutFunc);
+
+      const queryFn = jest
+        .fn()
+        .mockReturnValueOnce(of(startQuerySuccessResponseStub))
+        .mockReturnValueOnce(of(getQueryLoadingResponseStub))
+        .mockReturnValueOnce(of(getQueryLoadingResponseStub))
+        .mockReturnValueOnce(of(getQueryLoadingResponseStub))
+        .mockReturnValueOnce(of(getQueryLoadingResponseStub))
+        .mockReturnValueOnce(of(stopQueryResponseStub));
+
+      const options: DataQueryRequest<CloudWatchLogsQuery> = {
+        ...LogsRequestMock,
+        targets: rawLogQueriesStub,
+      };
+      const response = runner.handleLogQueries(rawLogQueriesStub, options, queryFn);
+      const results = await lastValueFrom(response);
+      expect(queryFn).toHaveBeenCalledTimes(6);
+      expect(queryFn).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'StartQuery' })]),
+        })
+      );
+      expect(queryFn).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'GetQueryResults' })]),
+        })
+      );
+      expect(queryFn).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'GetQueryResults' })]),
+        })
+      );
+      expect(queryFn).toHaveBeenNthCalledWith(
+        4,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'GetQueryResults' })]),
+        })
+      );
+      expect(queryFn).toHaveBeenNthCalledWith(
+        5,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'GetQueryResults' })]),
+        })
+      );
+      expect(queryFn).toHaveBeenNthCalledWith(
+        6,
+        expect.objectContaining({
+          targets: expect.arrayContaining([expect.objectContaining({ subtype: 'StopQuery' })]),
+        })
+      );
+      expect(results).toEqual({
+        ...getQueryLoadingResponseStub,
+        errors: [
+          {
+            message:
+              'Error: Query hit timeout before completing after 3 attempts, partial results may be shown. To increase the timeout window update your datasource configuration.',
+            refId: 'A',
+            type: 'timeout',
+          },
+        ],
+        key: 'test-key',
+        state: 'Done',
+      });
     });
   });
 
-  describe('makeLogActionRequest', () => {
-    it('should use the time range from the options if it is available', async () => {
-      const { runner } = setupMockedLogsQueryRunner();
-      const spy = jest.spyOn(runner, 'awsRequest');
-      const from = dateTime(0);
-      const to = dateTime(1000);
-      const options: DataQueryRequest<CloudWatchLogsQuery> = {
-        ...LogsRequestMock,
-        range: { from, to, raw: { from, to } },
+  describe('handleLogAnomaliesQueries', () => {
+    it('appends -anomalies to the requestId', async () => {
+      const { runner, queryMock } = setupMockedLogsQueryRunner();
+      const logsAnomaliesRequestMock: DataQueryRequest<CloudWatchLogsAnomaliesQuery> = {
+        requestId: 'mockId',
+        range: TimeRangeMock,
+        rangeRaw: { from: TimeRangeMock.from, to: TimeRangeMock.to },
+        targets: [
+          {
+            id: '1',
+            logsMode: LogsMode.Anomalies,
+            queryMode: 'Logs',
+            refId: 'A',
+            region: 'us-east-1',
+          },
+        ],
+        interval: '',
+        intervalMs: 0,
+        scopedVars: { __interval: { value: '20s' } },
+        timezone: '',
+        app: '',
+        startTime: 0,
       };
-      await lastValueFrom(runner.makeLogActionRequest('StartQuery', [genMockCloudWatchLogsRequest()], options));
-      expect(spy).toHaveBeenNthCalledWith(1, '/api/ds/query', expect.objectContaining({ from: '0', to: '1000' }), {
-        'X-Cache-Skip': 'true',
+      await expect(
+        runner.handleLogAnomaliesQueries(LogsRequestMock.targets, logsAnomaliesRequestMock, queryMock)
+      ).toEmitValuesWith(() => {
+        expect(queryMock.mock.calls[0][0].requestId).toEqual('mockId-logsAnomalies');
       });
     });
 
-    it('should use the time range from the timeSrv if the time range in the options is not available', async () => {
-      const timeSrv = getTimeSrv();
-      timeSrv.timeRange = jest.fn().mockReturnValue({
-        from: dateTime(1111),
-        to: dateTime(2222),
-        raw: { from: dateTime(1111), to: dateTime(2222) },
+    it('processes log trend histogram data correctly', async () => {
+      const response = structuredClone(anomaliesQueryResponse);
+
+      convertTrendHistogramToSparkline(response);
+
+      expect(response.data[0].fields.find((field: Field) => field.name === 'Log trend')).toEqual({
+        name: 'Log trend',
+        type: 'frame',
+        config: {
+          custom: {
+            drawStyle: 'bars',
+            cellOptions: {
+              type: 'sparkline',
+              hideValue: true,
+            },
+          },
+        },
+        values: [
+          {
+            name: 'Trend_row_0',
+            length: 8,
+            fields: [
+              {
+                name: 'time',
+                type: 'time',
+                values: [
+                  1760454000000, 1760544000000, 1760724000000, 1761282000000, 1761300000000, 1761354000000,
+                  1761372000000, 1761390000000,
+                ],
+                config: {},
+              },
+              {
+                name: 'value',
+                type: 'number',
+                values: [81, 35, 35, 36, 36, 36, 72, 36],
+                config: {},
+              },
+            ],
+          },
+          {
+            name: 'Trend_row_1',
+            length: 2,
+            fields: [
+              {
+                name: 'time',
+                type: 'time',
+                values: [1760687665000, 1760687670000],
+                config: {},
+              },
+              {
+                name: 'value',
+                type: 'number',
+                values: [3, 3],
+                config: {},
+              },
+            ],
+          },
+        ],
       });
-      const { runner } = setupMockedLogsQueryRunner({ timeSrv });
-      const spy = jest.spyOn(runner, 'awsRequest');
-      await lastValueFrom(runner.makeLogActionRequest('StartQuery', [genMockCloudWatchLogsRequest()]));
-      expect(spy).toHaveBeenNthCalledWith(1, '/api/ds/query', expect.objectContaining({ from: '1111', to: '2222' }), {
-        'X-Cache-Skip': 'true',
-      });
+    });
+
+    it('replaces log trend histogram field at the same index in the frame', () => {
+      const response = structuredClone(anomaliesQueryResponse);
+      convertTrendHistogramToSparkline(response);
+      expect(response.data[0].fields[4].name).toEqual('Log trend');
+    });
+
+    it('ignore invalid timestamps in log trend histogram', () => {
+      const response = structuredClone(anomaliesQueryResponse);
+
+      response.data[0].fields[4].values[1] = {
+        invalidTimestamp: 3,
+        '1760687670000': 3,
+        anotherInvalidTimestamp: 2,
+        '1760687670010': 3,
+      };
+
+      convertTrendHistogramToSparkline(response);
+
+      expect(response.data[0].fields[4].values[1].fields[0].values.length).toEqual(2);
+      expect(response.data[0].fields[4].values[1].fields[1].values.length).toEqual(2);
     });
   });
 });
+
+const rawLogQueriesStub: CloudWatchLogsQuery[] = [
+  {
+    refId: 'A',
+    id: '',
+    region: 'us-east-2',
+    logGroups: [
+      {
+        accountId: 'accountId',
+        arn: 'somearn',
+        name: 'nameOfLogGroup',
+      },
+    ],
+    queryMode: 'Logs',
+    expression: 'fields @timestamp, @message |\n sort @timestamp desc |\n limit 20',
+    datasource: {
+      type: 'cloudwatch',
+      uid: 'ff87aa43-7618-42ee-ae9c-4a405378728b',
+    },
+  },
+];
+
+const startQuerySuccessResponseStub = {
+  data: [
+    {
+      name: 'A',
+      refId: 'A',
+      meta: {
+        typeVersion: [0, 0],
+        custom: { Region: 'us-east-2' },
+      },
+      fields: [
+        {
+          name: 'queryId',
+          type: 'string',
+          typeInfo: { frame: 'string' },
+          config: {},
+          values: ['123'],
+          entities: {},
+        },
+      ],
+      length: 1,
+      state: 'Done',
+    },
+  ],
+};
+
+const startQueryErrorWhenRateLimitedResponseStub = {
+  data: [],
+  errors: [
+    {
+      refId: 'A',
+      message:
+        'failed to execute log action with subtype: StartQuery: LimitExceededException: LimitExceededException: Account maximum query concurrency limit of [30] reached.',
+      status: 500,
+    },
+  ],
+};
+
+const startQueryErrorWhenThrottlingResponseStub = {
+  data: [],
+  errors: [
+    {
+      refId: 'A',
+      message:
+        'failed to execute log action with subtype: StartQuery: ThrottlingException: ThrottlingException: Rate exceeded',
+      status: 500,
+    },
+  ],
+};
+
+const startQueryErrorWhenBadSyntaxResponseStub = {
+  data: [],
+  state: 'Error',
+  errors: [
+    {
+      refId: 'A',
+      message:
+        'failed to execute log action with subtype: StartQuery: MalformedQueryException: unexpected symbol found bad at line 1 and position 843',
+      status: 500,
+    },
+  ],
+};
+
+const getQuerySuccessResponseStub = {
+  data: [
+    {
+      name: 'A',
+      refId: 'A',
+      meta: {
+        custom: { Status: 'Complete' },
+        typeVersion: [0, 0],
+        stats: [
+          { displayName: 'Bytes scanned', value: 1000 },
+          { displayName: 'Records scanned', value: 1000 },
+          { displayName: 'Records matched', value: 1000 },
+        ],
+      },
+      fields: [
+        {
+          name: '@message',
+          type: 'string',
+          typeInfo: { frame: 'string' },
+          config: {},
+          values: ['some log'],
+        },
+      ],
+      length: 1,
+      state: 'Done',
+    },
+  ],
+  state: 'Done',
+};
+
+const getQueryLoadingResponseStub = {
+  data: [
+    {
+      name: 'A',
+      refId: 'A',
+      meta: {
+        custom: { Status: 'Running' },
+        typeVersion: [0, 0],
+        stats: [
+          { displayName: 'Bytes scanned', value: 1 },
+          { displayName: 'Records scanned', value: 1 },
+          { displayName: 'Records matched', value: 1 },
+        ],
+      },
+      fields: [
+        {
+          name: '@message',
+          type: 'string',
+          typeInfo: { frame: 'string' },
+          config: {},
+          values: ['some log'],
+        },
+      ],
+      length: 1,
+      state: 'Done',
+    },
+  ],
+  state: 'Done',
+};
+
+const getQueryErrorResponseStub = {
+  data: [],
+  errors: [
+    {
+      refId: 'A',
+      message: 'failed to execute log action with subtype: GetQueryResults: AWS is down',
+      status: 500,
+    },
+  ],
+  state: 'Error',
+};
+
+const stopQueryResponseStub = {
+  state: 'Done',
+};
+
+const anomaliesQueryResponse: DataQueryResponse = {
+  data: [
+    {
+      name: 'Logs anomalies',
+      refId: 'A',
+      meta: {
+        preferredVisualisationType: 'table',
+      },
+      fields: [
+        {
+          name: 'state',
+          type: 'string',
+          typeInfo: {
+            frame: 'string',
+          },
+          config: {
+            displayName: 'State',
+          },
+          values: ['Active', 'Active'],
+          entities: {},
+        },
+        {
+          name: 'description',
+          type: 'string',
+          typeInfo: {
+            frame: 'string',
+          },
+          config: {
+            displayName: 'Anomaly',
+          },
+          values: [
+            '50.0% increase in count of value "405" for "code"-3',
+            '151.3% increase in count of value 1 for "dotnet_collection_count_total"-3',
+          ],
+          entities: {},
+        },
+        {
+          name: 'priority',
+          type: 'string',
+          typeInfo: {
+            frame: 'string',
+          },
+          config: {
+            displayName: 'Priority',
+          },
+          values: ['MEDIUM', 'MEDIUM'],
+          entities: {},
+        },
+        {
+          name: 'patternString',
+          type: 'string',
+          typeInfo: {
+            frame: 'string',
+          },
+          config: {
+            displayName: 'Log Pattern',
+          },
+          values: [
+            '{"ClusterName":"PetSite","Namespace":"default","Service":"service-petsite","Timestamp":<*>,"Version":<*>,"code":<*>,"container_name":"petsite","http_requests_received_total":<*>,"instance":<*>:<*>,"job":"kubernetes-service-endpoints","kubernetes_node":<*>,"method":<*>,"pod_name":<*>,"prom_metric_type":"counter"}',
+            '{"ClusterName":"PetSite","Namespace":"default","Service":"service-petsite","Timestamp":<*>,"Version":<*>,"container_name":"petsite","dotnet_collection_count_total":<*>,"generation":<*>,"instance":<*>:<*>,"job":"kubernetes-service-endpoints","kubernetes_node":<*>,"pod_name":<*>,"prom_metric_type":"counter"}',
+          ],
+          entities: {},
+        },
+        {
+          name: 'logTrend',
+          type: 'other',
+          typeInfo: {
+            frame: 'json.RawMessage',
+            nullable: true,
+          },
+          config: {
+            displayName: 'Log Trend',
+          },
+          values: [
+            {
+              '1760454000000': 81,
+              '1760544000000': 35,
+              '1760724000000': 35,
+              '1761282000000': 36,
+              '1761300000000': 36,
+              '1761354000000': 36,
+              '1761372000000': 72,
+              '1761390000000': 36,
+            },
+            {
+              '1760687665000': 3,
+              '1760687670000': 3,
+            },
+          ],
+          entities: {},
+        },
+        {
+          name: 'firstSeen',
+          type: 'time',
+          typeInfo: {
+            frame: 'time.Time',
+          },
+          config: {
+            displayName: 'First seen',
+          },
+          values: [1760462460000, 1760687640000],
+          entities: {},
+        },
+        {
+          name: 'lastSeen',
+          type: 'time',
+          typeInfo: {
+            frame: 'time.Time',
+          },
+          config: {
+            displayName: 'Last seen',
+          },
+          values: [1761393660000, 1760687940000],
+          entities: {},
+        },
+        {
+          name: 'suppressed',
+          type: 'boolean',
+          typeInfo: {
+            frame: 'bool',
+          },
+          config: {
+            displayName: 'Suppressed?',
+          },
+          values: [false, false],
+          entities: {},
+        },
+        {
+          name: 'logGroupArnList',
+          type: 'string',
+          typeInfo: {
+            frame: 'string',
+          },
+          config: {
+            displayName: 'Log Groups',
+          },
+          values: [
+            'arn:aws:logs:us-east-2:569069006612:log-group:/aws/containerinsights/PetSite/prometheus',
+            'arn:aws:logs:us-east-2:569069006612:log-group:/aws/containerinsights/PetSite/prometheus',
+          ],
+          entities: {},
+        },
+        {
+          name: 'anomalyArn',
+          type: 'string',
+          typeInfo: {
+            frame: 'string',
+          },
+          config: {
+            displayName: 'Anomaly Arn',
+          },
+          values: [
+            'arn:aws:logs:us-east-2:569069006612:anomaly-detector:dca8b129-d09d-4167-86e9-7bf62ede2f95',
+            'arn:aws:logs:us-east-2:569069006612:anomaly-detector:dca8b129-d09d-4167-86e9-7bf62ede2f95',
+          ],
+          entities: {},
+        },
+      ],
+      length: 2,
+    },
+  ],
+};

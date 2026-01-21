@@ -1,15 +1,15 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { of } from 'rxjs';
 import { TestProvider } from 'test/helpers/TestProvider';
 
 import { selectors } from '@grafana/e2e-selectors';
 import { locationService } from '@grafana/runtime';
 
+import { createFetchResponse } from '../../../test/helpers/createFetchResponse';
 import { backendSrv } from '../../core/services/backend_srv';
 
 import { PlaylistNewPage } from './PlaylistNewPage';
-import { Playlist } from './types';
 
 jest.mock('@grafana/runtime', () => ({
   ...jest.requireActual('@grafana/runtime'),
@@ -22,10 +22,10 @@ jest.mock('app/core/components/TagFilter/TagFilter', () => ({
   },
 }));
 
-function getTestContext({ name, interval, items }: Partial<Playlist> = {}) {
+function getTestContext() {
   jest.clearAllMocks();
-  const playlist = { name, items, interval } as unknown as Playlist;
-  const backendSrvMock = jest.spyOn(backendSrv, 'post');
+  const backendSrvMock = jest.spyOn(backendSrv, 'fetch').mockImplementation(() => of(createFetchResponse({})));
+  jest.spyOn(backendSrv, 'search').mockResolvedValue([]);
 
   const { rerender } = render(
     <TestProvider>
@@ -33,19 +33,15 @@ function getTestContext({ name, interval, items }: Partial<Playlist> = {}) {
     </TestProvider>
   );
 
-  return { playlist, rerender, backendSrvMock };
+  return { rerender, backendSrvMock };
 }
 
 describe('PlaylistNewPage', () => {
-  beforeEach(() => {
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-  });
-
   describe('when mounted', () => {
-    it('then header should be correct', () => {
+    it('then header should be correct', async () => {
       getTestContext();
 
-      expect(screen.getByRole('heading', { name: /new playlist/i })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: /new playlist/i })).toBeInTheDocument();
     });
   });
 
@@ -58,12 +54,20 @@ describe('PlaylistNewPage', () => {
       await userEvent.type(screen.getByRole('textbox', { name: selectors.pages.PlaylistForm.name }), 'A new name');
       fireEvent.submit(screen.getByRole('button', { name: /save/i }));
       await waitFor(() => expect(backendSrvMock).toHaveBeenCalledTimes(1));
-      expect(backendSrvMock).toHaveBeenCalledWith('/api/playlists', {
-        name: 'A new name',
-        interval: '5m',
-        items: [],
+      expect(backendSrvMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            spec: {
+              title: 'A new name',
+              interval: '5m',
+              items: [],
+            },
+          }),
+        })
+      );
+      await waitFor(() => {
+        expect(locationService.getLocation().pathname).toEqual('/playlists');
       });
-      expect(locationService.getLocation().pathname).toEqual('/playlists');
     });
   });
 });

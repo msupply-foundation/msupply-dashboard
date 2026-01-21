@@ -4,21 +4,51 @@
 //     public/app/plugins/gen.go
 // Using jennies:
 //     TSTypesJenny
-//     PluginTSTypesJenny
+//     PluginTsTypesJenny
 //
 // Run 'make gen-cue' from repository root to regenerate.
 
 import * as common from '@grafana/schema';
 
-export const PanelCfgModelVersion = Object.freeze([0, 0]);
-
-export interface PanelOptions {
+export interface Options {
+  controlsStorageKey?: string;
   dedupStrategy: common.LogsDedupStrategy;
+  detailsMode?: ('inline' | 'sidebar');
+  displayedFields?: Array<string>;
+  enableInfiniteScrolling?: boolean;
   enableLogDetails: boolean;
+  fontSize?: ('default' | 'small');
+  isFilterLabelActive?: unknown;
+  logLineMenuCustomItems?: unknown;
+  logRowMenuIconsAfter?: unknown;
+  logRowMenuIconsBefore?: unknown;
+  noInteractions?: boolean;
+  /**
+   * TODO: figure out how to define callbacks
+   */
+  onClickFilterLabel?: unknown;
+  onClickFilterOutLabel?: unknown;
+  onClickFilterOutString?: unknown;
+  onClickFilterString?: unknown;
+  onClickHideField?: unknown;
+  onClickShowField?: unknown;
+  onLogOptionsChange?: unknown;
+  onNewLogsReceived?: unknown;
   prettifyLogMessage: boolean;
+  setDisplayedFields?: unknown;
   showCommonLabels: boolean;
+  showControls?: boolean;
+  showFieldSelector?: boolean;
   showLabels: boolean;
+  showLogAttributes?: boolean;
+  showLogContextToggle: boolean;
   showTime: boolean;
   sortOrder: common.LogsSortOrder;
+  syntaxHighlighting?: boolean;
+  timestampResolution?: ('ms' | 'ns');
   wrapLogMessage: boolean;
 }
+
+export const defaultOptions: Partial<Options> = {
+  displayedFields: [],
+};

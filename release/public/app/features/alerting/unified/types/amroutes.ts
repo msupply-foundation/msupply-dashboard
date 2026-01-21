@@ -6,11 +6,12 @@ export interface FormAmRoute {
   continue: boolean;
   receiver: string;
   overrideGrouping: boolean;
-  groupBy: string[];
+  groupBy?: string[];
   overrideTimings: boolean;
   groupWaitValue: string;
   groupIntervalValue: string;
   repeatIntervalValue: string;
   muteTimeIntervals: string[];
+  activeTimeIntervals: string[];
   routes: FormAmRoute[];
 }

@@ -1,43 +1,41 @@
 import { PanelPlugin } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { commonOptionsBuilder } from '@grafana/ui';
 
-import { AutoEditor } from './AutoEditor';
-import { ManualEditor } from './ManualEditor';
-import { XYChartPanel2 } from './XYChartPanel2';
+import { SeriesEditor } from './SeriesEditor';
+import { XYChartPanel2 } from './XYChartPanel';
 import { getScatterFieldConfig } from './config';
-import { defaultScatterFieldConfig, PanelOptions, ScatterFieldConfig } from './types';
+import { xyChartMigrationHandler } from './migrations';
+import { FieldConfig, defaultFieldConfig, Options } from './panelcfg.gen';
 
-export const plugin = new PanelPlugin<PanelOptions, ScatterFieldConfig>(XYChartPanel2)
-  .useFieldConfig(getScatterFieldConfig(defaultScatterFieldConfig))
+export const plugin = new PanelPlugin<Options, FieldConfig>(XYChartPanel2)
+  // .setPanelChangeHandler(xyChartChangeHandler)
+  .setMigrationHandler(xyChartMigrationHandler)
+  .useFieldConfig(getScatterFieldConfig(defaultFieldConfig))
   .setPanelOptions((builder) => {
+    const category = [t('xychart.category-xychart', 'XY Chart')];
     builder
       .addRadio({
-        path: 'seriesMapping',
-        name: 'Series mapping',
+        path: 'mapping',
+        name: t('xychart.name-series-mapping', 'Series mapping'),
+        category,
         defaultValue: 'auto',
         settings: {
           options: [
-            { value: 'auto', label: 'Auto', description: 'No changes to saved model since 8.0' },
-            { value: 'manual', label: 'Manual' },
+            { value: 'auto', label: t('xychart.series-mapping-options.label-auto', 'Auto') },
+            { value: 'manual', label: t('xychart.series-mapping-options.label-manual', 'Manual') },
           ],
         },
-      })
-      .addCustomEditor({
-        id: 'xyPlotConfig',
-        path: 'dims',
-        name: '',
-        editor: AutoEditor,
-        showIf: (cfg) => cfg.seriesMapping === 'auto',
       })
       .addCustomEditor({
         id: 'series',
         path: 'series',
         name: '',
-        defaultValue: [],
-        editor: ManualEditor,
-        showIf: (cfg) => cfg.seriesMapping === 'manual',
+        category,
+        editor: SeriesEditor,
+        defaultValue: [{}],
       });
 
-    commonOptionsBuilder.addTooltipOptions(builder);
+    commonOptionsBuilder.addTooltipOptions(builder, true);
     commonOptionsBuilder.addLegendOptions(builder);
   });

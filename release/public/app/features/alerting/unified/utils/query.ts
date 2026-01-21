@@ -1,12 +1,12 @@
 import { DataSourceInstanceSettings } from '@grafana/data';
+import { PromQuery } from '@grafana/prometheus';
 import { DataQuery } from '@grafana/schema';
 import { LokiQuery } from 'app/plugins/datasource/loki/types';
-import { PromQuery } from 'app/plugins/datasource/prometheus/types';
 import { CombinedRule } from 'app/types/unified-alerting';
 import { AlertQuery } from 'app/types/unified-alerting-dto';
 
-import { isCloudRulesSource, isGrafanaRulesSource } from './datasource';
-import { isGrafanaRulerRule } from './rules';
+import { isCloudRulesSource, isSupportedExternalRulesSourceType } from './datasource';
+import { rulerRuleType } from './rules';
 
 export function alertRuleToQueries(combinedRule: CombinedRule | undefined | null): AlertQuery[] {
   if (!combinedRule) {
@@ -15,10 +15,8 @@ export function alertRuleToQueries(combinedRule: CombinedRule | undefined | null
   const { namespace, rulerRule } = combinedRule;
   const { rulesSource } = namespace;
 
-  if (isGrafanaRulesSource(rulesSource)) {
-    if (isGrafanaRulerRule(rulerRule)) {
-      return rulerRule.grafana_alert.data;
-    }
+  if (rulerRuleType.grafana.rule(rulerRule)) {
+    return rulerRule.grafana_alert.data;
   }
 
   if (isCloudRulesSource(rulesSource)) {
@@ -44,28 +42,14 @@ export function dataQueryToAlertQuery(dataQuery: DataQuery, dataSourceUid: strin
 }
 
 function cloudAlertRuleToModel(dsSettings: DataSourceInstanceSettings, rule: CombinedRule): DataQuery {
-  const refId = 'A';
-
-  switch (dsSettings.type) {
-    case 'prometheus': {
-      const query: PromQuery = {
-        refId,
-        expr: rule.query,
-      };
-
-      return query;
-    }
-
-    case 'loki': {
-      const query: LokiQuery = {
-        refId,
-        expr: rule.query,
-      };
-
-      return query;
-    }
-
-    default:
-      throw new Error(`Query for datasource type ${dsSettings.type} is currently not supported by cloud alert rules.`);
+  if (!isSupportedExternalRulesSourceType(dsSettings.type)) {
+    throw new Error(`Query for datasource type ${dsSettings.type} is currently not supported by cloud alert rules.`);
   }
+
+  const query: LokiQuery | PromQuery = {
+    refId: 'A',
+    expr: rule.query,
+  };
+
+  return query;
 }

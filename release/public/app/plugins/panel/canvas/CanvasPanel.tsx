@@ -1,20 +1,21 @@
-import React, { Component } from 'react';
+import * as React from 'react';
+import { Component } from 'react';
 import { ReplaySubject, Subscription } from 'rxjs';
 
 import { PanelProps } from '@grafana/data';
-import { locationService } from '@grafana/runtime/src';
+import { locationService } from '@grafana/runtime';
 import { PanelContext, PanelContextRoot } from '@grafana/ui';
-import { CanvasFrameOptions } from 'app/features/canvas';
+import { CanvasFrameOptions } from 'app/features/canvas/frame';
 import { ElementState } from 'app/features/canvas/runtime/element';
 import { Scene } from 'app/features/canvas/runtime/scene';
 import { PanelEditEnteredEvent, PanelEditExitedEvent } from 'app/types/events';
 
-import { InlineEdit } from './InlineEdit';
-import { SetBackground } from './SetBackground';
-import { PanelOptions } from './models.gen';
-import { AnchorPoint, CanvasTooltipPayload } from './types';
+import { SetBackground } from './components/SetBackground';
+import { InlineEdit } from './editor/inline/InlineEdit';
+import { Options } from './panelcfg.gen';
+import { AnchorPoint, CanvasTooltipPayload, ConnectionState } from './types';
 
-interface Props extends PanelProps<PanelOptions> {}
+interface Props extends PanelProps<Options> {}
 
 interface State {
   refresh: number;
@@ -27,6 +28,7 @@ interface State {
 export interface InstanceState {
   scene: Scene;
   selected: ElementState[];
+  selectedConnection?: ConnectionState;
 }
 
 export interface SelectionAction {
@@ -43,10 +45,11 @@ export const activePanelSubject = new ReplaySubject<SelectionAction>(1);
 export class CanvasPanel extends Component<Props, State> {
   declare context: React.ContextType<typeof PanelContextRoot>;
   static contextType = PanelContextRoot;
-  panelContext: PanelContext = {} as PanelContext;
+  panelContext: PanelContext | undefined;
 
   readonly scene: Scene;
   private subs = new Subscription();
+  private queryEditorLoaded = false;
   needsReload = false;
   isEditing = locationService.getSearchObject().editPanel !== undefined;
 
@@ -62,19 +65,14 @@ export class CanvasPanel extends Component<Props, State> {
 
     // Only the initial options are ever used.
     // later changes are all controlled by the scene
-    this.scene = new Scene(
-      this.props.options.root,
-      this.props.options.inlineEditing,
-      this.props.options.showAdvancedTypes,
-      this.onUpdateScene,
-      this
-    );
+    this.scene = new Scene(this.props.options, this.onUpdateScene, this);
     this.scene.updateSize(props.width, props.height);
     this.scene.updateData(props.data);
     this.scene.inlineEditingCallback = this.openInlineEdit;
     this.scene.setBackgroundCallback = this.openSetBackground;
     this.scene.tooltipCallback = this.tooltipCallback;
     this.scene.moveableActionCallback = this.moveableActionCallback;
+    this.scene.actionConfirmationCallback = this.actionConfirmationCallback;
 
     this.subs.add(
       this.props.eventBus.subscribe(PanelEditEnteredEvent, (evt: PanelEditEnteredEvent) => {
@@ -89,11 +87,6 @@ export class CanvasPanel extends Component<Props, State> {
         if (this.props.id === evt.payload) {
           this.needsReload = true;
           this.scene.clearCurrentSelection();
-          this.scene.load(
-            this.props.options.root,
-            this.props.options.inlineEditing,
-            this.props.options.showAdvancedTypes
-          );
         }
       })
     );
@@ -103,36 +96,90 @@ export class CanvasPanel extends Component<Props, State> {
     activeCanvasPanel = this;
     activePanelSubject.next({ panel: this });
 
-    this.panelContext = this.context as PanelContext;
+    this.panelContext = this.context;
+
+    if (this.scene.data) {
+      this.scene.updateData(this.scene.data);
+    }
+
     if (this.panelContext.onInstanceStateChange) {
-      this.panelContext.onInstanceStateChange({
-        scene: this.scene,
-        layer: this.scene.root,
-      });
+      this.panelContext.onInstanceStateChange({ scene: this.scene, layer: this.scene.root });
 
       this.subs.add(
         this.scene.selection.subscribe({
           next: (v) => {
-            this.panelContext.onInstanceStateChange!({
-              scene: this.scene,
-              selected: v,
-              layer: this.scene.root,
-            });
-
-            activeCanvasPanel = this;
-            activePanelSubject.next({ panel: this });
+            if (v.length) {
+              activeCanvasPanel = this;
+              activePanelSubject.next({ panel: this });
+            }
 
             canvasInstances.forEach((canvasInstance) => {
               if (canvasInstance !== activeCanvasPanel) {
                 canvasInstance.scene.clearCurrentSelection(true);
+                canvasInstance.scene.connections.select(undefined);
               }
+            });
+
+            this.panelContext?.onInstanceStateChange!({ scene: this.scene, selected: v, layer: this.scene.root });
+          },
+        })
+      );
+
+      this.subs.add(
+        this.scene.connections.selection.subscribe({
+          next: (v) => {
+            if (!this.context.instanceState) {
+              return;
+            }
+
+            this.panelContext?.onInstanceStateChange!({
+              scene: this.scene,
+              selected: this.context.instanceState.selected,
+              selectedConnection: v,
+              layer: this.scene.root,
+            });
+
+            if (v) {
+              activeCanvasPanel = this;
+              activePanelSubject.next({ panel: this });
+            }
+
+            canvasInstances.forEach((canvasInstance) => {
+              if (canvasInstance !== activeCanvasPanel) {
+                canvasInstance.scene.clearCurrentSelection(true);
+                canvasInstance.scene.connections.select(undefined);
+              }
+            });
+
+            setTimeout(() => {
+              this.forceUpdate();
             });
           },
         })
       );
     }
 
+    // Reset the size update flag when entering edit mode
+    if (this.isEditing) {
+      this.queryEditorLoaded = false;
+    }
+
     canvasInstances.push(this);
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    // Check if we're in edit mode and dimensions have changed (indicating query editor loaded)
+    if (this.isEditing && !this.queryEditorLoaded) {
+      const dimensionsChanged = prevProps.width !== this.props.width || prevProps.height !== this.props.height;
+
+      if (dimensionsChanged) {
+        this.queryEditorLoaded = true;
+        // Small delay to ensure layout is completely settled
+        requestAnimationFrame(() => {
+          this.scene.updateSize(this.props.width, this.props.height);
+        });
+      }
+    }
   }
 
   componentWillUnmount() {
@@ -147,10 +194,7 @@ export class CanvasPanel extends Component<Props, State> {
   // even the editor gets current state from the same scene instance!
   onUpdateScene = (root: CanvasFrameOptions) => {
     const { onOptionsChange, options } = this.props;
-    onOptionsChange({
-      ...options,
-      root,
-    });
+    onOptionsChange({ ...options, root });
 
     this.setState({ refresh: this.state.refresh + 1 });
     activePanelSubject.next({ panel: this });
@@ -195,14 +239,27 @@ export class CanvasPanel extends Component<Props, State> {
     const inlineEditingSwitched = this.props.options.inlineEditing !== nextProps.options.inlineEditing;
     const shouldShowAdvancedTypesSwitched =
       this.props.options.showAdvancedTypes !== nextProps.options.showAdvancedTypes;
-    if (this.needsReload || inlineEditingSwitched || shouldShowAdvancedTypesSwitched) {
+    const panZoomSwitched = this.props.options.panZoom !== nextProps.options.panZoom;
+    const zoomToContentSwitched = this.props.options.zoomToContent !== nextProps.options.zoomToContent;
+    const tooltipModeSwitched = this.props.options.tooltip?.mode !== nextProps.options.tooltip?.mode;
+    const tooltipDisableForOneClickSwitched =
+      this.props.options.tooltip?.disableForOneClick !== nextProps.options.tooltip?.disableForOneClick;
+    if (
+      this.needsReload ||
+      inlineEditingSwitched ||
+      shouldShowAdvancedTypesSwitched ||
+      panZoomSwitched ||
+      zoomToContentSwitched ||
+      tooltipModeSwitched ||
+      tooltipDisableForOneClickSwitched
+    ) {
       if (inlineEditingSwitched) {
         // Replace scene div to prevent selecto instance leaks
         this.scene.revId++;
       }
 
       this.needsReload = false;
-      this.scene.load(nextProps.options.root, nextProps.options.inlineEditing, nextProps.options.showAdvancedTypes);
+      this.scene.load(nextProps.options, nextProps.options.inlineEditing);
       this.scene.updateSize(nextProps.width, nextProps.height);
       this.scene.updateData(nextProps.data);
       changed = true;
@@ -238,12 +295,16 @@ export class CanvasPanel extends Component<Props, State> {
   };
 
   tooltipCallback = (tooltip: CanvasTooltipPayload | undefined) => {
-    this.scene.tooltip = tooltip;
+    this.scene.tooltipPayload = tooltip;
     this.forceUpdate();
   };
 
   moveableActionCallback = (updated: boolean) => {
     this.setState({ moveableAction: updated });
+    this.forceUpdate();
+  };
+
+  actionConfirmationCallback = () => {
     this.forceUpdate();
   };
 

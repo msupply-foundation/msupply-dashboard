@@ -1,15 +1,15 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { openMenu, select } from 'react-select-event';
 
-import { getTimeSrv } from 'app/features/dashboard/services/TimeSrv';
-import { TemplateSrv } from 'app/features/templating/template_srv';
+import { CustomVariableModel, getDefaultTimeRange } from '@grafana/data';
+import { selectors } from '@grafana/e2e-selectors';
+import { getTemplateSrv } from '@grafana/runtime';
 
-import { createMockDatasource } from '../__mocks__/cloudMonitoringDatasource';
-import { createMockMetricDescriptor } from '../__mocks__/cloudMonitoringMetricDescriptor';
-import { createMockTimeSeriesList } from '../__mocks__/cloudMonitoringQuery';
-import { MetricKind, PreprocessorType } from '../types';
+import { createMockDatasource } from '../mocks/cloudMonitoringDatasource';
+import { createMockMetricDescriptor } from '../mocks/cloudMonitoringMetricDescriptor';
+import { createMockTimeSeriesList } from '../mocks/cloudMonitoringQuery';
+import { PreprocessorType, MetricKind, ValueTypes } from '../types/query';
 
 import { defaultTimeSeriesList } from './MetricQueryEditor';
 import { VisualMetricQueryEditor } from './VisualMetricQueryEditor';
@@ -22,19 +22,49 @@ const defaultProps = {
   onChangeAliasBy: jest.fn(),
 };
 
+let getTempVars = () => [] as CustomVariableModel[];
+let replace = () => '';
+
+jest.mock('@grafana/runtime', () => {
+  return {
+    __esModule: true,
+    ...jest.requireActual('@grafana/runtime'),
+    getTemplateSrv: () => ({
+      replace: replace,
+      getVariables: getTempVars,
+      updateTimeRange: jest.fn(),
+      containsTemplate: jest.fn(),
+    }),
+  };
+});
+
 describe('VisualMetricQueryEditor', () => {
+  beforeEach(() => {
+    getTempVars = () => [] as CustomVariableModel[];
+    replace = () => '';
+  });
   it('renders metrics fields', async () => {
     const onChange = jest.fn();
     const query = createMockTimeSeriesList();
     const datasource = createMockDatasource();
+    const range = getDefaultTimeRange();
 
-    render(<VisualMetricQueryEditor {...defaultProps} onChange={onChange} datasource={datasource} query={query} />);
+    render(
+      <VisualMetricQueryEditor
+        {...defaultProps}
+        onChange={onChange}
+        datasource={datasource}
+        query={query}
+        range={range}
+      />
+    );
 
     expect(await screen.findByLabelText('Service')).toBeInTheDocument();
     expect(await screen.findByLabelText('Metric name')).toBeInTheDocument();
   });
 
   it('can select a service', async () => {
+    replace = (target?: string) => target || '';
     const onChange = jest.fn();
     const query = createMockTimeSeriesList();
     const mockMetricDescriptor = createMockMetricDescriptor();
@@ -42,30 +72,53 @@ describe('VisualMetricQueryEditor', () => {
       getMetricTypes: jest.fn().mockResolvedValue([mockMetricDescriptor]),
       getLabels: jest.fn().mockResolvedValue([]),
     });
+    const range = getDefaultTimeRange();
 
-    render(<VisualMetricQueryEditor {...defaultProps} onChange={onChange} datasource={datasource} query={query} />);
+    render(
+      <VisualMetricQueryEditor
+        {...defaultProps}
+        onChange={onChange}
+        datasource={datasource}
+        query={query}
+        range={range}
+      />
+    );
 
     const service = await screen.findByLabelText('Service');
     openMenu(service);
     await act(async () => {
       await select(service, 'Srv', { container: document.body });
     });
-    expect(onChange).toBeCalledWith(
+    expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ filters: ['metric.type', '=', mockMetricDescriptor.type] })
     );
   });
 
   it('can select a metric name', async () => {
+    replace = (target?: string) => target || '';
     const onChange = jest.fn();
     const query = createMockTimeSeriesList();
-    const mockMetricDescriptor = createMockMetricDescriptor({ displayName: 'metricName_test', type: 'test_type' });
+    const mockMetricDescriptor = createMockMetricDescriptor({
+      displayName: 'metricName_test',
+      type: 'test_type',
+      valueType: ValueTypes.DOUBLE,
+    });
     const datasource = createMockDatasource({
       getMetricTypes: jest.fn().mockResolvedValue([createMockMetricDescriptor(), mockMetricDescriptor]),
       filterMetricsByType: jest.fn().mockResolvedValue([createMockMetricDescriptor(), mockMetricDescriptor]),
       getLabels: jest.fn().mockResolvedValue([]),
     });
+    const range = getDefaultTimeRange();
 
-    render(<VisualMetricQueryEditor {...defaultProps} onChange={onChange} datasource={datasource} query={query} />);
+    render(
+      <VisualMetricQueryEditor
+        {...defaultProps}
+        onChange={onChange}
+        datasource={datasource}
+        query={query}
+        range={range}
+      />
+    );
 
     const service = await screen.findByLabelText('Service');
     openMenu(service);
@@ -79,8 +132,57 @@ describe('VisualMetricQueryEditor', () => {
     await act(async () => {
       await select(metricName, 'metricName_test', { container: document.body });
     });
-    expect(onChange).toBeCalledWith(
-      expect.objectContaining({ filters: ['metric.type', '=', mockMetricDescriptor.type] })
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: ['metric.type', '=', mockMetricDescriptor.type],
+        crossSeriesReducer: 'REDUCE_NONE',
+      })
+    );
+  });
+
+  it('can select a metric name with DISTRIBUTION valueType', async () => {
+    replace = (target?: string) => target || '';
+    const onChange = jest.fn();
+    const query = createMockTimeSeriesList();
+    const mockMetricDescriptor = createMockMetricDescriptor({
+      displayName: 'metricName_test',
+      type: 'test_type',
+      valueType: ValueTypes.DISTRIBUTION,
+    });
+    const datasource = createMockDatasource({
+      getMetricTypes: jest.fn().mockResolvedValue([createMockMetricDescriptor(), mockMetricDescriptor]),
+      filterMetricsByType: jest.fn().mockResolvedValue([createMockMetricDescriptor(), mockMetricDescriptor]),
+      getLabels: jest.fn().mockResolvedValue([]),
+    });
+    const range = getDefaultTimeRange();
+
+    render(
+      <VisualMetricQueryEditor
+        {...defaultProps}
+        onChange={onChange}
+        datasource={datasource}
+        query={query}
+        range={range}
+      />
+    );
+
+    const service = await screen.findByLabelText('Service');
+    openMenu(service);
+    await act(async () => {
+      await select(service, 'Srv', { container: document.body });
+    });
+    const metricName = await screen.findByLabelText('Metric name');
+    openMenu(metricName);
+    await userEvent.type(metricName, 'test');
+    await waitFor(() => expect(document.body).toHaveTextContent('metricName_test'));
+    await act(async () => {
+      await select(metricName, 'metricName_test', { container: document.body });
+    });
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: ['metric.type', '=', mockMetricDescriptor.type],
+        crossSeriesReducer: 'REDUCE_MEAN',
+      })
     );
   });
 
@@ -112,14 +214,24 @@ describe('VisualMetricQueryEditor', () => {
       ]),
     });
     const query = createMockTimeSeriesList();
+    const range = getDefaultTimeRange();
 
-    render(<VisualMetricQueryEditor {...defaultProps} onChange={onChange} datasource={datasource} query={query} />);
+    render(
+      <VisualMetricQueryEditor
+        {...defaultProps}
+        onChange={onChange}
+        datasource={datasource}
+        query={query}
+        range={range}
+      />
+    );
     const service = await screen.findByLabelText('Service');
     openMenu(service);
-    expect(screen.getAllByLabelText('Select option').length).toEqual(2);
+    expect(screen.getAllByTestId(selectors.components.Select.option).length).toEqual(2);
   });
 
   it('resets query to default when service changes', async () => {
+    replace = (target?: string) => target || '';
     const query = createMockTimeSeriesList({ filters: ['metric.test_label', '=', 'test', 'AND'] });
     const onChange = jest.fn();
     const datasource = createMockDatasource({
@@ -132,19 +244,31 @@ describe('VisualMetricQueryEditor', () => {
       getLabels: jest.fn().mockResolvedValue([]),
     });
     const defaultQuery = { ...query, ...defaultTimeSeriesList(datasource), filters: ['metric.type', '=', 'type2'] };
+    const range = getDefaultTimeRange();
 
-    render(<VisualMetricQueryEditor {...defaultProps} onChange={onChange} datasource={datasource} query={query} />);
+    render(
+      <VisualMetricQueryEditor
+        {...defaultProps}
+        onChange={onChange}
+        datasource={datasource}
+        query={query}
+        range={range}
+      />
+    );
 
     expect(screen.getByText('metric.test_label')).toBeInTheDocument();
     const service = await screen.findByLabelText('Service');
     openMenu(service);
-    await select(service, 'Srv 2', { container: document.body });
-    expect(onChange).toBeCalledWith(expect.objectContaining({ filters: ['metric.type', '=', 'type2'] }));
+    await act(async () => {
+      await select(service, 'Srv 2', { container: document.body });
+    });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ filters: ['metric.type', '=', 'type2'] }));
     expect(query).toEqual(defaultQuery);
     expect(screen.queryByText('metric.test_label')).not.toBeInTheDocument();
   });
 
   it('resets query to defaults (except filters) when metric changes', async () => {
+    replace = (target?: string) => target || '';
     const groupBys = ['metric.test_groupby'];
     const query = createMockTimeSeriesList({
       filters: ['metric.test_label', '=', 'test', 'AND', 'metric.type', '=', 'type'],
@@ -166,11 +290,20 @@ describe('VisualMetricQueryEditor', () => {
           createMockMetricDescriptor({ type: 'type2', displayName: 'metricName2', metricKind: MetricKind.GAUGE }),
         ]),
       getLabels: jest.fn().mockResolvedValue({ 'metric.test_groupby': '' }),
-      templateSrv: new TemplateSrv(),
+      templateSrv: getTemplateSrv(),
     });
     const defaultQuery = { ...query, ...defaultTimeSeriesList(datasource), filters: query.filters };
+    const range = getDefaultTimeRange();
 
-    render(<VisualMetricQueryEditor {...defaultProps} onChange={onChange} datasource={datasource} query={query} />);
+    render(
+      <VisualMetricQueryEditor
+        {...defaultProps}
+        onChange={onChange}
+        datasource={datasource}
+        query={query}
+        range={range}
+      />
+    );
     expect(document.body).toHaveTextContent('metric.test_label');
     expect(await screen.findByText('Delta')).toBeInTheDocument();
     expect(await screen.findByText('metric.test_groupby')).toBeInTheDocument();
@@ -181,7 +314,7 @@ describe('VisualMetricQueryEditor', () => {
     await act(async () => {
       await select(metric, 'metricName2', { container: document.body });
     });
-    expect(onChange).toBeCalledWith(
+    expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ filters: ['metric.test_label', '=', 'test', 'AND', 'metric.type', '=', 'type2'] })
     );
     expect(query).toEqual(defaultQuery);
@@ -191,22 +324,28 @@ describe('VisualMetricQueryEditor', () => {
   });
 
   it('updates labels on time range change', async () => {
-    const timeSrv = getTimeSrv();
+    replace = (target?: string) => target || '';
+    const range = getDefaultTimeRange();
     const query = createMockTimeSeriesList();
     const onChange = jest.fn();
     const datasource = createMockDatasource({
       getMetricTypes: jest.fn().mockResolvedValue([createMockMetricDescriptor()]),
       getLabels: jest
         .fn()
-        .mockResolvedValue(
-          timeSrv.time.from === 'now-6h' ? { 'metric.test_groupby': '' } : { 'metric.test_groupby_1': '' }
+        .mockImplementation(async (_metricType, _refId, _projectName, _, timeRange) =>
+          timeRange.raw.from === 'now-6h' ? { 'metric.test_groupby': '' } : { 'metric.test_groupby_1': '' }
         ),
-      templateSrv: new TemplateSrv(),
-      timeSrv,
+      templateSrv: getTemplateSrv(),
     });
 
     const { rerender } = render(
-      <VisualMetricQueryEditor {...defaultProps} onChange={onChange} datasource={datasource} query={query} />
+      <VisualMetricQueryEditor
+        {...defaultProps}
+        onChange={onChange}
+        datasource={datasource}
+        query={query}
+        range={range}
+      />
     );
 
     const service = await screen.findByLabelText('Service');
@@ -223,13 +362,17 @@ describe('VisualMetricQueryEditor', () => {
     const groupBy = await screen.findByLabelText('Group by');
     openMenu(groupBy);
     await waitFor(() => expect(document.body).toHaveTextContent('metric.test_groupby'));
-    timeSrv.setTime({ from: 'now-12h', to: 'now' });
-    const datasourceUpdated = createMockDatasource({
-      timeSrv,
-      getLabels: jest.fn().mockResolvedValue({ 'metric.test_groupby_1': '' }),
-    });
+    range.from.subtract('6', 'h');
+    range.raw.from = 'now-12h';
+
     rerender(
-      <VisualMetricQueryEditor {...defaultProps} onChange={onChange} datasource={datasourceUpdated} query={query} />
+      <VisualMetricQueryEditor
+        {...defaultProps}
+        onChange={onChange}
+        datasource={datasource}
+        query={query}
+        range={{ ...range }}
+      />
     );
     openMenu(groupBy);
     await waitFor(() => expect(document.body).toHaveTextContent('metric.test_groupby_1'));

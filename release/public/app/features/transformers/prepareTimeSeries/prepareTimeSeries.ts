@@ -11,8 +11,8 @@ import {
   FieldMatcherID,
   Field,
   MutableDataFrame,
-  ArrayVector,
 } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { Labels } from 'app/types/unified-alerting-dto';
 
 import { partitionByValues } from '../partitionByValues/partitionByValues';
@@ -79,13 +79,13 @@ export function toTimeSeriesMulti(data: DataFrame[]): DataFrame[] {
         };
         const builders = new Map<string, frameBuilder>();
         for (let i = 0; i < frame.length; i++) {
-          const time = timeField.values.get(i);
-          const value = field.values.get(i);
+          const time = timeField.values[i];
+          const value = field.values[i];
           if (value === undefined || time == null) {
             continue; // skip values left over from join
           }
 
-          const key = labelFields.map((f) => f.values.get(i)).join('/');
+          const key = labelFields.map((f) => f.values[i]).join('/');
           let builder = builders.get(key);
           if (!builder) {
             builder = {
@@ -95,7 +95,7 @@ export function toTimeSeriesMulti(data: DataFrame[]): DataFrame[] {
               labels: {},
             };
             for (const label of labelFields) {
-              builder.labels[label.name] = label.values.get(i);
+              builder.labels[label.name] = label.values[i];
             }
             builders.set(key, builder);
           }
@@ -115,11 +115,11 @@ export function toTimeSeriesMulti(data: DataFrame[]): DataFrame[] {
             fields: [
               {
                 ...timeField,
-                values: new ArrayVector(b.time),
+                values: b.time,
               },
               {
                 ...field,
-                values: new ArrayVector(b.value),
+                values: b.value,
                 labels: b.labels,
               },
             ],
@@ -210,7 +210,7 @@ export function toTimeSeriesLong(data: DataFrame[]): DataFrame[] {
     }
 
     type TimeWideRowIndex = {
-      time: any;
+      time: number;
       wideRowIndex: number;
     };
     const sortedTimeRowIndices: TimeWideRowIndex[] = [];
@@ -219,7 +219,7 @@ export function toTimeSeriesLong(data: DataFrame[]): DataFrame[] {
     const uniqueFactorNamesWithWideIndices: string[] = [];
 
     for (let wideRowIndex = 0; wideRowIndex < frame.length; wideRowIndex++) {
-      sortedTimeRowIndices.push({ time: timeField.values.get(wideRowIndex), wideRowIndex: wideRowIndex });
+      sortedTimeRowIndices.push({ time: timeField.values[wideRowIndex], wideRowIndex: wideRowIndex });
     }
 
     for (const labelKeys in labelKeyToWideIndices) {
@@ -255,10 +255,10 @@ export function toTimeSeriesLong(data: DataFrame[]): DataFrame[] {
       const { time, wideRowIndex } = timeWideRowIndex;
 
       for (const labelKeys of sortedUniqueLabelKeys) {
-        const rowValues: Record<string, any> = {};
+        const rowValues: Record<string, unknown> = {};
 
         for (const name of uniqueFactorNamesWithWideIndices) {
-          rowValues[name] = frame.fields[uniqueFactorNamesToWideIndex[name]].values.get(wideRowIndex);
+          rowValues[name] = frame.fields[uniqueFactorNamesToWideIndex[name]].values[wideRowIndex];
         }
 
         let index = 0;
@@ -272,7 +272,7 @@ export function toTimeSeriesLong(data: DataFrame[]): DataFrame[] {
             }
           }
 
-          rowValues[wideField.name] = wideField.values.get(wideRowIndex);
+          rowValues[wideField.name] = wideField.values[wideRowIndex];
         }
 
         rowValues[timeField.name] = time;
@@ -300,14 +300,17 @@ export function longToMultiTimeSeries(frame: DataFrame): DataFrame[] {
   });
 }
 
-export const prepareTimeSeriesTransformer: SynchronousDataTransformerInfo<PrepareTimeSeriesOptions> = {
+export const getPrepareTimeSeriesTransformer: () => SynchronousDataTransformerInfo<PrepareTimeSeriesOptions> = () => ({
   id: DataTransformerID.prepareTimeSeries,
-  name: 'Prepare time series',
-  description: `Will stretch data frames from the wide format into the long format. This is really helpful to be able to keep backwards compatibility for panels not supporting the new wide format.`,
+  name: t('transformers.prepare-time-series.name.prepare-time-series', 'Prepare time series'),
+  description: t(
+    'transformers.prepare-time-series.description.stretch-data-frames',
+    'Stretch data frames from the wide format into the long format.'
+  ),
   defaultOptions: {},
 
   operator: (options, ctx) => (source) =>
-    source.pipe(map((data) => prepareTimeSeriesTransformer.transformer(options, ctx)(data))),
+    source.pipe(map((data) => getPrepareTimeSeriesTransformer().transformer(options, ctx)(data))),
 
   transformer: (options: PrepareTimeSeriesOptions) => {
     const format = options?.format ?? timeSeriesFormat.TimeSeriesWide;
@@ -350,4 +353,4 @@ export const prepareTimeSeriesTransformer: SynchronousDataTransformerInfo<Prepar
       return [];
     };
   },
-};
+});

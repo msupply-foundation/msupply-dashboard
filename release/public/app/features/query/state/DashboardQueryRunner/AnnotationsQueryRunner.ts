@@ -4,7 +4,7 @@ import { catchError, map } from 'rxjs/operators';
 import { AnnotationEvent, DataSourceApi } from '@grafana/data';
 
 import { executeAnnotationQuery } from '../../../annotations/executeAnnotationQuery';
-import { PanelModel } from '../../../dashboard/state';
+import { PanelModel } from '../../../dashboard/state/PanelModel';
 
 import { AnnotationQueryRunner, AnnotationQueryRunnerOptions } from './types';
 import { handleAnnotationQueryRunnerError } from './utils';
@@ -23,7 +23,7 @@ export class AnnotationsQueryRunner implements AnnotationQueryRunner {
       return of([]);
     }
 
-    const panel: PanelModel = {} as unknown as PanelModel; // deliberate setting panel to empty object because executeAnnotationQuery shouldn't depend on panelModel
+    const panel: PanelModel = {} as PanelModel; // deliberate setting panel to empty object because executeAnnotationQuery shouldn't depend on panelModel
 
     return executeAnnotationQuery({ dashboard, range, panel }, datasource!, annotation).pipe(
       map((result) => {

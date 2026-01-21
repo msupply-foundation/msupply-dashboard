@@ -13,12 +13,18 @@ export function getPluginSettings(pluginId: string, options?: Partial<BackendSrv
     return Promise.resolve(v);
   }
   return getBackendSrv()
-    .get(`/api/plugins/${pluginId}/settings`, undefined, undefined, options)
-    .then((settings: any) => {
+    .get(`/api/plugins/${pluginId}/settings`, undefined, undefined, { ...options, validatePath: true })
+    .then((settings) => {
       pluginInfoCache[pluginId] = settings;
       return settings;
     })
-    .catch((err: any) => {
+    .catch((e) => {
+      // User does not have access to plugin
+      if (typeof e === 'object' && e !== null && 'status' in e && (e.status === 403 || e.status === 401)) {
+        e.isHandled = true;
+        return Promise.reject(e);
+      }
+
       return Promise.reject(new Error('Unknown Plugin'));
     });
 }

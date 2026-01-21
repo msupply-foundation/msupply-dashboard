@@ -1,9 +1,9 @@
 import { cx } from '@emotion/css';
-import React from 'react';
 
-import { Button, CustomScrollbar, HorizontalGroup, useStyles2, useTheme2 } from '@grafana/ui';
-import { getSelectStyles } from '@grafana/ui/src/components/Select/getSelectStyles';
-import { Role } from 'app/types';
+import { Trans, t } from '@grafana/i18n';
+import { Button, ScrollContainer, Stack, useStyles2, useTheme2 } from '@grafana/ui';
+import { getSelectStyles } from '@grafana/ui/internal';
+import { Role } from 'app/types/accessControl';
 
 import { RoleMenuOption } from './RoleMenuOption';
 import { MENU_MAX_HEIGHT } from './constants';
@@ -40,13 +40,14 @@ export const RolePickerSubMenu = ({
   return (
     <div
       className={cx(customStyles.subMenu, { [customStyles.subMenuLeft]: showOnLeft })}
-      aria-label="Role picker submenu"
+      aria-label={t('role-picker.sub-menu-aria-label', 'Role picker submenu')}
     >
-      <CustomScrollbar autoHide={false} autoHeightMax={`${MENU_MAX_HEIGHT}px`} hideHorizontalTrack>
+      <ScrollContainer maxHeight={`${MENU_MAX_HEIGHT}px`}>
         <div className={styles.optionBody}>
           {options.map((option, i) => (
             <RoleMenuOption
               data={option}
+              useFilteredDisplayName={false}
               key={i}
               isSelected={
                 !!(
@@ -58,18 +59,19 @@ export const RolePickerSubMenu = ({
               disabled={
                 !!(option.uid && disabledOptions?.find((opt) => opt.uid === option.uid)) || isNotDelegatable(option)
               }
+              mapped={!!(option.uid && selectedOptions.find((opt) => opt.uid === option.uid && opt.mapped))}
               onChange={onSelect}
               hideDescription
             />
           ))}
         </div>
-      </CustomScrollbar>
+      </ScrollContainer>
       <div className={customStyles.subMenuButtonRow}>
-        <HorizontalGroup justify="flex-end">
+        <Stack justifyContent="flex-end">
           <Button size="sm" fill="text" onClick={onClearInternal}>
-            Clear
+            <Trans i18nKey="role-picker.sub-menu.clear-button">Clear</Trans>
           </Button>
-        </HorizontalGroup>
+        </Stack>
       </div>
     </div>
   );

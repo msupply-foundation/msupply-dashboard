@@ -1,15 +1,14 @@
 import debounce from 'debounce-promise';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { locationUtil } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { config } from '@grafana/runtime';
-import { t } from 'app/core/internationalization';
 import { contextSrv } from 'app/core/services/context_srv';
 import impressionSrv from 'app/core/services/impression_srv';
-import { getGrafanaSearcher } from 'app/features/search/service';
+import { getGrafanaSearcher } from 'app/features/search/service/searcher';
 
 import { CommandPaletteAction } from '../types';
-import { RECENT_DASHBOARDS_PRORITY, SEARCH_RESULTS_PRORITY } from '../values';
+import { RECENT_DASHBOARDS_PRIORITY, SEARCH_RESULTS_PRIORITY } from '../values';
 
 const MAX_SEARCH_RESULTS = 100;
 const MAX_RECENT_DASHBOARDS = 5;
@@ -42,8 +41,8 @@ export async function getRecentDashboardActions(): Promise<CommandPaletteAction[
       id: `recent-dashboards${url}`,
       name: `${name}`,
       section: t('command-palette.section.recent-dashboards', 'Recent dashboards'),
-      priority: RECENT_DASHBOARDS_PRORITY,
-      url: locationUtil.stripBaseFromUrl(url),
+      priority: RECENT_DASHBOARDS_PRIORITY,
+      url,
     };
   });
 
@@ -52,7 +51,7 @@ export async function getRecentDashboardActions(): Promise<CommandPaletteAction[
 
 export async function getSearchResultActions(searchQuery: string): Promise<CommandPaletteAction[]> {
   // Empty strings should not come through to here
-  if (searchQuery.length === 0 || (!contextSrv.user.isSignedIn && !config.bootData.settings.anonymousEnabled)) {
+  if (searchQuery.length === 0 || (!contextSrv.user.isSignedIn && !config.anonymousEnabled)) {
     return [];
   }
 
@@ -71,8 +70,8 @@ export async function getSearchResultActions(searchQuery: string): Promise<Comma
         kind === 'dashboard'
           ? t('command-palette.section.dashboard-search-results', 'Dashboards')
           : t('command-palette.section.folder-search-results', 'Folders'),
-      priority: SEARCH_RESULTS_PRORITY,
-      url: locationUtil.stripBaseFromUrl(url),
+      priority: SEARCH_RESULTS_PRIORITY,
+      url,
       subtitle: data.view.dataFrame.meta?.custom?.locationInfo[location]?.name,
     };
   });
@@ -80,22 +79,36 @@ export async function getSearchResultActions(searchQuery: string): Promise<Comma
   return goToSearchResultActions;
 }
 
-export function useSearchResults(searchQuery: string, isShowing: boolean) {
+/**
+ * Implements actual search logic for dashboards and folders.
+ */
+export function useSearchResults({ searchQuery, show }: { searchQuery: string; show: boolean }) {
   const [searchResults, setSearchResults] = useState<CommandPaletteAction[]>([]);
   const [isFetchingSearchResults, setIsFetchingSearchResults] = useState(false);
+  const lastSearchTimestamp = useRef<number>(0);
 
   // Hit dashboards API
   useEffect(() => {
-    if (isShowing && searchQuery.length > 0) {
+    const timestamp = Date.now();
+    if (show && searchQuery.length > 0) {
       setIsFetchingSearchResults(true);
       debouncedSearch(searchQuery).then((resultActions) => {
-        setSearchResults(resultActions);
-        setIsFetchingSearchResults(false);
+        // Only keep the results if it's was issued after the most recently resolved search.
+        // This prevents results showing out of order if first request is slower than later ones.
+        // We don't need to worry about clearing the isFetching state either - if there's a later
+        // request in progress, this will clear it for us
+        if (timestamp > lastSearchTimestamp.current) {
+          setSearchResults(resultActions);
+          setIsFetchingSearchResults(false);
+          lastSearchTimestamp.current = timestamp;
+        }
       });
     } else {
       setSearchResults([]);
+      setIsFetchingSearchResults(false);
+      lastSearchTimestamp.current = timestamp;
     }
-  }, [isShowing, searchQuery]);
+  }, [show, searchQuery]);
 
   return {
     searchResults,

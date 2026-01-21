@@ -1,54 +1,98 @@
-import * as React from 'react';
-import { Redirect, Route, Switch } from 'react-router-dom';
+import { Navigate, Routes, Route, useLocation } from 'react-router-dom-v5-compat';
 
-import { NavLandingPage } from 'app/core/components/AppChrome/NavLandingPage';
-import { DataSourcesRoutesContext } from 'app/features/datasources/state';
-import { StoreState, useSelector } from 'app/types';
+import { StoreState, useSelector } from 'app/types/store';
+
+import { isOpenSourceBuildOrUnlicenced } from '../admin/EnterpriseAuthFeaturesCard';
 
 import { ROUTES } from './constants';
-import {
-  ConnectDataPage,
-  DataSourceDashboardsPage,
-  DataSourceDetailsPage,
-  DataSourcesListPage,
-  EditDataSourcePage,
-  NewDataSourcePage,
-} from './pages';
+import { AddNewConnectionPage } from './pages/AddNewConnectionPage';
+import { CacheFeatureHighlightPage } from './pages/CacheFeatureHighlightPage';
+import ConnectionsHomePage from './pages/ConnectionsHomePage';
+import { DataSourceDashboardsPage } from './pages/DataSourceDashboardsPage';
+import { DataSourceDetailsPage } from './pages/DataSourceDetailsPage';
+import { DataSourcesListPage } from './pages/DataSourcesListPage';
+import { EditDataSourcePage } from './pages/EditDataSourcePage';
+import { InsightsFeatureHighlightPage } from './pages/InsightsFeatureHighlightPage';
+import { NewDataSourcePage } from './pages/NewDataSourcePage';
+import { PermissionsFeatureHighlightPage } from './pages/PermissionsFeatureHighlightPage';
+
+function RedirectToAddNewConnection() {
+  const { search } = useLocation();
+  return (
+    <Navigate
+      replace
+      to={{
+        pathname: ROUTES.AddNewConnection,
+        search,
+      }}
+    />
+  );
+}
 
 export default function Connections() {
   const navIndex = useSelector((state: StoreState) => state.navIndex);
-  const isConnectDataPageOverriden = Boolean(navIndex['standalone-plugin-page-/connections/connect-data']);
-
-  const YourConnectionsPage =
-    navIndex['connections-your-connections'].children && navIndex['connections-your-connections'].children?.length > 1
-      ? () => <NavLandingPage navId="connections-your-connections" />
-      : () => <Redirect to={ROUTES.DataSources} />;
+  const isAddNewConnectionPageOverridden = Boolean(navIndex['standalone-plugin-page-/connections/add-new-connection']);
+  const shouldEnableFeatureHighlights = isOpenSourceBuildOrUnlicenced();
 
   return (
-    <DataSourcesRoutesContext.Provider
-      value={{
-        New: ROUTES.DataSourcesNew,
-        List: ROUTES.DataSources,
-        Edit: ROUTES.DataSourcesEdit,
-        Dashboards: ROUTES.DataSourcesDashboards,
-      }}
-    >
-      <Switch>
-        {/* Redirect to "Connect data" by default */}
-        <Route exact sensitive path={ROUTES.Base} component={() => <Redirect to={ROUTES.ConnectData} />} />
-        <Route exact sensitive path={ROUTES.YourConnections} component={YourConnectionsPage} />
-        <Route exact sensitive path={ROUTES.DataSources} component={DataSourcesListPage} />
-        <Route exact sensitive path={ROUTES.DataSourcesDetails} component={DataSourceDetailsPage} />
-        <Route exact sensitive path={ROUTES.DataSourcesNew} component={NewDataSourcePage} />
-        <Route exact sensitive path={ROUTES.DataSourcesEdit} component={EditDataSourcePage} />
-        <Route exact sensitive path={ROUTES.DataSourcesDashboards} component={DataSourceDashboardsPage} />
+    <Routes>
+      {/* Redirect to "Add new connection" by default */}
+      <Route caseSensitive path={'/'} element={<ConnectionsHomePage />} />
+      {/* The route paths need to be relative to the parent path (ROUTES.Base), so we need to remove that part */}
+      <Route caseSensitive path={ROUTES.DataSources.replace(ROUTES.Base, '')} element={<DataSourcesListPage />} />
+      <Route caseSensitive path={ROUTES.DataSourcesNew.replace(ROUTES.Base, '')} element={<NewDataSourcePage />} />
+      <Route
+        caseSensitive
+        path={ROUTES.DataSourcesDetails.replace(ROUTES.Base, '')}
+        element={<DataSourceDetailsPage />}
+      />
+      <Route caseSensitive path={ROUTES.DataSourcesEdit.replace(ROUTES.Base, '')} element={<EditDataSourcePage />} />
 
-        {/* "Connect data" page - we don't register a route in case a plugin already registers a standalone page for it */}
-        {!isConnectDataPageOverriden && <Route exact sensitive path={ROUTES.ConnectData} component={ConnectDataPage} />}
+      {shouldEnableFeatureHighlights && (
+        <>
+          <Route
+            caseSensitive
+            path={ROUTES.DataSourcesEdit.replace(ROUTES.Base, '') + '/permissions'}
+            element={<PermissionsFeatureHighlightPage />}
+          />
+          <Route
+            caseSensitive
+            path={ROUTES.DataSourcesEdit.replace(ROUTES.Base, '') + '/insights'}
+            element={<InsightsFeatureHighlightPage />}
+          />
+          <Route
+            caseSensitive
+            path={ROUTES.DataSourcesEdit.replace(ROUTES.Base, '') + '/cache'}
+            element={<CacheFeatureHighlightPage />}
+          />
+        </>
+      )}
 
-        {/* Not found */}
-        <Route component={() => <Redirect to="/notfound" />} />
-      </Switch>
-    </DataSourcesRoutesContext.Provider>
+      <Route
+        caseSensitive
+        path={ROUTES.DataSourcesDashboards.replace(ROUTES.Base, '')}
+        element={<DataSourceDashboardsPage />}
+      />
+
+      {/* "Add new connection" page - we don't register a route in case a plugin already registers a standalone page for it */}
+      {!isAddNewConnectionPageOverridden && (
+        <Route
+          caseSensitive
+          path={ROUTES.AddNewConnection.replace(ROUTES.Base, '')}
+          element={<AddNewConnectionPage />}
+        />
+      )}
+
+      {/* Redirect from earlier routes to updated routes */}
+      <Route path={ROUTES.ConnectDataOutdated.replace(ROUTES.Base, '')} element={<RedirectToAddNewConnection />} />
+      <Route path={`/your-connections/:page`} element={<Navigate replace to={`${ROUTES.Base}/:page`} />} />
+      <Route
+        path={ROUTES.YourConnectionsOutdated.replace(ROUTES.Base, '')}
+        element={<Navigate replace to={ROUTES.DataSources} />}
+      />
+
+      {/* Not found */}
+      <Route element={<Navigate replace to="/notfound" />} />
+    </Routes>
   );
 }

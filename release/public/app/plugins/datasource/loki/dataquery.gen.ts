@@ -4,13 +4,11 @@
 //     public/app/plugins/gen.go
 // Using jennies:
 //     TSTypesJenny
-//     PluginTSTypesJenny
+//     PluginTsTypesJenny
 //
 // Run 'make gen-cue' from repository root to regenerate.
 
 import * as common from '@grafana/schema';
-
-export const DataQueryModelVersion = Object.freeze([0, 0]);
 
 export enum QueryEditorMode {
   Builder = 'builder',
@@ -25,6 +23,7 @@ export enum LokiQueryType {
 
 export enum SupportingQueryType {
   DataSample = 'dataSample',
+  InfiniteScroll = 'infiniteScroll',
   LogsSample = 'logsSample',
   LogsVolume = 'logsVolume',
 }
@@ -32,9 +31,10 @@ export enum SupportingQueryType {
 export enum LokiQueryDirection {
   Backward = 'backward',
   Forward = 'forward',
+  Scan = 'scan',
 }
 
-export interface Loki extends common.DataQuery {
+export interface LokiDataQuery extends common.DataQuery {
   editorMode?: QueryEditorMode;
   /**
    * The LogQL query.
@@ -57,7 +57,11 @@ export interface Loki extends common.DataQuery {
    */
   range?: boolean;
   /**
-   * Used to scale the interval value.
+   * @deprecated, now use step.
    */
   resolution?: number;
+  /**
+   * Used to set step value for range queries.
+   */
+  step?: string;
 }

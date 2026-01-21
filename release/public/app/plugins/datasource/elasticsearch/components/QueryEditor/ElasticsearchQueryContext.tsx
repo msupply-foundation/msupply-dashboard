@@ -1,22 +1,22 @@
-import React, { Context, createContext, PropsWithChildren, useCallback, useContext, useEffect, useState } from 'react';
+import { Context, createContext, PropsWithChildren, useCallback, useContext, useEffect, useState } from 'react';
 
 import { TimeRange } from '@grafana/data';
 
+import { ElasticsearchDataQuery } from '../../dataquery.gen';
 import { ElasticDatasource } from '../../datasource';
 import { combineReducers, useStatelessReducer, DispatchContext } from '../../hooks/useStatelessReducer';
-import { ElasticsearchQuery } from '../../types';
 
 import { createReducer as createBucketAggsReducer } from './BucketAggregationsEditor/state/reducer';
 import { reducer as metricsReducer } from './MetricAggregationsEditor/state/reducer';
 import { aliasPatternReducer, queryReducer, initQuery } from './state';
 
 const DatasourceContext = createContext<ElasticDatasource | undefined>(undefined);
-const QueryContext = createContext<ElasticsearchQuery | undefined>(undefined);
+const QueryContext = createContext<ElasticsearchDataQuery | undefined>(undefined);
 const RangeContext = createContext<TimeRange | undefined>(undefined);
 
 interface Props {
-  query: ElasticsearchQuery;
-  onChange: (query: ElasticsearchQuery) => void;
+  query: ElasticsearchDataQuery;
+  onChange: (query: ElasticsearchDataQuery) => void;
   onRunQuery: () => void;
   datasource: ElasticDatasource;
   range: TimeRange;
@@ -31,14 +31,16 @@ export const ElasticsearchProvider = ({
   range,
 }: PropsWithChildren<Props>) => {
   const onStateChange = useCallback(
-    (query: ElasticsearchQuery) => {
+    (query: ElasticsearchDataQuery, prevQuery: ElasticsearchDataQuery) => {
       onChange(query);
-      onRunQuery();
+      if (query.query === prevQuery.query || prevQuery.query === undefined) {
+        onRunQuery();
+      }
     },
     [onChange, onRunQuery]
   );
 
-  const reducer = combineReducers<Pick<ElasticsearchQuery, 'query' | 'alias' | 'metrics' | 'bucketAggs'>>({
+  const reducer = combineReducers<Pick<ElasticsearchDataQuery, 'query' | 'alias' | 'metrics' | 'bucketAggs'>>({
     query: queryReducer,
     alias: aliasPatternReducer,
     metrics: metricsReducer,
@@ -47,7 +49,7 @@ export const ElasticsearchProvider = ({
 
   const dispatch = useStatelessReducer(
     // timeField is part of the query model, but its value is always set to be the one from datasource settings.
-    (newState) => onStateChange({ ...query, ...newState, timeField: datasource.timeField }),
+    (newState) => onStateChange({ ...query, ...newState, timeField: datasource.timeField }, query),
     query,
     reducer
   );
@@ -59,11 +61,11 @@ export const ElasticsearchProvider = ({
   // This initializes the query by dispatching an init action to each reducer.
   // useStatelessReducer will then call `onChange` with the newly generated query
   useEffect(() => {
-    if (shouldRunInit) {
+    if (shouldRunInit && isUninitialized) {
       dispatch(initQuery());
       setShouldRunInit(false);
     }
-  }, [shouldRunInit, dispatch]);
+  }, [shouldRunInit, dispatch, isUninitialized]);
 
   if (isUninitialized) {
     return null;
@@ -91,7 +93,7 @@ const getHook: GetHook = (c) => () => {
     throw new Error('use ElasticsearchProvider first.');
   }
 
-  return contextValue as NonNullable<typeof contextValue>;
+  return contextValue;
 };
 
 export const useQuery = getHook(QueryContext);

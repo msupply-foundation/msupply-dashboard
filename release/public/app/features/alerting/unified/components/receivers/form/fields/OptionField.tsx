@@ -1,97 +1,136 @@
 import { css } from '@emotion/css';
-import { isEmpty } from 'lodash';
-import React, { FC, useEffect } from 'react';
-import { useFormContext, FieldError, DeepMap } from 'react-hook-form';
+import { FC } from 'react';
+import { Controller, DeepMap, FieldError, useFormContext } from 'react-hook-form';
 
-import { Checkbox, Field, Input, InputControl, Select, TextArea } from '@grafana/ui';
-import { NotificationChannelOption } from 'app/types';
+import { GrafanaTheme2 } from '@grafana/data';
+import {
+  Checkbox,
+  Field,
+  Input,
+  RadioButtonList,
+  SecretInput,
+  SecretTextArea,
+  Select,
+  TextArea,
+  useStyles2,
+} from '@grafana/ui';
+import {
+  NotificationChannelOption,
+  NotificationChannelSecureFields,
+  OptionMeta,
+} from 'app/features/alerting/unified/types/alerting';
 
 import { KeyValueMapInput } from './KeyValueMapInput';
 import { StringArrayInput } from './StringArrayInput';
 import { SubformArrayField } from './SubformArrayField';
 import { SubformField } from './SubformField';
+import { WrapWithTemplateSelection } from './TemplateSelector';
 
 interface Props {
   defaultValue: any;
   option: NotificationChannelOption;
+  getOptionMeta?: (option: NotificationChannelOption) => OptionMeta;
   invalid?: boolean;
   pathPrefix: string;
-  pathSuffix?: string;
   error?: FieldError | DeepMap<any, FieldError>;
   readOnly?: boolean;
+  customValidator?: (value: string) => boolean | string | Promise<boolean | string>;
+  onResetSecureField?: (propertyName: string) => void;
+  onDeleteSubform?: (settingsPath: string, option: NotificationChannelOption) => void;
+  secureFields: NotificationChannelSecureFields;
 }
 
 export const OptionField: FC<Props> = ({
   option,
   invalid,
   pathPrefix,
-  pathSuffix = '',
   error,
   defaultValue,
   readOnly = false,
+  customValidator,
+  onResetSecureField,
+  secureFields,
+  onDeleteSubform,
+  getOptionMeta,
 }) => {
-  const optionPath = `${pathPrefix}${pathSuffix}`;
-
   if (option.element === 'subform') {
     return (
       <SubformField
+        secureFields={secureFields}
+        onResetSecureField={onResetSecureField}
         readOnly={readOnly}
         defaultValue={defaultValue}
         option={option}
-        errors={error as DeepMap<any, FieldError> | undefined}
-        pathPrefix={optionPath}
+        errors={error}
+        pathPrefix={pathPrefix}
+        onDelete={onDeleteSubform}
       />
     );
   }
   if (option.element === 'subform_array') {
     return (
       <SubformArrayField
+        secureFields={secureFields}
         readOnly={readOnly}
         defaultValues={defaultValue}
         option={option}
-        pathPrefix={optionPath}
+        pathPrefix={pathPrefix}
         errors={error as Array<DeepMap<any, FieldError>> | undefined}
       />
     );
   }
+
   return (
     <Field
-      label={option.element !== 'checkbox' ? option.label : undefined}
+      label={option.element !== 'checkbox' && option.element !== 'radio' ? option.label : undefined}
       description={option.description || undefined}
       invalid={!!error}
       error={error?.message}
+      data-testid={`${pathPrefix}${option.propertyName}`}
     >
       <OptionInput
-        id={`${optionPath}${option.propertyName}`}
+        id={`${pathPrefix}${option.propertyName}`}
         defaultValue={defaultValue}
         option={option}
         invalid={invalid}
-        pathPrefix={optionPath}
+        pathPrefix={pathPrefix}
         readOnly={readOnly}
-        pathIndex={pathPrefix}
+        customValidator={customValidator}
+        onResetSecureField={onResetSecureField}
+        secureFields={secureFields}
+        getOptionMeta={getOptionMeta}
       />
     </Field>
   );
 };
 
-const OptionInput: FC<Props & { id: string; pathIndex?: string }> = ({
+const OptionInput: FC<Props & { id: string }> = ({
   option,
   invalid,
   id,
   pathPrefix = '',
-  pathIndex = '',
   readOnly = false,
+  customValidator,
+  onResetSecureField,
+  secureFields = {},
+  getOptionMeta,
 }) => {
-  const { control, register, unregister, getValues } = useFormContext();
+  const styles = useStyles2(getStyles);
+  const { control, register, setValue } = useFormContext();
+
+  const optionMeta = getOptionMeta?.(option);
+
   const name = `${pathPrefix}${option.propertyName}`;
 
-  // workaround for https://github.com/react-hook-form/react-hook-form/issues/4993#issuecomment-829012506
-  useEffect(
-    () => () => {
-      unregister(name, { keepValue: false });
-    },
-    [unregister, name]
-  );
+  const secureFieldKey = option.secure && option.secureFieldKey ? option.secureFieldKey : '';
+  const isEncryptedInput = secureFieldKey && secureFields?.[secureFieldKey];
+
+  const useTemplates = option.placeholder.includes('{{ template');
+
+  function onSelectTemplate(template: string) {
+    setValue(name, template);
+  }
+
   switch (option.element) {
     case 'checkbox':
       return (
@@ -107,52 +146,107 @@ const OptionInput: FC<Props & { id: string; pathIndex?: string }> = ({
       );
     case 'input':
       return (
-        <Input
-          id={id}
-          readOnly={readOnly || determineReadOnly(option, getValues, pathIndex)}
-          invalid={invalid}
-          type={option.inputType}
-          {...register(name, {
-            required: determineRequired(option, getValues, pathIndex),
-            validate: (v) => (option.validationRule !== '' ? validateOption(v, option.validationRule) : true),
-          })}
-          placeholder={option.placeholder}
-        />
+        <WrapWithTemplateSelection
+          useTemplates={useTemplates}
+          option={option}
+          name={name}
+          onSelectTemplate={onSelectTemplate}
+        >
+          {isEncryptedInput ? (
+            <SecretInput id={id} onReset={() => onResetSecureField?.(secureFieldKey)} isConfigured />
+          ) : (
+            <Input
+              id={id}
+              readOnly={readOnly || useTemplates || optionMeta?.readOnly}
+              invalid={invalid}
+              type={option.inputType}
+              {...register(name, {
+                required: optionMeta?.required,
+                validate: {
+                  validationRule: (v) =>
+                    option.validationRule ? validateOption(v, option.validationRule, option.required) : true,
+                  customValidator: (v) => (customValidator ? customValidator(v) : true),
+                },
+                setValueAs: option.setValueAs,
+              })}
+              placeholder={option.placeholder}
+            />
+          )}
+        </WrapWithTemplateSelection>
       );
 
     case 'select':
       return (
-        <InputControl
+        <Controller
           render={({ field: { onChange, ref, ...field } }) => (
             <Select
               disabled={readOnly}
-              {...field}
               options={option.selectOptions ?? undefined}
               invalid={invalid}
               onChange={(value) => onChange(value.value)}
+              {...field}
             />
           )}
           control={control}
           name={name}
+          defaultValue={option.defaultValue?.value}
+          rules={{
+            validate: {
+              customValidator: (v) => (customValidator ? customValidator(v) : true),
+            },
+          }}
         />
       );
-
+    case 'radio':
+      return (
+        <>
+          <legend className={styles.legend}>{option.label}</legend>
+          <Controller
+            render={({ field: { ref, ...field } }) => (
+              <RadioButtonList disabled={readOnly} options={option.selectOptions ?? []} {...field} />
+            )}
+            control={control}
+            defaultValue={option.defaultValue?.value}
+            name={name}
+            rules={{
+              required: option.required ? 'Option is required' : false,
+              validate: {
+                validationRule: (v) =>
+                  option.validationRule ? validateOption(v, option.validationRule, option.required) : true,
+                customValidator: (v) => (customValidator ? customValidator(v) : true),
+              },
+            }}
+          />
+        </>
+      );
     case 'textarea':
       return (
-        <TextArea
-          id={id}
-          readOnly={readOnly}
-          invalid={invalid}
-          placeholder={option.placeholder}
-          {...register(name, {
-            required: option.required ? 'Required' : false,
-            validate: (v) => (option.validationRule !== '' ? validateOption(v, option.validationRule) : true),
-          })}
-        />
+        <WrapWithTemplateSelection
+          useTemplates={useTemplates}
+          option={option}
+          name={name}
+          onSelectTemplate={onSelectTemplate}
+        >
+          {isEncryptedInput ? (
+            <SecretTextArea id={id} onReset={() => onResetSecureField?.(secureFieldKey)} isConfigured />
+          ) : (
+            <TextArea
+              id={id}
+              readOnly={readOnly || useTemplates}
+              invalid={invalid}
+              placeholder={option.placeholder}
+              {...register(name, {
+                required: option.required ? 'Required' : false,
+                validate: (v) =>
+                  option.validationRule !== '' ? validateOption(v, option.validationRule, option.required) : true,
+              })}
+            />
+          )}
+        </WrapWithTemplateSelection>
       );
     case 'string_array':
       return (
-        <InputControl
+        <Controller
           render={({ field: { value, onChange } }) => (
             <StringArrayInput readOnly={readOnly} value={value} onChange={onChange} />
           )}
@@ -162,7 +256,7 @@ const OptionInput: FC<Props & { id: string; pathIndex?: string }> = ({
       );
     case 'key_value_map':
       return (
-        <InputControl
+        <Controller
           render={({ field: { value, onChange } }) => (
             <KeyValueMapInput readOnly={readOnly} value={value} onChange={onChange} />
           )}
@@ -177,36 +271,19 @@ const OptionInput: FC<Props & { id: string; pathIndex?: string }> = ({
   }
 };
 
-const styles = {
-  checkbox: css`
-    height: auto; // native checkbox has fixed height which does not take into account description
-  `,
-};
+const getStyles = (theme: GrafanaTheme2) => ({
+  checkbox: css({
+    height: 'auto', // native checkbox has fixed height which does not take into account description
+  }),
+  legend: css({
+    fontSize: theme.typography.h6.fontSize,
+  }),
+});
 
-const validateOption = (value: string, validationRule: string) => {
+const validateOption = (value: string, validationRule: string, required: boolean) => {
+  if (value === '' && !required) {
+    return true;
+  }
+
   return RegExp(validationRule).test(value) ? true : 'Invalid format';
-};
-
-const determineRequired = (option: NotificationChannelOption, getValues: any, pathIndex: string) => {
-  if (!option.dependsOn) {
-    return option.required ? 'Required' : false;
-  }
-  if (isEmpty(getValues(`${pathIndex}secureFields`))) {
-    const dependentOn = getValues(`${pathIndex}secureSettings.${option.dependsOn}`);
-    return !Boolean(dependentOn) && option.required ? 'Required' : false;
-  } else {
-    const dependentOn: boolean = getValues(`${pathIndex}secureFields.${option.dependsOn}`);
-    return !dependentOn && option.required ? 'Required' : false;
-  }
-};
-
-const determineReadOnly = (option: NotificationChannelOption, getValues: any, pathIndex: string) => {
-  if (!option.dependsOn) {
-    return false;
-  }
-  if (isEmpty(getValues(`${pathIndex}secureFields`))) {
-    return getValues(`${pathIndex}secureSettings.${option.dependsOn}`);
-  } else {
-    return getValues(`${pathIndex}secureFields.${option.dependsOn}`);
-  }
 };

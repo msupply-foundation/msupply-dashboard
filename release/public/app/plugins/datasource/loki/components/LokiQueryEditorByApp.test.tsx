@@ -1,28 +1,24 @@
 import { render, RenderResult, screen } from '@testing-library/react';
 import { noop } from 'lodash';
-import React from 'react';
 
 import { CoreApp } from '@grafana/data';
 
-import { LokiDatasource } from '../datasource';
+import { createLokiDatasource } from '../mocks/datasource';
 
 import { testIds as regularTestIds } from './LokiQueryEditor';
 import { LokiQueryEditorByApp } from './LokiQueryEditorByApp';
 import { testIds as alertingTestIds } from './LokiQueryEditorForAlerting';
 
+jest.mock('@grafana/runtime', () => ({
+  ...jest.requireActual('@grafana/runtime'),
+  getAppEvents: jest.fn().mockReturnValue({
+    subscribe: jest.fn().mockReturnValue({ unsubscribe: jest.fn() }),
+  }),
+}));
+
 function setup(app: CoreApp): RenderResult {
-  const dataSource = {
-    languageProvider: {
-      start: () => Promise.resolve([]),
-      getSyntax: () => {},
-      getLabelKeys: () => [],
-      metrics: [],
-    },
-    getQueryHints: () => [],
-    getDataSamples: () => [],
-    maxLines: 20,
-    getTimeRange: jest.fn(),
-  } as unknown as LokiDatasource;
+  const dataSource = createLokiDatasource();
+  dataSource.metadataRequest = jest.fn();
 
   return render(
     <LokiQueryEditorByApp

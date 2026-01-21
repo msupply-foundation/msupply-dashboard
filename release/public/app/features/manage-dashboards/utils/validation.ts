@@ -1,4 +1,7 @@
-import { getBackendSrv } from '@grafana/runtime';
+import { t } from '@grafana/i18n';
+import { AnnoKeyFolderTitle } from 'app/features/apiserver/types';
+import { getDashboardAPI } from 'app/features/dashboard/api/dashboard_api';
+import { isDashboardV2Resource } from 'app/features/dashboard/api/utils';
 
 import { validationSrv } from '../services/ValidationSrv';
 
@@ -7,16 +10,16 @@ export const validateDashboardJson = (json: string) => {
   try {
     dashboard = JSON.parse(json);
   } catch (error) {
-    return 'Not valid JSON';
+    return t('dashboard.validation.invalid-json', 'Not valid JSON');
   }
   if (dashboard && dashboard.hasOwnProperty('tags')) {
     if (Array.isArray(dashboard.tags)) {
       const hasInvalidTag = dashboard.tags.some((tag: string) => typeof tag !== 'string');
       if (hasInvalidTag) {
-        return 'tags expected array of strings';
+        return t('dashboard.validation.tags-expected-strings', 'tags expected array of strings');
       }
     } else {
-      return 'tags expected array';
+      return t('dashboard.validation.tags-expected-array', 'tags expected array');
     }
   }
   return true;
@@ -26,7 +29,9 @@ export const validateGcomDashboard = (gcomDashboard: string) => {
   // From DashboardImportCtrl
   const match = /(^\d+$)|dashboards\/(\d+)/.exec(gcomDashboard);
 
-  return match && (match[1] || match[2]) ? true : 'Could not find a valid Grafana.com ID';
+  return match && (match[1] || match[2])
+    ? true
+    : t('dashboard.validation.invalid-dashboard-id', 'Could not find a valid Grafana.com ID');
 };
 
 export const validateTitle = (newTitle: string, folderUid: string) => {
@@ -43,13 +48,24 @@ export const validateTitle = (newTitle: string, folderUid: string) => {
 };
 
 export const validateUid = (value: string) => {
-  return getBackendSrv()
-    .get(`/api/dashboards/uid/${value}`)
+  return getDashboardAPI()
+    .getDashboardDTO(value)
     .then((existingDashboard) => {
-      return `Dashboard named '${existingDashboard?.dashboard.title}' in folder '${existingDashboard?.meta.folderTitle}' has the same UID`;
+      const isV2 = isDashboardV2Resource(existingDashboard);
+      const dashboard = isV2 ? existingDashboard.spec : existingDashboard.dashboard;
+      const folderTitle = isV2
+        ? existingDashboard.metadata.annotations?.[AnnoKeyFolderTitle]
+        : existingDashboard.meta.folderTitle;
+      return `Dashboard named '${dashboard.title}' in folder '${folderTitle}' has the same UID`;
     })
     .catch((error) => {
       error.isHandled = true;
+
+      // when Editor user tries to import admin only dashboard (with same uid) he gets an unhelpful 403 error
+      //  therefore handling this use case to return some indication of whats wrong
+      if (error.status === 403) {
+        return 'Dashboard with the same UID already exists';
+      }
       return true;
     });
 };

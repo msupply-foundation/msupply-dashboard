@@ -1,7 +1,8 @@
 import { Action } from '@reduxjs/toolkit';
 
+import { ElasticsearchDataQuery, MetricAggregation } from 'app/plugins/datasource/elasticsearch/dataquery.gen';
+
 import { defaultMetricAgg } from '../../../../queryDef';
-import { ElasticsearchQuery, MetricAggregation } from '../../../../types';
 import { removeEmpty } from '../../../../utils';
 import { initQuery } from '../../state';
 import { isMetricAggregationWithMeta, isMetricAggregationWithSettings, isPipelineAggregation } from '../aggregations';
@@ -18,7 +19,10 @@ import {
   toggleMetricVisibility,
 } from './actions';
 
-export const reducer = (state: ElasticsearchQuery['metrics'], action: Action): ElasticsearchQuery['metrics'] => {
+export const reducer = (
+  state: ElasticsearchDataQuery['metrics'],
+  action: Action
+): ElasticsearchDataQuery['metrics'] => {
   if (addMetric.match(action)) {
     return [...state!, defaultMetricAgg(action.payload)];
   }
@@ -36,9 +40,11 @@ export const reducer = (state: ElasticsearchQuery['metrics'], action: Action): E
   if (changeMetricType.match(action)) {
     return state!
       .filter((metric) =>
-        // When the new metric type is `isSingleMetric` we remove all other metrics from the query
+        // When the new query type is not `metrics` we remove all other metrics from the query
         // leaving only the current one.
-        !!metricAggregationConfig[action.payload.type].isSingleMetric ? metric.id === action.payload.id : true
+        metricAggregationConfig[action.payload.type].impliedQueryType === 'metrics'
+          ? true
+          : metric.id === action.payload.id
       )
       .map((metric) => {
         if (metric.id !== action.payload.id) {
@@ -153,7 +159,7 @@ export const reducer = (state: ElasticsearchQuery['metrics'], action: Action): E
   }
 
   if (initQuery.match(action)) {
-    if (state?.length || 0 > 0) {
+    if (state && state.length > 0) {
       return state;
     }
     return [defaultMetricAgg('1')];

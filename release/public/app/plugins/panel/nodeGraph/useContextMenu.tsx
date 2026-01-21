@@ -1,11 +1,13 @@
 import { css } from '@emotion/css';
-import React, { MouseEvent, useCallback, useState } from 'react';
+import { MouseEvent, useCallback, useState } from 'react';
+import * as React from 'react';
 
-import { DataFrame, Field, GrafanaTheme2, LinkModel } from '@grafana/data';
+import { DataFrame, Field, GrafanaTheme2, LinkModel, LinkTarget } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { ContextMenu, MenuGroup, MenuItem, useStyles2 } from '@grafana/ui';
 
 import { Config } from './layout';
-import { EdgeDatum, NodeDatum } from './types';
+import { EdgeDatumLayout, NodeDatum } from './types';
 import { getEdgeFields, getNodeFields, statToString } from './utils';
 
 /**
@@ -22,7 +24,7 @@ export function useContextMenu(
   setConfig: (config: Config) => void,
   setFocusedNodeId: (id: string) => void
 ): {
-  onEdgeOpen: (event: MouseEvent<SVGElement>, edge: EdgeDatum) => void;
+  onEdgeOpen: (event: MouseEvent<SVGElement>, edge: EdgeDatumLayout) => void;
   onNodeOpen: (event: MouseEvent<SVGElement>, node: NodeDatum) => void;
   MenuComponent: React.ReactNode;
 } {
@@ -53,7 +55,7 @@ export function useContextMenu(
   );
 
   const onEdgeOpen = useCallback(
-    (event: MouseEvent<SVGElement>, edge: EdgeDatum) => {
+    (event: MouseEvent<SVGElement>, edge: EdgeDatumLayout) => {
       if (!edges) {
         // This could happen if we have only one node and no edges, in which case this is not needed as there is no edge
         // to click on.
@@ -81,12 +83,12 @@ function makeContextMenu(
       renderMenuItems={renderer}
       onClose={() => setMenu(undefined)}
       x={event.pageX}
-      y={event.pageY}
+      y={event.pageY - window.scrollY}
     />
   );
 }
 
-function getItemsRenderer<T extends NodeDatum | EdgeDatum>(
+function getItemsRenderer<T extends NodeDatum | EdgeDatumLayout>(
   links: LinkModel[],
   item: T,
   extraItems?: Array<LinkData<T>> | undefined
@@ -109,7 +111,7 @@ function getItemsRenderer<T extends NodeDatum | EdgeDatum>(
   };
 }
 
-function mapMenuItem<T extends NodeDatum | EdgeDatum>(item: T) {
+function mapMenuItem<T extends NodeDatum | EdgeDatumLayout>(item: T) {
   return function NodeGraphMenuItem(link: LinkData<T>) {
     return (
       <MenuItem
@@ -128,17 +130,18 @@ function mapMenuItem<T extends NodeDatum | EdgeDatum>(item: T) {
               }
             : undefined
         }
-        target={'_self'}
+        target={link.target || '_self'}
       />
     );
   };
 }
 
-type LinkData<T extends NodeDatum | EdgeDatum> = {
+type LinkData<T extends NodeDatum | EdgeDatumLayout> = {
   label: string;
   ariaLabel?: string;
   url?: string;
   onClick?: (item: T) => void;
+  target?: LinkTarget;
 };
 
 function getItems(links: LinkModel[]) {
@@ -168,6 +171,7 @@ function getItems(links: LinkModel[]) {
         ariaLabel: link.newTitle || link.l.title,
         url: link.l.href,
         onClick: link.l.onClick,
+        target: link.l.target,
       })),
     };
   });
@@ -177,7 +181,7 @@ function FieldRow({ field, index }: { field: Field; index: number }) {
   return (
     <HeaderRow
       label={field.config?.displayName || field.name}
-      value={statToString(field.config, field.values.get(index) || '')}
+      value={statToString(field.config, field.values[index] || '')}
     />
   );
 }
@@ -200,17 +204,19 @@ function NodeHeader({ node, nodes }: { node: NodeDatum; nodes?: DataFrame }) {
   if (nodes) {
     const fields = getNodeFields(nodes);
     for (const f of [fields.title, fields.subTitle, fields.mainStat, fields.secondaryStat, ...fields.details]) {
-      if (f && f.values.get(node.dataFrameRowIndex)) {
-        rows.push(<FieldRow field={f} index={node.dataFrameRowIndex} />);
+      if (f && f.values[node.dataFrameRowIndex]) {
+        rows.push(<FieldRow key={f.name} field={f} index={node.dataFrameRowIndex} />);
       }
     }
   } else {
     // Fallback if we don't have nodes dataFrame. Can happen if we use just the edges frame to construct this.
     if (node.title) {
-      rows.push(<HeaderRow label={'Title'} value={node.title} />);
+      rows.push(<HeaderRow key="title" label={t('nodeGraph.node-header.label-title', 'Title')} value={node.title} />);
     }
     if (node.subTitle) {
-      rows.push(<HeaderRow label={'Subtitle'} value={node.subTitle} />);
+      rows.push(
+        <HeaderRow key="subtitle" label={t('nodeGraph.node-header.label-subtitle', 'Subtitle')} value={node.subTitle} />
+      );
     }
   }
 
@@ -224,20 +230,26 @@ function NodeHeader({ node, nodes }: { node: NodeDatum; nodes?: DataFrame }) {
 /**
  * Shows some of the field values in a table on top of the context menu.
  */
-function EdgeHeader(props: { edge: EdgeDatum; edges: DataFrame }) {
+function EdgeHeader(props: { edge: EdgeDatumLayout; edges: DataFrame }) {
   const index = props.edge.dataFrameRowIndex;
   const fields = getEdgeFields(props.edges);
-  const valueSource = fields.source?.values.get(index) || '';
-  const valueTarget = fields.target?.values.get(index) || '';
+  const valueSource = fields.source?.values[index] || '';
+  const valueTarget = fields.target?.values[index] || '';
 
   const rows = [];
   if (valueSource && valueTarget) {
-    rows.push(<HeaderRow label={'Source → Target'} value={`${valueSource} → ${valueTarget}`} />);
+    rows.push(
+      <HeaderRow
+        key={'header-row'}
+        label={t('nodeGraph.edge-header.label-source-target', 'Source → Target')}
+        value={`${valueSource} → ${valueTarget}`}
+      />
+    );
   }
 
   for (const f of [fields.mainStat, fields.secondaryStat, ...fields.details]) {
-    if (f && f.values.get(index)) {
-      rows.push(<FieldRow field={f} index={index} />);
+    if (f && f.values[index]) {
+      rows.push(<FieldRow key={`field-row-${index}`} field={f} index={index} />);
     }
   }
 
@@ -250,19 +262,19 @@ function EdgeHeader(props: { edge: EdgeDatum; edges: DataFrame }) {
 
 export const getLabelStyles = (theme: GrafanaTheme2) => {
   return {
-    label: css`
-      label: Label;
-      line-height: 1.25;
-      color: ${theme.colors.text.disabled};
-      font-size: ${theme.typography.size.sm};
-      font-weight: ${theme.typography.fontWeightMedium};
-      padding-right: ${theme.spacing(1)};
-    `,
-    value: css`
-      label: Value;
-      font-size: ${theme.typography.size.sm};
-      font-weight: ${theme.typography.fontWeightMedium};
-      color: ${theme.colors.text.primary};
-    `,
+    label: css({
+      label: 'Label',
+      lineHeight: 1.25,
+      color: theme.colors.text.disabled,
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.fontWeightMedium,
+      paddingRight: theme.spacing(1),
+    }),
+    value: css({
+      label: 'Value',
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.fontWeightMedium,
+      color: theme.colors.text.primary,
+    }),
   };
 };

@@ -1,18 +1,40 @@
 import { WithAccessControlMetadata } from '@grafana/data';
 
-import { DashboardAcl } from './acl';
+import { ManagerKind } from '../features/apiserver/types';
 
-export interface FolderDTO extends WithAccessControlMetadata {
-  id: number;
+export interface FolderListItemDTO {
   uid: string;
   title: string;
-  url: string;
-  version: number;
-  canSave: boolean;
-  canEdit: boolean;
+  managedBy?: ManagerKind;
+  parentUid?: string;
+}
+
+export type FolderParent = Pick<FolderDTO, 'title' | 'uid' | 'url'>;
+
+export interface FolderDTO extends WithAccessControlMetadata {
   canAdmin: boolean;
   canDelete: boolean;
+  canEdit: boolean;
+  canSave: boolean;
+  created: string;
+  createdBy: string;
+  hasAcl: boolean;
+  id: number;
+  parentUid?: string;
+  managedBy?: ManagerKind;
+
+  // The API does actually return a full FolderDTO here, but we want to restrict it to just a few properties
+  parents?: FolderParent[];
+  title: string;
+  uid: string;
+  updated: string;
+  updatedBy: string;
+  url: string;
+  version?: number;
 }
+
+/** Minimal data required to create a new folder */
+export type NewFolder = Pick<FolderDTO, 'title' | 'parentUid'>;
 
 export interface FolderState {
   id: number;
@@ -23,9 +45,23 @@ export interface FolderState {
   canDelete: boolean;
   hasChanged: boolean;
   version: number;
-  permissions: DashboardAcl[];
-  canViewFolderPermissions: boolean;
 }
+
+/**
+ * API response from `/api/folders/${folderUID}/counts`
+ * @deprecated The properties here are inconsistently named with App Platform API responses.
+ * Avoid using this type as it will be removed after app platform folder migration is complete
+ */
+export interface DescendantCountDTO {
+  folder: number;
+  dashboard: number;
+  librarypanel: number;
+  alertrule: number;
+}
+
+type DescendantResource = 'folders' | 'dashboards' | 'library_elements' | 'alertrules';
+/** Summary of descendant counts by resource type, with keys matching the App Platform API response */
+export interface DescendantCount extends Record<DescendantResource, number> {}
 
 export interface FolderInfo {
   /**
@@ -35,5 +71,4 @@ export interface FolderInfo {
   uid?: string;
   title?: string;
   url?: string;
-  canViewFolderPermissions?: boolean;
 }

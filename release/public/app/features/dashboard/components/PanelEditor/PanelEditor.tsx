@@ -1,25 +1,24 @@
 import { css } from '@emotion/css';
-import React, { PureComponent } from 'react';
+import { PureComponent } from 'react';
 import { connect, ConnectedProps } from 'react-redux';
 import AutoSizer from 'react-virtualized-auto-sizer';
 import { Subscription } from 'rxjs';
 
 import { FieldConfigSource, GrafanaTheme2, NavModel, NavModelItem, PageLayoutType } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
-import { Stack } from '@grafana/experimental';
-import { config, locationService } from '@grafana/runtime';
+import { Trans, t } from '@grafana/i18n';
+import { locationService } from '@grafana/runtime';
 import {
   Button,
-  HorizontalGroup,
   InlineSwitch,
   ModalsController,
-  PageToolbar,
   RadioButtonGroup,
   stylesFactory,
   Themeable2,
   ToolbarButton,
   ToolbarButtonRow,
   withTheme2,
+  Stack,
 } from '@grafana/ui';
 import { AppChromeUpdate } from 'app/core/components/AppChrome/AppChromeUpdate';
 import { Page } from 'app/core/components/Page/Page';
@@ -30,15 +29,16 @@ import { SaveLibraryPanelModal } from 'app/features/library-panels/components/Sa
 import { PanelModelWithLibraryPanel } from 'app/features/library-panels/types';
 import { getPanelStateForModel } from 'app/features/panel/state/selectors';
 import { updateTimeZoneForSession } from 'app/features/profile/state/reducers';
-import { StoreState } from 'app/types';
 import { PanelOptionsChangedEvent, ShowModalReactEvent } from 'app/types/events';
+import { StoreState } from 'app/types/store';
 
 import { notifyApp } from '../../../../core/actions';
-import { UnlinkModal } from '../../../library-panels/components/UnlinkModal/UnlinkModal';
+import { UnlinkModal } from '../../../dashboard-scene/scene/UnlinkModal';
 import { isPanelModelLibraryPanel } from '../../../library-panels/guard';
 import { getVariablesByKey } from '../../../variables/state/selectors';
 import { DashboardPanel } from '../../dashgrid/DashboardPanel';
-import { DashboardModel, PanelModel } from '../../state';
+import { DashboardModel } from '../../state/DashboardModel';
+import { PanelModel } from '../../state/PanelModel';
 import { DashNavTimeControls } from '../DashNav/DashNavTimeControls';
 import { SaveDashboardDrawer } from '../SaveDashboard/SaveDashboardDrawer';
 
@@ -267,7 +267,7 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
         {panelPane}
         <div
           className={styles.tabsWrapper}
-          aria-label={selectors.components.PanelEditor.DataPane.content}
+          data-testid={selectors.components.PanelEditor.DataPane.content}
           key="panel-editor-tabs"
         >
           <PanelEditorTabs
@@ -301,69 +301,81 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
 
     return (
       <div className={styles.panelToolbar}>
-        <HorizontalGroup justify={variables.length > 0 ? 'space-between' : 'flex-end'} align="flex-start">
+        <Stack justifyContent={variables.length > 0 ? 'space-between' : 'flex-end'} alignItems="flex-start">
           {this.renderTemplateVariables(styles)}
           <Stack gap={1}>
             <InlineSwitch
-              label="Table view"
+              label={t('dashboard.panel-editor-unconnected.table-view-label-table-view', 'Table view')}
               showLabel={true}
               id="table-view"
               value={tableViewEnabled}
               onClick={this.onToggleTableView}
-              aria-label={selectors.components.PanelEditor.toggleTableView}
+              data-testid={selectors.components.PanelEditor.toggleTableView}
             />
             <RadioButtonGroup value={uiState.mode} options={displayModes} onChange={this.onDisplayModeChange} />
             <DashNavTimeControls dashboard={dashboard} onChangeTimeZone={updateTimeZoneForSession} isOnCanvas={true} />
             {!uiState.isPanelOptionsVisible && <VisualizationButton panel={panel} />}
           </Stack>
-        </HorizontalGroup>
+        </Stack>
       </div>
     );
   }
 
   renderEditorActions() {
-    const size = config.featureToggles.topnav ? 'sm' : 'md';
+    const size = 'sm';
     let editorActions = [
       <Button
         onClick={this.onDiscard}
-        title="Undo all changes"
+        title={t('dashboard.panel-editor-unconnected.editor-actions.title-undo-all-changes', 'Undo all changes')}
         key="discard"
         size={size}
         variant="destructive"
         fill="outline"
       >
-        Discard
+        <Trans i18nKey="dashboard.panel-editor-unconnected.editor-actions.discard">Discard</Trans>
       </Button>,
-      this.props.panel.libraryPanel ? (
-        <Button
-          onClick={this.onSaveLibraryPanel}
-          variant="primary"
-          size={size}
-          title="Apply changes and save library panel"
-          key="save-panel"
-        >
-          Save library panel
-        </Button>
-      ) : (
-        <Button
-          onClick={this.onSaveDashboard}
-          title="Apply changes and save dashboard"
-          key="save"
-          size={size}
-          variant="secondary"
-        >
-          Save
-        </Button>
-      ),
+      this.props.dashboard.meta.canSave &&
+        (this.props.panel.libraryPanel ? (
+          <Button
+            onClick={this.onSaveLibraryPanel}
+            variant="primary"
+            size={size}
+            title={t(
+              'dashboard.panel-editor-unconnected.editor-actions.title-apply-changes-and-save-library-panel',
+              'Apply changes and save library panel'
+            )}
+            key="save-panel"
+          >
+            <Trans i18nKey="dashboard.panel-editor-unconnected.editor-actions.save-library-panel">
+              Save library panel
+            </Trans>
+          </Button>
+        ) : (
+          <Button
+            onClick={this.onSaveDashboard}
+            title={t(
+              'dashboard.panel-editor-unconnected.editor-actions.title-apply-changes-and-save-dashboard',
+              'Apply changes and save dashboard'
+            )}
+            key="save"
+            size={size}
+            variant="secondary"
+          >
+            <Trans i18nKey="dashboard.panel-editor-unconnected.editor-actions.save">Save</Trans>
+          </Button>
+        )),
       <Button
         onClick={this.onBack}
         variant="primary"
-        title="Apply changes and go back to dashboard"
+        title={t(
+          'dashboard.panel-editor-unconnected.editor-actions.title-apply-changes-dashboard',
+          'Apply changes and go back to dashboard'
+        )}
         data-testid={selectors.components.PanelEditor.applyButton}
         key="apply"
         size={size}
       >
-        Apply
+        <Trans i18nKey="dashboard.panel-editor-unconnected.editor-actions.apply">Apply</Trans>
       </Button>,
     ];
 
@@ -385,10 +397,13 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
                     isOpen: true,
                   });
                 }}
-                title="Disconnects this panel from the library panel so that you can edit it regularly."
+                title={t(
+                  'dashboard.panel-editor-unconnected.title-unlink',
+                  'Disconnects this panel from the library panel so that you can edit it regularly.'
+                )}
                 key="unlink"
               >
-                Unlink
+                <Trans i18nKey="dashboard.panel-editor-unconnected.unlink">Unlink</Trans>
               </ToolbarButton>
             );
           }}
@@ -430,22 +445,6 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
     this.setState({ showSaveLibraryPanelModal: false });
   };
 
-  renderToolbar() {
-    if (config.featureToggles.topnav) {
-      return (
-        <AppChromeUpdate
-          actions={<ToolbarButtonRow alignment="right">{this.renderEditorActions()}</ToolbarButtonRow>}
-        />
-      );
-    }
-
-    return (
-      <PageToolbar title={this.props.dashboard.title} section="Edit Panel" onGoBack={this.onGoBackToDashboard}>
-        {this.renderEditorActions()}
-      </PageToolbar>
-    );
-  }
-
   render() {
     const { initDone, uiState, theme, sectionNav, pageNav, className, updatePanelEditorUIState } = this.props;
     const styles = getStyles(theme, this.props);
@@ -458,11 +457,13 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
       <Page
         navModel={sectionNav}
         pageNav={pageNav}
-        aria-label={selectors.components.PanelEditor.General.content}
+        data-testid={selectors.components.PanelEditor.General.content}
         layout={PageLayoutType.Custom}
-        toolbar={this.renderToolbar()}
         className={className}
       >
+        <AppChromeUpdate
+          actions={<ToolbarButtonRow alignment="right">{this.renderEditorActions()}</ToolbarButtonRow>}
+        />
         <div className={styles.wrapper}>
           <div className={styles.verticalSplitPanesWrapper}>
             {!uiState.isPanelOptionsVisible ? (
@@ -514,61 +515,66 @@ export const getStyles = stylesFactory((theme: GrafanaTheme2, props: Props) => {
       flexGrow: 1,
       minHeight: 0,
       display: 'flex',
-      paddingTop: config.featureToggles.topnav ? theme.spacing(2) : 0,
+      paddingTop: theme.spacing(2),
     }),
-    verticalSplitPanesWrapper: css`
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      width: 100%;
-      position: relative;
-    `,
-    mainPaneWrapper: css`
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      width: 100%;
-      padding-right: ${uiState.isPanelOptionsVisible ? 0 : paneSpacing};
-    `,
-    variablesWrapper: css`
-      label: variablesWrapper;
-      display: flex;
-      flex-grow: 1;
-      flex-wrap: wrap;
-      gap: ${theme.spacing(1, 2)};
-    `,
-    panelWrapper: css`
-      flex: 1 1 0;
-      min-height: 0;
-      width: 100%;
-      padding-left: ${paneSpacing};
-    `,
-    tabsWrapper: css`
-      height: 100%;
-      width: 100%;
-    `,
-    panelToolbar: css`
-      display: flex;
-      padding: 0 0 ${paneSpacing} ${paneSpacing};
-      justify-content: space-between;
-      flex-wrap: wrap;
-    `,
-    toolbarLeft: css`
-      padding-left: ${theme.spacing(1)};
-    `,
-    centeringContainer: css`
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-      flex-direction: column;
-    `,
-    onlyPanel: css`
-      height: 100%;
-      position: absolute;
-      overflow: hidden;
-      width: 100%;
-    `,
+    verticalSplitPanesWrapper: css({
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      width: '100%',
+      position: 'relative',
+    }),
+    mainPaneWrapper: css({
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      width: '100%',
+      paddingRight: `${uiState.isPanelOptionsVisible ? 0 : paneSpacing}`,
+    }),
+    variablesWrapper: css({
+      label: 'variablesWrapper',
+      display: 'flex',
+      flexGrow: 1,
+      flexWrap: 'wrap',
+      gap: theme.spacing(1, 2),
+    }),
+    panelWrapper: css({
+      flex: '1 1 0',
+      minHeight: 0,
+      width: '100%',
+      paddingLeft: paneSpacing,
+    }),
+    tabsWrapper: css({
+      height: '100%',
+      width: '100%',
+    }),
+    panelToolbar: css({
+      display: 'flex',
+      padding: `0 0 ${paneSpacing} ${paneSpacing}`,
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+    }),
+    angularWarning: css({
+      display: 'flex',
+      height: theme.spacing(4),
+      alignItems: 'center',
+    }),
+    toolbarLeft: css({
+      paddingLeft: theme.spacing(1),
+    }),
+    centeringContainer: css({
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      position: 'relative',
+      flexDirection: 'column',
+    }),
+    onlyPanel: css({
+      height: '100%',
+      position: 'absolute',
+      overflow: 'hidden',
+      width: '100%',
+    }),
   };
 });
 

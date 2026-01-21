@@ -2,8 +2,8 @@
 // Migrations applied by the DashboardMigrator are performed before the plugin is loaded.
 // DashboardMigrator migrations are tied to a certain minimum version of a dashboard which means they will only be ran once.
 
-import { DataQuery, AnnotationQuery } from '@grafana/data';
-import { getNextRefIdChar } from 'app/core/utils/query';
+import { AnnotationQuery, getNextRefId } from '@grafana/data';
+import { DataQuery } from '@grafana/schema';
 
 import { CloudWatchMetricsQuery, LegacyAnnotationQuery, MetricQueryType, MetricEditorMode } from '../types';
 
@@ -20,7 +20,7 @@ export function migrateMultipleStatsMetricsQuery(
     }
   }
   for (const newTarget of newQueries) {
-    newTarget.refId = getNextRefIdChar(panelQueries);
+    newTarget.refId = getNextRefId(panelQueries);
     delete newTarget.statistics;
     panelQueries.push(newTarget);
   }
@@ -36,15 +36,17 @@ export function migrateMultipleStatsAnnotationQuery(
 ): Array<AnnotationQuery<DataQuery>> {
   const newAnnotations: Array<AnnotationQuery<LegacyAnnotationQuery>> = [];
 
-  if (annotationQuery && 'statistics' in annotationQuery && annotationQuery?.statistics?.length) {
-    for (const stat of annotationQuery.statistics.splice(1)) {
-      const { statistics, name, ...newAnnotation } = annotationQuery;
-      newAnnotations.push({ ...newAnnotation, statistic: stat, name: `${name} - ${stat}` });
-    }
-    annotationQuery.statistic = annotationQuery.statistics[0];
-    // Only change the name of the original if new annotations have been created
-    if (newAnnotations.length !== 0) {
-      annotationQuery.name = `${annotationQuery.name} - ${annotationQuery.statistic}`;
+  if (annotationQuery && 'statistics' in annotationQuery) {
+    if (annotationQuery?.statistics?.length) {
+      for (const stat of annotationQuery.statistics.splice(1)) {
+        const { statistics, name, ...newAnnotation } = annotationQuery;
+        newAnnotations.push({ ...newAnnotation, statistic: stat, name: `${name} - ${stat}` });
+      }
+      annotationQuery.statistic = annotationQuery.statistics[0];
+      // Only change the name of the original if new annotations have been created
+      if (newAnnotations.length !== 0) {
+        annotationQuery.name = `${annotationQuery.name} - ${annotationQuery.statistic}`;
+      }
     }
     delete annotationQuery.statistics;
   }
@@ -58,7 +60,7 @@ export function migrateCloudWatchQuery(query: CloudWatchMetricsQuery) {
   }
 
   if (!query.hasOwnProperty('metricEditorMode')) {
-    if (query.metricQueryType === MetricQueryType.Query) {
+    if (query.metricQueryType === MetricQueryType.Insights) {
       query.metricEditorMode = MetricEditorMode.Code;
     } else {
       query.metricEditorMode = query.expression ? MetricEditorMode.Code : MetricEditorMode.Builder;

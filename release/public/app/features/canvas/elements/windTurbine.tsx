@@ -1,15 +1,17 @@
 import { css } from '@emotion/css';
-import React from 'react';
 
-import { GrafanaTheme2 } from '@grafana/data';
+import { GrafanaTheme2, LinkModel } from '@grafana/data';
+import { t } from '@grafana/i18n';
+import { ScalarDimensionConfig } from '@grafana/schema';
 import { useStyles2 } from '@grafana/ui';
-import { DimensionContext, ScalarDimensionConfig } from 'app/features/dimensions';
-import { ScalarDimensionEditor } from 'app/features/dimensions/editors';
+import { DimensionContext } from 'app/features/dimensions/context';
+import { ScalarDimensionEditor } from 'app/features/dimensions/editors/ScalarDimensionEditor';
 
-import { CanvasElementItem, CanvasElementProps, defaultBgColor } from '../element';
+import { CanvasElementItem, CanvasElementOptions, CanvasElementProps, defaultBgColor } from '../element';
 
 interface WindTurbineData {
   rpm?: number;
+  links?: LinkModel[];
 }
 
 interface WindTurbineConfig {
@@ -63,7 +65,7 @@ const WindTurbineDisplay = ({ data }: CanvasElementProps<WindTurbineConfig, Wind
   );
 };
 
-export const windTurbineItem: CanvasElementItem<any, any> = {
+export const windTurbineItem: CanvasElementItem = {
   id: 'windTurbine',
   name: 'Wind Turbine',
   description: 'Spinny spinny',
@@ -87,42 +89,45 @@ export const windTurbineItem: CanvasElementItem<any, any> = {
       height: options?.placement?.height ?? 155,
       top: options?.placement?.top,
       left: options?.placement?.left,
+      rotation: options?.placement?.rotation ?? 0,
     },
+    links: options?.links ?? [],
   }),
 
   // Called when data changes
-  prepareData: (ctx: DimensionContext, cfg: WindTurbineConfig) => {
+  prepareData: (dimensionContext: DimensionContext, elementOptions: CanvasElementOptions<WindTurbineConfig>) => {
+    const windTurbineConfig = elementOptions.config;
+
     const data: WindTurbineData = {
-      rpm: cfg?.rpm ? ctx.getScalar(cfg.rpm).value() : 0,
+      rpm: windTurbineConfig?.rpm ? dimensionContext.getScalar(windTurbineConfig.rpm).value() : 0,
     };
 
     return data;
   },
 
   registerOptionsUI: (builder) => {
-    const category = ['Wind Turbine'];
+    const category = [t('canvas.wind-turbine-item.category-wind-turbine', 'Wind Turbine')];
     builder.addCustomEditor({
       category,
       id: 'rpm',
       path: 'config.rpm',
-      name: 'RPM',
+      name: t('canvas.wind-turbine-item.name-rpm', 'RPM'),
       editor: ScalarDimensionEditor,
     });
   },
 };
 
 const getStyles = (theme: GrafanaTheme2) => ({
-  blade: css`
-    @keyframes spin {
-      from {
-        transform: rotate(0deg);
-      }
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    transform-origin: 94.663px 94.663px;
-    transform: rotate(15deg);
-  `,
+  blade: css({
+    transformOrigin: '94.663px 94.663px',
+    transform: 'rotate(15deg)',
+    '@keyframes spin': {
+      from: {
+        transform: 'rotate(0deg)',
+      },
+      to: {
+        transform: 'rotate(360deg)',
+      },
+    },
+  }),
 });

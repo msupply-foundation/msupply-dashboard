@@ -11,7 +11,10 @@ import {
   ScopedVar,
   ScopedVars,
 } from '@grafana/data';
+import { t } from '@grafana/i18n';
+import { VizPanel } from '@grafana/scenes';
 import { PanelModel } from 'app/features/dashboard/state/PanelModel';
+import { dashboardSceneGraph } from 'app/features/dashboard-scene/utils/dashboardSceneGraph';
 
 import { getLinkSrv } from './link_srv';
 
@@ -67,7 +70,7 @@ export const getFieldLinksSupplier = (value: FieldDisplay): LinkModelSupplier<Fi
             name: dataFrame.name,
             refId: dataFrame.refId,
           },
-          text: 'Series',
+          text: t('panel.get-field-links-supplier.text.series', 'Series'),
         };
 
         const field = value.colIndex !== undefined ? dataFrame.fields[value.colIndex] : undefined;
@@ -78,19 +81,19 @@ export const getFieldLinksSupplier = (value: FieldDisplay): LinkModelSupplier<Fi
               name: field.name,
               labels: field.labels,
             },
-            text: 'Field',
+            text: t('panel.get-field-links-supplier.text.field', 'Field'),
           };
 
           if (value.rowIndex !== undefined && value.rowIndex >= 0) {
             const { timeField } = getTimeField(dataFrame);
             scopedVars['__value'] = {
               value: {
-                raw: field.values.get(value.rowIndex),
+                raw: field.values[value.rowIndex],
                 numeric: value.display.numeric,
                 text: formattedValueToString(value.display),
-                time: timeField ? timeField.values.get(value.rowIndex) : undefined,
+                time: timeField ? timeField.values[value.rowIndex] : undefined,
               },
-              text: 'Value',
+              text: t('panel.get-field-links-supplier.text.value', 'Value'),
             };
           }
 
@@ -105,7 +108,7 @@ export const getFieldLinksSupplier = (value: FieldDisplay): LinkModelSupplier<Fi
                   rowIndex: value.rowIndex!,
                 }),
               },
-              text: 'Data',
+              text: t('panel.get-field-links-supplier.text.data', 'Data'),
             };
           }
         } else {
@@ -117,7 +120,7 @@ export const getFieldLinksSupplier = (value: FieldDisplay): LinkModelSupplier<Fi
               text: formattedValueToString(value.display),
               calc: value.name,
             },
-            text: 'Value',
+            text: t('panel.get-field-links-supplier.text.value', 'Value'),
           };
         }
       } else {
@@ -126,7 +129,7 @@ export const getFieldLinksSupplier = (value: FieldDisplay): LinkModelSupplier<Fi
 
       const replace: InterpolateFunction = (value: string, vars: ScopedVars | undefined, fmt?: string | Function) => {
         const finalVars: ScopedVars = {
-          ...(scopedVars as ScopedVars),
+          ...scopedVars,
           ...vars,
         };
         return replaceVariables(value, finalVars, fmt);
@@ -139,7 +142,10 @@ export const getFieldLinksSupplier = (value: FieldDisplay): LinkModelSupplier<Fi
   };
 };
 
-export const getPanelLinksSupplier = (panel: PanelModel): LinkModelSupplier<PanelModel> | undefined => {
+export const getPanelLinksSupplier = (
+  panel: PanelModel,
+  replaceVariables?: InterpolateFunction
+): LinkModelSupplier<PanelModel> | undefined => {
   const links = panel.links;
 
   if (!links || links.length === 0) {
@@ -149,7 +155,26 @@ export const getPanelLinksSupplier = (panel: PanelModel): LinkModelSupplier<Pane
   return {
     getLinks: () => {
       return links.map((link) => {
-        return getLinkSrv().getDataLinkUIModel(link, panel.replaceVariables, panel);
+        return getLinkSrv().getDataLinkUIModel(link, replaceVariables || panel.replaceVariables, panel);
+      });
+    },
+  };
+};
+
+export const getScenePanelLinksSupplier = (
+  panel: VizPanel,
+  replaceVariables: InterpolateFunction
+): LinkModelSupplier<VizPanel> | undefined => {
+  const links = dashboardSceneGraph.getPanelLinks(panel)?.state.rawLinks;
+
+  if (!links || links.length === 0) {
+    return undefined;
+  }
+
+  return {
+    getLinks: () => {
+      return links.map((link) => {
+        return getLinkSrv().getDataLinkUIModel(link, replaceVariables, panel);
       });
     },
   };

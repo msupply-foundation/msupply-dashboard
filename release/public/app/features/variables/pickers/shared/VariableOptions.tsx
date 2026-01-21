@@ -1,13 +1,15 @@
 import { css, cx } from '@emotion/css';
-import React, { PureComponent } from 'react';
+import { PureComponent } from 'react';
+import * as React from 'react';
 
-import { GrafanaTheme2 } from '@grafana/data';
+import { GrafanaTheme2, VariableOption } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
+import { Trans, t } from '@grafana/i18n';
 import { Tooltip, Themeable2, withTheme2, clearButtonStyles, stylesFactory } from '@grafana/ui';
-import { Trans, t } from 'app/core/internationalization';
+import checkboxPng from 'img/checkbox.png';
+import checkboxWhitePng from 'img/checkbox_white.png';
 
 import { ALL_VARIABLE_VALUE } from '../../constants';
-import { VariableOption } from '../../types';
 
 export interface Props extends React.HTMLProps<HTMLUListElement>, Themeable2 {
   multi: boolean;
@@ -78,6 +80,7 @@ class VariableOptions extends PureComponent<Props> {
             styles.variableOption,
             {
               [styles.highlighted]: index === highlightIndex,
+              [styles.variableAllOption]: isAllOption,
             },
             styles.noStyledButton
           )}
@@ -98,15 +101,15 @@ class VariableOptions extends PureComponent<Props> {
   }
 
   renderMultiToggle() {
-    const { multi, selectedValues, theme } = this.props;
+    const { multi, selectedValues, theme, values } = this.props;
     const styles = getStyles(theme);
+    const isAllOptionConfigured = values.some((option) => option.value === ALL_VARIABLE_VALUE);
 
     if (!multi) {
       return null;
     }
 
     const tooltipContent = () => <Trans i18nKey="variable.picker.option-tooltip">Clear selections</Trans>;
-
     return (
       <Tooltip content={tooltipContent} placement={'top'}>
         <button
@@ -114,12 +117,13 @@ class VariableOptions extends PureComponent<Props> {
             clearButtonStyles(theme),
             styles.variableOption,
             styles.variableOptionColumnHeader,
-            styles.noStyledButton
+            styles.noStyledButton,
+            { [styles.noPaddingBotton]: isAllOptionConfigured }
           )}
           role="checkbox"
           aria-checked={selectedValues.length > 1 ? 'mixed' : 'false'}
           onClick={this.onToggleAll}
-          aria-label="Toggle all values"
+          aria-label={t('variables.variable-options.aria-label-toggle-all-values', 'Toggle all values')}
           data-placement="top"
         >
           <span
@@ -127,7 +131,9 @@ class VariableOptions extends PureComponent<Props> {
               [styles.variableOptionIconManySelected]: selectedValues.length > 1,
             })}
           ></span>
-          <Trans i18nKey="variable.picker.option-selected-values">Selected</Trans> ({selectedValues.length})
+          <Trans i18nKey="variable.picker.option-selected-values" values={{ numSelected: selectedValues.length }}>
+            Selected ({'{{numSelected}}'})
+          </Trans>
         </button>
       </Tooltip>
     );
@@ -135,7 +141,7 @@ class VariableOptions extends PureComponent<Props> {
 }
 
 const getStyles = stylesFactory((theme: GrafanaTheme2) => {
-  const checkboxImageUrl = theme.isDark ? 'public/img/checkbox.png' : 'public/img/checkbox_white.png';
+  const checkboxImageUrl = theme.isDark ? checkboxPng : checkboxWhitePng;
 
   return {
     hideVariableOptionIcon: css({
@@ -200,6 +206,14 @@ const getStyles = stylesFactory((theme: GrafanaTheme2) => {
     variableOptionsWrapper: css({
       display: 'table',
       width: '100%',
+    }),
+    variableAllOption: css({
+      borderBottom: `1px solid ${theme.colors.border.weak}`,
+      paddingBottom: theme.spacing(1),
+    }),
+
+    noPaddingBotton: css({
+      paddingBottom: 0,
     }),
   };
 });

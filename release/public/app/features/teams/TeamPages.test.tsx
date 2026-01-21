@@ -1,153 +1,57 @@
-import { render, screen } from '@testing-library/react';
-import React from 'react';
-import { match } from 'react-router-dom';
-import { TestProvider } from 'test/helpers/TestProvider';
+import { Route, Routes } from 'react-router-dom-v5-compat';
+import { screen, render, testWithLicenseFeatures, waitFor } from 'test/test-utils';
 
-import { createTheme } from '@grafana/data';
-import { getRouteComponentProps } from 'app/core/navigation/__mocks__/routeProps';
-import { User } from 'app/core/services/context_srv';
+import { setBackendSrv } from '@grafana/runtime';
+import { setupMockServer } from '@grafana/test-utils/server';
+import { MOCK_TEAMS } from '@grafana/test-utils/unstable';
+import { backendSrv } from 'app/core/services/backend_srv';
 
-import { OrgRole, Team, TeamMember } from '../../types';
+import TeamPages from './TeamPages';
 
-import { Props, TeamPages } from './TeamPages';
-import { getMockTeam } from './__mocks__/teamMocks';
+setBackendSrv(backendSrv);
+setupMockServer();
 
-jest.mock('app/core/components/Select/UserPicker', () => {
-  return { UserPicker: () => null };
-});
-
-jest.mock('app/core/services/context_srv', () => ({
-  contextSrv: {
-    accessControlEnabled: () => false,
-    hasPermissionInMetadata: () => false,
-    hasAccessInMetadata: () => true,
-    user: {},
-  },
-}));
-
-jest.mock('@grafana/runtime', () => ({
-  ...jest.requireActual('@grafana/runtime'),
-  getBackendSrv: () => ({
-    get: jest.fn().mockResolvedValue([{ userId: 1, login: 'Test' }]),
-  }),
-  config: {
-    licenseInfo: {
-      enabledFeatures: { teamsync: true },
-      stateInfo: '',
-      licenseUrl: '',
-    },
-    featureToggles: { accesscontrol: false },
-    bootData: { navTree: [], user: {} },
-    buildInfo: {
-      edition: 'Open Source',
-      version: '7.5.0',
-      commit: 'abc123',
-      env: 'production',
-      latestVersion: '',
-      hasUpdate: false,
-      hideVersion: false,
-    },
-    appSubUrl: '',
-  },
-  featureEnabled: () => true,
-}));
-
-// Mock connected child components instead of rendering them
-jest.mock('./TeamSettings', () => {
-  //eslint-disable-next-line
-  return () => <div>Team settings</div>;
-});
-
-jest.mock('./TeamGroupSync', () => {
-  //eslint-disable-next-line
-  return () => <div>Team group sync</div>;
-});
-
-const setup = (propOverrides?: object) => {
-  const props: Props = {
-    ...getRouteComponentProps({
-      match: {
-        params: {
-          id: '1',
-          page: null,
-        },
-      } as unknown as match,
-    }),
-    pageNav: { text: 'Cool team ' },
-    teamId: 1,
-    loadTeam: jest.fn(),
-    loadTeamMembers: jest.fn(),
-    pageName: 'members',
-    team: {} as Team,
-    members: [] as TeamMember[],
-    editorsCanAdmin: false,
-    theme: createTheme(),
-    signedInUser: {
-      id: 1,
-      isGrafanaAdmin: false,
-      orgRole: OrgRole.Viewer,
-    } as User,
-  };
-
-  Object.assign(props, propOverrides);
-
+const setup = (propOverrides: { teamUid?: string; pageName?: string } = {}) => {
+  const pageName = propOverrides.pageName ?? 'members';
+  const teamUid = propOverrides.teamUid ?? MOCK_TEAMS[0].metadata.name;
   render(
-    <TestProvider>
-      <TeamPages {...props} />
-    </TestProvider>
+    <Routes>
+      <Route path="/org/teams/:uid/:page" element={<TeamPages />} />
+    </Routes>,
+    { historyOptions: { initialEntries: [`/org/teams/${teamUid}/${pageName}`] } }
   );
 };
 
 describe('TeamPages', () => {
-  it('should render member page if team not empty', async () => {
-    setup({
-      team: getMockTeam(),
-    });
-    expect(await screen.findByRole('button', { name: 'Add member' })).toBeInTheDocument();
-  });
-
   it('should render settings and preferences page', async () => {
     setup({
-      team: getMockTeam(),
       pageName: 'settings',
-      preferences: {
-        homeDashboardUID: 'home-dashboard',
-        theme: 'Default',
-        timezone: 'Default',
-      },
     });
 
-    expect(await screen.findByText('Team settings')).toBeInTheDocument();
+    expect(await screen.findByText('Team details')).toBeInTheDocument();
   });
 
-  it('should render group sync page', async () => {
-    setup({
-      team: getMockTeam(),
-      pageName: 'groupsync',
-    });
+  describe('teamsync feature disabled', () => {
+    testWithLicenseFeatures({ disable: ['teamsync'] });
 
-    expect(await screen.findByText('Team group sync')).toBeInTheDocument();
-  });
-
-  describe('when feature toggle editorsCanAdmin is turned on', () => {
-    it('should render settings page if user is team admin', async () => {
+    it('should not render group sync page', async () => {
       setup({
-        team: getMockTeam(),
-        pageName: 'settings',
-        preferences: {
-          homeDashboardUID: 'home-dashboard',
-          theme: 'Default',
-          timezone: 'Default',
-        },
-        editorsCanAdmin: true,
-        signedInUser: {
-          id: 1,
-          isGrafanaAdmin: false,
-          orgRole: OrgRole.Admin,
-        } as User,
+        pageName: 'groupsync',
       });
+      await waitFor(() => expect(screen.queryAllByText(/loading .../i)).toHaveLength(0));
 
-      expect(await screen.findByText('Team settings')).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: /external group sync/i })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('teamsync feature enabled', () => {
+    testWithLicenseFeatures({ enable: ['teamsync'] });
+
+    it('should render group sync page', async () => {
+      setup({
+        pageName: 'groupsync',
+      });
+      expect(await screen.findByRole('heading', { name: /external group sync/i })).toBeInTheDocument();
     });
   });
 });

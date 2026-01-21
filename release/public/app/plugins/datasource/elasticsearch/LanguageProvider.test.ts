@@ -1,25 +1,18 @@
 import { AbstractLabelOperator, AbstractQuery } from '@grafana/data';
 
-import { TemplateSrv } from '../../../features/templating/template_srv';
-
 import LanguageProvider from './LanguageProvider';
+import { ElasticsearchDataQuery } from './dataquery.gen';
 import { ElasticDatasource } from './datasource';
 import { createElasticDatasource } from './mocks';
-import { ElasticsearchQuery } from './types';
 
-const baseLogsQuery: Partial<ElasticsearchQuery> = {
+const baseLogsQuery: Partial<ElasticsearchDataQuery> = {
   metrics: [{ type: 'logs', id: '1' }],
 };
 
 describe('transform abstract query to elasticsearch query', () => {
   let datasource: ElasticDatasource;
   beforeEach(() => {
-    const templateSrvStub = {
-      getAdhocFilters: jest.fn(() => []),
-      replace: jest.fn((a: string) => a),
-    } as unknown as TemplateSrv;
-
-    datasource = createElasticDatasource({}, templateSrvStub);
+    datasource = createElasticDatasource();
   });
 
   it('With some labels', () => {

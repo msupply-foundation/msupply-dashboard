@@ -1,6 +1,6 @@
 import { AnnotationQuery } from '@grafana/data';
 
-import { AnnotationQueryEditor } from './components/AnnotationQueryEditor';
+import { AnnotationQueryEditor } from './components/AnnotationQueryEditor/AnnotationQueryEditor';
 import { DEFAULT_ANNOTATIONS_QUERY } from './defaultQueries';
 import { isCloudWatchAnnotation } from './guards';
 import { CloudWatchAnnotationQuery, CloudWatchQuery, LegacyAnnotationQuery } from './types';
@@ -38,18 +38,9 @@ export const CloudWatchAnnotationSupport = {
       return undefined;
     }
 
-    const {
-      prefixMatching,
-      actionPrefix,
-      alarmNamePrefix,
-      statistic,
-      namespace,
-      metricName,
-      dimensions = {},
-    } = anno.target;
+    const { prefixMatching, actionPrefix, alarmNamePrefix, statistic, namespace, metricName } = anno.target;
     const validPrefixMatchingQuery = !!prefixMatching && !!actionPrefix && !!alarmNamePrefix;
-    const validMetricStatQuery =
-      !prefixMatching && !!namespace && !!metricName && !!statistic && !!Object.values(dimensions).length;
+    const validMetricStatQuery = !prefixMatching && !!namespace && !!metricName && !!statistic;
 
     if (validPrefixMatchingQuery || validMetricStatQuery) {
       return anno.target;

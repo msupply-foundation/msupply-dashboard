@@ -1,10 +1,13 @@
-import { ArrayVector, DataFrame, DataFrameView, FieldType } from '@grafana/data';
+import { renderHook, waitFor } from '@testing-library/react';
+
+import { DataFrame, DataFrameView, FieldType } from '@grafana/data';
 import { config } from '@grafana/runtime';
 import { ContextSrv, contextSrv } from 'app/core/services/context_srv';
 import impressionSrv from 'app/core/services/impression_srv';
-import { DashboardQueryResult, getGrafanaSearcher, QueryResponse } from 'app/features/search/service';
+import { getGrafanaSearcher } from 'app/features/search/service/searcher';
+import { DashboardQueryResult, QueryResponse } from 'app/features/search/service/types';
 
-import { getRecentDashboardActions, getSearchResultActions } from './dashboardActions';
+import { getRecentDashboardActions, getSearchResultActions, useSearchResults } from './dashboardActions';
 
 describe('dashboardActions', () => {
   let grafanaSearcherSpy: jest.SpyInstance;
@@ -13,12 +16,12 @@ describe('dashboardActions', () => {
 
   const searchData: DataFrame = {
     fields: [
-      { name: 'kind', type: FieldType.string, config: {}, values: new ArrayVector(['dashboard']) },
-      { name: 'name', type: FieldType.string, config: {}, values: new ArrayVector(['My dashboard 1']) },
-      { name: 'uid', type: FieldType.string, config: {}, values: new ArrayVector(['my-dashboard-1']) },
-      { name: 'url', type: FieldType.string, config: {}, values: new ArrayVector(['/my-dashboard-1']) },
-      { name: 'tags', type: FieldType.other, config: {}, values: new ArrayVector([['foo', 'bar']]) },
-      { name: 'location', type: FieldType.string, config: {}, values: new ArrayVector(['my-folder-1']) },
+      { name: 'kind', type: FieldType.string, config: {}, values: ['dashboard'] },
+      { name: 'name', type: FieldType.string, config: {}, values: ['My dashboard 1'] },
+      { name: 'uid', type: FieldType.string, config: {}, values: ['my-dashboard-1'] },
+      { name: 'url', type: FieldType.string, config: {}, values: ['/my-dashboard-1'] },
+      { name: 'tags', type: FieldType.other, config: {}, values: [['foo', 'bar']] },
+      { name: 'location', type: FieldType.string, config: {}, values: ['my-folder-1'] },
     ],
     meta: {
       custom: {
@@ -87,7 +90,7 @@ describe('dashboardActions', () => {
           {
             id: 'recent-dashboards/my-dashboard-1',
             name: 'My dashboard 1',
-            priority: 5,
+            priority: 6,
             section: 'Recent dashboards',
             url: '/my-dashboard-1',
           },
@@ -110,7 +113,7 @@ describe('dashboardActions', () => {
       });
 
       it('returns an empty array if anonymous access is not enabled', async () => {
-        config.bootData.settings.anonymousEnabled = false;
+        config.anonymousEnabled = false;
         const searchQuery = 'mySearchQuery';
         const results = await getSearchResultActions(searchQuery);
         expect(grafanaSearcherSpy).not.toHaveBeenCalled();
@@ -118,7 +121,7 @@ describe('dashboardActions', () => {
       });
 
       it('calls the search backend and returns an array of CommandPaletteActions if anonymous access is enabled', async () => {
-        config.bootData.settings.anonymousEnabled = true;
+        config.anonymousEnabled = true;
         const searchQuery = 'mySearchQuery';
         const results = await getSearchResultActions(searchQuery);
         expect(grafanaSearcherSpy).toHaveBeenCalledWith({
@@ -153,6 +156,44 @@ describe('dashboardActions', () => {
           limit: 100,
         });
         expect(results).toEqual([
+          {
+            id: 'go/dashboard/my-dashboard-1',
+            name: 'My dashboard 1',
+            priority: 1,
+            section: 'Dashboards',
+            subtitle: 'My folder 1',
+            url: '/my-dashboard-1',
+          },
+        ]);
+      });
+    });
+  });
+
+  describe('useSearchResults', () => {
+    it('returns an empty array if the search query is empty', async () => {
+      const { result } = renderHook(() => {
+        return useSearchResults({ searchQuery: '', show: true });
+      });
+      expect(result.current.searchResults).toEqual([]);
+      expect(result.current.isFetchingSearchResults).toEqual(false);
+    });
+
+    it('returns an empty array if show is false', async () => {
+      const { result } = renderHook(() => {
+        return useSearchResults({ searchQuery: 'something', show: false });
+      });
+      expect(result.current.searchResults).toEqual([]);
+      expect(result.current.isFetchingSearchResults).toBe(false);
+    });
+
+    it('returns dashboard actions', async () => {
+      mockContextSrv.user.isSignedIn = true;
+      const { result } = renderHook(() => {
+        return useSearchResults({ searchQuery: 'mySearchQuery', show: true });
+      });
+      expect(result.current.isFetchingSearchResults).toBe(true);
+      await waitFor(() => {
+        expect(result.current.searchResults).toEqual([
           {
             id: 'go/dashboard/my-dashboard-1',
             name: 'My dashboard 1',

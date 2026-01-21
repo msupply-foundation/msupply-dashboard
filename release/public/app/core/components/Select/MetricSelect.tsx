@@ -1,10 +1,10 @@
 import { flatten } from 'lodash';
-import React, { useMemo, useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { SelectableValue } from '@grafana/data';
-import { LegacyForms } from '@grafana/ui';
+import { t } from '@grafana/i18n';
+import { Select } from '@grafana/ui';
 import { Variable } from 'app/types/templates';
-const { Select } = LegacyForms;
 
 export interface Props {
   onChange: (value: string | undefined) => void;
@@ -33,7 +33,7 @@ export const MetricSelect = (props: Props) => {
       isSearchable={isSearchable}
       maxMenuHeight={500}
       placeholder={placeholder}
-      noOptionsMessage={() => 'No options found'}
+      noOptionsMessage={t('metric-select.noOptionsMessage-no-options-found', 'No options found')}
       value={selected}
     />
   );

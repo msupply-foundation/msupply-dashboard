@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 
 import config from 'app/core/config';
 import { mockDataSource } from 'app/features/alerting/unified/mocks';
@@ -20,22 +19,21 @@ const mockVariable = mockDataSource({
   type: 'datasource',
 });
 
-jest.mock('@grafana/runtime/src/services/dataSourceSrv', () => {
-  return {
-    getDataSourceSrv: () => ({
-      get: () => Promise.resolve({ ...mockDS, getRef: () => {} }),
-      getList: ({ variables }: { variables: boolean }) => (variables ? [mockDS, mockVariable] : [mockDS]),
-      getInstanceSettings: () => ({
-        ...mockDS,
-        meta: {
-          ...mockDS.meta,
-          alerting: true,
-          mixed: true,
-        },
-      }),
+jest.mock('@grafana/runtime', () => ({
+  ...jest.requireActual('@grafana/runtime'),
+  getDataSourceSrv: () => ({
+    get: () => Promise.resolve({ ...mockDS, getRef: () => {} }),
+    getList: ({ variables }: { variables: boolean }) => (variables ? [mockDS, mockVariable] : [mockDS]),
+    getInstanceSettings: () => ({
+      ...mockDS,
+      meta: {
+        ...mockDS.meta,
+        alerting: true,
+        mixed: true,
+      },
     }),
-  };
-});
+  }),
+}));
 
 describe('QueryGroup', () => {
   // QueryGroup relies on this being present
@@ -61,7 +59,7 @@ describe('QueryGroup', () => {
   it('Should add query on click', async () => {
     renderScenario({});
 
-    const addQueryButton = await screen.findByTestId('query-tab-add-query');
+    const addQueryButton = await screen.findByRole('button', { name: /Add query/i });
     const queryRowsContainer = await screen.findByTestId('query-editor-rows');
     expect(queryRowsContainer.children.length).toBe(2);
 
@@ -80,7 +78,7 @@ describe('QueryGroup', () => {
     await userEvent.click(addExpressionButton);
 
     const lastQueryEditorRow = (await screen.findAllByTestId('query-editor-row')).at(-1);
-    const lastEditorToggleRow = (await screen.findAllByLabelText('toggle collapse and expand query row')).at(-1);
+    const lastEditorToggleRow = (await screen.findAllByLabelText('Collapse query row')).at(-1);
 
     expect(lastEditorToggleRow?.getAttribute('aria-expanded')).toBe('true');
     expect(lastQueryEditorRow?.firstElementChild?.children.length).toBe(2);
@@ -92,12 +90,12 @@ describe('QueryGroup', () => {
   it('New query should be expanded', async () => {
     renderScenario({});
 
-    const addQueryButton = await screen.findByTestId('query-tab-add-query');
+    const addQueryButton = await screen.findByRole('button', { name: /Add query/i });
     const queryRowsContainer = await screen.findByTestId('query-editor-rows');
     await userEvent.click(addQueryButton);
 
     const lastQueryEditorRow = (await screen.findAllByTestId('query-editor-row')).at(-1);
-    const lastEditorToggleRow = (await screen.findAllByLabelText('toggle collapse and expand query row')).at(-1);
+    const lastEditorToggleRow = (await screen.findAllByLabelText('Collapse query row')).at(-1);
 
     expect(lastEditorToggleRow?.getAttribute('aria-expanded')).toBe('true');
     expect(lastQueryEditorRow?.firstElementChild?.children.length).toBe(2);
@@ -119,9 +117,15 @@ describe('QueryGroup', () => {
   it('Should not show add expression button when expressions are disabled', async () => {
     config.expressionsEnabled = false;
     renderScenario({});
-    await screen.findByTestId('query-tab-add-query');
+    await screen.findByRole('button', { name: /Add query/i });
     const addExpressionButton = screen.queryByTestId('query-tab-add-expression');
     expect(addExpressionButton).not.toBeInTheDocument();
+  });
+
+  it('correctly renders query options', async () => {
+    renderScenario({});
+    expect(await screen.findByText('MD = 100')).toBeInTheDocument();
+    expect(await screen.findByText('Interval = 1m')).toBeInTheDocument();
   });
 });
 
@@ -134,6 +138,8 @@ function renderScenario(overrides: Partial<Props>) {
       getTransformations: jest.fn(),
     }),
     options: {
+      maxDataPoints: 100,
+      minInterval: '1m',
       queries: [
         {
           datasource: mockDS,

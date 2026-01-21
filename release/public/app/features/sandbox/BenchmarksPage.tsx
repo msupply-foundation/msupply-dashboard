@@ -1,14 +1,7 @@
-import React from 'react';
-
-import { VerticalGroup } from '@grafana/ui';
-import { EmotionPerfTest } from '@grafana/ui/src/components/ThemeDemos/EmotionPerfTest';
+import { EmotionPerfTest } from '@grafana/ui/internal';
 
 export const BenchmarksPage = () => {
-  return (
-    <VerticalGroup>
-      <EmotionPerfTest />
-    </VerticalGroup>
-  );
+  return <EmotionPerfTest />;
 };
 
 export default BenchmarksPage;

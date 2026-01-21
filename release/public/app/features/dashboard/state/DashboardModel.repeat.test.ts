@@ -194,7 +194,7 @@ describe('given dashboard with panel repeat in horizontal direction', () => {
 });
 
 describe('given dashboard with panel repeat in vertical direction', () => {
-  let dashboard: any;
+  let dashboard: DashboardModel;
 
   beforeEach(() => {
     const dashboardJSON = {
@@ -238,7 +238,7 @@ describe('given dashboard with panel repeat in vertical direction', () => {
 });
 
 describe('given dashboard with row repeat and panel repeat in horizontal direction', () => {
-  let dashboard: any, dashboardJSON: any;
+  let dashboard: DashboardModel, dashboardJSON: any;
 
   beforeEach(() => {
     dashboardJSON = {
@@ -280,26 +280,26 @@ describe('given dashboard with row repeat and panel repeat in horizontal directi
       },
     };
     dashboard = getDashboardModel(dashboardJSON);
-    dashboard.processRepeats(false);
+    dashboard.processRepeats();
   });
 
   it('should panels in self row', () => {
     const panelTypes = map(dashboard.panels, 'type');
     expect(panelTypes).toEqual([
       'row',
-      'graph',
-      'graph',
-      'graph',
-      'graph',
-      'graph',
-      'graph',
+      'timeseries',
+      'timeseries',
+      'timeseries',
+      'timeseries',
+      'timeseries',
+      'timeseries',
       'row',
-      'graph',
-      'graph',
-      'graph',
-      'graph',
-      'graph',
-      'graph',
+      'timeseries',
+      'timeseries',
+      'timeseries',
+      'timeseries',
+      'timeseries',
+      'timeseries',
     ]);
   });
 
@@ -325,7 +325,7 @@ describe('given dashboard with row repeat and panel repeat in horizontal directi
 });
 
 describe('given dashboard with row repeat', () => {
-  let dashboard: any, dashboardJSON: any;
+  let dashboard: DashboardModel, dashboardJSON: any;
 
   beforeEach(() => {
     dashboardJSON = {
@@ -365,7 +365,16 @@ describe('given dashboard with row repeat', () => {
 
   it('should not repeat only row', () => {
     const panelTypes = map(dashboard.panels, 'type');
-    expect(panelTypes).toEqual(['row', 'graph', 'graph', 'row', 'graph', 'graph', 'row', 'graph']);
+    expect(panelTypes).toEqual([
+      'row',
+      'timeseries',
+      'timeseries',
+      'row',
+      'timeseries',
+      'timeseries',
+      'row',
+      'timeseries',
+    ]);
   });
 
   it('should set scopedVars for each panel', () => {
@@ -382,7 +391,7 @@ describe('given dashboard with row repeat', () => {
 
     const scopedVars = compact(
       map(dashboard.panels, (panel) => {
-        return panel.scopedVars ? panel.scopedVars.apps.value : null;
+        return panel.scopedVars ? panel.scopedVars.apps?.value : null;
       })
     );
 
@@ -414,7 +423,7 @@ describe('given dashboard with row repeat', () => {
     dashboard.processRepeats();
 
     const panelTypes = map(dashboard.panels, 'type');
-    expect(panelTypes).toEqual(['row', 'row', 'row', 'graph']);
+    expect(panelTypes).toEqual(['row', 'row', 'row', 'timeseries']);
     expect(dashboard.panels[0].panels).toHaveLength(2);
     expect(dashboard.panels[1].panels).toHaveLength(2);
   });
@@ -459,29 +468,29 @@ describe('given dashboard with row repeat', () => {
     const panelTypes = map(dashboard.panels, 'type');
     expect(panelTypes).toEqual([
       'row',
-      'graph',
-      'graph',
+      'timeseries',
+      'timeseries',
       'row',
-      'graph',
-      'graph',
+      'timeseries',
+      'timeseries',
       'row',
-      'graph',
+      'timeseries',
       'row',
-      'graph',
-      'graph',
+      'timeseries',
+      'timeseries',
       'row',
-      'graph',
-      'graph',
+      'timeseries',
+      'timeseries',
     ]);
 
-    expect(dashboard.panels[0].scopedVars['apps'].value).toBe('se1');
-    expect(dashboard.panels[1].scopedVars['apps'].value).toBe('se1');
-    expect(dashboard.panels[3].scopedVars['apps'].value).toBe('se2');
-    expect(dashboard.panels[4].scopedVars['apps'].value).toBe('se2');
-    expect(dashboard.panels[8].scopedVars['hosts'].value).toBe('backend01');
-    expect(dashboard.panels[9].scopedVars['hosts'].value).toBe('backend01');
-    expect(dashboard.panels[11].scopedVars['hosts'].value).toBe('backend02');
-    expect(dashboard.panels[12].scopedVars['hosts'].value).toBe('backend02');
+    expect(dashboard.panels[0].scopedVars?.['apps']?.value).toBe('se1');
+    expect(dashboard.panels[1].scopedVars?.['apps']?.value).toBe('se1');
+    expect(dashboard.panels[3].scopedVars?.['apps']?.value).toBe('se2');
+    expect(dashboard.panels[4].scopedVars?.['apps']?.value).toBe('se2');
+    expect(dashboard.panels[8].scopedVars?.['hosts']?.value).toBe('backend01');
+    expect(dashboard.panels[9].scopedVars?.['hosts']?.value).toBe('backend01');
+    expect(dashboard.panels[11].scopedVars?.['hosts']?.value).toBe('backend02');
+    expect(dashboard.panels[12].scopedVars?.['hosts']?.value).toBe('backend02');
   });
 
   it('should assign unique ids for repeated panels', () => {
@@ -505,7 +514,7 @@ describe('given dashboard with row repeat', () => {
 
     const panelIds = flattenDeep(
       map(dashboard.panels, (panel) => {
-        let ids = [];
+        let ids: number[] = [];
         if (panel.panels && panel.panels.length) {
           ids = map(panel.panels, 'id');
         }
@@ -527,7 +536,16 @@ describe('given dashboard with row repeat', () => {
     dashboard.processRepeats();
 
     const panelTypes = map(dashboard.panels, 'type');
-    expect(panelTypes).toEqual(['row', 'graph', 'graph', 'graph', 'row', 'graph', 'graph', 'graph']);
+    expect(panelTypes).toEqual([
+      'row',
+      'timeseries',
+      'timeseries',
+      'timeseries',
+      'row',
+      'timeseries',
+      'timeseries',
+      'timeseries',
+    ]);
     const panelYPositions = map(dashboard.panels, (p) => p.gridPos.y);
     expect(panelYPositions).toEqual([0, 1, 1, 5, 7, 8, 8, 12]);
   });
@@ -584,7 +602,7 @@ describe('given dashboard with row and panel repeat', () => {
 
   it('should repeat row and panels for each row', () => {
     const panelTypes = map(dashboard.panels, 'type');
-    expect(panelTypes).toEqual(['row', 'graph', 'graph', 'row', 'graph', 'graph']);
+    expect(panelTypes).toEqual(['row', 'timeseries', 'timeseries', 'row', 'timeseries', 'timeseries']);
   });
 
   it('Row repeat should create new panel keys every repeat cycle', () => {
@@ -621,7 +639,7 @@ describe('given dashboard with row and panel repeat', () => {
     dashboard.processRepeats();
 
     const panelTypes = map(dashboard.panels, 'type');
-    expect(panelTypes).toEqual(['row', 'graph', 'graph', 'row', 'graph', 'graph']);
+    expect(panelTypes).toEqual(['row', 'timeseries', 'timeseries', 'row', 'timeseries', 'timeseries']);
     // Make sure only a single DashboardPanelsChangedEvent event is emitted when processing repeats
     expect(panelChangedEvents.length).toBe(1);
   });

@@ -77,6 +77,9 @@ export enum AccessControlAction {
   DashboardsPermissionsRead = 'dashboards.permissions:read',
   DashboardsPermissionsWrite = 'dashboards.permissions:write',
   DashboardsPublicWrite = 'dashboards.public:write',
+  SnapshotsCreate = 'snapshots:create',
+  SnapshotsDelete = 'snapshots:delete',
+  SnapshotsRead = 'snapshots:read',
 
   FoldersRead = 'folders:read',
   FoldersWrite = 'folders:write',
@@ -101,6 +104,11 @@ export enum AccessControlAction {
   AlertingInstanceUpdate = 'alert.instances:write',
   AlertingInstanceRead = 'alert.instances:read',
 
+  // Alerting silences
+  AlertingSilenceCreate = 'alert.silences:create',
+  AlertingSilenceUpdate = 'alert.silences:write',
+  AlertingSilenceRead = 'alert.silences:read',
+
   // Alerting Notification policies
   AlertingNotificationsRead = 'alert.notifications:read',
   AlertingNotificationsWrite = 'alert.notifications:write',
@@ -118,25 +126,60 @@ export enum AccessControlAction {
   AlertingNotificationsExternalRead = 'alert.notifications.external:read',
 
   // Alerting provisioning actions
+  AlertingProvisioningReadSecrets = 'alert.provisioning.secrets:read',
   AlertingProvisioningRead = 'alert.provisioning:read',
   AlertingProvisioningWrite = 'alert.provisioning:write',
+  AlertingRulesProvisioningRead = 'alert.rules.provisioning:read',
+  AlertingRulesProvisioningWrite = 'alert.rules.provisioning:write',
+  AlertingNotificationsProvisioningRead = 'alert.notifications.provisioning:read',
+  AlertingNotificationsProvisioningWrite = 'alert.notifications.provisioning:write',
+  AlertingProvisioningSetStatus = 'alert.provisioning.provenance:write',
 
-  ActionAPIKeysRead = 'apikeys:read',
-  ActionAPIKeysCreate = 'apikeys:create',
-  ActionAPIKeysDelete = 'apikeys:delete',
+  // Alerting receivers actions
+  AlertingReceiversPermissionsRead = 'receivers.permissions:read',
+  AlertingReceiversPermissionsWrite = 'receivers.permissions:write',
+  AlertingReceiversCreate = 'alert.notifications.receivers:create',
+  AlertingReceiversWrite = 'alert.notifications.receivers:write',
+  AlertingReceiversRead = 'alert.notifications.receivers:read',
+
+  // Alerting routes actions
+  AlertingRoutesRead = 'alert.notifications.routes:read',
+  AlertingRoutesWrite = 'alert.notifications.routes:write',
+
+  // Alerting time intervals actions
+  AlertingTimeIntervalsRead = 'alert.notifications.time-intervals:read',
+  AlertingTimeIntervalsWrite = 'alert.notifications.time-intervals:write',
+
+  // Alerting templates actions
+  AlertingTemplatesRead = 'alert.notifications.templates:read',
+  AlertingTemplatesWrite = 'alert.notifications.templates:write',
+  AlertingTemplatesDelete = 'alert.notifications.templates:delete',
 
   PluginsInstall = 'plugins:install',
   PluginsWrite = 'plugins:write',
+
+  // Settings
+  SettingsRead = 'settings:read',
+  SettingsWrite = 'settings:write',
+
+  // GroupSync
+  GroupSyncMappingsRead = 'groupsync.mappings:read',
+  GroupSyncMappingsWrite = 'groupsync.mappings:write',
+
+  // Migration Assistant
+  MigrationAssistantMigrate = 'migrationassistant:migrate',
 }
 
 export interface Role {
   uid: string;
   name: string;
   displayName: string;
+  filteredDisplayName: string; // name to be shown in filtered role list
   description: string;
   group: string;
   global: boolean;
   delegatable?: boolean;
+  mapped?: boolean;
   version: number;
   created: string;
   updated: string;

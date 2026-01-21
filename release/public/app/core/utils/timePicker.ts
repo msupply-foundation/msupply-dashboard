@@ -1,4 +1,8 @@
-import { TimeRange, toUtc, AbsoluteTimeRange } from '@grafana/data';
+import { isString } from 'lodash';
+
+import { TimeRange, toUtc, AbsoluteTimeRange, RawTimeRange, dateTime, DateTime } from '@grafana/data';
+
+type CopiedTimeRangeResult = { range: RawTimeRange; isError: false } | { range: string; isError: true };
 
 export const getShiftedTimeRange = (direction: number, origRange: TimeRange): AbsoluteTimeRange => {
   const range = {
@@ -37,4 +41,28 @@ export const getZoomedTimeRange = (range: TimeRange, factor: number): AbsoluteTi
   const from = center - newTimespan / 2;
 
   return { from, to };
+};
+
+export async function getCopiedTimeRange(): Promise<CopiedTimeRangeResult> {
+  const raw = await navigator.clipboard.readText();
+  let range;
+
+  try {
+    range = JSON.parse(raw);
+
+    if (!range.from || !range.to) {
+      return { range: raw, isError: true };
+    }
+
+    return { range, isError: false };
+  } catch (e) {
+    return { range: raw, isError: true };
+  }
+}
+
+export const toUtcDateTimeIfIsoString = (value: string | DateTime): string | DateTime => {
+  if (isString(value) && value.includes('Z')) {
+    return dateTime(value).utc();
+  }
+  return value;
 };

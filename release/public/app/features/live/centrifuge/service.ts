@@ -1,4 +1,11 @@
-import { Centrifuge, State } from 'centrifuge';
+import {
+  Centrifuge,
+  ConnectedContext,
+  ConnectingContext,
+  DisconnectedContext,
+  ServerPublicationContext,
+  State,
+} from 'centrifuge';
 import { BehaviorSubject, Observable, share, startWith } from 'rxjs';
 
 import {
@@ -9,15 +16,16 @@ import {
   LiveChannelId,
   toLiveChannelId,
 } from '@grafana/data';
-import { FetchResponse } from '@grafana/runtime/src/services/backendSrv';
 import {
+  FetchResponse,
   GrafanaLiveSrv,
   LiveDataStreamOptions,
+  LivePublishOptions,
   LiveQueryDataOptions,
   StreamingFrameAction,
   StreamingFrameOptions,
-} from '@grafana/runtime/src/services/live';
-import { BackendDataSourceResponse } from '@grafana/runtime/src/utils/queryResponse';
+  BackendDataSourceResponse,
+} from '@grafana/runtime';
 
 import { StreamingResponseData } from '../data/utils';
 
@@ -35,7 +43,7 @@ export type CentrifugeSrvDeps = {
 
 export type StreamingDataQueryResponse = Omit<DataQueryResponse, 'data'> & { data: [StreamingResponseData] };
 
-export type CentrifugeSrv = Omit<GrafanaLiveSrv, 'publish' | 'getDataStream' | 'getQueryData'> & {
+export type CentrifugeSrv = Omit<GrafanaLiveSrv, 'getDataStream' | 'getQueryData'> & {
   getDataStream: (options: LiveDataStreamOptions) => Observable<StreamingDataQueryResponse>;
   getQueryData: (
     options: LiveQueryDataOptions
@@ -104,15 +112,15 @@ export class CentrifugeService implements CentrifugeSrv {
   // Internal functions
   //----------------------------------------------------------
 
-  private onConnect = (context: any) => {
+  private onConnect = (context: ConnectedContext) => {
     this.connectionState.next(true);
   };
 
-  private onDisconnect = (context: any) => {
+  private onDisconnect = (context: ConnectingContext | DisconnectedContext) => {
     this.connectionState.next(false);
   };
 
-  private onServerSideMessage = (context: any) => {
+  private onServerSideMessage = (context: ServerPublicationContext) => {
     console.log('Publication from server-side channel', context);
   };
 
@@ -236,6 +244,13 @@ export class CentrifugeService implements CentrifugeSrv {
    */
   getPresence: CentrifugeSrv['getPresence'] = (address) => {
     return this.getChannel(address).getPresence();
+  };
+
+  /**
+   * Publish into a channel.
+   */
+  publish = async (address: LiveChannelAddress, data: unknown, options?: LivePublishOptions) => {
+    return this.getChannel(address).publish(data);
   };
 }
 

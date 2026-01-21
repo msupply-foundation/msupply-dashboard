@@ -1,6 +1,10 @@
 import { createAction } from '@reduxjs/toolkit';
 
-import { BucketAggregation, BucketAggregationType, BucketAggregationWithField } from '../../../../types';
+import {
+  BucketAggregation,
+  BucketAggregationType,
+  BucketAggregationWithField,
+} from 'app/plugins/datasource/elasticsearch/dataquery.gen';
 
 export const addBucketAggregation = createAction<BucketAggregation['id']>('@bucketAggs/add');
 export const removeBucketAggregation = createAction<BucketAggregation['id']>('@bucketAggs/remove');
@@ -15,5 +19,5 @@ export const changeBucketAggregationField = createAction<{
 export const changeBucketAggregationSetting = createAction<{
   bucketAgg: BucketAggregation;
   settingName: string;
-  newValue: any;
+  newValue: unknown;
 }>('@bucketAggs/change_setting');

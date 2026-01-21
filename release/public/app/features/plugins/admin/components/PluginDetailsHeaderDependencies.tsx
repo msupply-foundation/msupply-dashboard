@@ -1,28 +1,21 @@
 import { css } from '@emotion/css';
-import React from 'react';
+import * as React from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
-import { Stack } from '@grafana/experimental';
-import { useStyles2, Icon } from '@grafana/ui';
+import { Trans } from '@grafana/i18n';
+import { useStyles2, Icon, Stack } from '@grafana/ui';
 
-import { Version, CatalogPlugin, PluginIconName } from '../types';
+import { CatalogPlugin, PluginIconName } from '../types';
 
 type Props = {
   plugin: CatalogPlugin;
-  latestCompatibleVersion?: Version;
+  grafanaDependency?: string;
   className?: string;
 };
 
-export function PluginDetailsHeaderDependencies({
-  plugin,
-  latestCompatibleVersion,
-  className,
-}: Props): React.ReactElement | null {
+export function PluginDetailsHeaderDependencies({ plugin, grafanaDependency }: Props): React.ReactElement | null {
   const styles = useStyles2(getStyles);
   const pluginDependencies = plugin.details?.pluginDependencies;
-  const grafanaDependency = plugin.isInstalled
-    ? plugin.details?.grafanaDependency
-    : latestCompatibleVersion?.grafanaDependency || plugin.details?.grafanaDependency;
   const hasNoDependencyInfo = !grafanaDependency && (!pluginDependencies || !pluginDependencies.length);
 
   if (hasNoDependencyInfo) {
@@ -35,7 +28,9 @@ export function PluginDetailsHeaderDependencies({
       {Boolean(grafanaDependency) && (
         <div className={styles.depBadge}>
           <Icon name="grafana" className={styles.icon} />
-          Grafana {grafanaDependency}
+          <Trans i18nKey="plugins.plugin-details-header-dependencies.grafana-dependency">
+            Grafana {{ grafanaDependency }}
+          </Trans>
         </div>
       )}
 
@@ -58,21 +53,21 @@ export function PluginDetailsHeaderDependencies({
 
 export const getStyles = (theme: GrafanaTheme2) => {
   return {
-    dependencyTitle: css`
-      margin-right: ${theme.spacing(0.5)};
+    dependencyTitle: css({
+      marginRight: theme.spacing(0.5),
 
-      &::after {
-        content: '';
-        padding: 0;
-      }
-    `,
+      '&::after': {
+        content: "''",
+        padding: 0,
+      },
+    }),
     depBadge: css({
       display: 'flex',
       alignItems: 'flex-start',
     }),
-    icon: css`
-      color: ${theme.colors.text.secondary};
-      margin-right: ${theme.spacing(0.5)};
-    `,
+    icon: css({
+      color: theme.colors.text.secondary,
+      marginRight: theme.spacing(0.5),
+    }),
   };
 };

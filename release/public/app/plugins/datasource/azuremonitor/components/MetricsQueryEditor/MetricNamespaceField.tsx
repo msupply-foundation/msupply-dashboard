@@ -1,11 +1,12 @@
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 
 import { SelectableValue } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { Select } from '@grafana/ui';
 
-import { AzureQueryEditorFieldProps, AzureMonitorOption } from '../../types';
+import { AzureQueryEditorFieldProps, AzureMonitorOption } from '../../types/types';
 import { addValueToOptions } from '../../utils/common';
-import { Field } from '../Field';
+import { Field } from '../shared/Field';
 
 import { setCustomNamespace } from './setQueryValue';
 
@@ -35,7 +36,7 @@ const MetricNamespaceField = ({
   const options = addValueToOptions(metricNamespaces, variableOptionGroup, value);
 
   return (
-    <Field label="Metric namespace">
+    <Field label={t('components.metric-namespace-field.label-metric-namespace', 'Metric namespace')}>
       <Select
         inputId="azure-monitor-metrics-metric-namespace-field"
         value={value || null}

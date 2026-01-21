@@ -3,7 +3,9 @@ import { debounce } from 'lodash';
 import { getBackendSrv } from '@grafana/runtime';
 import { fetchRoleOptions } from 'app/core/components/RolePicker/api';
 import { contextSrv } from 'app/core/services/context_srv';
-import { AccessControlAction, ServiceAccountDTO, ServiceAccountStateFilter, ThunkResult } from 'app/types';
+import { AccessControlAction } from 'app/types/accessControl';
+import { ServiceAccountDTO, ServiceAccountStateFilter } from 'app/types/serviceaccount';
+import { ThunkResult } from 'app/types/store';
 
 import { ServiceAccountToken } from '../components/CreateTokenModal';
 
@@ -11,6 +13,8 @@ import {
   acOptionsLoaded,
   pageChanged,
   queryChanged,
+  rolesFetchBegin,
+  rolesFetchEnd,
   serviceAccountsFetchBegin,
   serviceAccountsFetched,
   serviceAccountsFetchEnd,
@@ -51,6 +55,24 @@ export function fetchServiceAccounts(
             serviceAccountStateFilter
           )}&accesscontrol=true`
         );
+
+        if (
+          contextSrv.licensedAccessControlEnabled() &&
+          contextSrv.hasPermission(AccessControlAction.ActionUserRolesList)
+        ) {
+          dispatch(rolesFetchBegin());
+          const orgId = contextSrv.user.orgId;
+          const userIds = result?.serviceAccounts.map((u: ServiceAccountDTO) => u.id);
+          const roles = await getBackendSrv().post(`/api/access-control/users/roles/search?includeHidden=true`, {
+            userIds,
+            orgId,
+          });
+          result.serviceAccounts.forEach((u: ServiceAccountDTO) => {
+            u.roles = roles ? roles[u.id] || [] : [];
+          });
+          dispatch(rolesFetchEnd());
+        }
+
         dispatch(serviceAccountsFetched(result));
       }
     } catch (error) {
@@ -67,27 +89,27 @@ const fetchServiceAccountsWithDebounce = debounce((dispatch) => dispatch(fetchSe
 
 export function updateServiceAccount(serviceAccount: ServiceAccountDTO): ThunkResult<void> {
   return async (dispatch) => {
-    await getBackendSrv().patch(`${BASE_URL}/${serviceAccount.id}?accesscontrol=true`, {
+    await getBackendSrv().patch(`${BASE_URL}/${serviceAccount.uid}?accesscontrol=true`, {
       ...serviceAccount,
     });
     dispatch(fetchServiceAccounts());
   };
 }
 
-export function deleteServiceAccount(serviceAccountId: number): ThunkResult<void> {
+export function deleteServiceAccount(serviceAccountUid: string): ThunkResult<void> {
   return async (dispatch) => {
-    await getBackendSrv().delete(`${BASE_URL}/${serviceAccountId}`);
+    await getBackendSrv().delete(`${BASE_URL}/${serviceAccountUid}`);
     dispatch(fetchServiceAccounts());
   };
 }
 
 export function createServiceAccountToken(
-  saID: number,
+  saUid: string,
   token: ServiceAccountToken,
   onTokenCreated: (key: string) => void
 ): ThunkResult<void> {
   return async (dispatch) => {
-    const result = await getBackendSrv().post(`${BASE_URL}/${saID}/tokens`, token);
+    const result = await getBackendSrv().post(`${BASE_URL}/${saUid}/tokens`, token);
     onTokenCreated(result.key);
     dispatch(fetchServiceAccounts());
   };
@@ -100,6 +122,8 @@ const getStateFilter = (value: ServiceAccountStateFilter) => {
       return '&expiredTokens=true';
     case ServiceAccountStateFilter.Disabled:
       return '&disabled=true';
+    case ServiceAccountStateFilter.External:
+      return '&external=true';
     default:
       return '';
   }

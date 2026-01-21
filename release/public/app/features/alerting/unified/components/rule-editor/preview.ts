@@ -1,6 +1,6 @@
 import { DataFrame } from '@grafana/data';
 
-import { GrafanaAlertState, isGrafanaAlertState, Labels } from '../../../../../types/unified-alerting-dto';
+import { GrafanaAlertState, Labels, isGrafanaAlertState } from '../../../../../types/unified-alerting-dto';
 
 interface AlertPreviewInstance {
   state: GrafanaAlertState;
@@ -26,12 +26,9 @@ export function mapDataFrameToAlertPreview({ fields }: DataFrame): AlertPreview 
   const instances: AlertPreviewInstance[] = [];
 
   for (let index = 0; index < instanceStatusCount; index++) {
-    const labelValues = labelIndexes.map((labelIndex) => [
-      fields[labelIndex].name,
-      fields[labelIndex].values.get(index),
-    ]);
-    const state = fields[stateFieldIndex]?.values?.get(index);
-    const info = fields[infoFieldIndex]?.values?.get(index);
+    const labelValues = labelIndexes.map((labelIndex) => [fields[labelIndex].name, fields[labelIndex].values[index]]);
+    const state = fields[stateFieldIndex]?.values?.[index];
+    const info = fields[infoFieldIndex]?.values?.[index];
 
     if (isGrafanaAlertState(state)) {
       instances.push({

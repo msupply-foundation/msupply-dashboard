@@ -1,21 +1,23 @@
+import { FeatureLike } from 'ol/Feature';
+import OpenLayersMap from 'ol/Map';
+import VectorImage from 'ol/layer/VectorImage';
+import { Stroke, Style } from 'ol/style';
+import Photo from 'ol-ext/style/Photo';
+
 import {
   MapLayerRegistryItem,
   PanelData,
   GrafanaTheme2,
   EventBus,
-  PluginState,
   FieldType,
   Field,
+  MapLayerOptions,
 } from '@grafana/data';
-import { FrameGeometrySourceMode, MapLayerOptions } from '@grafana/schema';
-import Map from 'ol/Map';
-import { FeatureLike } from 'ol/Feature';
-import { getLocationMatchers } from 'app/features/geo/utils/location';
-import VectorLayer from 'ol/layer/Vector';
+import { t } from '@grafana/i18n';
+import { FrameGeometrySourceMode } from '@grafana/schema';
+import { findField } from 'app/features/dimensions/utils';
 import { FrameVectorSource } from 'app/features/geo/utils/frameVectorSource';
-import { Stroke, Style } from 'ol/style';
-import Photo from 'ol-ext/style/Photo';
-import { findField } from 'app/features/dimensions';
+import { getLocationMatchers } from 'app/features/geo/utils/location';
 
 // Configuration options for Circle overlays
 export interface PhotoConfig {
@@ -68,7 +70,6 @@ export const photosLayer: MapLayerRegistryItem<PhotoConfig> = {
   isBaseMap: false,
   showLocation: true,
   hideOpacity: true,
-  state: PluginState.alpha,
 
   /**
    * Function that configures transformation and returns a transformer
@@ -76,7 +77,7 @@ export const photosLayer: MapLayerRegistryItem<PhotoConfig> = {
    * @param options
    * @param theme
    */
-  create: async (map: Map, options: MapLayerOptions<PhotoConfig>, eventBus: EventBus, theme: GrafanaTheme2) => {
+  create: async (map: OpenLayersMap, options: MapLayerOptions<PhotoConfig>, eventBus: EventBus, theme: GrafanaTheme2) => {
     // Assert default values
     const config = {
       ...defaultOptions,
@@ -85,7 +86,7 @@ export const photosLayer: MapLayerRegistryItem<PhotoConfig> = {
 
     const location = await getLocationMatchers(options.location);
     const source = new FrameVectorSource(location);
-    const vectorLayer = new VectorLayer({
+    const vectorLayer = new VectorImage({
       source,
     });
 
@@ -93,9 +94,9 @@ export const photosLayer: MapLayerRegistryItem<PhotoConfig> = {
 
     vectorLayer.setStyle((feature: FeatureLike) => {
       let src = unknownImage;
-      let idx: number = Infinity;
+      let idx = Infinity;
       if (images.length > 0) {
-        idx = feature.get('rowIndex') as number;
+        idx = feature.get('rowIndex');
         src = images[idx] ?? unknownImage;
       }
       const photoStyle = new Style({
@@ -104,7 +105,7 @@ export const photosLayer: MapLayerRegistryItem<PhotoConfig> = {
           radius: config.radius,
           crop: config.crop,
           kind: config.kind,
-          shadow: false,
+          shadow: 0,
           stroke: new Stroke({
             width: 0,
             color: 'rgba(0,0,0,0)',
@@ -123,7 +124,7 @@ export const photosLayer: MapLayerRegistryItem<PhotoConfig> = {
           radius: config.radius,
           crop: false,
           kind: config.kind,
-          shadow: config.shadow,
+          shadow: config.shadow ? 2 : 0,
           stroke: new Stroke({
             width: config.border ?? 0,
             color: theme.visualization.getColorByName(config.color),
@@ -139,7 +140,7 @@ export const photosLayer: MapLayerRegistryItem<PhotoConfig> = {
           radius: config.radius,
           crop: false,
           kind: config.kind,
-          shadow: false,
+          shadow: 0,
           stroke: new Stroke({
             width: 0,
             color: 'rgba(0,0,0,0)',
@@ -171,13 +172,13 @@ export const photosLayer: MapLayerRegistryItem<PhotoConfig> = {
           if (config.src) {
             const srcField: Field | undefined = findField(frame, config.src);
             if (srcField) {
-              images = srcField?.values.toArray();
+              images = srcField?.values;
             }
           } else {
             for (let i = 0; i < frame.fields.length; i++) {
               const field = frame.fields[i];
               if (field.type === FieldType.string) {
-                images = field.values.toArray();
+                images = field.values;
                 break;
               }
             }
@@ -194,7 +195,7 @@ export const photosLayer: MapLayerRegistryItem<PhotoConfig> = {
             name: 'Image Source field',
             settings: {
               filter: (f: Field) => f.type === FieldType.string,
-              noFieldsMessage: 'No string fields found',
+              noFieldsMessage: t('geomap.photos-layer.noFieldsMessage-no-string-fields', 'No string fields found'),
             },
           })
           .addRadio({

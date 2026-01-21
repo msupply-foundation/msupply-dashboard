@@ -1,7 +1,8 @@
 import { Action } from '@reduxjs/toolkit';
 
+import { BucketAggregation, ElasticsearchDataQuery, Terms } from 'app/plugins/datasource/elasticsearch/dataquery.gen';
+
 import { defaultBucketAgg } from '../../../../queryDef';
-import { ElasticsearchQuery, Terms, BucketAggregation } from '../../../../types';
 import { removeEmpty } from '../../../../utils';
 import { changeMetricType } from '../../MetricAggregationsEditor/state/actions';
 import { metricAggregationConfig } from '../../MetricAggregationsEditor/utils';
@@ -18,7 +19,7 @@ import {
 
 export const createReducer =
   (defaultTimeField: string) =>
-  (state: ElasticsearchQuery['bucketAggs'], action: Action): ElasticsearchQuery['bucketAggs'] => {
+  (state: ElasticsearchDataQuery['bucketAggs'], action: Action): ElasticsearchDataQuery['bucketAggs'] => {
     if (addBucketAggregation.match(action)) {
       const newAgg: Terms = {
         id: action.payload,
@@ -75,7 +76,7 @@ export const createReducer =
     if (changeMetricType.match(action)) {
       // If we are switching to a metric which requires the absence of bucket aggregations
       // we remove all of them.
-      if (metricAggregationConfig[action.payload.type].isSingleMetric) {
+      if (metricAggregationConfig[action.payload.type].impliedQueryType !== 'metrics') {
         return [];
       } else if (state!.length === 0) {
         // Else, if there are no bucket aggregations we restore a default one.
@@ -107,10 +108,9 @@ export const createReducer =
     }
 
     if (initQuery.match(action)) {
-      if (state?.length || 0 > 0) {
+      if (state && state.length > 0) {
         return state;
       }
-
       return [{ ...defaultBucketAgg('2'), field: defaultTimeField }];
     }
 

@@ -1,8 +1,10 @@
 import { cx } from '@emotion/css';
-import React, { FormEvent, memo } from 'react';
+import { FormEvent, memo } from 'react';
+import * as React from 'react';
 
+import { t } from '@grafana/i18n';
 import { Checkbox, Portal, useStyles2, useTheme2 } from '@grafana/ui';
-import { getSelectStyles } from '@grafana/ui/src/components/Select/getSelectStyles';
+import { getSelectStyles } from '@grafana/ui/internal';
 
 import { getStyles } from './styles';
 
@@ -81,7 +83,14 @@ export const RoleMenuGroupOption = memo(
 
       return (
         <div onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
-          <div ref={ref} className={wrapperClassName} aria-label="Role picker option" onClick={onClickInternal}>
+          {/* TODO: fix keyboard a11y */}
+          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+          <div
+            ref={ref}
+            className={wrapperClassName}
+            aria-label={t('role-picker.menu-group-option-aria-label', 'Role picker option')}
+            onClick={onClickInternal}
+          >
             <Checkbox
               value={isSelected}
               className={cx(customStyles.menuOptionCheckbox, {

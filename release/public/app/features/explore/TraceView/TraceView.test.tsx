@@ -1,41 +1,31 @@
 import { render, prettyDOM, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React, { createRef } from 'react';
+import { createRef } from 'react';
 import { Provider } from 'react-redux';
 
-import { DataFrame, MutableDataFrame, getDefaultTimeRange, LoadingState } from '@grafana/data';
-import { DataSourceSrv, setDataSourceSrv } from '@grafana/runtime';
-import { ExploreId } from 'app/types';
+import { DataFrame, MutableDataFrame } from '@grafana/data';
+import { mockTimeRange } from '@grafana/plugin-ui';
+import { DataSourceSrv, setDataSourceSrv, setPluginLinksHook, setPluginComponentsHook } from '@grafana/runtime';
 
 import { configureStore } from '../../../store/configureStore';
 
 import { TraceView } from './TraceView';
-import { TopOfViewRefType } from './components/TraceTimelineViewer/VirtualizedTraceView';
 import { TraceData, TraceSpanData } from './components/types/trace';
 import { transformDataFrames } from './utils/transform';
 
 function getTraceView(frames: DataFrame[]) {
   const store = configureStore();
-  const mockPanelData = {
-    state: LoadingState.Done,
-    series: [],
-    timeRange: getDefaultTimeRange(),
-  };
   const topOfViewRef = createRef<HTMLDivElement>();
 
   return (
     <Provider store={store}>
       <TraceView
-        exploreId={ExploreId.left}
         dataFrames={frames}
         splitOpenFn={() => {}}
         traceProp={transformDataFrames(frames[0])!}
-        search=""
-        focusedSpanIdForSearch=""
-        queryResponse={mockPanelData}
         datasource={undefined}
         topOfViewRef={topOfViewRef}
-        topOfViewRefType={TopOfViewRefType.Explore}
+        timeRange={mockTimeRange()}
       />
     </Provider>
   );
@@ -58,6 +48,16 @@ function renderTraceViewNew() {
 
 describe('TraceView', () => {
   beforeAll(() => {
+    setPluginLinksHook(() => ({
+      isLoading: false,
+      links: [],
+    }));
+
+    setPluginComponentsHook(() => ({
+      isLoading: false,
+      components: [],
+    }));
+
     setDataSourceSrv({
       getInstanceSettings() {
         return undefined;
@@ -91,14 +91,14 @@ describe('TraceView', () => {
 
   it('toggles detailState', async () => {
     renderTraceViewNew();
-    expect(screen.queryByText(/Attributes/)).toBeFalsy();
+    expect(screen.queryByText(/Span attributes/)).toBeFalsy();
     const spanView = screen.getAllByText('', { selector: 'div[data-testid="span-view"]' })[0];
     await userEvent.click(spanView);
-    expect(screen.queryByText(/Attributes/)).toBeTruthy();
+    expect(screen.queryByText(/Span attributes/)).toBeTruthy();
 
     await userEvent.click(spanView);
-    screen.debug(screen.queryAllByText(/Attributes/));
-    expect(screen.queryByText(/Attributes/)).toBeFalsy();
+    screen.debug(screen.queryAllByText(/Span attributes/));
+    expect(screen.queryByText(/Span attributes/)).toBeFalsy();
   });
 
   it('shows timeline ticks', () => {

@@ -17,6 +17,7 @@ import {
   KeyValue,
   standardTransformers,
 } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { config } from 'app/core/config';
 
 export const standardAnnotationSupport: AnnotationSupport = {
@@ -35,7 +36,7 @@ export const standardAnnotationSupport: AnnotationSupport = {
         mappings: {},
       };
     }
-    return json as AnnotationQuery;
+    return json;
   },
 
   /**
@@ -89,7 +90,7 @@ interface AnnotationEventFieldSetter {
 
 export interface AnnotationFieldInfo {
   key: keyof AnnotationEvent;
-
+  label?: string;
   split?: string;
   field?: (frame: DataFrame) => Field | undefined;
   placeholder?: string;
@@ -97,22 +98,44 @@ export interface AnnotationFieldInfo {
 }
 
 // These fields get added to the standard UI
-export const annotationEventNames: AnnotationFieldInfo[] = [
+export const getAnnotationEventNames: () => AnnotationFieldInfo[] = () => [
   {
     key: 'time',
     field: (frame: DataFrame) => frame.fields.find((f) => f.type === FieldType.time),
-    placeholder: 'time, or the first time field',
+    placeholder: t(
+      'annotations.get-annotation-event-names.placeholder.time-or-the-first-field',
+      '{{defaultField}}, or the first time field',
+      { defaultField: 'time' }
+    ),
   },
-  { key: 'timeEnd', help: 'When this field is defined, the annotation will be treated as a range' },
+  {
+    key: 'timeEnd',
+    // label: 'end time',
+    help: t(
+      'annotations.get-annotation-event-names.help.annotation-treated-as-range',
+      'When this field is defined, the annotation will be treated as a range'
+    ),
+  },
   {
     key: 'title',
   },
   {
     key: 'text',
     field: (frame: DataFrame) => frame.fields.find((f) => f.type === FieldType.string),
-    placeholder: 'text, or the first text field',
+    placeholder: t(
+      'annotations.get-annotation-event-names.placeholder.text-or-the-first-field',
+      '{{defaultField}}, or the first text field',
+      { defaultField: 'text' }
+    ),
   },
-  { key: 'tags', split: ',', help: 'The results will be split on comma (,)' },
+  {
+    key: 'tags',
+    split: ',',
+    help: t(
+      'annotations.get-annotation-event-names.help.results-split-on-comma',
+      'The results will be split on comma (,)'
+    ),
+  },
   {
     key: 'id',
   },
@@ -133,8 +156,8 @@ export const publicDashboardEventNames: AnnotationFieldInfo[] = [
 // Given legacy infrastructure, alert events are passed though the same annotation
 // pipeline, but include fields that should not be exposed generally
 const alertEventAndAnnotationFields: AnnotationFieldInfo[] = [
-  ...(config.isPublicDashboardView ? publicDashboardEventNames : []),
-  ...annotationEventNames,
+  ...(config.publicDashboardAccessToken ? publicDashboardEventNames : []),
+  ...getAnnotationEventNames(),
   { key: 'userId' },
   { key: 'login' },
   { key: 'email' },
@@ -218,12 +241,12 @@ export function getAnnotationsFromData(
         };
 
         for (const f of fields) {
-          let v: any = undefined;
+          let v = undefined;
 
           if (f.text) {
             v = f.text; // TODO support templates!
           } else if (f.field) {
-            v = f.field.values.get(i);
+            v = f.field.values[i];
             if (v !== undefined && f.regex) {
               const match = f.regex.exec(v);
               if (match) {
@@ -236,7 +259,7 @@ export function getAnnotationsFromData(
             if (f.split && typeof v === 'string') {
               v = v.split(',');
             }
-            (anno as any)[f.key] = v;
+            anno[f.key] = v;
           }
         }
 
@@ -253,7 +276,6 @@ export function getAnnotationsFromData(
 // polluting public API.
 
 const legacyRunner = [
-  'prometheus',
   'loki',
   'elasticsearch',
   'grafana-opensearch-datasource', // external

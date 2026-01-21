@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 
 import * as runtime from '@grafana/runtime';
 
@@ -82,6 +81,7 @@ describe('VariablesUnknownTable', () => {
 
         await userEvent.click(screen.getByRole('heading', { name: /renamed or missing variables/i }));
 
+        await waitFor(() => expect(screen.queryByTestId('Spinner')).not.toBeInTheDocument());
         expect(screen.getByText('No renamed or missing variables found.')).toBeInTheDocument();
       });
     });

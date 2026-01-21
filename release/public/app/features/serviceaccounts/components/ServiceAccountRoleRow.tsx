@@ -1,10 +1,11 @@
-import React from 'react';
-
+import { OrgRole } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { Label } from '@grafana/ui';
 import { UserRolePicker } from 'app/core/components/RolePicker/UserRolePicker';
 import { contextSrv } from 'app/core/core';
 import { OrgRolePicker } from 'app/features/admin/OrgRolePicker';
-import { AccessControlAction, OrgRole, Role, ServiceAccountDTO } from 'app/types';
+import { Role, AccessControlAction } from 'app/types/accessControl';
+import { ServiceAccountDTO } from 'app/types/serviceaccount';
 
 interface Props {
   label: string;
@@ -31,7 +32,7 @@ export const ServiceAccountRoleRow = ({ label, serviceAccount, roleOptions, onRo
             onBasicRoleChange={onRoleChange}
             roleOptions={roleOptions}
             basicRoleDisabled={!canUpdateRole}
-            disabled={serviceAccount.isDisabled}
+            disabled={serviceAccount.isExternal || serviceAccount.isDisabled}
           />
         </td>
       ) : (
@@ -40,9 +41,9 @@ export const ServiceAccountRoleRow = ({ label, serviceAccount, roleOptions, onRo
             <OrgRolePicker
               width={24}
               inputId={inputId}
-              aria-label="Role"
+              aria-label={t('serviceaccounts.service-account-role-row.aria-label-role', 'Role')}
               value={serviceAccount.role}
-              disabled={serviceAccount.isDisabled}
+              disabled={serviceAccount.isExternal || serviceAccount.isDisabled}
               onChange={onRoleChange}
             />
           </td>

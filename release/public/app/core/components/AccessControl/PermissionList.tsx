@@ -1,4 +1,6 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
+
+import { Trans } from '@grafana/i18n';
 
 import { PermissionListItem } from './PermissionListItem';
 import { ResourcePermission } from './types';
@@ -25,6 +27,16 @@ export const PermissionList = ({ title, items, compareKey, permissionLevels, can
 
       if (item.actions.length > keep[key].actions.length) {
         keep[key] = item;
+        continue;
+      }
+
+      // Determine which permission to keep for display
+      // If the same permission has been applied more than once (i.e. one copy is ready kept)
+      if (item.actions.length === keep[key].actions.length) {
+        // replace the kept permission if it is managed and this item is not (i.e. it is inherited or provisioned)
+        if (keep[key].isManaged && !item.isManaged) {
+          keep[key] = item;
+        }
       }
     }
     return Object.keys(keep).map((k) => keep[k]);
@@ -42,7 +54,11 @@ export const PermissionList = ({ title, items, compareKey, permissionLevels, can
             <th style={{ width: '1%' }} />
             <th>{title}</th>
             <th style={{ width: '1%' }} />
-            <th>Permission</th>
+
+            <th style={{ width: '40%' }}>
+              <Trans i18nKey="access-control.permission-list.permission">Permission</Trans>
+            </th>
+
             <th style={{ width: '1%' }} />
             <th style={{ width: '1%' }} />
           </tr>

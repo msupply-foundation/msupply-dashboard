@@ -1,7 +1,6 @@
 import { css } from '@emotion/css';
-import React from 'react';
 
-import { Select, HorizontalGroup, Input, useStyles2 } from '@grafana/ui';
+import { Select, Stack, Input, useStyles2 } from '@grafana/ui';
 
 import { TraceqlFilter } from '../dataquery.gen';
 
@@ -14,15 +13,16 @@ interface Props {
   operators: string[];
 }
 
-const validationRegex = /^\d+(?:\.\d)?\d*(?:us|µs|ns|ms|s|m|h)$/;
+// Support template variables (e.g., `$dur`, `$v_1`) and durations (e.g., `300µs`, `1.2ms`)
+const validationRegex = /^(\$\w+)|(\d+(?:\.\d)?\d*(?:us|µs|ns|ms|s|m|h))$/;
 
 const getStyles = () => ({
-  noBoxShadow: css`
-    box-shadow: none;
-    *:focus {
-      box-shadow: none;
-    }
-  `,
+  noBoxShadow: css({
+    boxShadow: 'none',
+    '*:focus': {
+      boxShadow: 'none',
+    },
+  }),
 });
 
 const DurationInput = ({ filter, operators, updateFilter }: Props) => {
@@ -34,7 +34,7 @@ const DurationInput = ({ filter, operators, updateFilter }: Props) => {
   }
 
   return (
-    <HorizontalGroup spacing={'none'}>
+    <Stack gap={0}>
       <Select
         className={styles.noBoxShadow}
         inputId={`${filter.id}-operator`}
@@ -59,7 +59,7 @@ const DurationInput = ({ filter, operators, updateFilter }: Props) => {
         invalid={invalid}
         width={18}
       />
-    </HorizontalGroup>
+    </Stack>
   );
 };
 

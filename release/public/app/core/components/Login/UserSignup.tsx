@@ -1,7 +1,7 @@
 import { css } from '@emotion/css';
-import React from 'react';
 
-import { LinkButton, VerticalGroup } from '@grafana/ui';
+import { Trans } from '@grafana/i18n';
+import { LinkButton, Stack } from '@grafana/ui';
 import { getConfig } from 'app/core/config';
 
 export const UserSignup = () => {
@@ -9,19 +9,21 @@ export const UserSignup = () => {
   const paddingTop = css({ paddingTop: '16px' });
 
   return (
-    <VerticalGroup>
-      <div className={paddingTop}>New to Grafana?</div>
+    <Stack direction="column">
+      <div className={paddingTop}>
+        <Trans i18nKey="login.signup.new-to-question">New to Grafana?</Trans>
+      </div>
       <LinkButton
-        className={css`
-          width: 100%;
-          justify-content: center;
-        `}
+        className={css({
+          width: '100%',
+          justifyContent: 'center',
+        })}
         href={href}
         variant="secondary"
         fill="outline"
       >
-        Sign up
+        <Trans i18nKey="login.signup.button-label">Sign up</Trans>
       </LinkButton>
-    </VerticalGroup>
+    </Stack>
   );
 };

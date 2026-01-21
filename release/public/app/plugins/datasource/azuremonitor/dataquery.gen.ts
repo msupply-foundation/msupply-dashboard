@@ -4,13 +4,11 @@
 //     public/app/plugins/gen.go
 // Using jennies:
 //     TSTypesJenny
-//     PluginTSTypesJenny
+//     PluginTsTypesJenny
 //
 // Run 'make gen-cue' from repository root to regenerate.
 
 import * as common from '@grafana/schema';
-
-export const DataQueryModelVersion = Object.freeze([0, 0]);
 
 export interface AzureMonitorQuery extends common.DataQuery {
   /**
@@ -26,31 +24,55 @@ export interface AzureMonitorQuery extends common.DataQuery {
    */
   azureResourceGraph?: AzureResourceGraphQuery;
   /**
+   * Application Insights Traces sub-query properties.
+   */
+  azureTraces?: AzureTracesQuery;
+  /**
+   * Custom namespace used in template variable queries
+   */
+  customNamespace?: string;
+  /**
    * @deprecated Legacy template variable support.
    */
   grafanaTemplateVariableFn?: GrafanaTemplateVariableQuery;
+  keepCookies?: Array<string>;
+  /**
+   * Namespace used in template variable queries
+   */
   namespace?: string;
   /**
-   * Azure Monitor query type.
-   * queryType: #AzureQueryType
+   * Used only for exemplar queries from Prometheus
+   */
+  query?: string;
+  /**
+   * Region used in template variable queries
    */
   region?: string;
+  /**
+   * Resource used in template variable queries
+   */
   resource?: string;
   /**
-   * Template variables params. These exist for backwards compatiblity with legacy template variables.
+   * Resource group used in template variable queries
    */
   resourceGroup?: string;
   /**
    * Azure subscription containing the resource(s) to be queried.
+   * Also used for template variable queries
    */
   subscription?: string;
   /**
    * Subscriptions to be queried via Azure Resource Graph.
    */
   subscriptions?: Array<string>;
+  /**
+   * Used to configure the HTTP request timeout
+   */
+  timeout?: number;
 }
 
 export const defaultAzureMonitorQuery: Partial<AzureMonitorQuery> = {
+  keepCookies: [],
   subscriptions: [],
 };
 
@@ -60,6 +82,9 @@ export const defaultAzureMonitorQuery: Partial<AzureMonitorQuery> = {
 export enum AzureQueryType {
   AzureMonitor = 'Azure Monitor',
   AzureResourceGraph = 'Azure Resource Graph',
+  AzureTraces = 'Azure Traces',
+  CustomMetricNamesQuery = 'Azure Custom Metric Names',
+  CustomNamespacesQuery = 'Azure Custom Namespaces',
   GrafanaTemplateVariableFn = 'Grafana Template Variable Function',
   LocationsQuery = 'Azure Regions',
   LogAnalytics = 'Azure Log Analytics',
@@ -68,6 +93,7 @@ export enum AzureQueryType {
   ResourceGroupsQuery = 'Azure Resource Groups',
   ResourceNamesQuery = 'Azure Resource Names',
   SubscriptionsQuery = 'Azure Subscriptions',
+  TraceExemplar = 'traceql',
   WorkspacesQuery = 'Azure Workspaces',
 }
 
@@ -159,6 +185,26 @@ export const defaultAzureMetricQuery: Partial<AzureMetricQuery> = {
  */
 export interface AzureLogsQuery {
   /**
+   * If set to true the query will be run as a basic logs query
+   */
+  basicLogsQuery?: boolean;
+  /**
+   * Builder query to be executed.
+   */
+  builderQuery?: BuilderQueryExpression;
+  /**
+   * If set to true the dashboard time range will be used as a filter for the query. Otherwise the query time ranges will be used. Defaults to false.
+   */
+  dashboardTime?: boolean;
+  /**
+   * @deprecated Use dashboardTime instead
+   */
+  intersectTime?: boolean;
+  /**
+   * Denotes if logs query editor is in builder mode
+   */
+  mode?: LogsEditorMode;
+  /**
    * KQL query to be executed.
    */
   query?: string;
@@ -175,7 +221,11 @@ export interface AzureLogsQuery {
    */
   resultFormat?: ResultFormat;
   /**
-   * Workspace ID. This was removed in Grafana 8, but remains for backwards compat
+   * If dashboardTime is set to true this value dictates which column the time filter will be applied to. Defaults to the first tables timeSpan column, the first datetime column found, or TimeGenerated
+   */
+  timeColumn?: string;
+  /**
+   * Workspace ID. This was removed in Grafana 8, but remains for backwards compat.
    */
   workspace?: string;
 }
@@ -184,9 +234,236 @@ export const defaultAzureLogsQuery: Partial<AzureLogsQuery> = {
   resources: [],
 };
 
+/**
+ * Application Insights Traces sub-query properties
+ */
+export interface AzureTracesQuery {
+  /**
+   * Filters for property values.
+   */
+  filters?: Array<AzureTracesFilter>;
+  /**
+   * Operation ID. Used only for Traces queries.
+   */
+  operationId?: string;
+  /**
+   * KQL query to be executed.
+   */
+  query?: string;
+  /**
+   * Array of resource URIs to be queried.
+   */
+  resources?: Array<string>;
+  /**
+   * Specifies the format results should be returned as.
+   */
+  resultFormat?: ResultFormat;
+  /**
+   * Types of events to filter by.
+   */
+  traceTypes?: Array<string>;
+}
+
+export const defaultAzureTracesQuery: Partial<AzureTracesQuery> = {
+  filters: [],
+  resources: [],
+  traceTypes: [],
+};
+
+export interface AzureTracesFilter {
+  /**
+   * Values to filter by.
+   */
+  filters: Array<string>;
+  /**
+   * Comparison operator to use. Either equals or not equals.
+   */
+  operation: string;
+  /**
+   * Property name, auto-populated based on available traces.
+   */
+  property: string;
+}
+
+export const defaultAzureTracesFilter: Partial<AzureTracesFilter> = {
+  filters: [],
+};
+
 export enum ResultFormat {
+  Logs = 'logs',
   Table = 'table',
   TimeSeries = 'time_series',
+  Trace = 'trace',
+}
+
+export enum LogsEditorMode {
+  Builder = 'builder',
+  Raw = 'raw',
+}
+
+export enum BuilderQueryEditorExpressionType {
+  And = 'and',
+  Function_parameter = 'function_parameter',
+  Group_by = 'group_by',
+  Operator = 'operator',
+  Or = 'or',
+  Order_by = 'order_by',
+  Property = 'property',
+  Reduce = 'reduce',
+}
+
+export enum BuilderQueryEditorPropertyType {
+  Boolean = 'boolean',
+  Datetime = 'datetime',
+  Function = 'function',
+  Interval = 'interval',
+  Number = 'number',
+  String = 'string',
+  Time_span = 'time_span',
+}
+
+export enum BuilderQueryEditorOrderByOptions {
+  Asc = 'asc',
+  Desc = 'desc',
+}
+
+export enum BuilderQueryEditorReduceParameterTypes {
+  Generic = 'generic',
+  Numeric = 'numeric',
+}
+
+export interface BuilderQueryEditorProperty {
+  name: string;
+  /**
+   * Optional parameter type for function properties
+   */
+  parameterType?: BuilderQueryEditorReduceParameterTypes;
+  type: BuilderQueryEditorPropertyType;
+}
+
+export interface BuilderQueryEditorPropertyExpression {
+  property: BuilderQueryEditorProperty;
+  type: BuilderQueryEditorExpressionType;
+}
+
+export interface BuilderQueryEditorColumnsExpression {
+  columns?: Array<string>;
+  type: BuilderQueryEditorExpressionType;
+}
+
+export const defaultBuilderQueryEditorColumnsExpression: Partial<BuilderQueryEditorColumnsExpression> = {
+  columns: [],
+};
+
+export interface SelectableValue {
+  label: string;
+  value: string;
+}
+
+export type BuilderQueryEditorOperatorType = (string | boolean | number | SelectableValue);
+
+export interface BuilderQueryEditorOperator {
+  labelValue?: string;
+  name: string;
+  value: string;
+}
+
+export interface BuilderQueryEditorWhereExpressionItems {
+  operator: BuilderQueryEditorOperator;
+  property: BuilderQueryEditorProperty;
+  type: BuilderQueryEditorExpressionType;
+}
+
+export interface BuilderQueryEditorWhereExpression {
+  expressions: Array<BuilderQueryEditorWhereExpressionItems>;
+  type: BuilderQueryEditorExpressionType;
+}
+
+export const defaultBuilderQueryEditorWhereExpression: Partial<BuilderQueryEditorWhereExpression> = {
+  expressions: [],
+};
+
+export interface BuilderQueryEditorWhereExpressionArray {
+  expressions: Array<BuilderQueryEditorWhereExpression>;
+  type: BuilderQueryEditorExpressionType;
+}
+
+export const defaultBuilderQueryEditorWhereExpressionArray: Partial<BuilderQueryEditorWhereExpressionArray> = {
+  expressions: [],
+};
+
+export interface BuilderQueryEditorFunctionParameterExpression {
+  fieldType: BuilderQueryEditorPropertyType;
+  type: BuilderQueryEditorExpressionType;
+  value: string;
+}
+
+export interface BuilderQueryEditorReduceExpression {
+  focus?: boolean;
+  parameters?: Array<BuilderQueryEditorFunctionParameterExpression>;
+  property?: BuilderQueryEditorProperty;
+  reduce?: BuilderQueryEditorProperty;
+}
+
+export const defaultBuilderQueryEditorReduceExpression: Partial<BuilderQueryEditorReduceExpression> = {
+  parameters: [],
+};
+
+export interface BuilderQueryEditorReduceExpressionArray {
+  expressions: Array<BuilderQueryEditorReduceExpression>;
+  type: BuilderQueryEditorExpressionType;
+}
+
+export const defaultBuilderQueryEditorReduceExpressionArray: Partial<BuilderQueryEditorReduceExpressionArray> = {
+  expressions: [],
+};
+
+export interface BuilderQueryEditorGroupByExpression {
+  focus?: boolean;
+  interval?: BuilderQueryEditorProperty;
+  property?: BuilderQueryEditorProperty;
+  type?: BuilderQueryEditorExpressionType;
+}
+
+export interface BuilderQueryEditorGroupByExpressionArray {
+  expressions: Array<BuilderQueryEditorGroupByExpression>;
+  type: BuilderQueryEditorExpressionType;
+}
+
+export const defaultBuilderQueryEditorGroupByExpressionArray: Partial<BuilderQueryEditorGroupByExpressionArray> = {
+  expressions: [],
+};
+
+export interface BuilderQueryEditorOrderByExpression {
+  order: BuilderQueryEditorOrderByOptions;
+  property: BuilderQueryEditorProperty;
+  type: BuilderQueryEditorExpressionType;
+}
+
+export interface BuilderQueryEditorOrderByExpressionArray {
+  expressions: Array<BuilderQueryEditorOrderByExpression>;
+  type: BuilderQueryEditorExpressionType;
+}
+
+export const defaultBuilderQueryEditorOrderByExpressionArray: Partial<BuilderQueryEditorOrderByExpressionArray> = {
+  expressions: [],
+};
+
+export interface BuilderQueryExpression {
+  columns?: BuilderQueryEditorColumnsExpression;
+  from?: BuilderQueryEditorPropertyExpression;
+  fuzzySearch?: BuilderQueryEditorWhereExpressionArray;
+  groupBy?: BuilderQueryEditorGroupByExpressionArray;
+  limit?: number;
+  orderBy?: BuilderQueryEditorOrderByExpressionArray;
+  reduce?: BuilderQueryEditorReduceExpressionArray;
+  timeFilter?: BuilderQueryEditorWhereExpressionArray;
+  where?: BuilderQueryEditorWhereExpressionArray;
+}
+
+export enum ARGScope {
+  Directory = 'directory',
+  Subscription = 'subscription',
 }
 
 export interface AzureResourceGraphQuery {
@@ -198,6 +475,10 @@ export interface AzureResourceGraphQuery {
    * Specifies the format results should be returned as. Defaults to table.
    */
   resultFormat?: string;
+  /**
+   * Specifies the scope of the query. Defaults to subscription.
+   */
+  scope?: ARGScope;
 }
 
 export interface AzureMonitorResource {
@@ -300,4 +581,4 @@ export interface WorkspacesQuery extends BaseGrafanaTemplateVariableQuery {
 
 export type GrafanaTemplateVariableQuery = (AppInsightsMetricNameQuery | AppInsightsGroupByQuery | SubscriptionsQuery | ResourceGroupsQuery | ResourceNamesQuery | MetricNamespaceQuery | MetricDefinitionsQuery | MetricNamesQuery | WorkspacesQuery | UnknownQuery);
 
-export interface AzureMonitor {}
+export interface AzureMonitorDataQuery {}

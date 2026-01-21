@@ -4,11 +4,9 @@
 //     public/app/plugins/gen.go
 // Using jennies:
 //     TSTypesJenny
-//     PluginTSTypesJenny
+//     PluginTsTypesJenny
 //
 // Run 'make gen-cue' from repository root to regenerate.
-
-export const PanelCfgModelVersion = Object.freeze([0, 0]);
 
 export interface ArcOption {
   /**
@@ -21,7 +19,18 @@ export interface ArcOption {
   field?: string;
 }
 
-export interface PanelOptions {
+export enum ZoomMode {
+  Cooperative = 'cooperative',
+  Greedy = 'greedy',
+}
+
+export enum LayoutAlgorithm {
+  Force = 'force',
+  Grid = 'grid',
+  Layered = 'layered',
+}
+
+export interface Options {
   edges?: {
     /**
      * Unit for the main stat to override what ever is set in the data frame.
@@ -32,6 +41,10 @@ export interface PanelOptions {
      */
     secondaryStatUnit?: string;
   };
+  /**
+   * How to layout the nodes in the node graph
+   */
+  layoutAlgorithm?: LayoutAlgorithm;
   nodes?: {
     /**
      * Unit for the main stat to override what ever is set in the data frame.
@@ -46,4 +59,8 @@ export interface PanelOptions {
      */
     arcs?: Array<ArcOption>;
   };
+  /**
+   * How to handle zoom/scroll events in the node graph
+   */
+  zoomMode?: ZoomMode;
 }

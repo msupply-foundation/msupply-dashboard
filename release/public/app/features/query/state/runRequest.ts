@@ -1,7 +1,7 @@
 // Libraries
 import { isString, map as isArray } from 'lodash';
 import { from, merge, Observable, of, timer } from 'rxjs';
-import { catchError, map, mapTo, share, takeUntil, tap } from 'rxjs/operators';
+import { catchError, map, mapTo, mergeMap, share, takeUntil, tap } from 'rxjs/operators';
 
 // Utils & Services
 // Types
@@ -18,12 +18,13 @@ import {
   PanelData,
   TimeRange,
 } from '@grafana/data';
-import { toDataQueryError } from '@grafana/runtime';
-import { isExpressionReference } from '@grafana/runtime/src/utils/DataSourceWithBackend';
+import { config, isMigrationHandler, migrateRequest, toDataQueryError, isExpressionReference } from '@grafana/runtime';
 import { backendSrv } from 'app/core/services/backend_srv';
 import { queryIsEmpty } from 'app/core/utils/query';
 import { dataSource as expressionDatasource } from 'app/features/expressions/ExpressionDatasource';
 import { ExpressionQuery } from 'app/features/expressions/types';
+
+import { queryLogger } from '../utils';
 
 import { cancelNetworkRequestsOnUnsubscribe } from './processing/canceler';
 import { emitDataRequestEvent } from './queryAnalytics';
@@ -88,6 +89,13 @@ export function processResponsePacket(packet: DataQueryResponse, state: RunningQ
     timeRange,
   };
 
+  // we use a Set to deduplicate the traceIds
+  const traceIdSet = new Set([...(state.panelData.traceIds ?? []), ...(packet.traceIds ?? [])]);
+
+  if (traceIdSet.size > 0) {
+    panelData.traceIds = Array.from(traceIdSet);
+  }
+
   return { packets, panelData };
 }
 
@@ -134,11 +142,17 @@ export function runRequest(
     return of(state.panelData);
   }
 
-  const dataObservable = callQueryMethod(datasource, request, queryFunction).pipe(
+  const dataObservable = callQueryMethodWithMigration(datasource, request, queryFunction).pipe(
     // Transform response packets into PanelData with merged results
     map((packet: DataQueryResponse) => {
       if (!isArray(packet.data)) {
         throw new Error(`Expected response data to be array, got ${typeof packet.data}.`);
+      }
+
+      // filter out responses for hidden queries
+      const hiddenQueries = request.targets.filter((q) => q.hide);
+      for (const query of hiddenQueries) {
+        packet.data = packet.data.filter((d) => d.refId !== query.refId);
       }
 
       request.endTime = Date.now();
@@ -149,8 +163,8 @@ export function runRequest(
     }),
     // handle errors
     catchError((err) => {
-      const errLog = typeof err === 'string' ? err : JSON.stringify(err);
-      console.error('runRequest.catchError', errLog);
+      console.error('runRequest.catchError', err);
+      queryLogger.logError(err);
       return of({
         ...state.panelData,
         state: LoadingState.Error,
@@ -171,6 +185,20 @@ export function runRequest(
   return merge(timer(200).pipe(mapTo(state.panelData), takeUntil(dataObservable)), dataObservable);
 }
 
+export function callQueryMethodWithMigration(
+  datasource: DataSourceApi,
+  request: DataQueryRequest,
+  queryFunction?: typeof datasource.query
+) {
+  if (isMigrationHandler(datasource)) {
+    const migratedRequestPromise = migrateRequest(datasource, request);
+    return from(migratedRequestPromise).pipe(
+      mergeMap((migratedRequest) => callQueryMethod(datasource, migratedRequest, queryFunction))
+    );
+  }
+  return callQueryMethod(datasource, request, queryFunction);
+}
+
 export function callQueryMethod(
   datasource: DataSourceApi,
   request: DataQueryRequest,
@@ -187,7 +215,7 @@ export function callQueryMethod(
   );
 
   // If its a public datasource, just return the result. Expressions will be handled on the backend.
-  if (datasource.type === 'public-ds') {
+  if (config.publicDashboardAccessToken) {
     return from(datasource.query(request));
   }
 
@@ -195,6 +223,15 @@ export function callQueryMethod(
     if (isExpressionReference(target.datasource)) {
       return expressionDatasource.query(request as DataQueryRequest<ExpressionQuery>);
     }
+  }
+
+  // do not filter queries in case a custom query function is provided (for example in variable queries)
+  if (!queryFunction) {
+    request.targets = request.targets.filter((t) => datasource.filterQuery?.(t) ?? true);
+  }
+
+  if (request.targets.length === 0) {
+    return of<DataQueryResponse>({ data: [] });
   }
 
   // Otherwise it is a standard datasource request

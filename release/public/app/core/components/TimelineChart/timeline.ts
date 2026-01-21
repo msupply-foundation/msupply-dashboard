@@ -1,13 +1,12 @@
-import uPlot, { Cursor, Series } from 'uplot';
+import uPlot, { Series } from 'uplot';
 
-import { GrafanaTheme2, TimeRange } from '@grafana/data';
-import { alpha } from '@grafana/data/src/themes/colorManipulator';
-import { VisibilityMode, TimelineValueAlignment } from '@grafana/schema';
-import { FIXED_UNIT } from '@grafana/ui/src/components/GraphNG/GraphNG';
+import { GrafanaTheme2, TimeRange, colorManipulator } from '@grafana/data';
+import { TimelineValueAlignment, VisibilityMode } from '@grafana/schema';
+import { FIXED_UNIT } from '@grafana/ui';
 import { distribute, SPACE_BETWEEN } from 'app/plugins/panel/barchart/distribute';
-import { pointWithin, Quadtree, Rect } from 'app/plugins/panel/barchart/quadtree';
-import { PanelFieldConfig as StateTimeLineFieldConfig } from 'app/plugins/panel/state-timeline/panelcfg.gen';
-import { PanelFieldConfig as StatusHistoryFieldConfig } from 'app/plugins/panel/status-history/panelcfg.gen';
+import { Quadtree, Rect } from 'app/plugins/panel/barchart/quadtree';
+import { FieldConfig as StateTimeLineFieldConfig } from 'app/plugins/panel/state-timeline/panelcfg.gen';
+import { FieldConfig as StatusHistoryFieldConfig } from 'app/plugins/panel/status-history/panelcfg.gen';
 
 import { TimelineMode } from './utils';
 
@@ -48,13 +47,35 @@ export interface TimelineCoreOptions {
   mergeValues?: boolean;
   isDiscrete: (seriesIdx: number) => boolean;
   hasMappedNull: (seriesIdx: number) => boolean;
+  hasMappedNaN: (seriesIdx: number) => boolean;
   getValueColor: (seriesIdx: number, value: unknown) => string;
   label: (seriesIdx: number) => string;
   getTimeRange: () => TimeRange;
   formatValue?: (seriesIdx: number, value: unknown) => string;
   getFieldConfig: (seriesIdx: number) => StateTimeLineFieldConfig | StatusHistoryFieldConfig;
-  onHover: (seriesIdx: number, valueIdx: number, rect: Rect) => void;
-  onLeave: () => void;
+  hoverMulti: boolean;
+}
+
+/**
+ * @internal
+ */
+export function shouldDrawYValue(yValue: unknown, mappedNull?: boolean, mappedNaN?: boolean): boolean {
+  if (typeof yValue === 'boolean') {
+    return true;
+  }
+  if (typeof yValue === 'string') {
+    return true;
+  }
+  if (typeof yValue === 'number' && !Number.isNaN(yValue)) {
+    return true;
+  }
+  if (yValue === null && mappedNull) {
+    return true;
+  }
+  if (Number.isNaN(yValue) && mappedNaN) {
+    return true;
+  }
+  return !!yValue;
 }
 
 /**
@@ -66,6 +87,7 @@ export function getConfig(opts: TimelineCoreOptions) {
     numSeries,
     isDiscrete,
     hasMappedNull,
+    hasMappedNaN,
     rowHeight = 0,
     colWidth = 0,
     showValue,
@@ -77,21 +99,10 @@ export function getConfig(opts: TimelineCoreOptions) {
     getTimeRange,
     getValueColor,
     getFieldConfig,
-    onHover,
-    onLeave,
+    hoverMulti,
   } = opts;
 
   let qt: Quadtree;
-
-  const hoverMarks = Array(numSeries)
-    .fill(null)
-    .map(() => {
-      let mark = document.createElement('div');
-      mark.classList.add('bar-mark');
-      mark.style.position = 'absolute';
-      mark.style.background = 'rgba(255,255,255,0.2)';
-      return mark;
-    });
 
   // Needed for to calculate text positions
   let boxRectsBySeries: TimelineBoxRect[][];
@@ -104,6 +115,7 @@ export function getConfig(opts: TimelineCoreOptions) {
 
   const font = `500 ${Math.round(12 * devicePixelRatio)}px ${theme.typography.fontFamily}`;
   const hovered: Array<Rect | null> = Array(numSeries).fill(null);
+  let hoveredAtCursor: Rect | null = null;
 
   const size = [colWidth, Infinity];
   const gapFactor = 1 - size[0];
@@ -142,10 +154,8 @@ export function getConfig(opts: TimelineCoreOptions) {
     value: number | null,
     discrete: boolean
   ) {
-    // do not render super small boxes
-    if (boxWidth < 1) {
-      return;
-    }
+    // clamp width to allow small boxes to be rendered
+    boxWidth = Math.max(1, boxWidth);
 
     const valueColor = getValueColor(seriesIdx + 1, value);
     const fieldConfig = getFieldConfig(seriesIdx);
@@ -210,9 +220,9 @@ export function getConfig(opts: TimelineCoreOptions) {
       sidx,
       (series, dataX, dataY, scaleX, scaleY, valToPosX, valToPosY, xOff, yOff, xDim, yDim, moveTo, lineTo, rect) => {
         let strokeWidth = round((series.width || 0) * uPlot.pxRatio);
-
-        let discrete = isDiscrete(sidx);
-        let mappedNull = discrete && hasMappedNull(sidx);
+        const discrete = isDiscrete(sidx);
+        const mappedNull = discrete && hasMappedNull(sidx);
+        const mappedNaN = discrete && hasMappedNaN(sidx);
 
         u.ctx.save();
         rect(u.ctx, u.bbox.left, u.bbox.top, u.bbox.width, u.bbox.height);
@@ -222,8 +232,9 @@ export function getConfig(opts: TimelineCoreOptions) {
           if (mode === TimelineMode.Changes) {
             for (let ix = 0; ix < dataY.length; ix++) {
               let yVal = dataY[ix];
+              const shouldDrawY = shouldDrawYValue(yVal, mappedNull, mappedNaN);
 
-              if (yVal != null || mappedNull) {
+              if (shouldDrawY) {
                 let left = Math.round(valToPosX(dataX[ix], scaleX, xDim, xOff));
 
                 let nextIx = ix;
@@ -266,8 +277,9 @@ export function getConfig(opts: TimelineCoreOptions) {
 
             for (let ix = idx0; ix <= idx1; ix++) {
               let yVal = dataY[ix];
+              const shouldDrawY = shouldDrawYValue(yVal, mappedNull, mappedNaN);
 
-              if (yVal != null || mappedNull) {
+              if (shouldDrawY) {
                 // TODO: all xPos can be pre-computed once for all series in aligned set
                 let left = valToPosX(dataX[ix], scaleX, xDim, xOff);
 
@@ -320,21 +332,28 @@ export function getConfig(opts: TimelineCoreOptions) {
             sidx,
             (series, dataX, dataY, scaleX, scaleY, valToPosX, valToPosY, xOff, yOff, xDim, yDim) => {
               let strokeWidth = round((series.width || 0) * uPlot.pxRatio);
+              let y = round(valToPosY(ySplits[sidx - 1], scaleY, yDim, yOff));
 
-              let discrete = isDiscrete(sidx);
-              let mappedNull = discrete && hasMappedNull(sidx);
-
-              let y = round(yOff + yMids[sidx - 1]);
+              const discrete = isDiscrete(sidx);
+              const mappedNull = discrete && hasMappedNull(sidx);
+              const mappedNaN = discrete && hasMappedNaN(sidx);
 
               for (let ix = 0; ix < dataY.length; ix++) {
-                if (dataY[ix] != null || mappedNull) {
+                const yVal = dataY[ix];
+                const shouldDrawY = shouldDrawYValue(yVal, mappedNull, mappedNaN);
+
+                if (shouldDrawY) {
                   const boxRect = boxRectsBySeries[sidx - 1][ix];
 
                   if (!boxRect || boxRect.x >= xDim) {
                     continue;
                   }
 
-                  let maxChars = Math.floor(boxRect?.w / pxPerChar);
+                  // if x placement is negative, rect is left truncated, remove it from width for calculating how many chars will display
+                  // right truncation happens automatically
+                  const displayedBoxWidth = boxRect.x < 0 ? boxRect?.w + boxRect.x : boxRect?.w;
+
+                  let maxChars = Math.floor(displayedBoxWidth / pxPerChar);
 
                   if (showValue === VisibilityMode.Auto && maxChars < 2) {
                     continue;
@@ -346,7 +365,7 @@ export function getConfig(opts: TimelineCoreOptions) {
                   let x = round(boxRect.x + xOff + boxRect.w / 2);
                   if (mode === TimelineMode.Changes) {
                     if (alignValue === 'left') {
-                      x = round(boxRect.x + xOff + strokeWidth + textPadding);
+                      x = round(Math.max(boxRect.x, 0) + xOff + strokeWidth + textPadding);
                     } else if (alignValue === 'right') {
                       x = round(boxRect.x + xOff + boxRect.w - strokeWidth - textPadding);
                     }
@@ -366,7 +385,6 @@ export function getConfig(opts: TimelineCoreOptions) {
         };
 
   const init = (u: uPlot) => {
-    let over = u.over;
     let chars = '';
     for (let i = 32; i <= 126; i++) {
       chars += String.fromCharCode(i);
@@ -376,9 +394,8 @@ export function getConfig(opts: TimelineCoreOptions) {
     // be a bit more conservtive to prevent overlap
     pxPerChar += 2.5;
 
-    over.style.overflow = 'hidden';
-    hoverMarks.forEach((m) => {
-      over.appendChild(m);
+    u.root.querySelectorAll<HTMLDivElement>('.u-cursor-pt').forEach((el) => {
+      el.style.borderRadius = '0';
     });
   };
 
@@ -395,115 +412,73 @@ export function getConfig(opts: TimelineCoreOptions) {
     });
   };
 
-  function setHoverMark(i: number, o: Rect | null) {
-    let h = hoverMarks[i];
+  function setHovered(cx: number, cy: number, viaSync = false) {
+    hovered.fill(null);
+    hoveredAtCursor = null;
 
-    let pxRatio = uPlot.pxRatio;
-
-    if (o) {
-      h.style.display = '';
-      h.style.left = round(o.x / pxRatio) + 'px';
-      h.style.top = round(o.y / pxRatio) + 'px';
-      h.style.width = round(o.w / pxRatio) + 'px';
-      h.style.height = round(o.h / pxRatio) + 'px';
-    } else {
-      h.style.display = 'none';
+    if (cx < 0) {
+      return;
     }
 
-    hovered[i] = o;
-  }
-
-  let hoveredAtCursor: Rect | undefined;
-
-  function hoverMulti(cx: number, cy: number) {
-    let foundAtCursor: Rect | undefined;
-
-    for (let i = 0; i < numSeries; i++) {
-      let found: Rect | undefined;
-
-      if (cx >= 0) {
-        let cy2 = yMids[i];
-
-        qt.get(cx, cy2, 1, 1, (o) => {
-          if (pointWithin(cx, cy2, o.x, o.y, o.x + o.w, o.y + o.h)) {
-            found = o;
-
-            if (Math.abs(cy - cy2) <= o.h / 2) {
-              foundAtCursor = o;
-            }
-          }
-        });
-      }
-
-      if (found) {
-        if (found !== hovered[i]) {
-          setHoverMark(i, found);
+    // first gets all items in all quads intersected by a 1px wide by 10k high rect at the x cursor position and 0 y position.
+    // (we use 10k instead of plot area height for simplicity and not having to pass around the uPlot instance)
+    qt.get(cx, 0, uPlot.pxRatio, 1e4, (o) => {
+      // filter only rects that intersect along x dir
+      if (cx >= o.x && cx <= o.x + o.w) {
+        // if also intersect along y dir, set both "direct hovered" and "one-of hovered"
+        if (cy >= o.y && cy <= o.y + o.h) {
+          hovered[o.sidx] = hoveredAtCursor = o;
         }
-      } else if (hovered[i] != null) {
-        setHoverMark(i, null);
-      }
-    }
-
-    if (foundAtCursor) {
-      if (foundAtCursor !== hoveredAtCursor) {
-        hoveredAtCursor = foundAtCursor;
-        onHover(foundAtCursor.sidx, foundAtCursor.didx, foundAtCursor);
-      }
-    } else if (hoveredAtCursor) {
-      hoveredAtCursor = undefined;
-      onLeave();
-    }
-  }
-
-  function hoverOne(cx: number, cy: number) {
-    let foundAtCursor: Rect | undefined;
-
-    qt.get(cx, cy, 1, 1, (o) => {
-      if (pointWithin(cx, cy, o.x, o.y, o.x + o.w, o.y + o.h)) {
-        foundAtCursor = o;
+        // else only set "one-of hovered" (no "direct hovered") in multi mode or when synced
+        else if (hoverMulti || viaSync) {
+          hovered[o.sidx] = o;
+        }
       }
     });
-
-    if (foundAtCursor) {
-      setHoverMark(0, foundAtCursor);
-
-      if (foundAtCursor !== hoveredAtCursor) {
-        hoveredAtCursor = foundAtCursor;
-        onHover(foundAtCursor.sidx, foundAtCursor.didx, foundAtCursor);
-      }
-    } else if (hoveredAtCursor) {
-      setHoverMark(0, null);
-      hoveredAtCursor = undefined;
-      onLeave();
-    }
   }
 
-  const doHover = mode === TimelineMode.Changes ? hoverMulti : hoverOne;
-
-  const setCursor = (u: uPlot) => {
-    let cx = round(u.cursor.left! * uPlot.pxRatio);
-    let cy = round(u.cursor.top! * uPlot.pxRatio);
-
-    // if quadtree is empty, fill it
-    if (!qt.o.length && qt.q == null) {
-      for (const seriesRects of boxRectsBySeries) {
-        for (const rect of seriesRects) {
-          rect && qt.add(rect);
-        }
-      }
-    }
-
-    doHover(cx, cy);
-  };
-
-  // hide y crosshair & hover points
-  const cursor: Partial<Cursor> = {
-    y: false,
+  const cursor: uPlot.Cursor = {
     x: mode === TimelineMode.Changes,
-    points: { show: false },
+    y: false,
+    dataIdx: (u, seriesIdx) => {
+      if (seriesIdx === 1) {
+        // if quadtree is empty, fill it
+        if (qt.o.length === 0 && qt.q == null) {
+          for (const seriesRects of boxRectsBySeries) {
+            for (const rect of seriesRects) {
+              rect && qt.add(rect);
+            }
+          }
+        }
+
+        let cx = u.cursor.left! * uPlot.pxRatio;
+        let cy = u.cursor.top! * uPlot.pxRatio;
+
+        setHovered(cx, cy, u.cursor.event == null);
+      }
+
+      return hovered[seriesIdx]?.didx;
+    },
+    focus: {
+      prox: 1e3,
+      dist: (u, seriesIdx) => (hoveredAtCursor?.sidx === seriesIdx ? 0 : Infinity),
+    },
+    points: {
+      fill: 'rgba(255,255,255,0.2)',
+      bbox: (u, seriesIdx) => {
+        let hRect = hovered[seriesIdx];
+        let isHovered = hRect != null;
+
+        return {
+          left: isHovered ? hRect!.x / uPlot.pxRatio : -10,
+          top: isHovered ? hRect!.y / uPlot.pxRatio : -10,
+          width: isHovered ? hRect!.w / uPlot.pxRatio : 0,
+          height: isHovered ? hRect!.h / uPlot.pxRatio : 0,
+        };
+      },
+    },
   };
 
-  const yMids: number[] = Array(numSeries).fill(0);
   const ySplits: number[] = Array(numSeries).fill(0);
   const yRange: uPlot.Range.MinMax = [0, 1];
 
@@ -558,8 +533,8 @@ export function getConfig(opts: TimelineCoreOptions) {
     ySplits: (u: uPlot) => {
       walk(rowHeight, null, numSeries, u.bbox.height, (iy, y0, hgt) => {
         // vertical midpoints of each series' timeline (stored relative to .u-over)
-        yMids[iy] = round(y0 + hgt / 2);
-        ySplits[iy] = u.posToVal(yMids[iy] / uPlot.pxRatio, FIXED_UNIT);
+        let yMid = round(y0 + hgt / 2);
+        ySplits[iy] = u.posToVal(yMid / uPlot.pxRatio, FIXED_UNIT);
       });
 
       return ySplits;
@@ -575,7 +550,6 @@ export function getConfig(opts: TimelineCoreOptions) {
     // hooks
     init,
     drawClear,
-    setCursor,
   };
 }
 
@@ -587,5 +561,5 @@ function getFillColor(fieldConfig: { fillOpacity?: number; lineWidth?: number },
   }
 
   const opacityPercent = (fieldConfig.fillOpacity ?? 100) / 100;
-  return alpha(color, opacityPercent);
+  return colorManipulator.alpha(color, opacityPercent);
 }

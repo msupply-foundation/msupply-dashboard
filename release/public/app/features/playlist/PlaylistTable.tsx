@@ -1,11 +1,13 @@
-import React from 'react';
-import { DragDropContext, Droppable, DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
+
+import { t } from '@grafana/i18n';
+import { FieldSet } from '@grafana/ui';
 
 import { PlaylistTableRows } from './PlaylistTableRows';
-import { PlaylistItem } from './types';
+import { PlaylistItemUI } from './types';
 
 interface Props {
-  items: PlaylistItem[];
+  items: PlaylistItemUI[];
   deleteItem: (idx: number) => void;
   moveItem: (src: number, dst: number) => void;
 }
@@ -18,9 +20,7 @@ export const PlaylistTable = ({ items, deleteItem, moveItem }: Props) => {
   };
 
   return (
-    <div className="gf-form-group">
-      <h3 className="page-headering">Dashboards</h3>
-
+    <FieldSet label={t('playlist-edit.form.table-heading', 'Dashboards')}>
       <DragDropContext onDragEnd={onDragEnd}>
         <Droppable droppableId="playlist-list" direction="vertical">
           {(provided) => {
@@ -33,6 +33,6 @@ export const PlaylistTable = ({ items, deleteItem, moveItem }: Props) => {
           }}
         </Droppable>
       </DragDropContext>
-    </div>
+    </FieldSet>
   );
 };

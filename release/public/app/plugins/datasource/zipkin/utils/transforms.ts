@@ -1,5 +1,3 @@
-import { identity } from 'lodash';
-
 import { DataFrame, FieldType, MutableDataFrame, TraceKeyValuePair, TraceLog, TraceSpanRow } from '@grafana/data';
 
 import { ZipkinAnnotation, ZipkinEndpoint, ZipkinSpan } from '../types';
@@ -11,16 +9,16 @@ export function transformResponse(zSpans: ZipkinSpan[]): DataFrame {
   const spanRows = zSpans.map(transformSpan);
   const frame = new MutableDataFrame({
     fields: [
-      { name: 'traceID', type: FieldType.string },
-      { name: 'spanID', type: FieldType.string },
-      { name: 'parentSpanID', type: FieldType.string },
-      { name: 'operationName', type: FieldType.string },
-      { name: 'serviceName', type: FieldType.string },
-      { name: 'serviceTags', type: FieldType.other },
-      { name: 'startTime', type: FieldType.number },
-      { name: 'duration', type: FieldType.number },
-      { name: 'logs', type: FieldType.other },
-      { name: 'tags', type: FieldType.other },
+      { name: 'traceID', type: FieldType.string, values: [] },
+      { name: 'spanID', type: FieldType.string, values: [] },
+      { name: 'parentSpanID', type: FieldType.string, values: [] },
+      { name: 'operationName', type: FieldType.string, values: [] },
+      { name: 'serviceName', type: FieldType.string, values: [] },
+      { name: 'serviceTags', type: FieldType.other, values: [] },
+      { name: 'startTime', type: FieldType.number, values: [] },
+      { name: 'duration', type: FieldType.number, values: [] },
+      { name: 'logs', type: FieldType.other, values: [] },
+      { name: 'tags', type: FieldType.other, values: [] },
     ],
     meta: {
       preferredVisualisationType: 'trace',
@@ -116,7 +114,7 @@ function serviceTags(span: ZipkinSpan): TraceKeyValuePair[] {
     valueToTag('ipv6', endpoint.ipv6),
     valueToTag('port', endpoint.port),
     valueToTag('endpointType', span.localEndpoint ? 'local' : 'remote'),
-  ].filter(identity) as TraceKeyValuePair[];
+  ].filter((item): item is TraceKeyValuePair => Boolean(item));
 }
 
 function valueToTag<T>(key: string, value: T): TraceKeyValuePair<T> | undefined {
@@ -132,7 +130,7 @@ function valueToTag<T>(key: string, value: T): TraceKeyValuePair<T> | undefined 
 /**
  * Transforms data frame to Zipkin response
  */
-export const transformToZipkin = (data: MutableDataFrame): ZipkinSpan[] => {
+export const transformToZipkin = (data: MutableDataFrame<TraceSpanRow>): ZipkinSpan[] => {
   let response: ZipkinSpan[] = [];
 
   for (let i = 0; i < data.length; i++) {
@@ -145,24 +143,24 @@ export const transformToZipkin = (data: MutableDataFrame): ZipkinSpan[] => {
       timestamp: span.startTime * 1000,
       duration: span.duration * 1000,
       ...getEndpoint(span),
-      annotations: span.logs.length
+      annotations: span.logs?.length
         ? span.logs.map((l: TraceLog) => ({ timestamp: l.timestamp, value: l.fields[0].value }))
         : undefined,
-      tags: span.tags.length
+      tags: span.tags?.length
         ? span.tags
             .filter((t: TraceKeyValuePair) => t.key !== 'kind' && t.key !== 'endpointType' && t.key !== 'shared')
             .reduce((tags: { [key: string]: string }, t: TraceKeyValuePair) => {
               if (t.key === 'error') {
                 return {
                   ...tags,
-                  [t.key]: span.tags.find((t: TraceKeyValuePair) => t.key === 'errorValue').value || '',
+                  [t.key]: span.tags?.find((t: TraceKeyValuePair) => t.key === 'errorValue')?.value || '',
                 };
               }
               return { ...tags, [t.key]: t.value };
             }, {})
         : undefined,
-      kind: span.tags.find((t: TraceKeyValuePair) => t.key === 'kind')?.value,
-      shared: span.tags.find((t: TraceKeyValuePair) => t.key === 'shared')?.value,
+      kind: span.tags?.find((t: TraceKeyValuePair) => t.key === 'kind')?.value,
+      shared: span.tags?.find((t: TraceKeyValuePair) => t.key === 'shared')?.value,
     });
   }
 
@@ -170,7 +168,7 @@ export const transformToZipkin = (data: MutableDataFrame): ZipkinSpan[] => {
 };
 
 // Returns remote or local endpoint object
-const getEndpoint = (span: any): { [key: string]: ZipkinEndpoint } | undefined => {
+const getEndpoint = (span: TraceSpanRow): { [key: string]: ZipkinEndpoint } | undefined => {
   const key =
     span.serviceTags.find((t: TraceKeyValuePair) => t.key === 'endpointType')?.value === 'local'
       ? 'localEndpoint'

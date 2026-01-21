@@ -1,12 +1,22 @@
-import { type PluginExtensionLinkConfig } from '@grafana/data';
+import { PluginExtension } from '@grafana/data';
 
-// The information that is stored in the registry
-export type PluginExtensionRegistryItem = {
-  // Any additional meta information that we would like to store about the extension in the registry
-  pluginId: string;
+import { AddedComponentRegistryItem } from './registry/AddedComponentsRegistry';
+import { AddedLinkRegistryItem } from './registry/AddedLinksRegistry';
+import { RegistryType } from './registry/Registry';
 
-  config: PluginExtensionLinkConfig;
+export type GetExtensionsOptions = {
+  context?: object | Record<string | symbol, unknown>;
+  extensionPointId: string;
+  limitPerPlugin?: number;
+  addedComponentsRegistry: RegistryType<AddedComponentRegistryItem[]> | undefined;
+  addedLinksRegistry: RegistryType<AddedLinkRegistryItem[]> | undefined;
 };
 
-// A map of placement names to a list of extensions
-export type PluginExtensionRegistry = Record<string, PluginExtensionRegistryItem[]>;
+export type GetExtensions = (options: GetExtensionsOptions) => { extensions: PluginExtension[] };
+
+export type GetPluginExtensions<T = PluginExtension> = (options: {
+  extensionPointId: string;
+  // Make sure this object is properly memoized and not mutated.
+  context?: object | Record<string | symbol, unknown>;
+  limitPerPlugin?: number;
+}) => { extensions: T[] };

@@ -1,10 +1,9 @@
-import React from 'react';
+import * as React from 'react';
 
 import { DataFrame, DataTransformerID, getFrameDisplayName, SelectableValue } from '@grafana/data';
-import { Field, HorizontalGroup, Select, Switch, VerticalGroup, useStyles2 } from '@grafana/ui';
+import { t } from '@grafana/i18n';
+import { Field, Select, Stack, Switch, useStyles2 } from '@grafana/ui';
 import { QueryOperationRow } from 'app/core/components/QueryOperationRow/QueryOperationRow';
-import { t } from 'app/core/internationalization';
-import { PanelModel } from 'app/features/dashboard/state';
 import { DetailText } from 'app/features/inspector/DetailText';
 import { GetDataOptions } from 'app/features/query/state/PanelQueryRunner';
 
@@ -13,47 +12,44 @@ import { getPanelInspectorStyles2 } from './styles';
 interface Props {
   options: GetDataOptions;
   dataFrames: DataFrame[];
-  transformId: DataTransformerID;
   transformationOptions: Array<SelectableValue<DataTransformerID>>;
   selectedDataFrame: number | DataTransformerID;
-  downloadForExcel: boolean;
   onDataFrameChange: (item: SelectableValue<DataTransformerID | number>) => void;
-  toggleDownloadForExcel: () => void;
   data?: DataFrame[];
-  panel?: PanelModel;
+  hasTransformations?: boolean;
+  formattedDataDescription?: string;
   onOptionsChange?: (options: GetDataOptions) => void;
+  actions?: React.ReactNode;
+  excelCompatibilityMode: boolean;
+  toggleExcelCompatibilityMode: () => void;
 }
 
 export const InspectDataOptions = ({
   options,
+  actions,
+  formattedDataDescription,
   onOptionsChange,
-  panel,
+  hasTransformations,
   data,
   dataFrames,
-  transformId,
   transformationOptions,
   selectedDataFrame,
   onDataFrameChange,
-  downloadForExcel,
-  toggleDownloadForExcel,
+  excelCompatibilityMode,
+  toggleExcelCompatibilityMode,
 }: Props) => {
   const styles = useStyles2(getPanelInspectorStyles2);
-
-  const panelTransformations = panel?.getTransformations();
-  const showPanelTransformationsOption =
-    Boolean(panelTransformations?.length) && (transformId as any) !== 'join by time';
-  const showFieldConfigsOption = panel && !panel.plugin?.fieldConfigRegistry.isEmpty();
 
   let dataSelect = dataFrames;
   if (selectedDataFrame === DataTransformerID.joinByField) {
     dataSelect = data!;
   }
 
-  const choices = dataSelect.map((frame, index) => {
+  const choices = dataSelect.map<SelectableValue<number>>((frame, index) => {
     return {
       value: index,
       label: `${getFrameDisplayName(frame)} (${index})`,
-    } as SelectableValue<number>;
+    };
   });
 
   const selectableOptions = [...transformationOptions, ...choices];
@@ -86,10 +82,6 @@ export const InspectDataOptions = ({
       }
     }
 
-    if (downloadForExcel) {
-      parts.push(t('dashboard.inspect-data.excel-header', 'Excel header'));
-    }
-
     return parts.join(', ');
   }
 
@@ -101,9 +93,10 @@ export const InspectDataOptions = ({
         title={t('dashboard.inspect-data.data-options', 'Data options')}
         headerElement={<DetailText>{getActiveString()}</DetailText>}
         isOpen={false}
+        actions={actions}
       >
         <div className={styles.options} data-testid="dataOptions">
-          <VerticalGroup spacing="none">
+          <Stack direction="column" gap={0}>
             {data!.length > 1 && (
               <Field label={t('dashboard.inspect-data.dataframe-label', 'Show data frame')}>
                 <Select
@@ -116,8 +109,8 @@ export const InspectDataOptions = ({
               </Field>
             )}
 
-            <HorizontalGroup>
-              {showPanelTransformationsOption && onOptionsChange && (
+            <Stack>
+              {hasTransformations && onOptionsChange && (
                 <Field
                   label={t('dashboard.inspect-data.transformations-label', 'Apply panel transformations')}
                   description={t(
@@ -131,13 +124,16 @@ export const InspectDataOptions = ({
                   />
                 </Field>
               )}
-              {showFieldConfigsOption && onOptionsChange && (
+              {onOptionsChange && (
                 <Field
                   label={t('dashboard.inspect-data.formatted-data-label', 'Formatted data')}
-                  description={t(
-                    'dashboard.inspect-data.formatted-data-description',
-                    'Table data is formatted with options defined in the Field and Override tabs.'
-                  )}
+                  description={
+                    formattedDataDescription ||
+                    t(
+                      'dashboard.inspect-data.formatted-data-description',
+                      'Table data is formatted with options defined in the Field and Override tabs.'
+                    )
+                  }
                 >
                   <Switch
                     id="formatted-data-toggle"
@@ -147,16 +143,20 @@ export const InspectDataOptions = ({
                 </Field>
               )}
               <Field
-                label={t('dashboard.inspect-data.download-excel-label', 'Download for Excel')}
+                label={t('dashboard.inspect-data.excel-compatibility-mode-label', 'Download for Excel')}
                 description={t(
-                  'dashboard.inspect-data.download-excel-description',
-                  'Adds header to CSV for use with Excel'
+                  'dashboard.inspect-data.excel-compatibility-mode-description',
+                  "Generates a CSV file that's compatible with most Excel versions"
                 )}
               >
-                <Switch id="excel-toggle" value={downloadForExcel} onChange={toggleDownloadForExcel} />
+                <Switch
+                  id="excel-compatibility-mode-toggle"
+                  value={excelCompatibilityMode}
+                  onChange={toggleExcelCompatibilityMode}
+                />
               </Field>
-            </HorizontalGroup>
-          </VerticalGroup>
+            </Stack>
+          </Stack>
         </div>
       </QueryOperationRow>
     </div>

@@ -12,11 +12,11 @@ import {
   dataFrameToJSON,
   DataTopic,
 } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { config } from '@grafana/runtime';
-import { PanelModel } from 'app/features/dashboard/state';
+import { PanelModel } from 'app/features/dashboard/state/PanelModel';
+import { Randomize, randomizeData } from 'app/features/dashboard-scene/inspect/HelpWizard/randomizer';
 import { GrafanaQueryType } from 'app/plugins/datasource/grafana/types';
-
-import { Randomize, randomizeData } from './randomizer';
 
 export function getPanelDataFrames(data?: PanelData): DataFrameJSON[] {
   const frames: DataFrameJSON[] = [];
@@ -44,7 +44,7 @@ export function getGithubMarkdown(panel: PanelModel, snapshot: string): string {
     panelType: saveModel.type,
     datasource: '??',
   };
-  const grafanaVersion = `${config.buildInfo.version} (${config.buildInfo.commit})`;
+  const grafanaVersion = config.buildInfo.versionString;
 
   let md = `| Key | Value |
 |--|--|
@@ -76,7 +76,7 @@ export async function getDebugDashboard(panel: PanelModel, rand: Randomize, time
 
   const dsref = panel.datasource;
   const frames = randomizeData(getPanelDataFrames(data), rand);
-  const grafanaVersion = `${config.buildInfo.version} (${config.buildInfo.commit})`;
+  const grafanaVersion = config.buildInfo.versionString;
   const queries = saveModel?.targets ?? [];
   const html = `<table width="100%">
     <tr>
@@ -140,7 +140,7 @@ export async function getDebugDashboard(panel: PanelModel, rand: Randomize, time
         y: 20,
       },
       type: 'table',
-      title: 'Annotations',
+      title: t('dashboard.get-debug-dashboard.title.annotations', 'Annotations'),
       datasource: {
         type: 'datasource',
         uid: '-- Dashboard --',
@@ -182,7 +182,7 @@ function getTransformsRow(saveModel: any): string {
     return '';
   }
   return `<tr>
-      <th>Transforms (${saveModel.transformations.length})</th>
+      <th>Transform</th>
       <td>${saveModel.transformations.map((t: DataTransformerConfig) => t.id).join(', ')}</td>
   </tr>`;
 }

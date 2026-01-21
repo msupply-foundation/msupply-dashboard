@@ -1,36 +1,40 @@
 import { css } from '@emotion/css';
-import React, { PureComponent } from 'react';
+import { PureComponent } from 'react';
 import { connect, ConnectedProps } from 'react-redux';
 
 import { AppEvents, GrafanaTheme2, LoadingState, NavModelItem } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
+import { Trans, t } from '@grafana/i18n';
 import { config, reportInteraction } from '@grafana/runtime';
 import {
   Button,
   Field,
-  Form,
-  HorizontalGroup,
   Input,
   Spinner,
   stylesFactory,
   TextArea,
   Themeable2,
-  VerticalGroup,
   FileDropzone,
   withTheme2,
   DropzoneFile,
   FileDropzoneDefaultChildren,
   LinkButton,
+  TextLink,
+  Label,
+  Stack,
 } from '@grafana/ui';
 import appEvents from 'app/core/app_events';
+import { Form } from 'app/core/components/Form/Form';
 import { Page } from 'app/core/components/Page/Page';
 import { GrafanaRouteComponentProps } from 'app/core/navigation/types';
-import { StoreState } from 'app/types';
+import { dispatch } from 'app/store/store';
+import { StoreState } from 'app/types/store';
 
 import { cleanUpAction } from '../../core/actions/cleanUp';
+import { ImportDashboardOverviewV2 } from '../dashboard-scene/v2schema/ImportDashboardOverviewV2';
 
 import { ImportDashboardOverview } from './components/ImportDashboardOverview';
-import { fetchGcomDashboard, importDashboardJson } from './state/actions';
+import { fetchGcomDashboard, importDashboardJson, importDashboardV2Json } from './state/actions';
 import { initialImportDashboardState } from './state/reducers';
 import { validateDashboardJson, validateGcomDashboard } from './utils/validation';
 
@@ -41,9 +45,17 @@ type DashboardImportPageRouteSearchParams = {
 type OwnProps = Themeable2 & GrafanaRouteComponentProps<{}, DashboardImportPageRouteSearchParams>;
 
 const IMPORT_STARTED_EVENT_NAME = 'dashboard_import_loaded';
+const JSON_PLACEHOLDER = `{
+    "title": "Example - Repeating Dictionary variables",
+    "uid": "_0HnEoN4z",
+    "panels": [...]
+    ...
+}
+`;
 
 const mapStateToProps = (state: StoreState) => ({
   loadingState: state.importDashboard.state,
+  dashboard: state.importDashboard.dashboard,
 });
 
 const mapDispatchToProps = {
@@ -79,7 +91,23 @@ class UnthemedDashboardImport extends PureComponent<Props> {
     });
 
     try {
-      this.props.importDashboardJson(JSON.parse(String(result)));
+      const json = JSON.parse(String(result));
+
+      if (json.spec?.elements) {
+        dispatch(importDashboardV2Json(json.spec));
+        return;
+      } else if (json.elements) {
+        dispatch(importDashboardV2Json(json));
+        return;
+      }
+
+      // check if it's a v1 resource format
+      if (json.spec) {
+        this.props.importDashboardJson(json.spec);
+        return;
+      }
+
+      this.props.importDashboardJson(json);
     } catch (error) {
       if (error instanceof Error) {
         appEvents.emit(AppEvents.alertError, ['Import failed', 'JSON -> JS Serialization failed: ' + error.message]);
@@ -93,7 +121,25 @@ class UnthemedDashboardImport extends PureComponent<Props> {
       import_source: 'json_pasted',
     });
 
-    this.props.importDashboardJson(JSON.parse(formData.dashboardJson));
+    const dashboard = JSON.parse(formData.dashboardJson);
+
+    // check if it's a v2 resource format
+    if (dashboard.spec?.elements) {
+      dispatch(importDashboardV2Json(dashboard.spec));
+      return;
+      // check if it's just a v2 spec
+    } else if (dashboard.elements) {
+      dispatch(importDashboardV2Json(dashboard));
+      return;
+    }
+
+    // check if it's a v1 resource format
+    if (dashboard.spec) {
+      this.props.importDashboardJson(dashboard.spec);
+      return;
+    }
+
+    this.props.importDashboardJson(dashboard);
   };
 
   getGcomDashboard = (formData: { gcomDashboard: string }) => {
@@ -117,6 +163,13 @@ class UnthemedDashboardImport extends PureComponent<Props> {
   renderImportForm() {
     const styles = importStyles(this.props.theme);
 
+    const GcomDashboardsLink = () => (
+      // eslint-disable-next-line @grafana/i18n/no-untranslated-strings
+      <TextLink variant="bodySmall" href="https://grafana.com/grafana/dashboards/" external>
+        grafana.com/dashboards
+      </TextLink>
+    );
+
     return (
       <>
         <div className={styles.option}>
@@ -127,8 +180,11 @@ class UnthemedDashboardImport extends PureComponent<Props> {
             onLoad={this.onFileUpload}
           >
             <FileDropzoneDefaultChildren
-              primaryText="Upload dashboard JSON file"
-              secondaryText="Drag and drop here or click to browse"
+              primaryText={t('dashboard-import.file-dropzone.primary-text', 'Upload dashboard JSON file')}
+              secondaryText={t(
+                'dashboard-import.file-dropzone.secondary-text',
+                'Drag and drop here or click to browse'
+              )}
             />
           </FileDropzone>
         </div>
@@ -136,19 +192,34 @@ class UnthemedDashboardImport extends PureComponent<Props> {
           <Form onSubmit={this.getGcomDashboard} defaultValues={{ gcomDashboard: '' }}>
             {({ register, errors }) => (
               <Field
-                label="Import via grafana.com"
+                label={
+                  <Label className={styles.labelWithLink} htmlFor="url-input">
+                    <span>
+                      <Trans i18nKey="dashboard-import.gcom-field.label">
+                        Find and import dashboards for common applications at <GcomDashboardsLink />
+                      </Trans>
+                    </span>
+                  </Label>
+                }
                 invalid={!!errors.gcomDashboard}
                 error={errors.gcomDashboard && errors.gcomDashboard.message}
               >
                 <Input
                   id="url-input"
-                  placeholder="Grafana.com dashboard URL or ID"
+                  placeholder={t('dashboard-import.gcom-field.placeholder', 'Grafana.com dashboard URL or ID')}
                   type="text"
                   {...register('gcomDashboard', {
-                    required: 'A Grafana dashboard URL or ID is required',
+                    required: t(
+                      'dashboard-import.gcom-field.validation-required',
+                      'A Grafana dashboard URL or ID is required'
+                    ),
                     validate: validateGcomDashboard,
                   })}
-                  addonAfter={<Button type="submit">Load</Button>}
+                  addonAfter={
+                    <Button type="submit">
+                      <Trans i18nKey="dashboard-import.gcom-field.load-button">Load</Trans>
+                    </Button>
+                  }
                 />
               </Field>
             )}
@@ -159,28 +230,29 @@ class UnthemedDashboardImport extends PureComponent<Props> {
             {({ register, errors }) => (
               <>
                 <Field
-                  label="Import via panel json"
+                  label={t('dashboard-import.json-field.label', 'Import via dashboard JSON model')}
                   invalid={!!errors.dashboardJson}
                   error={errors.dashboardJson && errors.dashboardJson.message}
                 >
                   <TextArea
                     {...register('dashboardJson', {
-                      required: 'Need a dashboard JSON model',
+                      required: t('dashboard-import.json-field.validation-required', 'Need a dashboard JSON model'),
                       validate: validateDashboardJson,
                     })}
                     data-testid={selectors.components.DashboardImportPage.textarea}
                     id="dashboard-json-textarea"
                     rows={10}
+                    placeholder={JSON_PLACEHOLDER}
                   />
                 </Field>
-                <HorizontalGroup>
+                <Stack>
                   <Button type="submit" data-testid={selectors.components.DashboardImportPage.submit}>
-                    Load
+                    <Trans i18nKey="dashboard-import.form-actions.load">Load</Trans>
                   </Button>
                   <LinkButton variant="secondary" href={`${config.appSubUrl}/dashboards`}>
-                    Cancel
+                    <Trans i18nKey="dashboard-import.form-actions.cancel">Cancel</Trans>
                   </LinkButton>
-                </HorizontalGroup>
+                </Stack>
               </>
             )}
           </Form>
@@ -190,10 +262,25 @@ class UnthemedDashboardImport extends PureComponent<Props> {
   }
 
   pageNav: NavModelItem = {
-    text: 'Import dashboard',
-    subTitle: 'Import dashboard from file or Grafana.com',
-    breadcrumbs: [{ title: 'Dashboards', url: 'dashboards' }],
+    text: t('manage-dashboards.unthemed-dashboard-import.text.import-dashboard', 'Import dashboard'),
+    subTitle: t(
+      'manage-dashboards.unthemed-dashboard-import.subTitle.import-dashboard-from-file-or-grafanacom',
+      'Import dashboard from file or Grafana.com'
+    ),
   };
+
+  getDashboardOverview() {
+    const { loadingState, dashboard } = this.props;
+
+    if (loadingState === LoadingState.Done) {
+      if (dashboard.elements || dashboard.spec?.elements) {
+        return <ImportDashboardOverviewV2 />;
+      }
+      return <ImportDashboardOverview />;
+    }
+
+    return null;
+  }
 
   render() {
     const { loadingState } = this.props;
@@ -202,14 +289,14 @@ class UnthemedDashboardImport extends PureComponent<Props> {
       <Page navId="dashboards/browse" pageNav={this.pageNav}>
         <Page.Contents>
           {loadingState === LoadingState.Loading && (
-            <VerticalGroup justify="center">
-              <HorizontalGroup justify="center">
-                <Spinner size={32} />
-              </HorizontalGroup>
-            </VerticalGroup>
+            <Stack direction={'column'} justifyContent="center">
+              <Stack justifyContent="center">
+                <Spinner size="xxl" />
+              </Stack>
+            </Stack>
           )}
           {[LoadingState.Error, LoadingState.NotStarted].includes(loadingState) && this.renderImportForm()}
-          {loadingState === LoadingState.Done && <ImportDashboardOverview />}
+          {this.getDashboardOverview()}
         </Page.Contents>
       </Page>
     );
@@ -223,9 +310,15 @@ export default DashboardImport;
 
 const importStyles = stylesFactory((theme: GrafanaTheme2) => {
   return {
-    option: css`
-      margin-bottom: ${theme.spacing(4)};
-      max-width: 600px;
-    `,
+    option: css({
+      marginBottom: theme.spacing(4),
+      maxWidth: '600px',
+    }),
+    labelWithLink: css({
+      maxWidth: '100%',
+    }),
+    linkWithinLabel: css({
+      fontSize: 'inherit',
+    }),
   };
 });

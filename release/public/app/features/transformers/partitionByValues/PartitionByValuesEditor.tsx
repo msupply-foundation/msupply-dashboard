@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import {
   DataTransformerID,
@@ -6,11 +6,25 @@ import {
   TransformerRegistryItem,
   TransformerUIProps,
   SelectableValue,
+  TransformerCategory,
 } from '@grafana/data';
-import { InlineField, InlineFieldRow, ValuePicker, Button, HorizontalGroup, FieldValidationMessage } from '@grafana/ui';
-import { useFieldDisplayNames, useSelectOptions } from '@grafana/ui/src/components/MatchersUI/utils';
+import { Trans, t } from '@grafana/i18n';
+import {
+  InlineField,
+  InlineFieldRow,
+  ValuePicker,
+  Button,
+  Stack,
+  FieldValidationMessage,
+  RadioButtonGroup,
+} from '@grafana/ui';
+import { useFieldDisplayNames, useSelectOptions } from '@grafana/ui/internal';
 
-import { partitionByValuesTransformer, PartitionByValuesTransformerOptions } from './partitionByValues';
+import { getTransformationContent } from '../docs/getTransformationContent';
+import darkImage from '../images/dark/partitionByValues.svg';
+import lightImage from '../images/light/partitionByValues.svg';
+
+import { getPartitionByValuesTransformer, PartitionByValuesTransformerOptions } from './partitionByValues';
 
 export function PartitionByValuesEditor({
   input,
@@ -46,6 +60,27 @@ export function PartitionByValuesEditor({
     [onChange, options]
   );
 
+  enum namingModes {
+    asLabels,
+    frameName,
+  }
+
+  const namingModesOptions = [
+    {
+      label: t('transformers.partition-by-values-editor.naming-modes-options.label.as-label', 'As label'),
+      value: namingModes.asLabels,
+    },
+    {
+      label: t('transformers.partition-by-values-editor.naming-modes-options.label.as-frame-name', 'As frame name'),
+      value: namingModes.frameName,
+    },
+  ];
+
+  const KeepFieldsOptions = [
+    { label: t('transformers.partition-by-values-editor.keep-fields-options.label.yes', 'Yes'), value: true },
+    { label: t('transformers.partition-by-values-editor.keep-fields-options.label.no', 'No'), value: false },
+  ];
+
   const removeField = useCallback(
     (v: string) => {
       if (!v) {
@@ -65,7 +100,13 @@ export function PartitionByValuesEditor({
   );
 
   if (input.length > 1) {
-    return <FieldValidationMessage>Partition by values only works with a single frame.</FieldValidationMessage>;
+    return (
+      <FieldValidationMessage>
+        <Trans i18nKey="transformers.partition-by-values-editor.partition-values-works-single-frame">
+          Partition by values only works with a single frame.
+        </Trans>
+      </FieldValidationMessage>
+    );
   }
 
   const fieldNames = [...new Set(options.fields)];
@@ -73,8 +114,12 @@ export function PartitionByValuesEditor({
   return (
     <div>
       <InlineFieldRow>
-        <InlineField label="Field" labelWidth={10} grow={true}>
-          <HorizontalGroup>
+        <InlineField
+          label={t('transformers.partition-by-values-editor.label-field', 'Field')}
+          labelWidth={10}
+          grow={true}
+        >
+          <Stack>
             {fieldNames.map((name) => (
               <Button key={name} icon="times" variant="secondary" size="md" onClick={() => removeField(name)}>
                 {name}
@@ -86,22 +131,69 @@ export function PartitionByValuesEditor({
                 size="md"
                 options={selectOptions}
                 onChange={addField}
-                label="Select field"
+                label={t('transformers.partition-by-values-editor.label-select-field', 'Select field')}
                 icon="plus"
+                isFullWidth={false}
               />
             )}
-          </HorizontalGroup>
+          </Stack>
+        </InlineField>
+      </InlineFieldRow>
+      <InlineFieldRow>
+        <InlineField
+          tooltip={t(
+            'transformers.partion-by-values-editor.tooltip-naming',
+            'Sets how the names of the selected fields are displayed. As frame name is usually better for tabular data'
+          )}
+          label={t('transformers.partition-by-values-editor.label-naming', 'Naming')}
+          labelWidth={10}
+        >
+          <RadioButtonGroup
+            options={namingModesOptions}
+            value={
+              options.naming?.asLabels === undefined || options.naming.asLabels
+                ? namingModes.asLabels
+                : namingModes.frameName
+            }
+            onChange={(v) =>
+              onChange({ ...options, naming: { ...options.naming, asLabels: v === namingModes.asLabels } })
+            }
+          />
+        </InlineField>
+      </InlineFieldRow>
+      <InlineFieldRow>
+        <InlineField
+          tooltip={t(
+            'transformers.partition-by-values-editor.tooltip-keeps-partition-fields-frames',
+            'Keeps the partition fields in the frames'
+          )}
+          label={t('transformers.partition-by-values-editor.label-keep-fields', 'Keep fields')}
+          labelWidth={16}
+        >
+          <RadioButtonGroup
+            options={KeepFieldsOptions}
+            value={options.keepFields}
+            onChange={(v) => onChange({ ...options, keepFields: v })}
+          />
         </InlineField>
       </InlineFieldRow>
     </div>
   );
 }
 
-export const partitionByValuesTransformRegistryItem: TransformerRegistryItem<PartitionByValuesTransformerOptions> = {
-  id: DataTransformerID.partitionByValues,
-  editor: PartitionByValuesEditor,
-  transformation: partitionByValuesTransformer,
-  name: partitionByValuesTransformer.name,
-  description: partitionByValuesTransformer.description,
-  state: PluginState.alpha,
-};
+export const getPartitionByValuesTransformRegistryItem: () => TransformerRegistryItem<PartitionByValuesTransformerOptions> =
+  () => {
+    const partitionByValuesTransformer = getPartitionByValuesTransformer();
+    return {
+      id: DataTransformerID.partitionByValues,
+      editor: PartitionByValuesEditor,
+      transformation: partitionByValuesTransformer,
+      name: partitionByValuesTransformer.name,
+      description: partitionByValuesTransformer.description,
+      state: PluginState.alpha,
+      categories: new Set([TransformerCategory.Reformat]),
+      help: getTransformationContent(DataTransformerID.partitionByValues).helperDocs,
+      imageDark: darkImage,
+      imageLight: lightImage,
+    };
+  };

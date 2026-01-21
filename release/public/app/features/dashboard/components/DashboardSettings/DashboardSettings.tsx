@@ -1,22 +1,21 @@
 import * as H from 'history';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom-v5-compat';
 
 import { locationUtil, NavModel, NavModelItem } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
+import { Trans, t } from '@grafana/i18n';
 import { locationService } from '@grafana/runtime';
-import { Button, PageToolbar, ToolbarButtonRow } from '@grafana/ui';
+import { Button, Stack, Text, ToolbarButtonRow } from '@grafana/ui';
 import { AppChromeUpdate } from 'app/core/components/AppChrome/AppChromeUpdate';
-import { Page } from 'app/core/components/PageNew/Page';
-import config from 'app/core/config';
+import { Page } from 'app/core/components/Page/Page';
 import { contextSrv } from 'app/core/services/context_srv';
-import { AccessControlAction } from 'app/types';
+import { AccessControlAction } from 'app/types/accessControl';
 import { DashboardMetaChangedEvent } from 'app/types/events';
 
 import { VariableEditorContainer } from '../../../variables/editor/VariableEditorContainer';
 import { DashboardModel } from '../../state/DashboardModel';
 import { AccessControlDashboardPermissions } from '../DashboardPermissions/AccessControlDashboardPermissions';
-import { DashboardPermissions } from '../DashboardPermissions/DashboardPermissions';
 import { SaveDashboardAsButton, SaveDashboardButton } from '../SaveDashboard/SaveDashboardButton';
 
 import { AnnotationsSettings } from './AnnotationsSettings';
@@ -49,28 +48,25 @@ export function DashboardSettings({ dashboard, editview, pageNav, sectionNav }: 
     dashboard.meta.hasUnsavedFolderChange = false;
   };
 
-  const folderTitle = dashboard.meta.folderTitle;
   const currentPage = pages.find((page) => page.id === editview) ?? pages[0];
   const canSaveAs = contextSrv.hasEditPermissionInFolders;
   const canSave = dashboard.meta.canSave;
   const location = useLocation();
   const editIndex = getEditIndex(location);
-  const subSectionNav = getSectionNav(pageNav, sectionNav, pages, currentPage, location);
-  const size = config.featureToggles.topnav ? 'sm' : 'md';
+  const subSectionNav = getSectionNav(pageNav, sectionNav, pages, currentPage, location, dashboard.uid);
+  const size = 'sm';
 
   const actions = [
-    config.featureToggles.topnav && (
-      <Button
-        data-testid={selectors.pages.Dashboard.Settings.Actions.close}
-        variant="secondary"
-        key="close"
-        fill="outline"
-        size={size}
-        onClick={onClose}
-      >
-        Close
-      </Button>
-    ),
+    <Button
+      data-testid={selectors.pages.Dashboard.Settings.Actions.close}
+      variant="secondary"
+      key="close"
+      fill="outline"
+      size={size}
+      onClick={onClose}
+    >
+      <Trans i18nKey="dashboard.dashboard-settings.actions.close">Close</Trans>
+    </Button>,
     canSaveAs && (
       <SaveDashboardAsButton
         dashboard={dashboard}
@@ -85,13 +81,7 @@ export function DashboardSettings({ dashboard, editview, pageNav, sectionNav }: 
 
   return (
     <>
-      {!config.featureToggles.topnav ? (
-        <PageToolbar title={`${dashboard.title} / Settings`} parent={folderTitle} onGoBack={onClose}>
-          {actions}
-        </PageToolbar>
-      ) : (
-        <AppChromeUpdate actions={<ToolbarButtonRow alignment="right">{actions}</ToolbarButtonRow>} />
-      )}
+      <AppChromeUpdate actions={<ToolbarButtonRow alignment="right">{actions}</ToolbarButtonRow>} />
       <currentPage.component sectionNav={subSectionNav} dashboard={dashboard} editIndex={editIndex} />
     </>
   );
@@ -100,16 +90,18 @@ export function DashboardSettings({ dashboard, editview, pageNav, sectionNav }: 
 function getSettingsPages(dashboard: DashboardModel) {
   const pages: SettingsPage[] = [];
 
+  const generalTitle = t('dashboard-settings.general.title', 'General');
+
   if (dashboard.meta.canEdit) {
     pages.push({
-      title: 'General',
+      title: generalTitle,
       id: 'settings',
       icon: 'sliders-v-alt',
       component: GeneralSettings,
     });
 
     pages.push({
-      title: 'Annotations',
+      title: t('dashboard-settings.annotations.title', 'Annotations'),
       id: 'annotations',
       icon: 'comment-alt',
       component: AnnotationsSettings,
@@ -118,7 +110,7 @@ function getSettingsPages(dashboard: DashboardModel) {
     });
 
     pages.push({
-      title: 'Variables',
+      title: t('dashboard-settings.variables.title', 'Variables'),
       id: 'templating',
       icon: 'calculator-alt',
       component: VariableEditorContainer,
@@ -126,7 +118,7 @@ function getSettingsPages(dashboard: DashboardModel) {
     });
 
     pages.push({
-      title: 'Links',
+      title: t('dashboard-settings.links.title', 'Links'),
       id: 'links',
       icon: 'link',
       component: LinksSettings,
@@ -135,33 +127,28 @@ function getSettingsPages(dashboard: DashboardModel) {
 
   if (dashboard.meta.canMakeEditable) {
     pages.push({
-      title: 'General',
+      title: generalTitle,
       icon: 'sliders-v-alt',
       id: 'settings',
       component: MakeEditable,
     });
   }
 
-  if (dashboard.id && dashboard.meta.canSave) {
+  if (dashboard.uid && dashboard.meta.canSave) {
     pages.push({
-      title: 'Versions',
+      title: t('dashboard-settings.versions.title', 'Versions'),
       id: 'versions',
       icon: 'history',
       component: VersionsSettings,
     });
   }
 
-  if (dashboard.id && dashboard.meta.canAdmin) {
-    if (!config.rbacEnabled) {
+  const permissionsTitle = t('dashboard-settings.permissions.title', 'Permissions');
+
+  if (dashboard.uid && dashboard.meta.canAdmin) {
+    if (contextSrv.hasPermission(AccessControlAction.DashboardsPermissionsRead)) {
       pages.push({
-        title: 'Permissions',
-        id: 'permissions',
-        icon: 'lock',
-        component: DashboardPermissions,
-      });
-    } else if (contextSrv.hasPermission(AccessControlAction.DashboardsPermissionsRead)) {
-      pages.push({
-        title: 'Permissions',
+        title: permissionsTitle,
         id: 'permissions',
         icon: 'lock',
         component: AccessControlDashboardPermissions,
@@ -170,7 +157,7 @@ function getSettingsPages(dashboard: DashboardModel) {
   }
 
   pages.push({
-    title: 'JSON Model',
+    title: t('dashboard-settings.json-editor.title', 'JSON Model'),
     id: 'dashboard_json',
     icon: 'arrow',
     component: JsonEditorSettings,
@@ -179,46 +166,42 @@ function getSettingsPages(dashboard: DashboardModel) {
   return pages;
 }
 
+function applySectionAsParent(node: NavModelItem, parent: NavModelItem): NavModelItem {
+  return {
+    ...node,
+    parentItem: node.parentItem ? applySectionAsParent(node.parentItem, parent) : parent,
+  };
+}
+
 function getSectionNav(
   pageNav: NavModelItem,
   sectionNav: NavModel,
   pages: SettingsPage[],
   currentPage: SettingsPage,
-  location: H.Location
+  location: H.Location,
+  dashboardUid: string
 ): NavModel {
   const main: NavModelItem = {
-    text: 'Settings',
+    text: t('dashboard-settings.settings.title', 'Settings'),
     children: [],
     icon: 'apps',
-    hideFromBreadcrumbs: true,
+    hideFromBreadcrumbs: false,
+    url: locationUtil.getUrlForPartial(location, { editview: 'settings', editIndex: null }),
   };
 
   main.children = pages.map((page) => ({
     text: page.title,
     icon: page.icon,
-    id: page.id,
+    id: `${dashboardUid}/${page.id}`,
     url: locationUtil.getUrlForPartial(location, { editview: page.id, editIndex: null }),
     active: page === currentPage,
     parentItem: main,
     subTitle: page.subTitle,
   }));
 
-  if (pageNav.parentItem) {
-    pageNav = {
-      ...pageNav,
-      parentItem: {
-        ...pageNav.parentItem,
-        parentItem: sectionNav.node,
-      },
-    };
-  } else {
-    pageNav = {
-      ...pageNav,
-      parentItem: sectionNav.node,
-    };
-  }
+  const pageNavWithSectionParent = applySectionAsParent(pageNav, sectionNav.main);
 
-  main.parentItem = pageNav;
+  main.parentItem = pageNavWithSectionParent;
 
   return {
     main,
@@ -229,10 +212,14 @@ function getSectionNav(
 function MakeEditable({ dashboard, sectionNav }: SettingsPageProps) {
   return (
     <Page navModel={sectionNav}>
-      <div className="dashboard-settings__header">Dashboard not editable</div>
-      <Button type="submit" onClick={() => dashboard.makeEditable()}>
-        Make editable
-      </Button>
+      <Stack direction="column" gap={2} alignItems="flex-start">
+        <Text variant="h3">
+          <Trans i18nKey="dashboard.make-editable.dashboard-not-editable">Dashboard not editable</Trans>
+        </Text>
+        <Button type="submit" onClick={() => dashboard.makeEditable()}>
+          <Trans i18nKey="dashboard.make-editable.make-editable">Make editable</Trans>
+        </Button>
+      </Stack>
     </Page>
   );
 }

@@ -23,11 +23,16 @@ export const components = {
     defaultSubscription: {
       input: 'data-testid default-subscription',
     },
+    serviceCredentialsEnabled: {
+      button: 'data-testid service-credentials-enabled',
+    },
   },
   queryEditor: {
     header: {
       select: 'data-testid azure-monitor-experimental-header',
     },
+    userAuthAlert: 'data-testid azure-monitor-user-auth-invalid-auth-provider-alert',
+    userAuthFallbackAlert: 'data-testid azure-monitor-user-auth-fallback-alert',
     resourcePicker: {
       select: {
         button: 'data-testid resource-picker-select',
@@ -59,23 +64,53 @@ export const components = {
           input: 'data-testid resource-picker-resource',
         },
       },
+      filters: {
+        subscription: {
+          input: 'data-testid resource-picker-filter-subscription',
+        },
+        type: {
+          input: 'data-testid resource-picker-filter-type',
+        },
+        location: {
+          input: 'data-testid resource-picker-filter-location',
+        },
+      },
     },
     metricsQueryEditor: {
+      container: { input: 'data-testid azure-monitor-metrics-query-editor-with-experimental-ui' },
       metricName: {
         input: 'data-testid metric-name',
       },
     },
     logsQueryEditor: {
+      container: { input: 'data-testid azure-monitor-logs-query-editor-with-experimental-ui' },
       formatSelection: {
         input: 'data-testid format-selection',
       },
+      runQuery: {
+        button: 'data-testid run-query',
+      },
+    },
+    logsQueryBuilder: {
+      container: { input: 'data-testid azure-monitor-logs-query-builder' },
     },
     argsQueryEditor: {
       container: {
         input: 'data-testid azure-monitor-arg-query-editor',
       },
+      scope: {
+        input: 'data-testid azure-monitor-arg-query-editor-scope',
+      },
       subscriptions: {
         input: 'data-testid azure-monitor-args-subscription',
+      },
+    },
+    tracesQueryEditor: {
+      container: {
+        input: 'data-testid azure-monitor-traces-query-editor-with-experimental-ui',
+      },
+      traceTypes: {
+        select: 'data-testid azure-monitor-traces-query-editor-trace-types',
       },
     },
   },
@@ -97,6 +132,9 @@ export const components = {
     },
     region: {
       input: 'data-testid region',
+    },
+    customNamespace: {
+      input: 'data-testid custom-namespace',
     },
   },
 };

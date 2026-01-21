@@ -1,9 +1,11 @@
 import { css } from '@emotion/css';
 import Map from 'ol/Map';
-import React, { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import { GrafanaTheme2, SelectableValue } from '@grafana/data';
-import { Button, IconButton, RadioButtonGroup, Select, stylesFactory } from '@grafana/ui';
+import { selectors } from '@grafana/e2e-selectors';
+import { t } from '@grafana/i18n';
+import { Button, IconButton, RadioButtonGroup, Select } from '@grafana/ui';
 import { config } from 'app/core/config';
 
 import { MapMeasure, MapMeasureOptions, measures } from '../utils/measure';
@@ -82,7 +84,14 @@ export const MeasureOverlay = ({ map, menuActiveState }: Props) => {
                 vector.current.addInteraction(map, m.geometry, showSegments, clearPrevious);
               }}
             />
-            <Button className={measureStyle.button} icon="times" variant="secondary" size="sm" onClick={toggleMenu} />
+            <Button
+              aria-label={t('geomap.measure-overlay.aria-label-close', 'Close measure tools')}
+              className={measureStyle.button}
+              icon="times"
+              variant="secondary"
+              size="sm"
+              onClick={toggleMenu}
+            />
           </div>
           <Select
             className={measureStyle.unitSelect}
@@ -99,8 +108,9 @@ export const MeasureOverlay = ({ map, menuActiveState }: Props) => {
       ) : (
         <IconButton
           className={measureStyle.icon}
+          data-testid={selectors.components.PanelEditor.measureButton}
           name="ruler-combined"
-          tooltip="show measure tools"
+          tooltip={t('geomap.measure-overlay.tooltip-show-measure-tools', 'Show measure tools')}
           tooltipPlacement="left"
           onClick={toggleMenu}
         />
@@ -109,32 +119,33 @@ export const MeasureOverlay = ({ map, menuActiveState }: Props) => {
   );
 };
 
-const getStyles = stylesFactory((theme: GrafanaTheme2) => ({
-  button: css`
-    margin-left: auto;
-  `,
-  icon: css`
-    background-color: ${theme.colors.secondary.main};
-    display: inline-block;
-    height: 19.25px;
-    margin: 1px;
-    width: 19.25px;
-  `,
-  infoWrap: css`
-    color: ${theme.colors.text};
-    background-color: ${theme.colors.background.secondary};
-    border-radius: 4px;
-    padding: 2px;
-  `,
-  infoWrapClosed: css`
-    height: 25.25px;
-    width: 25.25px;
-  `,
-  rowGroup: css`
-    display: flex;
-    justify-content: flex-end;
-  `,
-  unitSelect: css`
-    min-width: 200px;
-  `,
-}));
+const getStyles = (theme: GrafanaTheme2) => ({
+  button: css({
+    marginLeft: 'auto',
+  }),
+  icon: css({
+    backgroundColor: theme.colors.secondary.main,
+    display: 'inline-block',
+    height: '19.25px',
+    margin: '1px',
+    width: '19.25px',
+  }),
+  infoWrap: css({
+    color: `${theme.colors.text}`,
+    backgroundColor: theme.colors.background.secondary,
+    // eslint-disable-next-line @grafana/no-border-radius-literal
+    borderRadius: '4px',
+    padding: '2px',
+  }),
+  infoWrapClosed: css({
+    height: '25.25px',
+    width: '25.25px',
+  }),
+  rowGroup: css({
+    display: 'flex',
+    justifyContent: 'flex-end',
+  }),
+  unitSelect: css({
+    minWidth: '200px',
+  }),
+});

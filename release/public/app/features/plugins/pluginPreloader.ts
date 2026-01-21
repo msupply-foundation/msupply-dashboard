@@ -1,27 +1,51 @@
-import type { PluginExtensionLinkConfig } from '@grafana/data';
-import type { AppPluginConfig } from '@grafana/runtime';
+import type {
+  AppPluginConfig,
+  PluginExtensionAddedLinkConfig,
+  PluginExtensionExposedComponentConfig,
+  PluginExtensionAddedComponentConfig,
+} from '@grafana/data';
+import { contextSrv } from 'app/core/services/context_srv';
+import { getPluginSettings } from 'app/features/plugins/pluginSettings';
 
-import * as pluginLoader from './plugin_loader';
+import { pluginImporter } from './importer/pluginImporter';
 
 export type PluginPreloadResult = {
   pluginId: string;
   error?: unknown;
-  extensionConfigs: PluginExtensionLinkConfig[];
+  exposedComponentConfigs: PluginExtensionExposedComponentConfig[];
+  addedComponentConfigs?: PluginExtensionAddedComponentConfig[];
+  addedLinkConfigs?: PluginExtensionAddedLinkConfig[];
 };
 
-export async function preloadPlugins(apps: Record<string, AppPluginConfig> = {}): Promise<PluginPreloadResult[]> {
-  const pluginsToPreload = Object.values(apps).filter((app) => app.preload);
-  return Promise.all(pluginsToPreload.map(preload));
+const preloadPromises = new Map<string, Promise<void>>();
+
+export const clearPreloadedPluginsCache = () => {
+  preloadPromises.clear();
+};
+
+export async function preloadPlugins(apps: AppPluginConfig[] = []) {
+  // Create preload promises for each app, reusing existing promises if already loading
+  const promises = apps.map((app) => {
+    if (!preloadPromises.has(app.id)) {
+      preloadPromises.set(app.id, preload(app));
+    }
+    return preloadPromises.get(app.id)!;
+  });
+
+  await Promise.all(promises);
 }
 
-async function preload(config: AppPluginConfig): Promise<PluginPreloadResult> {
-  const { path, version, id: pluginId } = config;
+async function preload(config: AppPluginConfig): Promise<void> {
+  const showErrorAlert = contextSrv.user.orgRole !== '';
+
   try {
-    const { plugin } = await pluginLoader.importPluginModule(path, version);
-    const { extensionConfigs = [] } = plugin;
-    return { pluginId, extensionConfigs };
+    const meta = await getPluginSettings(config.id, { showErrorAlert });
+    await pluginImporter.importApp(meta);
   } catch (error) {
-    console.error(`[Plugins] Failed to preload plugin: ${path} (version: ${version})`, error);
-    return { pluginId, extensionConfigs: [], error };
+    if (!showErrorAlert) {
+      return;
+    }
+
+    console.error(`[Plugins] Failed to preload plugin: ${config.path} (version: ${config.version})`, error);
   }
 }

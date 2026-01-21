@@ -10,10 +10,53 @@ const longitude = [0, -74.1];
 const latitude = [0, 40.7];
 const geohash = ['9q94r', 'dr5rs'];
 const names = ['A', 'B'];
+const geojsonObject = {
+  type: 'FeatureCollection',
+  features: [
+    {
+      id: 'A',
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [0, 0],
+      },
+      properties: {
+        hello: 'A',
+      },
+    },
+    {
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [1, 1],
+      },
+      properties: {
+        some_code: 'B',
+        hello: 'B',
+      },
+    },
+    {
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [2, 2],
+      },
+      properties: {
+        an_id: 'C',
+        hello: 'C',
+      },
+    },
+  ],
+};
 
 describe('handle location parsing', () => {
   beforeEach(() => {
     jest.spyOn(console, 'warn').mockImplementation();
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue(geojsonObject),
+    } as unknown as Response);
   });
 
   it('auto should find geohash field', async () => {
@@ -33,7 +76,7 @@ describe('handle location parsing', () => {
 
     const info = getGeometryField(frame, matchers);
     expect(info.field!.type).toBe(FieldType.geo);
-    expect(info.field!.values.toArray().map((p) => toLonLat((p as Point).getCoordinates()))).toMatchInlineSnapshot(`
+    expect(info.field!.values.map((p) => toLonLat((p as Point).getCoordinates()))).toMatchInlineSnapshot(`
       [
         [
           -122.01416015625001,
@@ -59,7 +102,7 @@ describe('handle location parsing', () => {
 
     const matchers = await getLocationMatchers();
     const geo = getGeometryField(frame, matchers).field!;
-    expect(geo.values.toArray().map((p) => toLonLat((p as Point).getCoordinates()))).toMatchInlineSnapshot(`
+    expect(geo.values.map((p) => toLonLat((p as Point).getCoordinates()))).toMatchInlineSnapshot(`
       [
         [
           0,
@@ -86,7 +129,7 @@ describe('handle location parsing', () => {
       mode: FrameGeometrySourceMode.Auto,
     });
     const geo = getGeometryField(frame, matchers).field!;
-    expect(geo.values.toArray().map((p) => toLonLat((p as Point).getCoordinates()))).toMatchInlineSnapshot(`
+    expect(geo.values.map((p) => toLonLat((p as Point).getCoordinates()))).toMatchInlineSnapshot(`
       [
         [
           -122.01416015625001,

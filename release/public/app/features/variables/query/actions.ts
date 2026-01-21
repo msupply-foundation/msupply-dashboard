@@ -2,8 +2,8 @@ import { Subscription } from 'rxjs';
 
 import { DataSourceRef } from '@grafana/data';
 import { getDataSourceSrv, toDataQueryError } from '@grafana/runtime';
+import { ThunkResult } from 'app/types/store';
 
-import { ThunkResult } from '../../../types';
 import { getVariableQueryEditor } from '../editor/getVariableQueryEditor';
 import { addVariableEditorError, changeVariableEditorExtended, removeVariableEditorError } from '../editor/reducer';
 import { getQueryVariableEditorState } from '../editor/selectors';
@@ -55,7 +55,7 @@ export const updateQueryVariableOptions = (
         const { rootStateKey } = identifier;
         if (getVariablesState(rootStateKey, getState()).editor.id === identifier.id) {
           dispatch(
-            toKeyedAction(rootStateKey, addVariableEditorError({ errorProp: 'update', errorText: error.message }))
+            toKeyedAction(rootStateKey, addVariableEditorError({ errorProp: 'update', errorText: error.message ?? '' }))
           );
         }
 
@@ -137,7 +137,7 @@ export const changeQueryVariableQuery =
       )
     );
 
-    if (definition) {
+    if (definition !== undefined) {
       dispatch(
         toKeyedAction(
           rootStateKey,
@@ -178,13 +178,13 @@ export function hasSelfReferencingQuery(name: string, query: any): boolean {
 /*
  * Function that takes any object and flattens all props into one level deep object
  * */
-export function flattenQuery(query: any): any {
+export function flattenQuery(query: any) {
   if (typeof query !== 'object' || query === null) {
     return { query };
   }
 
   const keys = Object.keys(query);
-  const flattened = keys.reduce((all, key) => {
+  const flattened = keys.reduce<Record<string, any>>((all, key) => {
     const value = query[key];
     if (typeof value !== 'object' || value === null) {
       all[key] = value;
@@ -199,7 +199,7 @@ export function flattenQuery(query: any): any {
     }
 
     return all;
-  }, {} as Record<string, any>);
+  }, {});
 
   return flattened;
 }

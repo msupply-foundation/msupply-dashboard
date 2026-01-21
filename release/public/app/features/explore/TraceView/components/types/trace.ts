@@ -12,25 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { TraceKeyValuePair, TraceLog } from '@grafana/data';
+
 /**
  * All timestamps are in microseconds
  */
 
-// TODO: Everett Tech Debt: Fix KeyValuePair types
-export type TraceKeyValuePair = {
-  key: string;
-  type?: string;
-  value: any;
-};
-
 export type TraceLink = {
   url: string;
   text: string;
-};
-
-export type TraceLog = {
-  timestamp: number;
-  fields: TraceKeyValuePair[];
 };
 
 export type TraceProcess = {
@@ -39,7 +29,7 @@ export type TraceProcess = {
 };
 
 export type TraceSpanReference = {
-  refType: 'CHILD_OF' | 'FOLLOWS_FROM';
+  refType: 'CHILD_OF' | 'FOLLOWS_FROM' | 'EXTERNAL';
   // eslint-disable-next-line no-use-before-define
   span?: TraceSpan | null | undefined;
   spanID: string;
@@ -57,12 +47,19 @@ export type TraceSpanData = {
   duration: number;
   logs: TraceLog[];
   tags?: TraceKeyValuePair[];
+  kind?: string;
+  statusCode?: number;
+  statusMessage?: string;
+  instrumentationLibraryName?: string;
+  instrumentationLibraryVersion?: string;
+  traceState?: string;
   references?: TraceSpanReference[];
   warnings?: string[] | null;
   stackTraces?: string[];
   flags: number;
   errorIconColor?: string;
   dataFrameRowIndex?: number;
+  childSpanIds?: string[];
 };
 
 export type TraceSpan = TraceSpanData & {
@@ -74,6 +71,7 @@ export type TraceSpan = TraceSpanData & {
   tags: NonNullable<TraceSpanData['tags']>;
   references: NonNullable<TraceSpanData['references']>;
   warnings: NonNullable<TraceSpanData['warnings']>;
+  childSpanIds: NonNullable<TraceSpanData['childSpanIds']>;
   subsidiarilyReferencedBy: TraceSpanReference[];
 };
 
@@ -94,4 +92,20 @@ export type Trace = TraceData & {
   startTime: number;
   traceName: string;
   services: Array<{ name: string; numberOfSpans: number }>;
+};
+
+// It is a section of span that lies on critical path
+export type CriticalPathSection = {
+  spanId: string;
+  section_start: number;
+  section_end: number;
+};
+
+// Type for the plugin link context that includes trace data and datasource information
+export type TraceViewPluginExtensionContext = Trace & {
+  datasource: {
+    name: string;
+    uid: string;
+    type: string;
+  };
 };

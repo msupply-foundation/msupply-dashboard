@@ -1,9 +1,11 @@
 import { css, cx } from '@emotion/css';
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import * as React from 'react';
 import { useEffectOnce } from 'react-use';
 
 import { GrafanaTheme2 } from '@grafana/data';
-import { Alert, Button, Checkbox, Icon, useStyles2 } from '@grafana/ui';
+import { Trans, t } from '@grafana/i18n';
+import { Alert, Button, Checkbox, EmptyState, useStyles2 } from '@grafana/ui';
 import { StoredNotificationItem } from 'app/core/components/AppNotifications/StoredNotificationItem';
 import {
   clearAllNotifications,
@@ -12,7 +14,7 @@ import {
   selectWarningsAndErrors,
   selectLastReadTimestamp,
 } from 'app/core/reducers/appNotification';
-import { useDispatch, useSelector } from 'app/types';
+import { useDispatch, useSelector } from 'app/types/store';
 
 export function StoredNotifications() {
   const dispatch = useDispatch();
@@ -55,10 +57,9 @@ export function StoredNotifications() {
 
   if (notifications.length === 0) {
     return (
-      <div className={styles.noNotifsWrapper}>
-        <Icon name="bell" size="xxl" />
-        <span>Notifications you have received will appear here.</span>
-      </div>
+      <EmptyState variant="completed" message={t('notifications.empty-state.title', "You're all caught up!")}>
+        <Trans i18nKey="notifications.empty-state.description">Notifications you have received will appear here</Trans>
+      </EmptyState>
     );
   }
 
@@ -66,7 +67,10 @@ export function StoredNotifications() {
     <div className={styles.wrapper}>
       <Alert
         severity="info"
-        title="This page displays past errors and warnings. Once dismissed, they cannot be retrieved."
+        title={t(
+          'notifications.stored-notifications.title-alert',
+          'This page displays past errors and warnings. Once dismissed, they cannot be retrieved.'
+        )}
       />
       <div className={styles.topRow}>
         <Checkbox
@@ -74,7 +78,7 @@ export function StoredNotifications() {
           onChange={(event: React.ChangeEvent<HTMLInputElement>) => handleAllCheckboxToggle(event.target.checked)}
         />
         <Button disabled={selectedNotificationIds.length === 0} onClick={clearSelectedNotifications}>
-          Dismiss notifications
+          <Trans i18nKey="notifications.stored-notifications.dismiss-notifications">Dismiss notifications</Trans>
         </Button>
       </div>
       <ul className={styles.list}>
@@ -125,7 +129,7 @@ function getStyles(theme: GrafanaTheme2) {
         top: 0,
         background: theme.colors.gradients.brandVertical,
         width: theme.spacing(0.5),
-        borderRadius: theme.shape.borderRadius(1),
+        borderRadius: theme.shape.radius.default,
       },
     }),
     noNotifsWrapper: css({

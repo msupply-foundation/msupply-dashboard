@@ -78,3 +78,27 @@ export const trackCreateDashboardClicked = (props: DataSourceGeneralTrackingProp
 export const trackDataSourcesListViewed = (props: { grafana_version?: string; path?: string }) => {
   reportInteraction('grafana_ds_datasources_list_viewed', props);
 };
+
+export const trackDsConfigClicked = (item: string) => {
+  reportInteraction('connections_datasources_settings_clicked', { item });
+};
+
+export const trackDsConfigUpdated = (props: { item: string; error?: unknown }) => {
+  reportInteraction('connections_datasources_ds_configured', props);
+};
+
+export const trackDsSearched = (props: { query: string }) => {
+  reportInteraction('connections_datasource_list_searched', {
+    ...props,
+    creator_team: 'grafana_plugins_catalog',
+    schema_version: '1.0.0',
+  });
+};
+
+export const trackAddNewDsClicked = (props: { path: string }) => {
+  reportInteraction('connections_datasource_list_add_datasource_clicked', {
+    ...props,
+    creator_team: 'grafana_plugins_catalog',
+    schema_version: '1.0.0',
+  });
+};

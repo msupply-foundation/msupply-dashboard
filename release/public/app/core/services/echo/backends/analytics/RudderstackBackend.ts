@@ -1,6 +1,4 @@
-import type { apiOptions, identify, load, page, track } from 'rudder-sdk-js'; // SDK is loaded dynamically from config, so we only import types from the SDK package
-
-import { CurrentUserDTO } from '@grafana/data';
+import { BuildInfo } from '@grafana/data';
 import {
   EchoBackend,
   EchoEventType,
@@ -10,13 +8,22 @@ import {
   PageviewEchoEvent,
 } from '@grafana/runtime';
 
+import { User } from '../../../context_srv';
 import { loadScript } from '../../utils';
 
+type Properties = Record<string, string | boolean | number>;
+
+interface RudderstackAPIOptions {
+  Intercom?: {
+    user_hash: string;
+  };
+}
+
 interface Rudderstack {
-  identify: typeof identify;
-  load: typeof load;
-  page: typeof page;
-  track: typeof track;
+  identify: (identifier: string, traits: Properties, options?: RudderstackAPIOptions) => void;
+  load: (writeKey: string, dataPlaneURL: string, options: { configUrl?: string; destSDKBaseURL?: string }) => void;
+  page: () => void;
+  track: (eventName: string, properties?: Properties) => void;
 }
 
 declare global {
@@ -30,9 +37,11 @@ declare global {
 export interface RudderstackBackendOptions {
   writeKey: string;
   dataPlaneUrl: string;
-  user?: CurrentUserDTO;
+  buildInfo: BuildInfo;
+  user?: User;
   sdkUrl?: string;
   configUrl?: string;
+  integrationsUrl?: string;
 }
 
 export class RudderstackBackend implements EchoBackend<PageviewEchoEvent, RudderstackBackendOptions> {
@@ -67,11 +76,14 @@ export class RudderstackBackend implements EchoBackend<PageviewEchoEvent, Rudder
       })(method);
     }
 
-    window.rudderanalytics?.load?.(options.writeKey, options.dataPlaneUrl, { configUrl: options.configUrl });
+    window.rudderanalytics?.load?.(options.writeKey, options.dataPlaneUrl, {
+      configUrl: options.configUrl,
+      destSDKBaseURL: options.integrationsUrl,
+    });
 
     if (options.user) {
       const { identifier, intercomIdentifier } = options.user.analytics;
-      const apiOptions: apiOptions = {};
+      const apiOptions: RudderstackAPIOptions = {};
 
       if (intercomIdentifier) {
         apiOptions.Intercom = {
@@ -85,6 +97,8 @@ export class RudderstackBackend implements EchoBackend<PageviewEchoEvent, Rudder
           email: options.user.email,
           orgId: options.user.orgId,
           language: options.user.language,
+          version: options.buildInfo.version,
+          edition: options.buildInfo.edition,
         },
         apiOptions
       );

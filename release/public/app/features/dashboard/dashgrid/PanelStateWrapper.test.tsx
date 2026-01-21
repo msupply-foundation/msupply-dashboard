@@ -1,5 +1,4 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { Provider } from 'react-redux';
 import configureMockStore from 'redux-mock-store';
 import { ReplaySubject } from 'rxjs';
@@ -9,7 +8,8 @@ import { selectors } from '@grafana/e2e-selectors';
 
 import { PanelQueryRunner } from '../../query/state/PanelQueryRunner';
 import { setTimeSrv, TimeSrv } from '../services/TimeSrv';
-import { DashboardModel, PanelModel } from '../state';
+import { DashboardModel } from '../state/DashboardModel';
+import { PanelModel } from '../state/PanelModel';
 
 import { PanelStateWrapper, Props } from './PanelStateWrapper';
 
@@ -51,6 +51,7 @@ function setupTestContext(options: Partial<Props>) {
       canAddAnnotations: jest.fn(),
       canEditAnnotations: jest.fn(),
       canDeleteAnnotations: jest.fn(),
+      canExecuteActions: jest.fn(),
       meta: {
         isPublic: false,
       },
@@ -74,6 +75,8 @@ function setupTestContext(options: Partial<Props>) {
     </Provider>
   );
 
+  // Needed so mocks work
+  props.panel.refreshWhenInView = false;
   return { rerender, props, subject, store };
 }
 
@@ -128,9 +131,7 @@ describe('PanelStateWrapper', () => {
           </Provider>
         );
 
-        const button = screen.getByRole('button', {
-          name: selectors.components.Panels.Panel.headerCornerInfo('error'),
-        });
+        const button = screen.getByTestId(selectors.components.Panels.Panel.status('error'));
         expect(button).toBeInTheDocument();
         await act(async () => {
           fireEvent.focus(button);

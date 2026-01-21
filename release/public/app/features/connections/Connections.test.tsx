@@ -1,32 +1,38 @@
-import { render, RenderResult, screen } from '@testing-library/react';
-import React from 'react';
-import { TestProvider } from 'test/helpers/TestProvider';
+import { RenderResult, screen } from '@testing-library/react';
+import { Route, Routes } from 'react-router-dom-v5-compat';
+import { render } from 'test/test-utils';
 
-import { locationService } from '@grafana/runtime';
+import { config } from '@grafana/runtime';
 import { contextSrv } from 'app/core/services/context_srv';
-import { getMockDataSources } from 'app/features/datasources/__mocks__';
 import * as api from 'app/features/datasources/api';
+import { getMockDataSources } from 'app/features/datasources/mocks/dataSourcesMocks';
 import { configureStore } from 'app/store/configureStore';
 
-import { getPluginsStateMock } from '../plugins/admin/__mocks__';
+import { getPluginsStateMock } from '../plugins/admin/mocks/mockHelpers';
 
 import Connections from './Connections';
-import { navIndex } from './__mocks__/store.navIndex.mock';
-import { ROUTE_BASE_ID, ROUTES } from './constants';
+import { ROUTES } from './constants';
+import { navIndex } from './mocks/store.navIndex.mock';
 
 jest.mock('app/core/services/context_srv');
 jest.mock('app/features/datasources/api');
+jest.mock('@grafana/runtime', () => ({
+  ...jest.requireActual('@grafana/runtime'),
+  useChromeHeaderHeight: jest.fn(),
+}));
 
 const renderPage = (
-  path = `/${ROUTE_BASE_ID}`,
+  path: string = ROUTES.Base,
   store = configureStore({ navIndex, plugins: getPluginsStateMock([]) })
 ): RenderResult => {
-  locationService.push(path);
-
   return render(
-    <TestProvider store={store}>
-      <Connections />
-    </TestProvider>
+    <Routes>
+      <Route path={`${ROUTES.Base}/*`} element={<Connections />} />
+    </Routes>,
+    {
+      store,
+      historyOptions: { initialEntries: [path] },
+    }
   );
 };
 
@@ -38,56 +44,73 @@ describe('Connections', () => {
     (contextSrv.hasPermission as jest.Mock) = jest.fn().mockReturnValue(true);
   });
 
-  test('shows the "Connect data" page by default', async () => {
+  test('shows the "Connections Homepage" page by default when edition is Cloud', async () => {
+    config.pluginAdminExternalManageEnabled = true;
     renderPage();
 
-    // Data sources group
+    // Add new connection card
+    expect(await screen.findByText('Add new connection')).toBeVisible();
+    expect(await screen.findByText('Collector')).toBeVisible();
     expect(await screen.findByText('Data sources')).toBeVisible();
+    expect(await screen.findByText('Integrations')).toBeVisible();
+    expect(await screen.findByText('Private data source connect')).toBeVisible();
 
     // Heading
-    expect(await screen.findByText('Connect data')).toBeVisible();
-    expect(await screen.findByText('Browse and create new connections')).toBeVisible();
+    expect(await screen.findByText('Welcome to Connections')).toBeVisible();
+    expect(
+      await screen.findByText(
+        'Connect your infrastructure to Grafana Cloud using data sources, integrations and apps. Use this page to add to manage everything from data ingestion to private connections and telemetry pipelines.'
+      )
+    ).toBeVisible();
   });
 
-  test('shows a landing page for Your connections', async () => {
-    renderPage(ROUTES.YourConnections);
+  test('shows the OSS "Connections Homepage" page by default when edition is OpenSource', async () => {
+    config.pluginAdminExternalManageEnabled = false;
+    renderPage();
 
-    expect(await screen.findByRole('link', { name: 'Datasources' })).toBeVisible();
-    expect(await screen.findByText('Manage your existing datasource connections')).toBeVisible();
+    // Add new connection card
+    expect(await screen.findByText('Add new connection')).toBeVisible();
+    expect(await screen.findByText('View configured data sources')).toBeVisible();
+
+    // Heading
+    expect(await screen.findByText('Welcome to Connections')).toBeVisible();
+    expect(
+      await screen.findByText(
+        'Manage your data source connections in one place. Use this page to add a new data source or manage your existing connections.'
+      )
+    ).toBeVisible();
   });
 
   test('renders the correct tab even if accessing it with a "sub-url"', async () => {
-    renderPage(ROUTES.ConnectData);
+    renderPage(ROUTES.AddNewConnection);
 
-    expect(await screen.findByText('Connect data')).toBeVisible();
+    expect(await screen.findByText('Add new connection')).toBeVisible();
     expect(await screen.findByText('Browse and create new connections')).toBeVisible();
 
-    // Should not render the "Your datasources" page
+    // Should not render the "datasources" page
     expect(screen.queryByText('Manage your existing datasource connections')).not.toBeInTheDocument();
   });
 
-  test('renders the core "Connect data" page in case there is no standalone plugin page override for it', async () => {
-    renderPage(ROUTES.ConnectData);
+  test('renders the core "Add new connection" page in case there is no standalone plugin page override for it', async () => {
+    renderPage(ROUTES.AddNewConnection);
 
-    // We expect to see no results and "Data sources" as a header (we only have data sources in OSS Grafana at this point)
-    expect(await screen.findByText('Data sources')).toBeVisible();
-    expect(await screen.findByText('No results matching your query were found.')).toBeVisible();
+    expect(await screen.findByText('No results matching your query were found')).toBeVisible();
   });
 
-  test('does not render anything for the "Connect data" page in case it is displayed by a standalone plugin page', async () => {
-    // We are overriding the navIndex to have the "Connect data" page registered by a plugin
+  test('does not render anything for the "Add new connection" page in case it is displayed by a standalone plugin page', async () => {
+    // We are overriding the navIndex to have the "Add new connection" page registered by a plugin
     const standalonePluginPage = {
-      id: 'standalone-plugin-page-/connections/connect-data',
-      text: 'Connect data',
+      id: 'standalone-plugin-page-/connections/add-new-connection',
+      text: 'Add new connection',
       subTitle: 'Browse and create new connections',
-      url: '/connections/connect-data',
+      url: '/connections/add-new-connection',
       pluginId: 'grafana-easystart-app',
     };
 
     const connections = {
       ...navIndex.connections,
       children: navIndex.connections.children?.map((child) => {
-        if (child.id === 'connections-connect-data') {
+        if (child.id === 'connections-add-new-connection') {
           return standalonePluginPage;
         }
 
@@ -100,40 +123,10 @@ describe('Connections', () => {
       plugins: getPluginsStateMock([]),
     });
 
-    renderPage(ROUTES.ConnectData, store);
+    renderPage(ROUTES.AddNewConnection, store);
 
-    // We expect not to see the text that would be rendered by the core "Connect data" page
+    // We expect not to see the text that would be rendered by the core "Add new connection" page
     expect(screen.queryByText('Data sources')).not.toBeInTheDocument();
-    expect(screen.queryByText('No results matching your query were found.')).not.toBeInTheDocument();
-  });
-
-  test('Your connections redirects to Data sources if it has one child', async () => {
-    const navIndexCopy = {
-      ...navIndex,
-      'connections-your-connections': {
-        id: 'connections-your-connections',
-        text: 'Your connections',
-        subTitle: 'Manage your existing connections',
-        url: '/connections/your-connections',
-        children: [
-          {
-            id: 'connections-your-connections-datasources',
-            text: 'Datasources',
-            subTitle: 'Manage your existing datasource connections',
-            url: '/connections/your-connections/datasources',
-          },
-        ],
-      },
-    };
-
-    const store = configureStore({
-      navIndex: navIndexCopy,
-      plugins: getPluginsStateMock([]),
-    });
-
-    renderPage(ROUTES.YourConnections, store);
-
-    expect(await screen.findByPlaceholderText('Search by name or type')).toBeInTheDocument();
-    expect(await screen.queryByRole('link', { name: 'Datasources' })).toBeNull();
+    expect(screen.queryByText('No results matching your query were found')).not.toBeInTheDocument();
   });
 });

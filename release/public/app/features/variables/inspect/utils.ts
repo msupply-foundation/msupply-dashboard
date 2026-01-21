@@ -1,10 +1,12 @@
 import { DataLinkBuiltInVars } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { Graph } from 'app/core/utils/dag';
 import { mapSet } from 'app/core/utils/set';
 import { stringifyPanelModel } from 'app/features/dashboard/state/PanelModel';
 
 import { safeStringifyValue } from '../../../core/utils/explore';
-import { DashboardModel, PanelModel } from '../../dashboard/state';
+import { DashboardModel } from '../../dashboard/state/DashboardModel';
+import { PanelModel } from '../../dashboard/state/PanelModel';
 import { variableAdapters } from '../adapters';
 import { isAdHoc } from '../guard';
 import { VariableModel } from '../types';
@@ -60,10 +62,16 @@ export function getVariableName(expression: string) {
     return undefined;
   }
   const variableName = match.slice(1).find((match) => match !== undefined);
+
+  // ignore variables that match inherited object prop names
+  if (variableName! in {}) {
+    return undefined;
+  }
+
   return variableName;
 }
 
-export const getUnknownVariableStrings = (variables: VariableModel[], model: any) => {
+export const getUnknownVariableStrings = (variables: VariableModel[], model: DashboardModel) => {
   variableRegex.lastIndex = 0;
   const unknownVariableNames: string[] = [];
   const modelAsString = safeStringifyValue(model, 2);
@@ -118,7 +126,7 @@ const validVariableNames: Record<string, RegExp[]> = {
 };
 
 export const getPropsWithVariable = (variableId: string, parent: { key: string; value: any }, result: any) => {
-  const stringValues = Object.keys(parent.value).reduce((all, key) => {
+  const stringValues = Object.keys(parent.value).reduce<Record<string, string>>((all, key) => {
     const value = parent.value[key];
     if (!value || typeof value !== 'string') {
       return all;
@@ -142,9 +150,9 @@ export const getPropsWithVariable = (variableId: string, parent: { key: string; 
     }
 
     return all;
-  }, {} as Record<string, any>);
+  }, {});
 
-  const objectValues = Object.keys(parent.value).reduce((all, key) => {
+  const objectValues = Object.keys(parent.value).reduce<Record<string, object>>((all, key) => {
     const value = parent.value[key];
     if (value && typeof value === 'object' && Object.keys(value).length) {
       let id = value.title || value.name || value.id || key;
@@ -163,7 +171,7 @@ export const getPropsWithVariable = (variableId: string, parent: { key: string; 
     }
 
     return all;
-  }, {} as Record<string, any>);
+  }, {});
 
   if (Object.keys(stringValues).length || Object.keys(objectValues).length) {
     result = {
@@ -193,7 +201,7 @@ export const createUsagesNetwork = (variables: VariableModel[], dashboard: Dashb
 
   const unUsed: VariableModel[] = [];
   let usages: VariableUsageTree[] = [];
-  const model = dashboard.getSaveModelClone();
+  const model = dashboard.getSaveModelCloneOld();
 
   for (const variable of variables) {
     const variableId = variable.id;
@@ -233,7 +241,7 @@ function createUnknownsNetwork(variables: VariableModel[], dashboard: DashboardM
   }
 
   let unknown: VariableUsageTree[] = [];
-  const model = dashboard.getSaveModelClone();
+  const model = dashboard.getSaveModelCloneOld();
 
   const unknownVariables = getUnknownVariableStrings(variables, model);
   for (const unknownVariable of unknownVariables) {
@@ -325,7 +333,9 @@ export const transformUsagesToNetwork = (usages: VariableUsageTree[]): UsagesToN
     const { variable, tree } = usage;
     const result: UsagesToNetwork = {
       variable,
-      nodes: [{ id: 'dashboard', label: 'dashboard' }],
+      nodes: [
+        { id: 'dashboard', label: t('variables.transform-usages-to-network.result.label.dashboard', 'dashboard') },
+      ],
       edges: [],
       showGraph: false,
     };
@@ -335,8 +345,8 @@ export const transformUsagesToNetwork = (usages: VariableUsageTree[]): UsagesToN
   return results;
 };
 
-const countLeaves = (object: any): number => {
-  const total = Object.values(object).reduce((count: number, value: any) => {
+const countLeaves = (object: object): number => {
+  const total = Object.values(object).reduce<number>((count, value) => {
     if (typeof value === 'object') {
       return count + countLeaves(value);
     }
@@ -344,7 +354,7 @@ const countLeaves = (object: any): number => {
     return count + 1;
   }, 0);
 
-  return total as unknown as number;
+  return total;
 };
 
 export const getVariableUsages = (variableId: string, usages: VariableUsageTree[]): number => {

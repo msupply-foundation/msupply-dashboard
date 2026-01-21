@@ -1,7 +1,7 @@
 import { css } from '@emotion/css';
-import React from 'react';
 
 import { DataQueryError, GrafanaTheme2 } from '@grafana/data';
+import { Trans } from '@grafana/i18n';
 import { Icon, useStyles2 } from '@grafana/ui';
 
 export interface Props {
@@ -18,7 +18,19 @@ export function QueryErrorAlert({ error }: Props) {
       <div className={styles.icon}>
         <Icon name="exclamation-triangle" />
       </div>
-      <div className={styles.message}>{message}</div>
+      <div className={styles.message}>
+        {message}
+        {error.traceId != null && (
+          <>
+            <br />{' '}
+            <span>
+              <Trans i18nKey="query.query-error-alert.trace-id" values={{ traceId: error.traceId }}>
+                (Trace ID: {'{{traceId}}'})
+              </Trans>
+            </span>
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { TestProvider } from 'test/helpers/TestProvider';
 
 import config from 'app/core/config';
@@ -14,6 +13,7 @@ const defaultProps: Props = {
   ...initialUserState,
   user: {
     id: 1,
+    uid: 'aaaaaa',
     name: 'Test User',
     email: 'test@test.com',
     login: 'test',
@@ -59,7 +59,6 @@ describe('ChangePasswordPage', () => {
 
   it('should show change password form when user has loaded', async () => {
     await getTestContext();
-    expect(screen.getByText('Change Your Password')).toBeInTheDocument();
 
     expect(screen.getByLabelText('Old password')).toBeInTheDocument();
     expect(screen.getByLabelText('New password')).toBeInTheDocument();
@@ -70,6 +69,7 @@ describe('ChangePasswordPage', () => {
     expect(screen.getByRole('link', { name: 'Cancel' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/profile');
   });
+
   it('should call changePassword if change password is valid', async () => {
     const { props } = await getTestContext();
 

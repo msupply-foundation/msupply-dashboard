@@ -2,7 +2,9 @@ import { Action } from 'redux';
 
 import { WithAccessControlMetadata } from '@grafana/data';
 
-import { QueryResponse } from './service';
+import { ManagerKind } from '../apiserver/types';
+
+import { QueryResponse } from './service/types';
 
 export enum DashboardSearchItemType {
   DashDB = 'dash-db',
@@ -17,6 +19,7 @@ export enum DashboardSearchItemType {
  * extraneous properties
  */
 export interface DashboardSearchHit extends WithAccessControlMetadata {
+  /** @deprecated use folderUid */
   folderId?: number;
   folderTitle?: string;
   folderUid?: string;
@@ -29,6 +32,8 @@ export interface DashboardSearchHit extends WithAccessControlMetadata {
   url: string;
   sortMeta?: number;
   sortMetaName?: string;
+  isDeleted?: boolean;
+  permanentlyDeleteDate?: string;
 }
 
 /**
@@ -50,11 +55,13 @@ export interface DashboardSearchItem {
   folderUrl?: string;
 }
 
+export type DashboardViewItemKind = 'folder' | 'dashboard' | 'panel';
+
 /**
  * Type used in the folder view components
  */
 export interface DashboardViewItem {
-  kind: 'folder' | 'dashboard' | 'panel';
+  kind: DashboardViewItemKind;
   uid: string;
   title: string;
   url?: string;
@@ -62,16 +69,20 @@ export interface DashboardViewItem {
 
   icon?: string;
 
-  // Most commonly parent folder title, but can be dashboard if panelTitleSearch is enabled
+  parentUID?: string;
+  /** @deprecated Not used in new Browse UI */
   parentTitle?: string;
+  /** @deprecated Not used in new Browse UI */
   parentKind?: string;
 
   // Used only for psuedo-folders, such as Starred or Recent
+  /** @deprecated Not used in new Browse UI */
   itemsUIDs?: string[];
 
   // For enterprise sort options
   sortMeta?: number | string; // value sorted by
   sortMetaName?: string; // name of the value being sorted e.g. 'Views'
+  managedBy?: ManagerKind;
 }
 
 export interface SearchAction extends Action {
@@ -95,6 +106,7 @@ export interface SearchState {
   folderUid?: string;
   includePanels?: boolean;
   eventTrackingNamespace: EventTrackingNamespace;
+  deleted: boolean;
 }
 
 export type OnToggleChecked = (item: DashboardViewItem) => void;
@@ -102,7 +114,6 @@ export type OnToggleChecked = (item: DashboardViewItem) => void;
 export enum SearchLayout {
   List = 'list',
   Folders = 'folders',
-  Grid = 'grid', // preview
 }
 
 export interface SearchQueryParams {

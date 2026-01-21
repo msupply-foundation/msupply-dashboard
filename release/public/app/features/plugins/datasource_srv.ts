@@ -5,17 +5,22 @@ import {
   DataSourceRef,
   DataSourceSelectItem,
   ScopedVars,
+  isObject,
+  matchPluginId,
 } from '@grafana/data';
 import {
   DataSourceSrv as DataSourceService,
   getBackendSrv,
   GetDataSourceListFilters,
   getDataSourceSrv as getDataSourceService,
-  getLegacyAngularInjector,
   getTemplateSrv,
+  RuntimeDataSourceRegistration,
+  RuntimeDataSource,
   TemplateSrv,
+  isExpressionReference,
 } from '@grafana/runtime';
-import { ExpressionDatasourceRef, isExpressionReference } from '@grafana/runtime/src/utils/DataSourceWithBackend';
+import { ExpressionDatasourceRef, UserStorage } from '@grafana/runtime/internal';
+import { DataQuery, DataSourceJsonData } from '@grafana/schema';
 import appEvents from 'app/core/app_events';
 import config from 'app/core/config';
 import {
@@ -24,13 +29,14 @@ import {
 } from 'app/features/expressions/ExpressionDatasource';
 import { ExpressionDatasourceUID } from 'app/features/expressions/types';
 
-import { importDataSourcePlugin } from './plugin_loader';
+import { pluginImporter } from './importer/pluginImporter';
 
 export class DatasourceSrv implements DataSourceService {
   private datasources: Record<string, DataSourceApi> = {}; // UID
   private settingsMapByName: Record<string, DataSourceInstanceSettings> = {};
   private settingsMapByUid: Record<string, DataSourceInstanceSettings> = {};
   private settingsMapById: Record<string, DataSourceInstanceSettings> = {};
+  private runtimeDataSources: Record<string, RuntimeDataSource> = {}; //
   private defaultName = ''; // actually UID
 
   constructor(private templateSrv: TemplateSrv = getTemplateSrv()) {}
@@ -50,11 +56,37 @@ export class DatasourceSrv implements DataSourceService {
       this.settingsMapById[dsSettings.id] = dsSettings;
     }
 
+    for (const ds of Object.values(this.runtimeDataSources)) {
+      this.datasources[ds.uid] = ds;
+      this.settingsMapByUid[ds.uid] = ds.instanceSettings;
+    }
+
     // Preload expressions
-    this.datasources[ExpressionDatasourceRef.type] = expressionDatasource as any;
-    this.datasources[ExpressionDatasourceUID] = expressionDatasource as any;
+    this.datasources[ExpressionDatasourceRef.type] = expressionDatasource as DataSourceApi<
+      DataQuery,
+      DataSourceJsonData,
+      {}
+    >;
+    this.datasources[ExpressionDatasourceUID] = expressionDatasource as DataSourceApi<
+      DataQuery,
+      DataSourceJsonData,
+      {}
+    >;
     this.settingsMapByUid[ExpressionDatasourceRef.uid] = expressionInstanceSettings;
     this.settingsMapByUid[ExpressionDatasourceUID] = expressionInstanceSettings;
+  }
+
+  registerRuntimeDataSource(entry: RuntimeDataSourceRegistration): void {
+    if (this.runtimeDataSources[entry.dataSource.uid]) {
+      throw new Error(`A runtime data source with uid ${entry.dataSource.uid} has already been registered`);
+    }
+    if (this.settingsMapByUid[entry.dataSource.uid]) {
+      throw new Error(`A data source with uid ${entry.dataSource.uid} has already been registered`);
+    }
+
+    this.runtimeDataSources[entry.dataSource.uid] = entry.dataSource;
+    this.datasources[entry.dataSource.uid] = entry.dataSource;
+    this.settingsMapByUid[entry.dataSource.uid] = entry.dataSource.instanceSettings;
   }
 
   getDataSourceSettingsByUid(uid: string): DataSourceInstanceSettings | undefined {
@@ -75,6 +107,14 @@ export class DatasourceSrv implements DataSourceService {
     }
 
     if (nameOrUid === 'default' || nameOrUid == null) {
+      // Handle type-only datasource references (e.g., {type: 'prometheus'})
+      if (isDatasourceRef(ref) && ref.type) {
+        const ds = this.findDatasourceByType(ref.type);
+        if (ds) {
+          return ds;
+        }
+      }
+      // Fall back to default datasource if no type match found
       return this.settingsMapByUid[this.defaultName] ?? this.settingsMapByName[this.defaultName];
     }
 
@@ -111,6 +151,14 @@ export class DatasourceSrv implements DataSourceService {
   get(ref?: string | DataSourceRef | null, scopedVars?: ScopedVars): Promise<DataSourceApi> {
     let nameOrUid = getNameOrUid(ref);
     if (!nameOrUid) {
+      // Handle type-only datasource references
+      if (isDatasourceRef(ref) && ref.type) {
+        const ds = this.findDatasourceByType(ref.type);
+        if (!ds) {
+          return Promise.reject('no datasource of type');
+        }
+        return this.get(ds.uid);
+      }
       return this.get(this.defaultName);
     }
 
@@ -143,7 +191,19 @@ export class DatasourceSrv implements DataSourceService {
     return this.loadDatasource(nameOrUid);
   }
 
-  async loadDatasource(key: string): Promise<DataSourceApi<any, any>> {
+  /**
+   * Finds the best datasource instance settings for a given type.
+   * Prefers the default datasource of that type, otherwise returns the first one found.
+   */
+  private findDatasourceByType(type: string): DataSourceInstanceSettings | undefined {
+    const settings = this.getList({ type });
+    if (!settings?.length) {
+      return undefined;
+    }
+    return settings.find((v) => v.isDefault) ?? settings[0];
+  }
+
+  async loadDatasource(key: string): Promise<DataSourceApi> {
     if (this.datasources[key]) {
       return Promise.resolve(this.datasources[key]);
     }
@@ -155,35 +215,29 @@ export class DatasourceSrv implements DataSourceService {
     }
 
     try {
-      const dsPlugin = await importDataSourcePlugin(instanceSettings.meta);
+      const dsPlugin = await pluginImporter.importDataSource(instanceSettings.meta);
       // check if its in cache now
       if (this.datasources[key]) {
         return this.datasources[key];
       }
 
-      // If there is only one constructor argument it is instanceSettings
-      const useAngular = dsPlugin.DataSourceClass.length !== 1;
-      let instance: DataSourceApi<any, any>;
-
-      if (useAngular) {
-        instance = getLegacyAngularInjector().instantiate(dsPlugin.DataSourceClass, {
-          instanceSettings,
-        });
-      } else {
-        instance = new dsPlugin.DataSourceClass(instanceSettings);
-      }
+      const instance = new dsPlugin.DataSourceClass(instanceSettings);
 
       instance.components = dsPlugin.components;
+      if (!instance.userStorage) {
+        // DatasourceApi does not instantiate a userStorage property, but DataSourceWithBackend does
+        instance.userStorage = new UserStorage(instanceSettings.type);
+      }
 
       // Some old plugins does not extend DataSourceApi so we need to manually patch them
       if (!(instance instanceof DataSourceApi)) {
-        const anyInstance = instance as any;
+        const anyInstance: any = instance;
         anyInstance.name = instanceSettings.name;
         anyInstance.id = instanceSettings.id;
         anyInstance.type = instanceSettings.type;
         anyInstance.meta = instanceSettings.meta;
         anyInstance.uid = instanceSettings.uid;
-        (instance as any).getRef = DataSourceApi.prototype.getRef;
+        anyInstance.getRef = DataSourceApi.prototype.getRef;
       }
 
       // store in instance cache
@@ -222,14 +276,20 @@ export class DatasourceSrv implements DataSourceService {
       if (filters.alerting && !x.meta.alerting) {
         return false;
       }
-      if (filters.pluginId && x.meta.id !== filters.pluginId) {
+      if (filters.pluginId && !matchPluginId(filters.pluginId, x.meta)) {
         return false;
       }
       if (filters.filter && !filters.filter(x)) {
         return false;
       }
-      if (filters.type && (Array.isArray(filters.type) ? !filters.type.includes(x.type) : filters.type !== x.type)) {
-        return false;
+      if (filters.type) {
+        if (Array.isArray(filters.type)) {
+          if (!filters.type.includes(x.type)) {
+            return false;
+          }
+        } else if (!(x.type === filters.type || x.meta.aliasIDs?.includes(filters.type!))) {
+          return false;
+        }
       }
       if (
         !filters.all &&
@@ -250,16 +310,20 @@ export class DatasourceSrv implements DataSourceService {
           continue;
         }
         let dsValue = variable.current.value === 'default' ? this.defaultName : variable.current.value;
-        if (Array.isArray(dsValue) && dsValue.length === 1) {
-          // Support for multi-value variables with only one selected datasource
+        // Support for multi-value DataSource (ds) variables
+        if (Array.isArray(dsValue)) {
+          // If the ds variable have multiple selected datasources
+          // We will use the first one
           dsValue = dsValue[0];
         }
-        const dsSettings = !Array.isArray(dsValue) && this.settingsMapByName[dsValue];
+        const dsSettings =
+          !Array.isArray(dsValue) && (this.settingsMapByName[dsValue] || this.settingsMapByUid[dsValue]);
 
         if (dsSettings) {
           const key = `$\{${variable.name}\}`;
           base.push({
             ...dsSettings,
+            isDefault: false,
             name: key,
             uid: key,
           });
@@ -294,7 +358,7 @@ export class DatasourceSrv implements DataSourceService {
 
       if (!filters.tracing) {
         const grafanaInstanceSettings = this.getInstanceSettings('-- Grafana --');
-        if (grafanaInstanceSettings) {
+        if (grafanaInstanceSettings && filters.filter?.(grafanaInstanceSettings) !== false) {
           base.push(grafanaInstanceSettings);
         }
       }
@@ -350,15 +414,22 @@ export function getNameOrUid(ref?: string | DataSourceRef | null): string | unde
   }
 
   const isString = typeof ref === 'string';
-  return isString ? (ref as string) : ((ref as any)?.uid as string | undefined);
+  return isString ? ref : ref?.uid;
 }
 
-export function variableInterpolation(value: any[]) {
+export function variableInterpolation<T>(value: T | T[]) {
   if (Array.isArray(value)) {
     return value[0];
   }
   return value;
 }
+
+const isDatasourceRef = (ref: string | DataSourceRef | null | undefined): ref is DataSourceRef => {
+  if (ref && isObject(ref) && 'type' in ref) {
+    return true;
+  }
+  return false;
+};
 
 export const getDatasourceSrv = (): DatasourceSrv => {
   return getDataSourceService() as DatasourceSrv;

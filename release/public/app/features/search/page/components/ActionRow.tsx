@@ -1,47 +1,41 @@
 import { css } from '@emotion/css';
-import React, { FormEvent } from 'react';
+import { FormEvent } from 'react';
 
 import { GrafanaTheme2, SelectableValue } from '@grafana/data';
+import { Trans, t } from '@grafana/i18n';
 import { config } from '@grafana/runtime';
-import { HorizontalGroup, RadioButtonGroup, useStyles2, Checkbox, Button } from '@grafana/ui';
+import { Button, Checkbox, Stack, RadioButtonGroup, useStyles2 } from '@grafana/ui';
 import { SortPicker } from 'app/core/components/Select/SortPicker';
 import { TagFilter, TermCount } from 'app/core/components/TagFilter/TagFilter';
-import { t, Trans } from 'app/core/internationalization';
 
 import { SearchLayout, SearchState } from '../../types';
 
 function getLayoutOptions() {
-  const layoutOptions = [
-    { value: SearchLayout.Folders, icon: 'folder', ariaLabel: t('search.actions.view-as-folders', 'View by folders') },
-    { value: SearchLayout.List, icon: 'list-ul', ariaLabel: t('search.actions.view-as-list', 'View as list') },
+  return [
+    {
+      value: SearchLayout.Folders,
+      icon: 'folder',
+      description: t('search.actions.view-as-folders', 'View by folders'),
+    },
+    { value: SearchLayout.List, icon: 'list-ul', description: t('search.actions.view-as-list', 'View as list') },
   ];
-
-  if (config.featureToggles.dashboardPreviews) {
-    layoutOptions.push({
-      value: SearchLayout.Grid,
-      icon: 'apps',
-      ariaLabel: t('search.actions.view-as-grid', 'Grid view'),
-    });
-  }
-
-  return layoutOptions;
 }
 
-interface Props {
+interface ActionRowProps {
+  state: SearchState;
+  showStarredFilter?: boolean;
+  showLayout?: boolean;
+  sortPlaceholder?: string;
+
   onLayoutChange: (layout: SearchLayout) => void;
   onSortChange: (value?: string) => void;
   onStarredFilterChange?: (event: FormEvent<HTMLInputElement>) => void;
   onTagFilterChange: (tags: string[]) => void;
   getTagOptions: () => Promise<TermCount[]>;
   getSortOptions: () => Promise<SelectableValue[]>;
-  sortPlaceholder?: string;
   onDatasourceChange: (ds?: string) => void;
   onPanelTypeChange: (pt?: string) => void;
-  includePanels: boolean;
   onSetIncludePanels: (v: boolean) => void;
-  state: SearchState;
-  showStarredFilter?: boolean;
-  hideLayout?: boolean;
 }
 
 export function getValidQueryLayout(q: SearchState): SearchLayout {
@@ -54,36 +48,37 @@ export function getValidQueryLayout(q: SearchState): SearchLayout {
     }
   }
 
-  if (layout === SearchLayout.Grid && !config.featureToggles.dashboardPreviews) {
-    return SearchLayout.List;
-  }
   return layout;
 }
 
 export const ActionRow = ({
+  state,
+  showStarredFilter,
+  showLayout,
+  sortPlaceholder,
   onLayoutChange,
   onSortChange,
   onStarredFilterChange = () => {},
   onTagFilterChange,
   getTagOptions,
   getSortOptions,
-  sortPlaceholder,
   onDatasourceChange,
   onPanelTypeChange,
   onSetIncludePanels,
-  state,
-  showStarredFilter,
-  hideLayout,
-}: Props) => {
+}: ActionRowProps) => {
   const styles = useStyles2(getStyles);
+
   const layout = getValidQueryLayout(state);
 
   // Disabled folder layout option when query is present
-  const disabledOptions = state.query || state.datasource || state.panel_type ? [SearchLayout.Folders] : [];
+  const disabledOptions =
+    state.tag.length || state.starred || state.query || state.datasource || state.panel_type
+      ? [SearchLayout.Folders]
+      : [];
 
   return (
-    <div className={styles.actionRow}>
-      <HorizontalGroup spacing="md" width="auto">
+    <Stack justifyContent="space-between" alignItems="center">
+      <Stack gap={2} alignItems="center">
         <TagFilter isClearable={false} tags={state.tag} tagOptions={getTagOptions} onChange={onTagFilterChange} />
         {config.featureToggles.panelTitleSearch && (
           <Checkbox
@@ -113,31 +108,31 @@ export const ActionRow = ({
         )}
         {state.panel_type && (
           <Button icon="times" variant="secondary" onClick={() => onPanelTypeChange(undefined)}>
-            Panel: {state.panel_type}
+            <Trans i18nKey="search.action-row.panel-type" values={{ panel: state.panel_type }}>
+              Panel: {'{{panel}}'}
+            </Trans>
           </Button>
         )}
-      </HorizontalGroup>
+      </Stack>
 
-      <div className={styles.rowContainer}>
-        <HorizontalGroup spacing="md" width="auto">
-          {!hideLayout && (
-            <RadioButtonGroup
-              options={getLayoutOptions()}
-              disabledOptions={disabledOptions}
-              onChange={onLayoutChange}
-              value={layout}
-            />
-          )}
-          <SortPicker
-            onChange={(change) => onSortChange(change?.value)}
-            value={state.sort}
-            getSortOptions={getSortOptions}
-            placeholder={sortPlaceholder || t('search.actions.sort-placeholder', 'Sort')}
-            isClearable
+      <Stack gap={2}>
+        {showLayout && (
+          <RadioButtonGroup
+            options={getLayoutOptions()}
+            disabledOptions={disabledOptions}
+            onChange={onLayoutChange}
+            value={layout}
           />
-        </HorizontalGroup>
-      </div>
-    </div>
+        )}
+        <SortPicker
+          onChange={(change) => onSortChange(change?.value)}
+          value={state.sort}
+          getSortOptions={getSortOptions}
+          placeholder={sortPlaceholder || t('search.actions.sort-placeholder', 'Sort')}
+          isClearable
+        />
+      </Stack>
+    </Stack>
   );
 };
 
@@ -145,24 +140,10 @@ ActionRow.displayName = 'ActionRow';
 
 export const getStyles = (theme: GrafanaTheme2) => {
   return {
-    actionRow: css`
-      display: none;
-
-      ${theme.breakpoints.up('md')} {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-bottom: ${theme.spacing(2)};
-        width: 100%;
-      }
-    `,
-    rowContainer: css`
-      margin-right: ${theme.v1.spacing.md};
-    `,
-    checkboxWrapper: css`
-      label {
-        line-height: 1.2;
-      }
-    `,
+    checkboxWrapper: css({
+      label: {
+        lineHeight: '1.2',
+      },
+    }),
   };
 };

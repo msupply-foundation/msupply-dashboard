@@ -1,13 +1,13 @@
-import { isPromAlertingRuleState, PromAlertingRuleState, PromRuleType } from '../../../../types/unified-alerting-dto';
-import { getRuleHealth, isPromRuleType } from '../utils/rules';
+import { PromAlertingRuleState, PromRuleType, isPromAlertingRuleState } from '../../../../types/unified-alerting-dto';
+import { getRuleHealth, getRuleSource, isPromRuleType } from '../utils/rules';
 
 import * as terms from './search.terms';
 import {
-  applyFiltersToQuery,
   FilterExpr,
   FilterSupportedTerm,
-  parseQueryToFilter,
   QueryFilterMapper,
+  applyFiltersToQuery,
+  parseQueryToFilter,
 } from './searchParser';
 
 export interface RulesFilter {
@@ -20,6 +20,10 @@ export interface RulesFilter {
   dataSourceNames: string[];
   labels: string[];
   ruleHealth?: RuleHealth;
+  dashboardUid?: string;
+  plugins?: 'hide';
+  contactPoint?: string | null;
+  ruleSource?: RuleSource;
 }
 
 const filterSupportedTerms: FilterSupportedTerm[] = [
@@ -31,6 +35,10 @@ const filterSupportedTerms: FilterSupportedTerm[] = [
   FilterSupportedTerm.state,
   FilterSupportedTerm.type,
   FilterSupportedTerm.health,
+  FilterSupportedTerm.dashboard,
+  FilterSupportedTerm.plugins,
+  FilterSupportedTerm.contactPoint,
+  FilterSupportedTerm.source,
 ];
 
 export enum RuleHealth {
@@ -38,6 +46,11 @@ export enum RuleHealth {
   Error = 'error',
   NoData = 'nodata',
   Unknown = 'unknown',
+}
+
+export enum RuleSource {
+  Grafana = 'grafana',
+  DataSource = 'datasource',
 }
 
 // Define how to map parsed tokens into the filter object
@@ -53,6 +66,10 @@ export function getSearchFilterFromQuery(query: string): RulesFilter {
     [terms.StateToken]: (value) => (filter.ruleState = parseStateToken(value)),
     [terms.TypeToken]: (value) => (isPromRuleType(value) ? (filter.ruleType = value) : undefined),
     [terms.HealthToken]: (value) => (filter.ruleHealth = getRuleHealth(value)),
+    [terms.DashboardToken]: (value) => (filter.dashboardUid = value),
+    [terms.PluginsToken]: (value) => (filter.plugins = value === 'hide' ? value : undefined),
+    [terms.ContactPointToken]: (value) => (filter.contactPoint = value),
+    [terms.RuleSourceToken]: (value) => (filter.ruleSource = getRuleSource(value)),
     [terms.FreeFormExpression]: (value) => filter.freeFormWords.push(value),
   };
 
@@ -92,8 +109,20 @@ export function applySearchFilterToQuery(query: string, filter: RulesFilter): st
   if (filter.labels) {
     filterStateArray.push(...filter.labels.map((l) => ({ type: terms.LabelToken, value: l })));
   }
+  if (filter.dashboardUid) {
+    filterStateArray.push({ type: terms.DashboardToken, value: filter.dashboardUid });
+  }
+  if (filter.plugins) {
+    filterStateArray.push({ type: terms.PluginsToken, value: filter.plugins });
+  }
+  if (filter.ruleSource) {
+    filterStateArray.push({ type: terms.RuleSourceToken, value: filter.ruleSource });
+  }
   if (filter.freeFormWords) {
     filterStateArray.push(...filter.freeFormWords.map((word) => ({ type: terms.FreeFormExpression, value: word })));
+  }
+  if (filter.contactPoint) {
+    filterStateArray.push({ type: terms.ContactPointToken, value: filter.contactPoint });
   }
 
   return applyFiltersToQuery(query, filterSupportedTerms, filterStateArray);

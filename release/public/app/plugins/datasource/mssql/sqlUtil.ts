@@ -1,7 +1,6 @@
 import { isEmpty } from 'lodash';
 
-import { RAQBFieldTypes, SQLExpression, SQLQuery } from 'app/features/plugins/sql/types';
-import { haveColumns } from 'app/features/plugins/sql/utils/sql.utils';
+import { RAQBFieldTypes, SQLExpression, SQLQuery, haveColumns } from '@grafana/sql';
 
 export function getIcon(type: string): string | undefined {
   switch (type) {
@@ -90,7 +89,7 @@ export function toRawSql({ sql, dataset, table }: SQLQuery): string {
   rawQuery += createSelectClause(sql.columns, sql.limit);
 
   if (dataset && table) {
-    rawQuery += `FROM ${dataset}.${table} `;
+    rawQuery += `FROM [${dataset}].${table} `;
   }
 
   if (sql.whereString) {

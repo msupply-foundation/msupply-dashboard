@@ -1,17 +1,14 @@
-import Mousetrap from 'mousetrap';
-
-import 'mousetrap-global-bind';
-import 'mousetrap/plugins/global-bind/mousetrap-global-bind';
-import { LegacyGraphHoverClearEvent, locationUtil } from '@grafana/data';
-import { config, LocationService } from '@grafana/runtime';
+import { toggleAssistant, isAssistantAvailable } from '@grafana/assistant';
+import { LegacyGraphHoverClearEvent, SetPanelAttentionEvent, locationUtil } from '@grafana/data';
+import { LocationService } from '@grafana/runtime';
 import appEvents from 'app/core/app_events';
 import { getExploreUrl } from 'app/core/utils/explore';
+import { toggleMockApiAndReload, togglePseudoLocale } from 'app/dev-utils';
 import { SaveDashboardDrawer } from 'app/features/dashboard/components/SaveDashboard/SaveDashboardDrawer';
-import { ShareModal } from 'app/features/dashboard/components/ShareModal';
-import { DashboardModel } from 'app/features/dashboard/state';
+import { ShareModal } from 'app/features/dashboard/components/ShareModal/ShareModal';
+import { DashboardModel } from 'app/features/dashboard/state/DashboardModel';
 
 import { getTimeSrv } from '../../features/dashboard/services/TimeSrv';
-import { getDatasourceSrv } from '../../features/plugins/datasource_srv';
 import {
   RemovePanelEvent,
   ShiftTimeEvent,
@@ -19,33 +16,45 @@ import {
   ShowModalReactEvent,
   ZoomOutEvent,
   AbsoluteTimeEvent,
+  CopyTimeEvent,
+  PasteTimeEvent,
 } from '../../types/events';
 import { AppChromeService } from '../components/AppChrome/AppChromeService';
 import { HelpModal } from '../components/help/HelpModal';
 import { contextSrv } from '../core';
 import { RouteDescriptor } from '../navigation/types';
 
+import { mousetrap } from './mousetrap';
 import { toggleTheme } from './theme';
-import { withFocusedPanel } from './withFocusedPanelId';
 
 export class KeybindingSrv {
-  constructor(private locationService: LocationService, private chromeService: AppChromeService) {}
+  constructor(
+    private locationService: LocationService,
+    private chromeService: AppChromeService
+  ) {
+    // No cleanup needed, since KeybindingSrv is a singleton
+    appEvents.subscribe(SetPanelAttentionEvent, (event) => {
+      this.panelId = event.payload.panelId;
+    });
+  }
+  /** string for VizPanel key and number for panelId */
+  private panelId: string | number | null = null;
+  private assistantSubscription: { unsubscribe: () => void } | null = null;
 
   clearAndInitGlobalBindings(route: RouteDescriptor) {
-    Mousetrap.reset();
+    mousetrap.reset();
 
     // Chromeless pages like login and signup page don't get any global bindings
     if (!route.chromeless) {
-      this.bind(['?', 'h'], this.showHelpModal);
+      this.bind('?', this.showHelpModal);
+
       this.bind('g h', this.goToHome);
+      this.bind('g d', this.goToDashboards);
+      this.bind('g e', this.goToExplore);
       this.bind('g a', this.openAlerting);
       this.bind('g p', this.goToProfile);
-      this.bind('g e', this.goToExplore);
-      if (!config.featureToggles.topnav) {
-        this.bind('s o', this.openSearch);
-        this.bind('f', this.openSearch);
-      }
-      this.bind('t a', this.makeAbsoluteTime);
+      // Conditionally bind open Assistant shortcut ('o a') if Assistant is available
+      this.bindAssistantShortcutIfAvailable();
       this.bind('esc', this.exit);
       this.bindGlobalEsc();
     }
@@ -54,7 +63,10 @@ export class KeybindingSrv {
     this.bind('c r', () => toggleTheme(true));
 
     if (process.env.NODE_ENV === 'development') {
-      this.bind('t n', () => this.toggleNav());
+      // 'change mock'
+      this.bind('c m', () => toggleMockApiAndReload());
+      // 'change pseudo locale'
+      this.bind('c p l', () => togglePseudoLocale());
     }
   }
 
@@ -88,24 +100,12 @@ export class KeybindingSrv {
     this.exit();
   }
 
-  toggleNav() {
-    window.location.href =
-      config.appSubUrl +
-      locationUtil.getUrlForPartial(this.locationService.getLocation(), {
-        '__feature.topnav': (!config.featureToggles.topnav).toString(),
-      });
-  }
-
-  private openSearch() {
-    this.locationService.partial({ search: 'open' });
-  }
-
-  private closeSearch() {
-    this.locationService.partial({ search: null });
-  }
-
   private openAlerting() {
     this.locationService.push('/alerting');
+  }
+
+  private goToDashboards() {
+    this.locationService.push('/dashboards');
   }
 
   private goToHome() {
@@ -120,12 +120,32 @@ export class KeybindingSrv {
     this.locationService.push('/explore');
   }
 
-  private makeAbsoluteTime() {
-    appEvents.publish(new AbsoluteTimeEvent());
-  }
-
   private showHelpModal() {
     appEvents.publish(new ShowModalReactEvent({ component: HelpModal }));
+  }
+
+  private bindAssistantShortcutIfAvailable() {
+    // Clean up any existing subscription
+    if (this.assistantSubscription) {
+      this.assistantSubscription.unsubscribe();
+    }
+    // Subscribe to assistant availability and bind/unbind shortcut accordingly
+    this.assistantSubscription = isAssistantAvailable().subscribe((available) => {
+      if (available) {
+        this.bind('mod+.', this.toggleAssistant);
+      } else {
+        // Unbind the shortcut if assistant becomes unavailable
+        mousetrap.unbind('mod+.');
+      }
+    });
+  }
+
+  private toggleAssistant() {
+    toggleAssistant({
+      origin: 'grafana/keyboard-shortcut',
+      prompt: '',
+      context: [],
+    });
   }
 
   private exit() {
@@ -155,10 +175,6 @@ export class KeybindingSrv {
     if (kioskMode) {
       this.chromeService.exitKioskMode();
     }
-
-    if (search.search) {
-      this.closeSearch();
-    }
   }
 
   private showDashEditView() {
@@ -168,7 +184,7 @@ export class KeybindingSrv {
   }
 
   bind(keyArg: string | string[], fn: () => void) {
-    Mousetrap.bind(
+    mousetrap.bind(
       keyArg,
       (evt) => {
         evt.preventDefault();
@@ -181,7 +197,7 @@ export class KeybindingSrv {
   }
 
   bindGlobal(keyArg: string, fn: () => void) {
-    Mousetrap.bindGlobal(
+    mousetrap.bindGlobal(
       keyArg,
       (evt) => {
         evt.preventDefault();
@@ -194,14 +210,27 @@ export class KeybindingSrv {
   }
 
   unbind(keyArg: string, keyType?: string) {
-    Mousetrap.unbind(keyArg, keyType);
+    mousetrap.unbind(keyArg, keyType);
   }
 
   bindWithPanelId(keyArg: string, fn: (panelId: number) => void) {
-    this.bind(keyArg, withFocusedPanel(fn));
+    this.bind(keyArg, this.withFocusedPanel(fn));
+  }
+
+  withFocusedPanel(fn: (panelId: number) => void) {
+    return () => {
+      if (typeof this.panelId === 'number') {
+        fn(this.panelId);
+        return;
+      }
+    };
   }
 
   setupTimeRangeBindings(updateUrl = true) {
+    this.bind('t a', () => {
+      appEvents.publish(new AbsoluteTimeEvent({ updateUrl }));
+    });
+
     this.bind('t z', () => {
       appEvents.publish(new ZoomOutEvent({ scale: 2, updateUrl }));
     });
@@ -216,6 +245,14 @@ export class KeybindingSrv {
 
     this.bind('t right', () => {
       appEvents.publish(new ShiftTimeEvent({ direction: ShiftTimeEventDirection.Right, updateUrl }));
+    });
+
+    this.bind('t c', () => {
+      appEvents.publish(new CopyTimeEvent());
+    });
+
+    this.bind('t v', () => {
+      appEvents.publish(new PasteTimeEvent({ updateUrl }));
     });
   }
 
@@ -271,12 +308,13 @@ export class KeybindingSrv {
 
     // jump to explore if permissions allow
     if (contextSrv.hasAccessToExplore()) {
-      this.bindWithPanelId('x', async (panelId) => {
+      this.bindWithPanelId('p x', async (panelId) => {
         const panel = dashboard.getPanelById(panelId)!;
         const url = await getExploreUrl({
-          panel,
-          datasourceSrv: getDatasourceSrv(),
-          timeSrv: getTimeSrv(),
+          queries: panel.targets,
+          dsRef: panel.datasource,
+          scopedVars: panel.scopedVars,
+          timeRange: getTimeSrv().timeRange(),
         });
 
         if (url) {
@@ -323,6 +361,11 @@ export class KeybindingSrv {
     // toggle all panel legends
     this.bind('d l', () => {
       dashboard.toggleLegendsForAll();
+    });
+
+    // toggle all exemplars
+    this.bind('d x', () => {
+      dashboard.toggleExemplarsForAll();
     });
 
     // collapse all rows

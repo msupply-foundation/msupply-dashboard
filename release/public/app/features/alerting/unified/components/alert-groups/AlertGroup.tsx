@@ -1,12 +1,15 @@
 import { css } from '@emotion/css';
-import React, { useState } from 'react';
+import { useState } from 'react';
 
+import { AlertLabels } from '@grafana/alerting/unstable';
 import { GrafanaTheme2 } from '@grafana/data';
-import { useStyles2 } from '@grafana/ui';
-import { AlertmanagerGroup, AlertState } from 'app/plugins/datasource/alertmanager/types';
+import { Trans } from '@grafana/i18n';
+import { Stack, TextLink, useStyles2 } from '@grafana/ui';
+import { AlertmanagerGroup } from 'app/plugins/datasource/alertmanager/types';
 
-import { AlertLabels } from '../AlertLabels';
+import { createContactPointSearchLink } from '../../utils/misc';
 import { CollapseToggle } from '../CollapseToggle';
+import { MetaText } from '../MetaText';
 
 import { AlertGroupAlertsTable } from './AlertGroupAlertsTable';
 import { AlertGroupHeader } from './AlertGroupHeader';
@@ -20,6 +23,10 @@ export const AlertGroup = ({ alertManagerSourceName, group }: Props) => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true);
   const styles = useStyles2(getStyles);
 
+  // When group is grouped, receiver.name is 'NONE' as it can contain multiple receivers
+  const receiverInGroup = group.receiver.name !== 'NONE';
+  const contactPoint = group.receiver.name;
+
   return (
     <div className={styles.wrapper}>
       <div className={styles.header}>
@@ -30,7 +37,31 @@ export const AlertGroup = ({ alertManagerSourceName, group }: Props) => {
             onToggle={() => setIsCollapsed(!isCollapsed)}
             data-testid="alert-group-collapse-toggle"
           />
-          {Object.keys(group.labels).length ? <AlertLabels labels={group.labels} /> : <span>No grouping</span>}
+          {Object.keys(group.labels).length ? (
+            <Stack direction="row" alignItems="center">
+              <AlertLabels labels={group.labels} size="sm" />
+
+              {receiverInGroup && (
+                <MetaText icon="at">
+                  <Trans i18nKey="alerting.alert-group.delivered-to" values={{ name: group.receiver.name }}>
+                    Delivered to{' '}
+                    <TextLink
+                      href={createContactPointSearchLink(contactPoint, alertManagerSourceName)}
+                      variant="bodySmall"
+                      color="primary"
+                      inline={false}
+                    >
+                      {'{{name}}'}
+                    </TextLink>
+                  </Trans>
+                </MetaText>
+              )}
+            </Stack>
+          ) : (
+            <span>
+              <Trans i18nKey="alerting.alert-group.no-grouping">No grouping</Trans>
+            </span>
+          )}
         </div>
         <AlertGroupHeader group={group} />
       </div>
@@ -40,37 +71,25 @@ export const AlertGroup = ({ alertManagerSourceName, group }: Props) => {
 };
 
 const getStyles = (theme: GrafanaTheme2) => ({
-  wrapper: css`
-    & + & {
-      margin-top: ${theme.spacing(2)};
-    }
-  `,
-  header: css`
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    padding: ${theme.spacing(1, 1, 1, 0)};
-    background-color: ${theme.colors.background.secondary};
-    width: 100%;
-  `,
-  group: css`
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-  `,
-  summary: css``,
-  spanElement: css`
-    margin-left: ${theme.spacing(0.5)};
-  `,
-  [AlertState.Active]: css`
-    color: ${theme.colors.error.main};
-  `,
-  [AlertState.Suppressed]: css`
-    color: ${theme.colors.primary.main};
-  `,
-  [AlertState.Unprocessed]: css`
-    color: ${theme.colors.secondary.main};
-  `,
+  wrapper: css({
+    '& + &': {
+      marginTop: theme.spacing(2),
+    },
+  }),
+  header: css({
+    display: 'flex',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: theme.shape.radius.default,
+    padding: theme.spacing(1),
+    backgroundColor: theme.colors.background.secondary,
+    width: '100%',
+  }),
+  group: css({
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+  }),
 });

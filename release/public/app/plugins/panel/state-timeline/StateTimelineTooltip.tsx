@@ -1,129 +1,107 @@
-import React from 'react';
+import { ReactNode } from 'react';
 
+import { FieldType, TimeRange, usePluginContext } from '@grafana/data';
+import { SortOrder } from '@grafana/schema/dist/esm/common/common.gen';
+import { TooltipDisplayMode } from '@grafana/ui';
 import {
-  DataFrame,
-  FALLBACK_COLOR,
-  Field,
-  getDisplayProcessor,
-  getFieldDisplayName,
-  TimeZone,
-  LinkModel,
-} from '@grafana/data';
-import { MenuItem, SeriesTableRow, useTheme2 } from '@grafana/ui';
+  VizTooltipContent,
+  VizTooltipFooter,
+  VizTooltipHeader,
+  VizTooltipWrapper,
+  getContentItems,
+  VizTooltipItem,
+} from '@grafana/ui/internal';
 import { findNextStateIndex, fmtDuration } from 'app/core/components/TimelineChart/utils';
 
-interface StateTimelineTooltipProps {
-  data: DataFrame[];
-  alignedData: DataFrame;
-  seriesIdx: number;
-  datapointIdx: number;
-  timeZone: TimeZone;
-  onAnnotationAdd?: () => void;
+import { getFieldActions } from '../status-history/utils';
+import { TimeSeriesTooltipProps } from '../timeseries/TimeSeriesTooltip';
+import { isTooltipScrollable } from '../timeseries/utils';
+
+interface StateTimelineTooltipProps extends TimeSeriesTooltipProps {
+  timeRange: TimeRange;
+  withDuration: boolean;
 }
 
 export const StateTimelineTooltip = ({
-  data,
-  alignedData,
+  series,
+  dataIdxs,
   seriesIdx,
-  datapointIdx,
-  timeZone,
-  onAnnotationAdd,
+  mode = TooltipDisplayMode.Single,
+  sortOrder = SortOrder.None,
+  isPinned,
+  annotate,
+  timeRange,
+  withDuration,
+  maxHeight,
+  replaceVariables,
+  dataLinks,
 }: StateTimelineTooltipProps) => {
-  const theme = useTheme2();
+  const pluginContext = usePluginContext();
+  const xField = series.fields[0];
 
-  if (!data || datapointIdx == null) {
-    return null;
+  const dataIdx = seriesIdx != null ? dataIdxs[seriesIdx] : dataIdxs.find((idx) => idx != null);
+
+  const xVal = xField.display!(xField.values[dataIdx!]).text;
+
+  mode = isPinned ? TooltipDisplayMode.Single : mode;
+
+  const contentItems = getContentItems(series.fields, xField, dataIdxs, seriesIdx, mode, sortOrder);
+  let endTime = null;
+
+  // append duration in single mode
+  if (withDuration && mode === TooltipDisplayMode.Single) {
+    const field = series.fields[seriesIdx!];
+    const nextStateIdx = findNextStateIndex(field, dataIdx!);
+    let nextStateTs;
+    if (nextStateIdx != null) {
+      nextStateTs = xField.values[nextStateIdx];
+    }
+
+    const stateTs = xField.values[dataIdx!];
+    let duration: string;
+
+    if (nextStateTs) {
+      duration = nextStateTs && fmtDuration(nextStateTs - stateTs);
+      endTime = nextStateTs;
+    } else {
+      const to = timeRange.to.valueOf();
+      duration = fmtDuration(to - stateTs);
+      endTime = to;
+    }
+
+    contentItems.push({ label: 'Duration', value: duration });
   }
 
-  const field = alignedData.fields[seriesIdx!];
+  let footer: ReactNode;
 
-  const links: Array<LinkModel<Field>> = [];
-  const linkLookup = new Set<string>();
+  if (seriesIdx != null) {
+    const field = series.fields[seriesIdx];
+    const hasOneClickLink = dataLinks.some((dataLink) => dataLink.oneClick === true);
 
-  if (field.getLinks) {
-    const v = field.values.get(datapointIdx);
-    const disp = field.display ? field.display(v) : { text: `${v}`, numeric: +v };
-    field.getLinks({ calculatedValue: disp, valueRowIndex: datapointIdx }).forEach((link) => {
-      const key = `${link.title}/${link.href}`;
-      if (!linkLookup.has(key)) {
-        links.push(link);
-        linkLookup.add(key);
-      }
-    });
+    if (isPinned || hasOneClickLink) {
+      const visualizationType = pluginContext?.meta?.id ?? 'state-timeline';
+      const dataIdx = dataIdxs[seriesIdx]!;
+      const actions = getFieldActions(series, field, replaceVariables!, dataIdx, visualizationType);
+
+      footer = <VizTooltipFooter dataLinks={dataLinks} actions={actions} annotate={annotate} />;
+    }
   }
 
-  const xField = alignedData.fields[0];
-  const xFieldFmt = xField.display || getDisplayProcessor({ field: xField, timeZone, theme });
-
-  const dataFrameFieldIndex = field.state?.origin;
-  const fieldFmt = field.display || getDisplayProcessor({ field, timeZone, theme });
-  const value = field.values.get(datapointIdx!);
-  const display = fieldFmt(value);
-  const fieldDisplayName = dataFrameFieldIndex
-    ? getFieldDisplayName(
-        data[dataFrameFieldIndex.frameIndex].fields[dataFrameFieldIndex.fieldIndex],
-        data[dataFrameFieldIndex.frameIndex],
-        data
-      )
-    : null;
-
-  const nextStateIdx = findNextStateIndex(field, datapointIdx!);
-  let nextStateTs;
-  if (nextStateIdx) {
-    nextStateTs = xField.values.get(nextStateIdx!);
-  }
-
-  const stateTs = xField.values.get(datapointIdx!);
-
-  let toFragment = null;
-  let durationFragment = null;
-
-  if (nextStateTs) {
-    const duration = nextStateTs && fmtDuration(nextStateTs - stateTs);
-    durationFragment = (
-      <>
-        <br />
-        <strong>Duration:</strong> {duration}
-      </>
-    );
-    toFragment = (
-      <>
-        {' to'} <strong>{xFieldFmt(xField.values.get(nextStateIdx!)).text}</strong>
-      </>
-    );
-  }
+  const headerItem: VizTooltipItem = {
+    label: xField.type === FieldType.time ? '' : (xField.state?.displayName ?? xField.name),
+    value: endTime ? xVal + ' - \n' + xField.display!(endTime).text : xVal,
+  };
 
   return (
-    <div>
-      <div style={{ fontSize: theme.typography.bodySmall.fontSize }}>
-        {fieldDisplayName}
-        <br />
-        <SeriesTableRow label={display.text} color={display.color || FALLBACK_COLOR} isActive />
-        From <strong>{xFieldFmt(xField.values.get(datapointIdx!)).text}</strong>
-        {toFragment}
-        {durationFragment}
-      </div>
-      <div
-        style={{
-          margin: theme.spacing(1, -1, -1, -1),
-          borderTop: `1px solid ${theme.colors.border.weak}`,
-        }}
-      >
-        {onAnnotationAdd && <MenuItem label={'Add annotation'} icon={'comment-alt'} onClick={onAnnotationAdd} />}
-        {links.length > 0 &&
-          links.map((link, i) => (
-            <MenuItem
-              key={i}
-              icon={'external-link-alt'}
-              target={link.target}
-              label={link.title}
-              url={link.href}
-              onClick={link.onClick}
-            />
-          ))}
-      </div>
-    </div>
+    <VizTooltipWrapper>
+      <VizTooltipHeader item={headerItem} isPinned={isPinned} />
+      <VizTooltipContent
+        items={contentItems}
+        isPinned={isPinned}
+        scrollable={isTooltipScrollable({ mode, maxHeight })}
+        maxHeight={maxHeight}
+      />
+      {footer}
+    </VizTooltipWrapper>
   );
 };
-
-StateTimelineTooltip.displayName = 'StateTimelineTooltip';

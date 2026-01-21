@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 import {
   FieldConfigSource,
@@ -9,6 +9,7 @@ import {
   OptionDefaults,
   useFieldOverrides,
 } from '@grafana/data';
+import { Trans } from '@grafana/i18n';
 import { getTemplateSrv, PanelRendererProps } from '@grafana/runtime';
 import { ErrorBoundaryAlert, useTheme2 } from '@grafana/ui';
 import { appEvents } from 'app/core/core';
@@ -17,7 +18,7 @@ import { importPanelPlugin, syncGetPanelPlugin } from '../../plugins/importPanel
 
 const defaultFieldConfig = { defaults: {}, overrides: [] };
 
-export function PanelRenderer<P extends object = any, F extends object = any>(props: PanelRendererProps<P, F>) {
+export function PanelRenderer<P extends object = {}, F extends object = {}>(props: PanelRendererProps<P, F>) {
   const {
     pluginId,
     data,
@@ -55,25 +56,43 @@ export function PanelRenderer<P extends object = any, F extends object = any>(pr
   }, [pluginId, plugin]);
 
   if (error) {
-    return <div>Failed to load plugin: {error}</div>;
+    return (
+      <div>
+        <Trans i18nKey="panel.panel-renderer.failed-to-load-plugin">Failed to load plugin: {{ error }}</Trans>
+      </div>
+    );
   }
 
   if (!plugin || !plugin.hasPluginId(pluginId)) {
-    return <div>Loading plugin panel...</div>;
+    return (
+      <div>
+        <Trans i18nKey="panel.panel-renderer.loading-plugin-panel">Loading plugin panel...</Trans>
+      </div>
+    );
   }
 
   if (!plugin.panel) {
-    return <div>Seems like the plugin you are trying to load does not have a panel component.</div>;
+    return (
+      <div>
+        <Trans i18nKey="panel.panel-renderer.no-panel-component">
+          Seems like the plugin you are trying to load does not have a panel component.
+        </Trans>
+      </div>
+    );
   }
 
   if (!dataWithOverrides) {
-    return <div>No panel data</div>;
+    return (
+      <div>
+        <Trans i18nKey="panel.panel-renderer.no-panel-data">No panel data</Trans>
+      </div>
+    );
   }
 
   const PanelComponent = plugin.panel;
 
   return (
-    <ErrorBoundaryAlert dependencies={[plugin, data]}>
+    <ErrorBoundaryAlert boundaryName="panel-renderer" dependencies={[plugin, data]}>
       <PluginContextProvider meta={plugin.meta}>
         <PanelComponent
           id={1}
@@ -98,7 +117,7 @@ export function PanelRenderer<P extends object = any, F extends object = any>(pr
   );
 }
 
-function useOptionDefaults<P extends object = any, F extends object = any>(
+function useOptionDefaults<P extends Record<string, unknown> = {}, F extends object = {}>(
   plugin: PanelPlugin | undefined,
   options: P,
   fieldConfig: FieldConfigSource<F>

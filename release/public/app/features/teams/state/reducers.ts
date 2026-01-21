@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { Team, TeamGroup, TeamMember, TeamsState, TeamState } from 'app/types';
+import { TeamsState, Team, TeamState, TeamGroup } from 'app/types/teams';
 
 export const initialTeamsState: TeamsState = {
   teams: [],
@@ -35,18 +35,27 @@ const teamsSlice = createSlice({
     pageChanged: (state, action: PayloadAction<number>): TeamsState => {
       return { ...state, page: action.payload };
     },
+    sortChanged: (state, action: PayloadAction<TeamsState['sort']>): TeamsState => {
+      return { ...state, sort: action.payload, page: 1 };
+    },
+    rolesFetchBegin: (state) => {
+      return { ...state, rolesLoading: true };
+    },
+    rolesFetchEnd: (state) => {
+      return { ...state, rolesLoading: false };
+    },
   },
 });
 
-export const { teamsLoaded, queryChanged, pageChanged } = teamsSlice.actions;
+export const { teamsLoaded, queryChanged, pageChanged, sortChanged, rolesFetchBegin, rolesFetchEnd } =
+  teamsSlice.actions;
 
 export const teamsReducer = teamsSlice.reducer;
 
 export const initialTeamState: TeamState = {
   team: {} as Team,
-  members: [] as TeamMember[],
-  groups: [] as TeamGroup[],
-  searchMemberQuery: '',
+  members: [],
+  groups: [],
 };
 
 const teamSlice = createSlice({
@@ -56,19 +65,13 @@ const teamSlice = createSlice({
     teamLoaded: (state, action: PayloadAction<Team>): TeamState => {
       return { ...state, team: action.payload };
     },
-    teamMembersLoaded: (state, action: PayloadAction<TeamMember[]>): TeamState => {
-      return { ...state, members: action.payload };
-    },
-    setSearchMemberQuery: (state, action: PayloadAction<string>): TeamState => {
-      return { ...state, searchMemberQuery: action.payload };
-    },
     teamGroupsLoaded: (state, action: PayloadAction<TeamGroup[]>): TeamState => {
       return { ...state, groups: action.payload };
     },
   },
 });
 
-export const { teamLoaded, teamGroupsLoaded, teamMembersLoaded, setSearchMemberQuery } = teamSlice.actions;
+export const { teamLoaded, teamGroupsLoaded } = teamSlice.actions;
 
 export const teamReducer = teamSlice.reducer;
 

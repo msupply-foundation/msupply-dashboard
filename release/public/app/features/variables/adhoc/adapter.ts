@@ -1,8 +1,10 @@
 import { cloneDeep } from 'lodash';
 
+import { AdHocVariableModel } from '@grafana/data';
+import { t } from '@grafana/i18n';
+
 import { dispatch } from '../../../store/store';
 import { VariableAdapter } from '../adapters';
-import { AdHocVariableModel } from '../types';
 import { toKeyedVariableIdentifier } from '../utils';
 
 import { AdHocVariableEditor } from './AdHocVariableEditor';
@@ -16,7 +18,10 @@ const noop = async () => {};
 export const createAdHocVariableAdapter = (): VariableAdapter<AdHocVariableModel> => {
   return {
     id: 'adhoc',
-    description: 'Add key/value filters on the fly.',
+    description: t(
+      'variables.create-ad-hoc-variable-adapter.description.add-keyvalue-filters-on-the-fly',
+      'Add key/value filters on the fly.'
+    ),
     name: 'Ad hoc filters',
     initialState: initialAdHocVariableModelState,
     reducer: adHocVariableReducer,

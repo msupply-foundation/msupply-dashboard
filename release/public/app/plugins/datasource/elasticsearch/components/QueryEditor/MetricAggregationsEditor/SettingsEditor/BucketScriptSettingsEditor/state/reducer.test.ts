@@ -1,6 +1,6 @@
-import { reducerTester } from 'test/core/redux/reducerTester';
+import { PipelineVariable } from 'app/plugins/datasource/elasticsearch/dataquery.gen';
 
-import { PipelineVariable } from '../../../../../../types';
+import { reducerTester } from '../../../../../reducerTester';
 
 import {
   addPipelineVariable,
