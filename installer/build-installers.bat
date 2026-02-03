@@ -14,6 +14,16 @@ cd installer
 node "%WORKSPACE%\installer\adjustSUFs.js"
 cd ..
 
+
+@ECHO.
+@ECHO ##### Downloading Grafana #####
+SET /P GRAFANA_VERSION=<grafana.version
+SET GRAFANA_URL=https://dl.grafana.com/oss/release/grafana-%GRAFANA_VERSION%.windows-amd64.exe
+SET GRAFANA_OUT=%WORKSPACE%\release\bin\grafana.exe
+
+IF NOT EXIST "%WORKSPACE%\release\bin" mkdir "%WORKSPACE%\release\bin"
+curl -f -L "%GRAFANA_URL%" -o "%GRAFANA_OUT%" || EXIT /B 1
+
 REM required as setup factory crashes when a file path is too long
 REM and the jenkins workspace is a very long path
 @ECHO ##### Copying build files #####
