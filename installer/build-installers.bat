@@ -16,13 +16,35 @@ cd ..
 
 
 @ECHO.
-@ECHO ##### Downloading Grafana #####
-SET /P GRAFANA_VERSION=<grafana.version
-SET GRAFANA_URL=https://dl.grafana.com/oss/release/grafana-%GRAFANA_VERSION%.windows-amd64.exe
-SET GRAFANA_OUT=%WORKSPACE%\release\bin\grafana.exe
+@ECHO ##### Downloading and extracting Grafana #####
+SET /P GRAFANA_URL=<grafana.url
+@ECHO "Using Grafana URL: %GRAFANA_URL%"
+SET GRAFANA_TMP=%WORKSPACE%\_grafana_tmp
+SET ARCHIVE=%GRAFANA_TMP%\grafana.tar.gz
 
-IF NOT EXIST "%WORKSPACE%\release\bin" mkdir "%WORKSPACE%\release\bin"
-curl -f -L "%GRAFANA_URL%" -o "%GRAFANA_OUT%" || EXIT /B 1
+IF EXIST "%GRAFANA_TMP%" rmdir /s /q "%GRAFANA_TMP%"
+mkdir "%GRAFANA_TMP%"
+
+ECHO Downloading %GRAFANA_URL%
+curl -f -L "%GRAFANA_URL%" -o "%ARCHIVE%"
+IF ERRORLEVEL 1 EXIT /B 1
+
+ECHO Extracting Grafana archive
+tar -xzf "%ARCHIVE%" -C "%GRAFANA_TMP%"
+IF ERRORLEVEL 1 EXIT /B 1
+
+REM find grafana.exe and copy it
+for /R "%GRAFANA_TMP%" %%f in (grafana.exe) do (
+    copy /Y "%%f" "%WORKSPACE%\release\bin\grafana.exe"
+)
+
+IF NOT EXIST "%WORKSPACE%\release\bin\grafana.exe" (
+    ECHO ERROR: grafana.exe not found after extraction
+    EXIT /B 1
+)
+
+rmdir /s /q "%GRAFANA_TMP%"
+ECHO Grafana ready
 
 REM required as setup factory crashes when a file path is too long
 REM and the jenkins workspace is a very long path
