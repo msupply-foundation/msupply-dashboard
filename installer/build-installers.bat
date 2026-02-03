@@ -17,7 +17,7 @@ cd ..
 
 @ECHO.
 @ECHO ##### Downloading and extracting Grafana #####
-SET /P GRAFANA_URL=<grafana.url
+SET /P GRAFANA_URL=<installer\grafana.url
 @ECHO "Using Grafana URL: %GRAFANA_URL%"
 SET GRAFANA_TMP=%WORKSPACE%\_grafana_tmp
 SET ARCHIVE=%GRAFANA_TMP%\grafana.tar.gz
