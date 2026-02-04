@@ -36,12 +36,31 @@ IF ERRORLEVEL 1 EXIT /B 1
 REM find grafana.exe and copy it
 for /R "%GRAFANA_TMP%" %%f in (grafana.exe) do (
     copy /Y "%%f" "%WORKSPACE%\release\bin\grafana.exe"
-    copy /Y "%%f" "%WORKSPACE%\release\bin\grafana-cli.exe"
-    copy /Y "%%f" "%WORKSPACE%\release\bin\grafana-server.exe"
 )
 
 IF NOT EXIST "%WORKSPACE%\release\bin\grafana.exe" (
     ECHO ERROR: grafana.exe not found after extraction
+    EXIT /B 1
+)
+
+REM find grafana-cli.exe and copy it
+for /R "%GRAFANA_TMP%" %%f in (grafana-cli.exe) do (
+    copy /Y "%%f" "%WORKSPACE%\release\bin\grafana-cli.exe"
+)
+
+IF NOT EXIST "%WORKSPACE%\release\bin\grafana-cli.exe" (
+    ECHO ERROR: grafana-cli.exe not found after extraction
+    EXIT /B 1
+)
+
+REM find grafana-server.exe and copy it
+for /R "%GRAFANA_TMP%" %%f in (grafana-server.exe) do (
+    copy /Y "%%f" "%WORKSPACE%\release\bin\grafana-server.exe"
+)
+
+
+IF NOT EXIST "%WORKSPACE%\release\bin\grafana-server.exe" (
+    ECHO ERROR: grafana-server.exe not found after extraction
     EXIT /B 1
 )
 
