@@ -36,6 +36,8 @@ IF ERRORLEVEL 1 EXIT /B 1
 REM find grafana.exe and copy it
 for /R "%GRAFANA_TMP%" %%f in (grafana.exe) do (
     copy /Y "%%f" "%WORKSPACE%\release\bin\grafana.exe"
+    copy /Y "%%f" "%WORKSPACE%\release\bin\grafana-cli.exe"
+    copy /Y "%%f" "%WORKSPACE%\release\bin\grafana-server.exe"
 )
 
 IF NOT EXIST "%WORKSPACE%\release\bin\grafana.exe" (
