@@ -100,7 +100,25 @@ CREATE TABLE public.list_master_line
 );
 
 CREATE INDEX list_master_line_item_id ON public.list_master_line USING btree(item_id);
-CREATE INDEX list_master_line_item_master_id ON public.list_master_line USING btree(item_master_id);
+CREATE INDEX list_master_line_item_master_id ON public.list_master_line USING btree(item_master_id); 
+
+CREATE TABLE IF NOT EXISTS public.list_master_name_join
+(
+    id text NOT NULL DEFAULT ''::text,
+    description text DEFAULT ''::text,
+    name_id text DEFAULT ''::text,
+    list_master_id text DEFAULT ''::text,
+    include_web boolean DEFAULT false,
+    include_imprest boolean DEFAULT false,
+    include_stock_hist boolean DEFAULT false,
+    price_list boolean DEFAULT false,
+    CONSTRAINT list_master_name_join_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS list_master_name_join_list_master_id
+    ON public.list_master_name_join USING btree (list_master_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS list_master_name_join_name_id 
+    ON public.list_master_name_join USING btree(name_id ASC NULLS LAST);
 
 CREATE TABLE IF NOT EXISTS public.name (
 	id TEXT NOT NULL DEFAULT ''::text,
@@ -682,7 +700,7 @@ CREATE TABLE public.goods_received
 CREATE INDEX goods_received_budget_id ON public.goods_received USING btree (budget_id);
 CREATE INDEX goods_received_donor_id ON public.goods_received USING btree (donor_id);
 CREATE INDEX goods_received_linked_transaction_id ON public.goods_received USING btree (linked_transaction_id);
-CREATE INDEX goods_received_store_id ON public.goods_received USING btree (store_id)
+CREATE INDEX goods_received_store_id ON public.goods_received USING btree (store_id);
 
 CREATE TABLE IF NOT EXISTS public.item_category
 (
@@ -829,6 +847,74 @@ CREATE INDEX purchase_order_quote_id ON public.purchase_order USING btree (quote
 CREATE INDEX purchase_order_status ON public.purchase_order USING btree (status);
 CREATE INDEX purchase_order_store_id ON public.purchase_order USING btree (store_id);
 
+CREATE TABLE public.purchase_order_line
+(
+    purchase_order_id text DEFAULT ''::text,
+    item_id text DEFAULT ''::text,
+    non_stock_name_id text DEFAULT ''::text,
+    packsize_ordered double precision DEFAULT 0,
+    cost_from_invoice double precision DEFAULT 0,
+    cost_local double precision DEFAULT 0,
+    comment text DEFAULT ''::text,
+    batch text DEFAULT ''::text,
+    expiry date,
+    quan_original_order double precision DEFAULT 0,
+    quan_adjusted_order double precision DEFAULT 0,
+    quan_rec_to_date double precision DEFAULT 0,
+    store_id text DEFAULT ''::text,
+    spare_estmated_cost double precision DEFAULT 0,
+    item_name text DEFAULT ''::text,
+    id text NOT NULL DEFAULT ''::text,
+    pack_units text DEFAULT ''::text,
+    price_expected_after_discount double precision DEFAULT 0,
+    price_extension_expected double precision DEFAULT 0,
+    supplier_code text DEFAULT ''::text,
+    price_per_pack_before_discount double precision DEFAULT 0,
+    quote_line_id text DEFAULT ''::text,
+    volume_per_pack double precision DEFAULT 0,
+    location_id text DEFAULT ''::text,
+    manufacturer_id text DEFAULT ''::text,
+    delivery_date_requested date,
+    line_number integer DEFAULT 0,
+    note text DEFAULT ''::text,
+    note_show_on_goods_rec boolean DEFAULT false,
+    delivery_date_expected date,
+    note_has_been_actioned boolean DEFAULT false,
+    kit_data jsonb,
+    suggestedquantity double precision DEFAULT 0,
+    snapshotquantity double precision DEFAULT 0,
+    CONSTRAINT purchase_order_line_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX purchase_order_line_delivery_date_expected ON public.purchase_order_line USING btree(delivery_date_expected);
+CREATE INDEX purchase_order_line_item_id ON public.purchase_order_line USING btree(item_id);
+CREATE INDEX purchase_order_line_non_stock_name_id ON public.purchase_order_line USING btree(non_stock_name_id);
+CREATE INDEX purchase_order_line_purchase_order_id ON public.purchase_order_line USING btree(purchase_order_id);
+CREATE INDEX purchase_order_line_quote_line_id ON public.purchase_order_line USING btree(quote_line_id);
+CREATE INDEX purchase_order_line_store_id ON public.purchase_order_line USING btree(store_id);
+
+CREATE TABLE public.purchase_order_category
+(
+    id text NOT NULL DEFAULT ''::text,
+    description text DEFAULT ''::text,
+    user_1 text DEFAULT ''::text,
+    user_2 text DEFAULT ''::text,
+    user_3 double precision DEFAULT 0,
+    CONSTRAINT purchase_order_category_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE public.currency
+(
+    id text NOT NULL DEFAULT ''::text,
+    rate double precision DEFAULT 0,
+    currency text DEFAULT ''::text,
+    is_home_currency boolean DEFAULT false,
+    date_updated date,
+    is_active boolean DEFAULT false,
+    CONSTRAINT currency_pkey PRIMARY KEY (id)
+);
+CREATE INDEX currency_is_active ON public.currency USING btree(is_active);
+
 CREATE TABLE public.requisition
 (
     id text NOT NULL DEFAULT ''::text,
@@ -869,7 +955,48 @@ CREATE INDEX requisition_status ON public.requisition USING btree (status);
 CREATE INDEX requisition_store_id ON public.requisition USING btree (store_id);
 CREATE INDEX requisition_type ON public.requisition USING btree (type);
 
+CREATE TABLE IF NOT EXISTS public.name_note
+(
+    patient_event_id text DEFAULT ''::text,
+    entry_date date,
+    note text DEFAULT ''::text,
+    name_id text DEFAULT ''::text,
+    id text NOT NULL DEFAULT ''::text,
+    value double precision DEFAULT 0,
+    boolean_value boolean DEFAULT false,
+    created_by_user_id text DEFAULT ''::text,
+    modified_by_user_id text DEFAULT ''::text,
+    whentodisplay text DEFAULT ''::text,
+    store_id text DEFAULT ''::text,
+    color_code smallint DEFAULT 0,
+    beep_times smallint DEFAULT 0,
+    data jsonb,
+    is_deleted boolean DEFAULT false,
+    CONSTRAINT name_note_pkey PRIMARY KEY (id)
+);
 
+CREATE INDEX IF NOT EXISTS name_note_name_id ON public.name_note USING btree (name_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS name_note_patient_event_id ON public.name_note USING btree (patient_event_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS name_note_store_id ON public.name_note USING btree (store_id ASC NULLS LAST);
+
+CREATE TABLE IF NOT EXISTS public.patient_event
+(
+    id text NOT NULL DEFAULT ''::text,
+    code text DEFAULT ''::text,
+    description text DEFAULT ''::text,
+    event_type text DEFAULT ''::text,
+    unit text DEFAULT ''::text,
+    CONSTRAINT patient_event_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.item_department
+(
+    id text NOT NULL DEFAULT ''::text,
+    department text DEFAULT ''::text,
+    issue boolean DEFAULT false,
+    order_number integer DEFAULT 0,
+    CONSTRAINT item_department_pkey PRIMARY KEY (id)
+);
 
 CREATE TABLE IF NOT EXISTS export_log (
 	id TEXT DEFAULT ''::TEXT,
@@ -940,6 +1067,191 @@ CREATE INDEX IF NOT EXISTS user_active ON public."user" USING btree(active ASC N
 CREATE INDEX IF NOT EXISTS user_is_group ON public."user" USING btree(is_group ASC NULLS LAST);
 CREATE INDEX IF NOT EXISTS user_license_category_id ON public."user" USING btree(license_category_id ASC NULLS LAST);
 
+
+CREATE TABLE IF NOT EXISTS public.user_store
+(
+    id text NOT NULL DEFAULT ''::text,
+    user_id text DEFAULT ''::text,
+    store_id text DEFAULT ''::text,
+    can_login boolean DEFAULT false,
+    store_default boolean DEFAULT false,
+    can_action_replenishments boolean DEFAULT false,
+    permissions bytea,
+    CONSTRAINT user_store_pkey PRIMARY KEY (id)
+);
+CREATE INDEX IF NOT EXISTS user_store_can_login ON public.user_store USING btree(can_login ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS user_store_store_default ON public.user_store USING btree(store_default ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS user_store_store_id ON public.user_store USING btree(store_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS user_store_user_id ON public.user_store USING btree(user_id ASC NULLS LAST);
+
+CREATE TABLE public.unit
+(
+    id text NOT NULL DEFAULT ''::text,
+    units text DEFAULT ''::text,
+    comment text DEFAULT ''::text,
+    order_number double precision DEFAULT 0,
+    CONSTRAINT unit_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE public.location
+(
+    id text NOT NULL DEFAULT ''::text,
+    code text DEFAULT ''::text,
+    description text DEFAULT ''::text,
+    comment text DEFAULT ''::text,
+    volume double precision DEFAULT 0,
+    type_id text DEFAULT ''::text,
+    object_type text DEFAULT ''::text,
+    parent_id text DEFAULT ''::text,
+    colour text DEFAULT ''::text,
+    bottom_y_coordinate double precision DEFAULT 0,
+    summary_only boolean DEFAULT false,
+    store_id text DEFAULT ''::text,
+    priority integer DEFAULT 0,
+    hold boolean DEFAULT false,
+    replenishment_type text DEFAULT ''::text,
+    asset_id text DEFAULT ''::text,
+    CONSTRAINT location_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX location_priority ON public.location USING btree(priority);
+CREATE INDEX location_store_id ON public.location USING btree(store_id);
+CREATE INDEX location_type_id ON public.location USING btree(type_id);
+
+CREATE TABLE public.site
+(
+    id text NOT NULL DEFAULT ''::text,
+    site_id integer DEFAULT 0,
+    sync_out_ids text DEFAULT ''::text,
+    app_name text DEFAULT ''::text,
+    name text DEFAULT ''::text,
+    password text DEFAULT ''::text,
+    spare_address text DEFAULT ''::text,
+    prefs text DEFAULT ''::text,
+    hardwareid text DEFAULT ''::text,
+    app_version text DEFAULT ''::text,
+    code text DEFAULT ''::text,
+    sync_version text DEFAULT ''::text,
+    initialisation_status text DEFAULT ''::text,
+    last_sync_date date,
+    last_sync_time time without time zone DEFAULT '00:00:00'::time without time zone,
+    support_client_id text DEFAULT ''::text,
+    is_omsupply_central_server boolean DEFAULT false,
+    omsupply_central_server_url text DEFAULT ''::text,
+    first_sync_date date,
+    first_sync_time time without time zone DEFAULT '00:00:00'::time without time zone,
+    support_start_date date,
+    support_end_date date,
+    license_code text DEFAULT ''::text,
+    funder_id text DEFAULT ''::text,
+    concurrent_users_licensed smallint DEFAULT 0,
+    CONSTRAINT site_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX site_app_name ON public.site USING btree (app_name);
+CREATE INDEX site_code ON public.site USING btree (code);
+CREATE INDEX site_initialisation_status ON public.site USING btree (initialisation_status);
+CREATE INDEX site_last_sync_date ON public.site USING btree (last_sync_date);
+CREATE INDEX site_last_sync_time ON public.site USING btree (last_sync_time);
+CREATE INDEX site_name ON public.site USING btree (name);
+CREATE INDEX site_site_id ON public.site USING btree(site_id);
+CREATE INDEX site_support_client_id ON public.site USING btree (support_client_id);
+
+
+CREATE TABLE IF NOT EXISTS public.site_log
+(
+    id text NOT NULL DEFAULT ''::text,
+    date date,
+    site_id integer DEFAULT 0,
+    event text DEFAULT ''::text,
+    description text DEFAULT ''::text,
+    data jsonb,
+    "time" time without time zone DEFAULT '00:00:00'::time without time zone,
+    CONSTRAINT site_log_pkey PRIMARY KEY (id)
+);
+CREATE INDEX IF NOT EXISTS site_log_date ON public.site_log USING btree(date ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS site_log_event ON public.site_log USING btree(event ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS site_log_site_id ON public.site_log USING btree(site_id ASC NULLS LAST);
+
+CREATE TABLE IF NOT EXISTS public.temperature_log
+(
+    id text NOT NULL DEFAULT ''::text,
+    temperature double precision DEFAULT 0,
+    date date,
+    "time" time without time zone DEFAULT '00:00:00'::time without time zone,
+    location_id text DEFAULT ''::text,
+    temperature_breach_id text DEFAULT ''::text,
+    store_id text DEFAULT ''::text,
+    sensor_id text DEFAULT ''::text,
+    log_interval integer DEFAULT 0,
+    om_datetime text DEFAULT ''::text,
+    CONSTRAINT temperature_log_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS temperature_log_date ON public.temperature_log USING btree (date ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS temperature_log_location_id ON public.temperature_log USING btree (location_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS temperature_log_sensor_id ON public.temperature_log USING btree (sensor_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS temperature_log_store_id ON public.temperature_log USING btree(store_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS temperature_log_temperature ON public.temperature_log USING btree (temperature ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS temperature_log_temperature_breach_id ON public.temperature_log USING btree (temperature_breach_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS temperature_log_time ON public.temperature_log USING btree ("time" ASC NULLS LAST);
+
+CREATE TABLE IF NOT EXISTS public.temperature_breach
+(
+    id text NOT NULL DEFAULT ''::text,
+    start_date date,
+    start_time time without time zone DEFAULT '00:00:00'::time without time zone,
+    end_date date,
+    end_time time without time zone DEFAULT '00:00:00'::time without time zone,
+    location_id text DEFAULT ''::text,
+    store_id text DEFAULT ''::text,
+    temperature_breach_config_id text DEFAULT ''::text,
+    acknowledged boolean DEFAULT false,
+    sensor_id text DEFAULT ''::text,
+    threshold_maximum_temperature double precision DEFAULT 0,
+    threshold_minimum_temperature double precision DEFAULT 0,
+    threshold_duration integer DEFAULT 0,
+    type text DEFAULT ''::text,
+    duration integer DEFAULT 0,
+    om_start_datetime text DEFAULT ''::text,
+    om_end_datetime text DEFAULT ''::text,
+    om_comment text DEFAULT ''::text,
+    CONSTRAINT temperature_breach_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS temperature_breach_acknowledged ON public.temperature_breach USING btree (acknowledged ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS temperature_breach_location_id ON public.temperature_breach USING btree (location_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS temperature_breach_sensor_id ON public.temperature_breach USING btree (sensor_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS temperature_breach_store_id ON public.temperature_breach USING btree (store_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS temperature_breach_temperature_breach_config_id ON public.temperature_breach USING btree (temperature_breach_config_id ASC NULLS LAST);
+
+CREATE TABLE IF NOT EXISTS public.sensor
+(
+    id text NOT NULL DEFAULT ''::text,
+    locationid text DEFAULT ''::text,
+    name text DEFAULT ''::text,
+    macaddress text DEFAULT ''::text,
+    batterylevel double precision DEFAULT 0,
+    temperature double precision DEFAULT 0,
+    lastconnectiondate date,
+    lastconnectiontime time without time zone DEFAULT '00:00:00'::time without time zone,
+    storeid text DEFAULT ''::text,
+    loginterval integer DEFAULT 0,
+    numberoflogs integer DEFAULT 0,
+    is_active boolean DEFAULT false,
+    log_delay_time time without time zone DEFAULT '00:00:00'::time without time zone,
+    log_delay_date date,
+    programmed_date date,
+    programmed_time time without time zone DEFAULT '00:00:00'::time without time zone,
+    asset_id text DEFAULT ''::text,
+    om_last_connection_datetime text DEFAULT ''::text,
+    CONSTRAINT sensor_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS sensor_is_active ON public.sensor USING btree (is_active ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS sensor_locationid ON public.sensor USING btree (locationid ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS sensor_storeid ON public.sensor USING btree (storeid ASC NULLS LAST);
+
 CREATE TABLE public.d_monthly_item_active_store_join
 (
     item_id text DEFAULT ''::text,
@@ -984,6 +1296,21 @@ CREATE INDEX d_aggregator_monthly_soh_fulldate ON public.d_aggregator_monthly_so
 CREATE INDEX d_aggregator_monthly_soh_itemid ON public.d_aggregator_monthly_soh USING btree(itemid ASC NULLS LAST);
 CREATE INDEX d_aggregator_monthly_soh_monthyear ON public.d_aggregator_monthly_soh USING btree(monthyear ASC NULLS LAST);
 CREATE INDEX d_aggregator_monthly_soh_storeid ON public.d_aggregator_monthly_soh USING btree(storeid ASC NULLS LAST);
+
+CREATE TABLE IF NOT EXISTS public.d_daily_sensor_battery_log
+(
+    sensor_id text NOT NULL DEFAULT ''::text,
+    name text NOT NULL DEFAULT ''::text,
+    log_datetime timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    batterylevel double precision DEFAULT 0,
+    is_active boolean DEFAULT false,
+    last_temperature_log_datetime timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT d_daily_sensor_battery_log_pkey PRIMARY KEY (sensor_id, name, log_datetime)
+);
+
+CREATE INDEX IF NOT EXISTS d_daily_sensor_battery_log_name ON public.d_daily_sensor_battery_log USING btree (name ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS d_daily_sensor_battery_log_sensor_id ON public.d_daily_sensor_battery_log USING btree (sensor_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS log_datetime ON public.d_daily_sensor_battery_log USING btree (log_datetime ASC NULLS LAST);
 
 -- VIEWS --
 -- as you'll see below, these are now created after exporting --
@@ -1731,6 +2058,27 @@ begin
 end
 $procedure$;
 
+
+CREATE OR REPLACE PROCEDURE public.cc_sensor_battery_log(
+	)
+LANGUAGE 'plpgsql'
+AS $procedure$
+begin 
+    -- insert the sensor battery log
+    INSERT INTO public.d_daily_sensor_battery_log (sensor_id, name, log_datetime, batterylevel ,is_active, last_temperature_log_datetime)
+    SELECT DISTINCT s.id, s.name, DATE_TRUNC('hour', current_timestamp), batterylevel ,is_active, last_temp_datetime 
+    FROM (
+        SELECT sensor_id AS sensor_id, MAX(CONCAT(TO_CHAR(date,'YYYY-MM-DD'),' ', TO_CHAR(time,'HH24:MI:SS'))::timestamptz) AS last_temp_datetime
+        FROM temperature_log tl 
+        GROUP BY sensor_id
+    
+    ) tl 
+    JOIN sensor s ON tl.sensor_id = s.id
+    ON CONFLICT ON CONSTRAINT d_daily_sensor_battery_log_pkey 
+    DO UPDATE SET batterylevel = EXCLUDED.batterylevel, is_active = EXCLUDED.is_active, last_temperature_log_datetime = EXCLUDED.last_temperature_log_datetime;
+end
+$procedure$;
+
 CREATE OR REPLACE FUNCTION public.checkstockondate(patdate date, pstoreid text, pitemid text)
 	RETURNS integer
 	LANGUAGE plpgsql
@@ -1809,7 +2157,9 @@ FROM
 
 CALL public.create_view_report_cards();
 CALL public.create_materialised_views();
-	 
+CALL public.cc_sensor_battery_log();
+
+
 $procedure$;
 
 CREATE OR REPLACE PROCEDURE public.pre_export()
@@ -1819,7 +2169,7 @@ AS $procedure$
 
 DROP VIEW IF EXISTS public.store_categories;
 DROP VIEW IF EXISTS public.item_categories;
-DROP MATERIALIZEDVIEW IF EXISTS public.mv_visible_item_store_join;
+DROP MATERIALIZED VIEW IF EXISTS public.mv_visible_item_store_join;
 
 $procedure$;
 ;
