@@ -33,36 +33,52 @@ ECHO Extracting Grafana archive
 tar -xzf "%ARCHIVE%" -C "%GRAFANA_TMP%"
 IF ERRORLEVEL 1 EXIT /B 1
 
-REM find grafana.exe and copy it
-for /R "%GRAFANA_TMP%" %%f in (grafana.exe) do (
-    copy /Y "%%f" "%WORKSPACE%\release\bin\grafana.exe"
+@ECHO.
+@ECHO ##### Locating Grafana executables #####
+
+SET GRAFANA_EXE=
+SET GRAFANA_SERVER_EXE=
+SET GRAFANA_CLI_EXE=
+
+for /D %%d in ("%GRAFANA_TMP%\grafana-*") do (
+    if exist "%%d\bin\grafana.exe" (
+        SET GRAFANA_EXE=%%d\bin\grafana.exe
+    )
+    if exist "%%d\bin\grafana-server.exe" (
+        SET GRAFANA_SERVER_EXE=%%d\bin\grafana-server.exe
+    )
+    if exist "%%d\bin\grafana-cli.exe" (
+        SET GRAFANA_CLI_EXE=%%d\bin\grafana-cli.exe
+    )
+
+    REM Check if all three were found
+    if defined GRAFANA_EXE if defined GRAFANA_SERVER_EXE if defined GRAFANA_CLI_EXE (
+        goto :found_grafana
+    )
 )
 
-IF NOT EXIST "%WORKSPACE%\release\bin\grafana.exe" (
-    ECHO ERROR: grafana.exe not found after extraction
-    EXIT /B 1
+ECHO ERROR: One or more Grafana executables not found
+ECHO   grafana.exe        = %GRAFANA_EXE%
+ECHO   grafana-server.exe = %GRAFANA_SERVER_EXE%
+ECHO   grafana-cli.exe    = %GRAFANA_CLI_EXE%
+EXIT /B 1
+
+:found_grafana
+ECHO Found Grafana executables:
+ECHO   %GRAFANA_EXE%
+ECHO   %GRAFANA_SERVER_EXE%
+ECHO   %GRAFANA_CLI_EXE%
+
+REM Ensure destination exists
+IF NOT EXIST "%WORKSPACE%\release\bin" (
+    mkdir "%WORKSPACE%\release\bin"
 )
 
-REM find grafana-cli.exe and copy it
-for /R "%GRAFANA_TMP%" %%f in (grafana-cli.exe) do (
-    copy /Y "%%f" "%WORKSPACE%\release\bin\grafana-cli.exe"
-)
+copy /Y "%GRAFANA_EXE%"        "%WORKSPACE%\release\bin\"
+copy /Y "%GRAFANA_SERVER_EXE%" "%WORKSPACE%\release\bin\"
+copy /Y "%GRAFANA_CLI_EXE%"    "%WORKSPACE%\release\bin\"
 
-IF NOT EXIST "%WORKSPACE%\release\bin\grafana-cli.exe" (
-    ECHO ERROR: grafana-cli.exe not found after extraction
-    EXIT /B 1
-)
-
-REM find grafana-server.exe and copy it
-for /R "%GRAFANA_TMP%" %%f in (grafana-server.exe) do (
-    copy /Y "%%f" "%WORKSPACE%\release\bin\grafana-server.exe"
-)
-
-
-IF NOT EXIST "%WORKSPACE%\release\bin\grafana-server.exe" (
-    ECHO ERROR: grafana-server.exe not found after extraction
-    EXIT /B 1
-)
+ECHO Grafana executables copied successfully
 
 rmdir /s /q "%GRAFANA_TMP%"
 ECHO Grafana ready

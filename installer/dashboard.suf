@@ -3807,7 +3807,7 @@ TextFile.WriteFromString(SessionVar.Expand("%AppFolder%\\conf\\provisioning\\das
 
 INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "server", "root_url", SessionVar.Expand("https://%domain_name%:3000"));
 INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "server", "domain", SessionVar.Expand("%domain_name%"));
-INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "auth", "signout_redirect_url", SessionVar.Expand("https://%domain_name%:%msupply_port%/dashboard-oauth/"));
+INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "auth", "signout_redirect_url", SessionVar.Expand("\"\"\"https://%domain_name%:%msupply_port%//dashboard-oauth#/logout\"\"\""));
 INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "auth.generic_oauth", "auth_url", SessionVar.Expand("https://%domain_name%:%msupply_port%/api/v4/oauth/"));
 INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "auth.generic_oauth", "token_url", SessionVar.Expand("https://%domain_name%:%msupply_port%/api/v4/oauth_access_token/"));
 INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "auth.generic_oauth", "api_url", SessionVar.Expand("https://%domain_name%:%msupply_port%/api/v4/oauth_userinfo/"));
