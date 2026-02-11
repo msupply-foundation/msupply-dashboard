@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "panel",
+  "name": "Msupply-Table",
+  "id": "msupplyfoundation-table",
+  "info": {
+    "keywords": ["panel"],
+    "description": "Table Panel for Grafana",
+    "author": {
+      "name": "Msupplyfoundation",
+       "url": "https://msupply.foundation"
+    },
+    "logos": {
+      "small": "msupply-table-panel.svg",
+      "large": "msupply-table-panel.svg"
+    },
+    "links": [],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=11.6.0",
+    "plugins": []
+  }
+}
