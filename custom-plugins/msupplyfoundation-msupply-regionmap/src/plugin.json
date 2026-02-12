@@ -1,0 +1,35 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "panel",
+  "name": "M-Supply-Foundation-Msupply-Regionmap",
+  "id": "msupplyfoundation-msupply-regionmap",
+  "info": {
+    "keywords": ["panel"],
+    "description": "",
+    "author": {
+      "name": "The mSupply Foundation",
+      "url": "https://www.msupply.foundation"
+    },
+    "logos": {
+      "small": "logo.svg",
+      "large": "logo.svg"
+    },
+    "links": [
+      {
+        "name": "Website",
+        "url": "https://github.com/openmsupply/msupply-dashboard/"
+      },
+      {
+        "name": "License",
+        "url": "https://github.com/openmsupply/msupply-dashboard/blob/master/LICENSE"
+      }
+    ],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=11.6.0",
+    "plugins": []
+  }
+}
