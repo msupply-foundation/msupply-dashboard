@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkgrafana=self.webpackChunkgrafana||[]).push([[5757],{55757:(g,n,e)=>{e.r(n),e.d(n,{addResourceBundle:()=>a.eI,changeLanguage:()=>a.v2,getI18nInstance:()=>a.kh,getLanguage:()=>a.Z0,getResolvedLanguage:()=>a.Ph,initializeI18n:()=>a.JL,loadNamespacedResources:()=>a.fl});var a=e(92745)}}]);
