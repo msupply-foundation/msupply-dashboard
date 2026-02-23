@@ -1,7 +1,8 @@
-import { config } from '@grafana/runtime';
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { AppNotification, AppNotificationSeverity, AppNotificationsState } from 'app/types/';
+import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+import { AppNotification, AppNotificationSeverity, AppNotificationsState } from 'app/types/appNotifications';
+
+const MAX_STORED_NOTIFICATIONS = 25;
 export const STORAGE_KEY = 'notifications';
 export const NEW_NOTIFS_KEY = `${STORAGE_KEY}/lastRead`;
 type StoredNotification = Omit<AppNotification, 'component'>;
@@ -59,10 +60,12 @@ export const appNotificationsReducer = appNotificationsSlice.reducer;
 // Selectors
 
 export const selectLastReadTimestamp = (state: AppNotificationsState) => state.lastRead;
-export const selectAll = (state: AppNotificationsState) =>
-  Object.values(state.byId).sort((a, b) => b.timestamp - a.timestamp);
-export const selectWarningsAndErrors = (state: AppNotificationsState) => selectAll(state).filter(isAtLeastWarning);
-export const selectVisible = (state: AppNotificationsState) => Object.values(state.byId).filter((n) => n.showing);
+export const selectById = (state: AppNotificationsState) => state.byId;
+export const selectAll = createSelector(selectById, (byId) =>
+  Object.values(byId).sort((a, b) => b.timestamp - a.timestamp)
+);
+export const selectWarningsAndErrors = createSelector(selectAll, (all) => all.filter(isAtLeastWarning));
+export const selectVisible = createSelector(selectById, (byId) => Object.values(byId).filter((n) => n.showing));
 
 // Helper functions
 
@@ -74,22 +77,13 @@ function isAtLeastWarning(notif: AppNotification) {
   return notif.severity === AppNotificationSeverity.Warning || notif.severity === AppNotificationSeverity.Error;
 }
 
-function isStoredNotification(obj: any): obj is StoredNotification {
-  return (
-    typeof obj.id === 'string' &&
-    typeof obj.icon === 'string' &&
-    typeof obj.title === 'string' &&
-    typeof obj.text === 'string'
-  );
+function isStoredNotification(obj: unknown): obj is StoredNotification {
+  return typeof obj === 'object' && obj !== null && 'id' in obj && 'icon' in obj && 'title' in obj && 'text' in obj;
 }
 
 // (De)serialization
 
 export function deserializeNotifications(): Record<string, StoredNotification> {
-  if (!config.featureToggles?.persistNotifications) {
-    return {};
-  }
-
   const storedNotifsRaw = window.localStorage.getItem(STORAGE_KEY);
   if (!storedNotifsRaw) {
     return {};
@@ -104,12 +98,10 @@ export function deserializeNotifications(): Record<string, StoredNotification> {
 }
 
 function serializeNotifications(notifs: Record<string, StoredNotification>) {
-  if (!config.featureToggles?.persistNotifications) {
-    return;
-  }
-
   const reducedNotifs = Object.values(notifs)
     .filter(isAtLeastWarning)
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, MAX_STORED_NOTIFICATIONS)
     .reduce<Record<string, StoredNotification>>((prev, cur) => {
       prev[cur.id] = {
         id: cur.id,
@@ -119,10 +111,18 @@ function serializeNotifications(notifs: Record<string, StoredNotification>) {
         text: cur.text,
         traceId: cur.traceId,
         timestamp: cur.timestamp,
-        showing: cur.showing,
+        // we don't care about still showing toasts after refreshing
+        // https://github.com/grafana/grafana/issues/71932
+        showing: false,
       };
 
       return prev;
     }, {});
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(reducedNotifs));
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(reducedNotifs));
+  } catch (err) {
+    console.error('Unable to persist notifications to local storage');
+    console.error(err);
+  }
 }

@@ -1,169 +1,230 @@
+import { PanelPlugin, standardEditorsRegistry, identityOverrideProcessor, FieldConfigProperty } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import {
-  FieldOverrideContext,
-  FieldType,
-  getFieldDisplayName,
-  PanelPlugin,
-  ReducerID,
-  standardEditorsRegistry,
-} from '@grafana/data';
-import { TablePanel } from './TablePanel';
-import { PanelOptions, defaultPanelOptions, defaultPanelFieldConfig } from './models.gen';
-import { TableFieldOptions } from '@grafana/schema';
-import { tableMigrationHandler, tablePanelChangedHandler } from './migrations';
-import { TableCellDisplayMode } from '@grafana/ui';
-import { TableSuggestionsSupplier } from './suggestions';
-import { PaginationEditor } from './PaginationEditor';
+  defaultTableFieldOptions,
+  TableCellOptions,
+  TableCellDisplayMode,
+  TableCellHeight,
+  TableCellTooltipPlacement,
+} from '@grafana/schema';
 
-export const plugin = new PanelPlugin<PanelOptions, TableFieldOptions>(TablePanel)
+import { PaginationEditor } from './PaginationEditor';
+import { TableCellOptionEditor } from './TableCellOptionEditor';
+import { TablePanel } from './TablePanel';
+import { tableMigrationHandler, tablePanelChangedHandler } from './migrations';
+import { Options, defaultOptions, FieldConfig } from './panelcfg.gen';
+import { TableSuggestionsSupplier } from './suggestions';
+
+export const plugin = new PanelPlugin<Options, FieldConfig>(TablePanel)
   .setPanelChangeHandler(tablePanelChangedHandler)
   .setMigrationHandler(tableMigrationHandler)
-  .setNoPadding()
   .useFieldConfig({
+    standardOptions: {
+      [FieldConfigProperty.Actions]: {
+        hideFromDefaults: false,
+      },
+    },
     useCustomConfig: (builder) => {
+      const category = [t('table.category-table', 'Table')];
+      const cellCategory = [t('table.category-cell-options', 'Cell options')];
       builder
         .addNumberInput({
           path: 'minWidth',
-          name: 'Minimum column width',
-          description: 'The minimum width for column auto resizing',
+          name: t('table.name-min-column-width', 'Minimum column width'),
+          category,
+          description: t('table.description-min-column-width', 'The minimum width for column auto resizing'),
           settings: {
             placeholder: '150',
             min: 50,
             max: 500,
           },
           shouldApply: () => true,
-          defaultValue: defaultPanelFieldConfig.minWidth,
+          defaultValue: defaultTableFieldOptions.minWidth,
         })
         .addNumberInput({
           path: 'width',
-          name: 'Column width',
+          name: t('table.name-column-width', 'Column width'),
+          category,
           settings: {
-            placeholder: 'auto',
+            placeholder: t('table.placeholder-column-width', 'auto'),
             min: 20,
-            max: 300,
           },
           shouldApply: () => true,
-          defaultValue: defaultPanelFieldConfig.width,
+          defaultValue: defaultTableFieldOptions.width,
         })
         .addRadio({
           path: 'align',
-          name: 'Column alignment',
+          name: t('table.name-column-alignment', 'Column alignment'),
+          category,
           settings: {
             options: [
-              { label: 'auto', value: 'auto' },
-              { label: 'left', value: 'left' },
-              { label: 'center', value: 'center' },
-              { label: 'right', value: 'right' },
+              { label: t('table.column-alignment-options.label-auto', 'Auto'), value: 'auto' },
+              { label: t('table.column-alignment-options.label-left', 'Left'), value: 'left' },
+              { label: t('table.column-alignment-options.label-center', 'Center'), value: 'center' },
+              { label: t('table.column-alignment-options.label-right', 'Right'), value: 'right' },
             ],
           },
-          defaultValue: defaultPanelFieldConfig.align,
-        })
-        .addSelect({
-          path: 'displayMode',
-          name: 'Cell display mode',
-          description: 'Color text, background, show as gauge, etc',
-          settings: {
-            options: [
-              { value: TableCellDisplayMode.Auto, label: 'Auto' },
-              { value: TableCellDisplayMode.ColorText, label: 'Color text' },
-              { value: TableCellDisplayMode.ColorBackground, label: 'Color background (gradient)' },
-              { value: TableCellDisplayMode.ColorBackgroundSolid, label: 'Color background (solid)' },
-              { value: TableCellDisplayMode.GradientGauge, label: 'Gradient gauge' },
-              { value: TableCellDisplayMode.LcdGauge, label: 'LCD gauge' },
-              { value: TableCellDisplayMode.BasicGauge, label: 'Basic gauge' },
-              { value: TableCellDisplayMode.JSONView, label: 'JSON View' },
-              { value: TableCellDisplayMode.Image, label: 'Image' },
-            ],
-          },
-          defaultValue: defaultPanelFieldConfig.displayMode,
-        })
-        .addBooleanSwitch({
-          path: 'inspect',
-          name: 'Cell value inspect',
-          description: 'Enable cell value inspection in a modal window',
-          defaultValue: false,
-          showIf: (cfg) => {
-            return (
-              cfg.displayMode === TableCellDisplayMode.Auto ||
-              cfg.displayMode === TableCellDisplayMode.JSONView ||
-              cfg.displayMode === TableCellDisplayMode.ColorText ||
-              cfg.displayMode === TableCellDisplayMode.ColorBackground ||
-              cfg.displayMode === TableCellDisplayMode.ColorBackgroundSolid
-            );
-          },
+          defaultValue: defaultTableFieldOptions.align,
         })
         .addBooleanSwitch({
           path: 'filterable',
-          name: 'Column filter',
-          description: 'Enables/disables field filters in table',
-          defaultValue: defaultPanelFieldConfig.filterable,
+          name: t('table.name-column-filter', 'Column filter'),
+          category,
+          description: t('table.description-column-filter', 'Enables/disables field filters in table'),
+          defaultValue: defaultTableFieldOptions.filterable,
         })
         .addBooleanSwitch({
-          path: 'hidden',
-          name: 'Hide in table',
+          path: 'wrapText',
+          name: t('table.name-wrap-text', 'Wrap text'),
+          category,
+        })
+        .addBooleanSwitch({
+          path: 'wrapHeaderText',
+          name: t('table.name-wrap-header-text', 'Wrap header text'),
+          category,
+        })
+        .addBooleanSwitch({
+          path: 'hideFrom.viz',
+          name: t('table.name-hide-in-table', 'Hide in table'),
+          category,
           defaultValue: undefined,
           hideFromDefaults: true,
+        })
+        .addCustomEditor({
+          id: 'footer.reducers',
+          category: [t('table.category-table-footer', 'Table footer')],
+          path: 'footer.reducers',
+          name: t('table.name-calculation', 'Calculation'),
+          description: t('table.description-calculation', 'Choose a reducer function / calculation'),
+          editor: standardEditorsRegistry.get('stats-picker').editor,
+          override: standardEditorsRegistry.get('stats-picker').editor,
+          defaultValue: [],
+          process: identityOverrideProcessor,
+          shouldApply: () => true,
+          settings: {
+            allowMultiple: true,
+          },
+        })
+        .addCustomEditor<void, TableCellOptions>({
+          id: 'cellOptions',
+          path: 'cellOptions',
+          name: t('table.name-cell-type', 'Cell type'),
+          editor: TableCellOptionEditor,
+          override: TableCellOptionEditor,
+          defaultValue: defaultTableFieldOptions.cellOptions,
+          process: identityOverrideProcessor,
+          category: cellCategory,
+          shouldApply: () => true,
+        })
+        .addBooleanSwitch({
+          path: 'inspect',
+          name: t('table.name-cell-value-inspect', 'Cell value inspect'),
+          description: t('table.description-cell-value-inspect', 'Enable cell value inspection in a modal window'),
+          defaultValue: false,
+          category: cellCategory,
+          showIf: (cfg) => {
+            return (
+              cfg.cellOptions.type === TableCellDisplayMode.Auto ||
+              cfg.cellOptions.type === TableCellDisplayMode.JSONView ||
+              cfg.cellOptions.type === TableCellDisplayMode.ColorText ||
+              cfg.cellOptions.type === TableCellDisplayMode.ColorBackground
+            );
+          },
+        })
+        .addFieldNamePicker({
+          path: 'tooltip.field',
+          name: t('table.name-tooltip-from-field', 'Tooltip from field'),
+          description: t(
+            'table.description-tooltip-from-field',
+            'Render a cell from a field (hidden or visible) in a tooltip'
+          ),
+          category: cellCategory,
+        })
+        .addSelect({
+          path: 'tooltip.placement',
+          name: t('table.name-tooltip-placement', 'Tooltip placement'),
+          category: cellCategory,
+          settings: {
+            options: [
+              {
+                label: t('table.tooltip-placement-options.label-auto', 'Auto'),
+                value: TableCellTooltipPlacement.Auto,
+              },
+              {
+                label: t('table.tooltip-placement-options.label-top', 'Top'),
+                value: TableCellTooltipPlacement.Top,
+              },
+              {
+                label: t('table.tooltip-placement-options.label-right', 'Right'),
+                value: TableCellTooltipPlacement.Right,
+              },
+              {
+                label: t('table.tooltip-placement-options.label-bottom', 'Bottom'),
+                value: TableCellTooltipPlacement.Bottom,
+              },
+              {
+                label: t('table.tooltip-placement-options.label-left', 'Left'),
+                value: TableCellTooltipPlacement.Left,
+              },
+            ],
+          },
+          showIf: (cfg) => cfg.tooltip?.field !== undefined,
+        })
+        .addFieldNamePicker({
+          path: 'styleField',
+          name: t('table.name-styling-from-field', 'Styling from field'),
+          description: t('table.description-styling-from-field', 'A field containing JSON objects with CSS properties'),
+          category: cellCategory,
         });
     },
   })
   .setPanelOptions((builder) => {
+    const category = [t('table.category-table', 'Table')];
     builder
       .addBooleanSwitch({
         path: 'showHeader',
-        category: ['Header and footer'],
-        name: 'Show header',
-        description: "To display table's header or not to display",
-        defaultValue: defaultPanelOptions.showHeader,
+        name: t('table.name-show-table-header', 'Show table header'),
+        category,
+        defaultValue: defaultOptions.showHeader,
       })
-      .addBooleanSwitch({
-        path: 'footer.show',
-        category: ['Header and footer'],
-        name: 'Show Footer',
-        description: "To display table's footer or not to display",
-        defaultValue: defaultPanelOptions.footer?.show,
-      })
-      .addCustomEditor({
-        id: 'footer.reducer',
-        category: ['Header and footer'],
-        path: 'footer.reducer',
-        name: 'Calculation',
-        description: 'Choose a reducer function / calculation',
-        editor: standardEditorsRegistry.get('stats-picker').editor as any,
-        defaultValue: [ReducerID.sum],
-        showIf: (cfg) => cfg.footer?.show,
-      })
-      .addMultiSelect({
-        path: 'footer.fields',
-        category: ['Header and footer'],
-        name: 'Fields',
-        description: 'Select the fields that should be calculated',
+      .addNumberInput({
+        path: 'frozenColumns.left',
+        name: t('table.name-frozen-columns', 'Frozen columns'),
+        description: t('table.description-frozen-columns', 'Columns are frozen from the left side of the table'),
         settings: {
-          allowCustomValue: false,
-          options: [],
-          placeholder: 'All Numeric Fields',
-          getOptions: async (context: FieldOverrideContext) => {
-            const options = [];
-            if (context && context.data && context.data.length > 0) {
-              const frame = context.data[0];
-              for (const field of frame.fields) {
-                if (field.type === FieldType.number) {
-                  const name = getFieldDisplayName(field, frame, context.data);
-                  const value = field.name;
-                  options.push({ value, label: name } as any);
-                }
-              }
-            }
-            return options;
-          },
+          placeholder: 'none',
         },
-        defaultValue: '',
-        showIf: (cfg) => cfg.footer?.show,
+        category,
+      })
+      .addRadio({
+        path: 'cellHeight',
+        name: t('table.name-cell-height', 'Cell height'),
+        category,
+        defaultValue: defaultOptions.cellHeight,
+        settings: {
+          options: [
+            { value: TableCellHeight.Sm, label: t('table.cell-height-options.label-small', 'Small') },
+            { value: TableCellHeight.Md, label: t('table.cell-height-options.label-medium', 'Medium') },
+            { value: TableCellHeight.Lg, label: t('table.cell-height-options.label-large', 'Large') },
+          ],
+        },
+      })
+      .addNumberInput({
+        path: 'maxRowHeight',
+        name: t('table.name-max-height', 'Max row height'),
+        category,
+        settings: {
+          placeholder: t('table.placeholder-max-height', 'none'),
+          min: 0,
+        },
       })
       .addCustomEditor({
-        id: 'footer.enablePagination',
-        category: ['Header and footer'],
-        path: 'footer.enablePagination',
-        name: 'Enable pagination',
+        id: 'enablePagination',
+        path: 'enablePagination',
+        name: t('table.name-enable-pagination', 'Enable pagination'),
+        category,
         editor: PaginationEditor,
+        defaultValue: defaultOptions?.enablePagination,
       });
   })
   .setSuggestionsSupplier(new TableSuggestionsSupplier());

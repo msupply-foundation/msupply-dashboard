@@ -1,43 +1,51 @@
-import { AccessControlAction, Team, TeamPermissionLevel } from 'app/types';
-import { featureEnabled } from '@grafana/runtime';
 import { NavModelItem, NavModel } from '@grafana/data';
+import { t } from '@grafana/i18n';
+import { featureEnabled } from '@grafana/runtime';
+import { ProBadge } from 'app/core/components/Upgrade/ProBadge';
 import config from 'app/core/config';
 import { contextSrv } from 'app/core/services/context_srv';
-import { ProBadge } from 'app/core/components/Upgrade/ProBadge';
 import { highlightTrial } from 'app/features/admin/utils';
+import { AccessControlAction } from 'app/types/accessControl';
+import { TeamPermissionLevel } from 'app/types/acl';
+import { Team } from 'app/types/teams';
+import userProfilePng from 'img/user_profile.png';
 
 const loadingTeam = {
-  avatarUrl: 'public/img/user_profile.png',
+  avatarUrl: userProfilePng,
   id: 1,
+  uid: '',
   name: 'Loading',
   email: 'loading',
   memberCount: 0,
   permission: TeamPermissionLevel.Member,
+  accessControl: { isEditor: false },
+  orgId: 0,
+  updated: '',
+  isProvisioned: false,
 };
 
 export function buildNavModel(team: Team): NavModelItem {
   const navModel: NavModelItem = {
     img: team.avatarUrl,
-    id: 'team-' + team.id,
-    subTitle: 'Manage members and settings',
-    url: '',
+    id: 'team-' + team.uid,
+    subTitle: t('teams.build-nav-model.nav-model.subTitle.manage-members-and-settings', 'Manage members and settings'),
+    url: `org/teams/edit/${team.uid}`,
     text: team.name,
-    breadcrumbs: [{ title: 'Teams', url: 'org/teams' }],
     children: [
-      // With FGAC this tab will always be available (but not always editable)
+      // With RBAC this tab will always be available (but not always editable)
       // With Legacy it will be hidden by hideTabsFromNonTeamAdmin should the user not be allowed to see it
       {
         active: false,
         icon: 'sliders-v-alt',
-        id: `team-settings-${team.id}`,
-        text: 'Settings',
-        url: `org/teams/edit/${team.id}/settings`,
+        id: `team-settings-${team.uid}`,
+        text: t('teams.build-nav-model.nav-model.text.settings', 'Settings'),
+        url: `org/teams/edit/${team.uid}/settings`,
       },
     ],
   };
 
   // While team is loading we leave the members tab
-  // With FGAC the Members tab is available when user has ActionTeamsPermissionsRead for this team
+  // With RBAC the Members tab is available when user has ActionTeamsPermissionsRead for this team
   // With Legacy it will always be present
   if (
     team === loadingTeam ||
@@ -46,18 +54,18 @@ export function buildNavModel(team: Team): NavModelItem {
     navModel.children!.unshift({
       active: false,
       icon: 'users-alt',
-      id: `team-members-${team.id}`,
-      text: 'Members',
-      url: `org/teams/edit/${team.id}/members`,
+      id: `team-members-${team.uid}`,
+      text: t('teams.build-nav-model.text.members', 'Members'),
+      url: `org/teams/edit/${team.uid}/members`,
     });
   }
 
   const teamGroupSync: NavModelItem = {
     active: false,
     icon: 'sync',
-    id: `team-groupsync-${team.id}`,
-    text: 'External group sync',
-    url: `org/teams/edit/${team.id}/groupsync`,
+    id: `team-groupsync-${team.uid}`,
+    text: t('teams.build-nav-model.team-group-sync.text.external-group-sync', 'External group sync'),
+    url: `org/teams/edit/${team.uid}/groupsync`,
   };
 
   const isLoadingTeam = team === loadingTeam;
@@ -67,9 +75,9 @@ export function buildNavModel(team: Team): NavModelItem {
       ProBadge({ experimentId: isLoadingTeam ? '' : 'feature-highlights-team-sync-badge', eventVariant: 'trial' });
   }
 
-  // With both Legacy and FGAC the tab is protected being featureEnabled
+  // With both Legacy and RBAC the tab is protected being featureEnabled
   // While team is loading we leave the teamsync tab
-  // With FGAC the External Group Sync tab is available when user has ActionTeamsPermissionsRead for this team
+  // With RBAC the External Group Sync tab is available when user has ActionTeamsPermissionsRead for this team
   if (featureEnabled('teamsync')) {
     if (isLoadingTeam || contextSrv.hasPermissionInMetadata(AccessControlAction.ActionTeamsPermissionsRead, team)) {
       navModel.children!.push(teamGroupSync);

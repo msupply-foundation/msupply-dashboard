@@ -1,5 +1,6 @@
-import { extendedStats } from '../../../../query_def';
-import { MetricAggregation } from '../aggregations';
+import { MetricAggregation } from 'app/plugins/datasource/elasticsearch/dataquery.gen';
+
+import { extendedStats } from '../../../../queryDef';
 
 const hasValue = (value: string) => (object: { value: string }) => object.value === value;
 

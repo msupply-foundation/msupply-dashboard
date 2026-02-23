@@ -9,12 +9,16 @@ import {
   getMetricTypesByService,
   labelsToGroupedOptions,
   stringArrayToFilters,
+  alignmentPeriodLabel,
+  getMetricType,
+  setMetricType,
 } from './functions';
 import { newMockDatasource } from './specs/testData';
-import { AlignmentTypes, MetricDescriptor, MetricKind, ValueTypes } from './types';
+import { AlignmentTypes, TimeSeriesList, MetricKind, ValueTypes } from './types/query';
+import { MetricDescriptor } from './types/types';
 
 jest.mock('@grafana/runtime', () => ({
-  ...(jest.requireActual('@grafana/runtime') as unknown as object),
+  ...jest.requireActual('@grafana/runtime'),
   getTemplateSrv: () => ({
     replace: jest.fn().mockImplementation((s: string) => s),
   }),
@@ -120,15 +124,15 @@ describe('functions', () => {
   });
 
   describe('getAlignmentOptionsByMetric', () => {
-    let result: any;
+    let result: ReturnType<typeof getAlignmentOptionsByMetric>;
     describe('when double and gauge is passed', () => {
       beforeEach(() => {
         result = getAlignmentOptionsByMetric(ValueTypes.DOUBLE, MetricKind.GAUGE);
       });
 
       it('should return all alignment options except two', () => {
-        expect(result.length).toBe(9);
-        expect(result.map((o: any) => o.value)).toEqual(
+        expect(result.length).toBe(10);
+        expect(result.map((o) => o.value)).toEqual(
           expect.not.arrayContaining(['REDUCE_COUNT_TRUE', 'REDUCE_COUNT_FALSE'])
         );
       });
@@ -141,7 +145,7 @@ describe('functions', () => {
 
       it('should return all alignment options except four', () => {
         expect(result.length).toBe(9);
-        expect(result.map((o: any) => o.value)).toEqual(
+        expect(result.map((o) => o.value)).toEqual(
           expect.not.arrayContaining([
             'ALIGN_COUNT_TRUE',
             'ALIGN_COUNT_FALSE',
@@ -173,7 +177,7 @@ describe('functions', () => {
   describe('getAlignmentPickerData', () => {
     it('should return default data', () => {
       const res = getAlignmentPickerData();
-      expect(res.alignOptions).toHaveLength(9);
+      expect(res.alignOptions).toHaveLength(10);
       expect(res.perSeriesAligner).toEqual(AlignmentTypes.ALIGN_MEAN);
     });
 
@@ -224,6 +228,34 @@ describe('functions', () => {
           value: 'value',
         },
       ]);
+    });
+  });
+
+  describe('alignmentPeriodLabel', () => {
+    it('returns period label if alignment period and per series aligner is set', () => {
+      const datasource = newMockDatasource();
+
+      const label = alignmentPeriodLabel({ perSeriesAligner: 'ALIGN_DELTA', alignmentPeriod: '10' }, datasource);
+      expect(label).toBe('10s interval (delta)');
+    });
+  });
+
+  describe('getMetricType', () => {
+    it('returns metric type', () => {
+      const metricType = getMetricType({ filters: ['metric.type', '=', 'test'] } as TimeSeriesList);
+      expect(metricType).toBe('test');
+    });
+  });
+
+  describe('setMetricType', () => {
+    it('sets a metric type if the filter did not exist', () => {
+      const metricType = setMetricType({} as TimeSeriesList, 'test');
+      expect(metricType.filters).toEqual(['metric.type', '=', 'test']);
+    });
+
+    it('sets a metric type if the filter exists', () => {
+      const metricType = setMetricType({ filters: ['metric.type', '=', 'test'] } as TimeSeriesList, 'other');
+      expect(metricType.filters).toEqual(['metric.type', '=', 'other']);
     });
   });
 });

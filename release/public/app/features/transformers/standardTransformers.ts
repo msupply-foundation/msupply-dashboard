@@ -1,54 +1,74 @@
 import { TransformerRegistryItem } from '@grafana/data';
-import { reduceTransformRegistryItem } from './editors/ReduceTransformerEditor';
-import { filterFieldsByNameTransformRegistryItem } from './editors/FilterByNameTransformerEditor';
-import { filterFramesByRefIdTransformRegistryItem } from './editors/FilterByRefIdTransformerEditor';
-import { filterByValueTransformRegistryItem } from './FilterByValueTransformer/FilterByValueTransformerEditor';
-import { organizeFieldsTransformRegistryItem } from './editors/OrganizeFieldsTransformerEditor';
-import { seriesToFieldsTransformerRegistryItem } from './editors/SeriesToFieldsTransformerEditor';
-import { calculateFieldTransformRegistryItem } from './editors/CalculateFieldTransformerEditor';
-import { labelsToFieldsTransformerRegistryItem } from './editors/LabelsToFieldsTransformerEditor';
-import { groupByTransformRegistryItem } from './editors/GroupByTransformerEditor';
-import { sortByTransformRegistryItem } from './editors/SortByTransformerEditor';
-import { mergeTransformerRegistryItem } from './editors/MergeTransformerEditor';
-import { seriesToRowsTransformerRegistryItem } from './editors/SeriesToRowsTransformerEditor';
-import { concatenateTransformRegistryItem } from './editors/ConcatenateTransformerEditor';
-import { renameByRegexTransformRegistryItem } from './editors/RenameByRegexTransformer';
-import { histogramTransformRegistryItem } from './editors/HistogramTransformerEditor';
-import { rowsToFieldsTransformRegistryItem } from './rowsToFields/RowsToFieldsTransformerEditor';
-import { configFromQueryTransformRegistryItem } from './configFromQuery/ConfigFromQueryTransformerEditor';
-import { prepareTimeseriesTransformerRegistryItem } from './prepareTimeSeries/PrepareTimeSeriesEditor';
-import { convertFieldTypeTransformRegistryItem } from './editors/ConvertFieldTypeTransformerEditor';
-import { fieldLookupTransformRegistryItem } from './lookupGazetteer/FieldLookupTransformerEditor';
-import { extractFieldsTransformRegistryItem } from './extractFields/ExtractFieldsTransformerEditor';
-import { heatmapTransformRegistryItem } from './calculateHeatmap/HeatmapTransformerEditor';
-import { spatialTransformRegistryItem } from './spatial/SpatialTransformerEditor';
-import { groupingToMatrixTransformRegistryItem } from './editors/GroupingToMatrixTransformerEditor';
+import { config } from '@grafana/runtime';
 
-export const getStandardTransformers = (): Array<TransformerRegistryItem<any>> => {
+import { getFilterByValueTransformRegistryItem } from './FilterByValueTransformer/FilterByValueTransformerEditor';
+import { getHeatmapTransformRegistryItem } from './calculateHeatmap/HeatmapTransformerEditor';
+import { getConfigFromQueryTransformRegistryItem } from './configFromQuery/ConfigFromQueryTransformerEditor';
+import { getCalculateFieldTransformRegistryItem } from './editors/CalculateFieldTransformerEditor/CalculateFieldTransformerEditor';
+import { getConcatenateTransformRegistryItem } from './editors/ConcatenateTransformerEditor';
+import { getConvertFieldTypeTransformRegistryItem } from './editors/ConvertFieldTypeTransformerEditor';
+import { getFilterFieldsByNameTransformRegistryItem } from './editors/FilterByNameTransformerEditor';
+import { getFilterFramesByRefIdTransformRegistryItem } from './editors/FilterByRefIdTransformerEditor';
+import { getFormatStringTransformerRegistryItem } from './editors/FormatStringTransformerEditor';
+import { getFormatTimeTransformerRegistryItem } from './editors/FormatTimeTransformerEditor';
+import { getGroupByTransformRegistryItem } from './editors/GroupByTransformerEditor';
+import { getGroupToNestedTableTransformRegistryItem } from './editors/GroupToNestedTableTransformerEditor';
+import { getGroupingToMatrixTransformRegistryItem } from './editors/GroupingToMatrixTransformerEditor';
+import { getHistogramTransformRegistryItem } from './editors/HistogramTransformerEditor';
+import { getJoinByFieldTransformerRegistryItem } from './editors/JoinByFieldTransformerEditor';
+import { getLabelsToFieldsTransformerRegistryItem } from './editors/LabelsToFieldsTransformerEditor';
+import { getLimitTransformRegistryItem } from './editors/LimitTransformerEditor';
+import { getMergeTransformerRegistryItem } from './editors/MergeTransformerEditor';
+import { getOrganizeFieldsTransformRegistryItem } from './editors/OrganizeFieldsTransformerEditor';
+import { getReduceTransformRegistryItem } from './editors/ReduceTransformerEditor';
+import { getRenameByRegexTransformRegistryItem } from './editors/RenameByRegexTransformer';
+import { getSeriesToRowsTransformerRegistryItem } from './editors/SeriesToRowsTransformerEditor';
+import { getSortByTransformRegistryItem } from './editors/SortByTransformerEditor';
+import { getTransposeTransformerRegistryItem } from './editors/TransposeTransformerEditor';
+import { getExtractFieldsTransformRegistryItem } from './extractFields/ExtractFieldsTransformerEditor';
+import { getJoinByLabelsTransformRegistryItem } from './joinByLabels/JoinByLabelsTransformerEditor';
+import { getFieldLookupTransformRegistryItem } from './lookupGazetteer/FieldLookupTransformerEditor';
+import { getPartitionByValuesTransformRegistryItem } from './partitionByValues/PartitionByValuesEditor';
+import { getPrepareTimeseriesTransformerRegistryItem } from './prepareTimeSeries/PrepareTimeSeriesEditor';
+import { getRegressionTransformerRegistryItem } from './regression/regressionEditor';
+import { getRowsToFieldsTransformRegistryItem } from './rowsToFields/RowsToFieldsTransformerEditor';
+import { getSpatialTransformRegistryItem } from './spatial/SpatialTransformerEditor';
+import { getTimeSeriesTableTransformRegistryItem } from './timeSeriesTable/TimeSeriesTableTransformEditor';
+
+export const getStandardTransformers = (): TransformerRegistryItem[] => {
   return [
-    reduceTransformRegistryItem,
-    filterFieldsByNameTransformRegistryItem,
-    renameByRegexTransformRegistryItem,
-    filterFramesByRefIdTransformRegistryItem,
-    filterByValueTransformRegistryItem,
-    organizeFieldsTransformRegistryItem,
-    seriesToFieldsTransformerRegistryItem,
-    seriesToRowsTransformerRegistryItem,
-    concatenateTransformRegistryItem,
-    calculateFieldTransformRegistryItem,
-    labelsToFieldsTransformerRegistryItem,
-    groupByTransformRegistryItem,
-    sortByTransformRegistryItem,
-    mergeTransformerRegistryItem,
-    histogramTransformRegistryItem,
-    rowsToFieldsTransformRegistryItem,
-    configFromQueryTransformRegistryItem,
-    prepareTimeseriesTransformerRegistryItem,
-    convertFieldTypeTransformRegistryItem,
-    spatialTransformRegistryItem,
-    fieldLookupTransformRegistryItem,
-    extractFieldsTransformRegistryItem,
-    heatmapTransformRegistryItem,
-    groupingToMatrixTransformRegistryItem,
+    getReduceTransformRegistryItem(),
+    getFilterFieldsByNameTransformRegistryItem(),
+    getRenameByRegexTransformRegistryItem(),
+    getFilterFramesByRefIdTransformRegistryItem(),
+    getFilterByValueTransformRegistryItem(),
+    getOrganizeFieldsTransformRegistryItem(),
+    getJoinByFieldTransformerRegistryItem(),
+    getSeriesToRowsTransformerRegistryItem(),
+    getConcatenateTransformRegistryItem(),
+    getCalculateFieldTransformRegistryItem(),
+    getLabelsToFieldsTransformerRegistryItem(),
+    getGroupByTransformRegistryItem(),
+    getSortByTransformRegistryItem(),
+    getMergeTransformerRegistryItem(),
+    getHistogramTransformRegistryItem(),
+    getRowsToFieldsTransformRegistryItem(),
+    getConfigFromQueryTransformRegistryItem(),
+    getPrepareTimeseriesTransformerRegistryItem(),
+    getConvertFieldTypeTransformRegistryItem(),
+    getSpatialTransformRegistryItem(),
+    getFieldLookupTransformRegistryItem(),
+    getExtractFieldsTransformRegistryItem(),
+    getHeatmapTransformRegistryItem(),
+    getGroupingToMatrixTransformRegistryItem(),
+    getLimitTransformRegistryItem(),
+    getJoinByLabelsTransformRegistryItem(),
+    getRegressionTransformerRegistryItem(),
+    getPartitionByValuesTransformRegistryItem(),
+    ...(config.featureToggles.formatString ? [getFormatStringTransformerRegistryItem()] : []),
+    ...(config.featureToggles.groupToNestedTableTransformation ? [getGroupToNestedTableTransformRegistryItem()] : []),
+    getFormatTimeTransformerRegistryItem(),
+    getTimeSeriesTableTransformRegistryItem(),
+    getTransposeTransformerRegistryItem(),
   ];
 };

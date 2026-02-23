@@ -1,22 +1,28 @@
-import React, { useEffect } from 'react';
 import { css } from '@emotion/css';
+import { useEffect } from 'react';
+
 import {
   DataTransformerID,
-  FrameGeometrySource,
-  FrameGeometrySourceMode,
   GrafanaTheme2,
   PanelOptionsEditorBuilder,
   PluginState,
   StandardEditorContext,
   TransformerRegistryItem,
   TransformerUIProps,
+  TransformerCategory,
 } from '@grafana/data';
-
-import { isLineBuilderOption, spatialTransformer } from './spatialTransformer';
-import { addLocationFields } from 'app/features/geo/editor/locationEditor';
-import { getDefaultOptions, getTransformerOptionPane } from './optionsHelper';
-import { SpatialCalculation, SpatialOperation, SpatialAction, SpatialTransformOptions } from './models.gen';
+import { t } from '@grafana/i18n';
+import { FrameGeometrySourceMode } from '@grafana/schema';
 import { useTheme2 } from '@grafana/ui';
+import { addLocationFields } from 'app/features/geo/editor/locationEditor';
+
+import { getTransformationContent } from '../docs/getTransformationContent';
+import darkImage from '../images/dark/spatial.svg';
+import lightImage from '../images/light/spatial.svg';
+
+import { SpatialCalculation, SpatialOperation, SpatialAction, SpatialTransformOptions } from './models.gen';
+import { getDefaultOptions, getTransformerOptionPane } from './optionsHelper';
+import { isLineBuilderOption, getSpatialTransformer } from './spatialTransformer';
 
 // Nothing defined in state
 const supplier = (
@@ -34,15 +40,25 @@ const supplier = (
       options: [
         {
           value: SpatialAction.Prepare,
-          label: 'Prepare spatial field',
+          label: t('transformers.supplier.label.prepare-spatial-field', 'Prepare spatial field'),
           description: 'Set a geometry field based on the results of other fields',
         },
         {
           value: SpatialAction.Calculate,
-          label: 'Calculate value',
-          description: 'Use the geometry to define a new field (heading/distance/area)',
+          label: t('transformers.supplier.label.calculate-value', 'Calculate value'),
+          description: t(
+            'transformers.supplier.description.geometry-define-field-headingdistancearea',
+            'Use the geometry to define a new field (heading/distance/area)'
+          ),
         },
-        { value: SpatialAction.Modify, label: 'Transform', description: 'Apply spatial operations to the geometry' },
+        {
+          value: SpatialAction.Modify,
+          label: t('transformers.supplier.label.transform', 'Transform'),
+          description: t(
+            'transformers.supplier.description.apply-spatial-operations-to-the-geometry',
+            'Apply spatial operations to the geometry'
+          ),
+        },
       ],
     },
   });
@@ -55,9 +71,9 @@ const supplier = (
       defaultValue: SpatialCalculation.Heading,
       settings: {
         options: [
-          { value: SpatialCalculation.Heading, label: 'Heading' },
-          { value: SpatialCalculation.Area, label: 'Area' },
-          { value: SpatialCalculation.Distance, label: 'Distance' },
+          { value: SpatialCalculation.Heading, label: t('transformers.supplier.label.heading', 'Heading') },
+          { value: SpatialCalculation.Area, label: t('transformers.supplier.label.area', 'Area') },
+          { value: SpatialCalculation.Distance, label: t('transformers.supplier.label.distance', 'Distance') },
         ],
       },
     });
@@ -71,13 +87,16 @@ const supplier = (
         options: [
           {
             value: SpatialOperation.AsLine,
-            label: 'As line',
+            label: t('transformers.supplier.label.as-line', 'As line'),
             description: 'Create a single line feature with a vertex at each row',
           },
           {
             value: SpatialOperation.LineBuilder,
-            label: 'Line builder',
-            description: 'Create a line between two points',
+            label: t('transformers.supplier.label.line-builder', 'Line builder'),
+            description: t(
+              'transformers.supplier.description.create-a-line-between-two-points',
+              'Create a line between two points'
+            ),
           },
         ],
       },
@@ -89,10 +108,9 @@ const supplier = (
       category: ['Source'],
       path: 'source',
       build: (b, c) => {
-        const loc = (options.source ?? {}) as FrameGeometrySource;
-        if (!loc.mode) {
-          loc.mode = FrameGeometrySourceMode.Auto;
-        }
+        const loc = options.source ?? {
+          mode: FrameGeometrySourceMode.Auto,
+        };
         addLocationFields('Point', '', b, loc);
       },
     });
@@ -101,10 +119,9 @@ const supplier = (
       category: ['Target'],
       path: 'modify',
       build: (b, c) => {
-        const loc = (options.modify?.target ?? {}) as FrameGeometrySource;
-        if (!loc.mode) {
-          loc.mode = FrameGeometrySourceMode.Auto;
-        }
+        const loc = options.modify?.target ?? {
+          mode: FrameGeometrySourceMode.Auto,
+        };
         addLocationFields('Point', 'target.', b, loc);
       },
     });
@@ -113,7 +130,9 @@ const supplier = (
   }
 };
 
-export const SetGeometryTransformerEditor: React.FC<TransformerUIProps<SpatialTransformOptions>> = (props) => {
+type Props = TransformerUIProps<SpatialTransformOptions>;
+
+export const SetGeometryTransformerEditor = (props: Props) => {
   // a new component is created with every change :(
   useEffect(() => {
     if (!props.options.source?.mode) {
@@ -121,7 +140,8 @@ export const SetGeometryTransformerEditor: React.FC<TransformerUIProps<SpatialTr
       props.onChange({ ...opts, ...props.options });
       console.log('geometry useEffect', opts);
     }
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const styles = getStyles(useTheme2());
 
@@ -145,21 +165,28 @@ export const SetGeometryTransformerEditor: React.FC<TransformerUIProps<SpatialTr
 
 const getStyles = (theme: GrafanaTheme2) => {
   return {
-    wrap: css`
-      margin-bottom: 20px;
-    `,
-    item: css`
-      border-left: 4px solid ${theme.colors.border.strong};
-      padding-left: 10px;
-    `,
+    wrap: css({
+      marginBottom: '20px',
+    }),
+    item: css({
+      borderLeft: `4px solid ${theme.colors.border.strong}`,
+      paddingLeft: '10px',
+    }),
   };
 };
 
-export const spatialTransformRegistryItem: TransformerRegistryItem<SpatialTransformOptions> = {
-  id: DataTransformerID.spatial,
-  editor: SetGeometryTransformerEditor,
-  transformation: spatialTransformer,
-  name: spatialTransformer.name,
-  description: spatialTransformer.description,
-  state: PluginState.alpha,
+export const getSpatialTransformRegistryItem: () => TransformerRegistryItem<SpatialTransformOptions> = () => {
+  const spatialTransformer = getSpatialTransformer();
+  return {
+    id: DataTransformerID.spatial,
+    editor: SetGeometryTransformerEditor,
+    transformation: spatialTransformer,
+    name: spatialTransformer.name,
+    description: spatialTransformer.description,
+    state: PluginState.alpha,
+    categories: new Set([TransformerCategory.PerformSpatialOperations]),
+    help: getTransformationContent(DataTransformerID.spatial).helperDocs,
+    imageDark: darkImage,
+    imageLight: lightImage,
+  };
 };

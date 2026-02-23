@@ -1,10 +1,13 @@
-import React, { FC, MouseEvent } from 'react';
 import { css } from '@emotion/css';
-import { AnnotationEvent, DateTimeInput, GrafanaTheme2, PanelProps } from '@grafana/data';
-import { Card, TagList, Tooltip, useStyles2 } from '@grafana/ui';
-import { AnnoOptions } from './types';
+import { MouseEvent } from 'react';
 
-interface Props extends Pick<PanelProps<AnnoOptions>, 'options'> {
+import { AnnotationEvent, DateTimeInput, GrafanaTheme2, PanelProps } from '@grafana/data';
+import { Trans } from '@grafana/i18n';
+import { Card, RenderUserContentAsHTML, TagList, Tooltip, useStyles2 } from '@grafana/ui';
+
+import { Options } from './panelcfg.gen';
+
+interface Props extends Pick<PanelProps<Options>, 'options'> {
   annotation: AnnotationEvent;
   formatDate: (date: DateTimeInput, format?: string) => string;
   onClick: (annotation: AnnotationEvent) => void;
@@ -12,17 +15,10 @@ interface Props extends Pick<PanelProps<AnnoOptions>, 'options'> {
   onTagClick: (tag: string, remove?: boolean) => void;
 }
 
-export const AnnotationListItem: FC<Props> = ({
-  options,
-  annotation,
-  formatDate,
-  onClick,
-  onAvatarClick,
-  onTagClick,
-}) => {
+export const AnnotationListItem = ({ options, annotation, formatDate, onClick, onAvatarClick, onTagClick }: Props) => {
   const styles = useStyles2(getStyles);
   const { showUser, showTags, showTime } = options;
-  const { text, login, email, avatarUrl, tags, time, timeEnd } = annotation;
+  const { text = '', login, email, avatarUrl, tags, time, timeEnd } = annotation;
   const onItemClick = () => {
     onClick(annotation);
   };
@@ -34,9 +30,15 @@ export const AnnotationListItem: FC<Props> = ({
   const showTimeStampEnd = timeEnd && timeEnd !== time && showTime;
 
   return (
-    <Card className={styles.card} onClick={onItemClick}>
+    <Card noMargin className={styles.card} onClick={onItemClick}>
       <Card.Heading>
-        <span>{text}</span>
+        <RenderUserContentAsHTML
+          className={styles.heading}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+          content={text}
+        />
       </Card.Heading>
       {showTimeStamp && (
         <Card.Description className={styles.timestamp}>
@@ -70,7 +72,7 @@ interface AvatarProps {
   email?: string;
 }
 
-const Avatar: FC<AvatarProps> = ({ onClick, avatarUrl, login, email }) => {
+const Avatar = ({ onClick, avatarUrl, login, email }: AvatarProps) => {
   const styles = useStyles2(getStyles);
   const onAvatarClick = (e: MouseEvent) => {
     e.stopPropagation();
@@ -78,14 +80,16 @@ const Avatar: FC<AvatarProps> = ({ onClick, avatarUrl, login, email }) => {
   };
   const tooltipContent = (
     <span>
-      Created by:
-      <br /> {email}
+      <Trans i18nKey="annolist.annotation-list-item.tooltip-created-by">
+        Created by:
+        <br /> {{ email }}
+      </Trans>
     </span>
   );
 
   return (
     <Tooltip content={tooltipContent} theme="info" placement="top">
-      <button onClick={onAvatarClick} className={styles.avatar} aria-label={`Created by ${email}`}>
+      <button onClick={onAvatarClick} className={styles.avatar}>
         <img src={avatarUrl} alt="avatar icon" />
       </button>
     </Tooltip>
@@ -97,7 +101,7 @@ interface TimeStampProps {
   formatDate: (date: DateTimeInput, format?: string) => string;
 }
 
-const TimeStamp: FC<TimeStampProps> = ({ time, formatDate }) => {
+const TimeStamp = ({ time, formatDate }: TimeStampProps) => {
   const styles = useStyles2(getStyles);
 
   return (
@@ -115,6 +119,16 @@ function getStyles(theme: GrafanaTheme2) {
       padding: theme.spacing(1),
       margin: theme.spacing(0.5),
       width: 'inherit',
+    }),
+    heading: css({
+      a: {
+        zIndex: 1,
+        position: 'relative',
+        color: theme.colors.text.link,
+        '&:hover': {
+          textDecoration: 'underline',
+        },
+      },
     }),
     meta: css({
       margin: 0,
@@ -137,7 +151,7 @@ function getStyles(theme: GrafanaTheme2) {
       margin: 0,
       padding: theme.spacing(0.5),
       img: {
-        borderRadius: '50%',
+        borderRadius: theme.shape.radius.circle,
         width: theme.spacing(2),
         height: theme.spacing(2),
       },

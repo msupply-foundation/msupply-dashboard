@@ -1,11 +1,12 @@
-import { getTemplateSrv, TemplateSrv } from '@grafana/runtime';
 import { chunk, initial, startCase, uniqBy } from 'lodash';
+
+import { rangeUtil } from '@grafana/data';
+import { getTemplateSrv, TemplateSrv } from '@grafana/runtime';
 
 import { AGGREGATIONS, ALIGNMENTS, SYSTEM_LABELS } from './constants';
 import CloudMonitoringDatasource from './datasource';
-import { AlignmentTypes, MetricDescriptor, MetricKind, PreprocessorType, ValueTypes } from './types';
-
-const templateSrv: TemplateSrv = getTemplateSrv();
+import { AlignmentTypes, PreprocessorType, TimeSeriesList, MetricKind, ValueTypes } from './types/query';
+import { CustomMetaData, MetricDescriptor } from './types/types';
 
 export const extractServicesFromMetricDescriptors = (metricDescriptors: MetricDescriptor[]) =>
   uniqBy(metricDescriptors, 'service');
@@ -35,8 +36,8 @@ export const getMetricTypes = (
 };
 
 export const getAlignmentOptionsByMetric = (
-  metricValueType: string,
-  metricKind: string,
+  metricValueType?: string,
+  metricKind?: string,
   preprocessor?: PreprocessorType
 ) => {
   if (preprocessor && preprocessor === PreprocessorType.Rate) {
@@ -77,7 +78,8 @@ export const getAlignmentPickerData = (
   perSeriesAligner: string | undefined = AlignmentTypes.ALIGN_MEAN,
   preprocessor?: PreprocessorType
 ) => {
-  const alignOptions = getAlignmentOptionsByMetric(valueType!, metricKind!, preprocessor!).map((option) => ({
+  const templateSrv: TemplateSrv = getTemplateSrv();
+  const alignOptions = getAlignmentOptionsByMetric(valueType, metricKind, preprocessor).map((option) => ({
     ...option,
     label: option.text,
   }));
@@ -88,7 +90,15 @@ export const getAlignmentPickerData = (
 };
 
 export const labelsToGroupedOptions = (groupBys: string[]) => {
-  const groups = groupBys.reduce((acc: any, curr: string) => {
+  const groups = groupBys.reduce<
+    Record<
+      string,
+      Array<{
+        value: string;
+        label: string;
+      }>
+    >
+  >((acc, curr) => {
     const arr = curr.split('.').map(startCase);
     const group = (arr.length === 2 ? arr : initial(arr)).join(' ');
     const option = {
@@ -112,3 +122,37 @@ export const stringArrayToFilters = (filterArray: string[]) =>
     value,
     condition,
   }));
+
+export const alignmentPeriodLabel = (customMetaData: CustomMetaData, datasource: CloudMonitoringDatasource) => {
+  const { perSeriesAligner, alignmentPeriod } = customMetaData;
+  if (!alignmentPeriod || !perSeriesAligner) {
+    return '';
+  }
+
+  const alignment = ALIGNMENTS.find((ap) => ap.value === datasource.templateSrv.replace(perSeriesAligner));
+  const seconds = parseInt(alignmentPeriod, 10);
+  const hms = rangeUtil.secondsToHms(seconds);
+  return `${hms} interval (${alignment?.text ?? ''})`;
+};
+
+export const getMetricType = (query?: TimeSeriesList) => {
+  const metricTypeKey = query?.filters?.findIndex((f) => f === 'metric.type')!;
+  // filters are in the format [key, operator, value] so we need to add 2 to get the value
+  const metricType = query?.filters?.[metricTypeKey + 2];
+  return metricType || '';
+};
+
+export const setMetricType = (query: TimeSeriesList, metricType: string) => {
+  if (!query.filters) {
+    query.filters = ['metric.type', '=', metricType];
+    return query;
+  }
+  const metricTypeKey = query?.filters?.findIndex((f) => f === 'metric.type')!;
+  if (metricTypeKey === -1) {
+    query.filters.push('metric.type', '=', metricType);
+  } else {
+    // filters are in the format [key, operator, value] so we need to add 2 to get the value
+    query.filters![metricTypeKey + 2] = metricType;
+  }
+  return query;
+};

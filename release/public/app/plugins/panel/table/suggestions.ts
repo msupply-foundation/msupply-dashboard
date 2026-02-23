@@ -1,11 +1,13 @@
 import { VisualizationSuggestionsBuilder } from '@grafana/data';
 import { TableFieldOptions } from '@grafana/schema';
+import icnTablePanelSvg from 'app/plugins/panel/table/img/icn-table-panel.svg';
 import { SuggestionName } from 'app/types/suggestions';
-import { PanelOptions } from './models.gen';
+
+import { Options } from './panelcfg.gen';
 
 export class TableSuggestionsSupplier {
   getSuggestionsForData(builder: VisualizationSuggestionsBuilder) {
-    const list = builder.getListAppender<PanelOptions, TableFieldOptions>({
+    const list = builder.getListAppender<Options, TableFieldOptions>({
       name: SuggestionName.Table,
       pluginId: 'table',
       options: {},
@@ -26,7 +28,7 @@ export class TableSuggestionsSupplier {
     if (builder.dataSummary.fieldCount === 0) {
       list.append({
         cardOptions: {
-          imgSrc: 'public/app/plugins/panel/table/img/icn-table-panel.svg',
+          imgSrc: icnTablePanelSvg,
         },
       });
     } else {

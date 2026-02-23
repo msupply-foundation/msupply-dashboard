@@ -1,29 +1,30 @@
-import { InlineField, Input } from '@grafana/ui';
-import React, { FC, useState } from 'react';
+import { useState } from 'react';
 
-const LABEL_WIDTH = 20;
-const TEXT_WIDTH = 100;
+import { EditorField } from '@grafana/plugin-ui';
+import { Input, PopoverContent } from '@grafana/ui';
 
-interface VariableTextFieldProps {
+import { removeMarginBottom } from '../styles';
+
+interface Props {
   onBlur: (value: string) => void;
-  placeholder: string;
   value: string;
   label: string;
-  tooltip?: string;
+  placeholder?: string;
+  tooltip?: PopoverContent;
+  interactive?: boolean;
 }
 
-export const VariableTextField: FC<VariableTextFieldProps> = ({ label, onBlur, placeholder, value, tooltip }) => {
+export const VariableTextField = ({ interactive, label, onBlur, placeholder, value, tooltip }: Props) => {
   const [localValue, setLocalValue] = useState(value);
   return (
-    <InlineField label={label} labelWidth={LABEL_WIDTH} tooltip={tooltip}>
+    <EditorField label={label} tooltip={tooltip} tooltipInteractive={interactive} className={removeMarginBottom}>
       <Input
         aria-label={label}
         placeholder={placeholder}
         value={localValue}
         onChange={(e) => setLocalValue(e.currentTarget.value)}
         onBlur={() => onBlur(localValue)}
-        width={TEXT_WIDTH}
       />
-    </InlineField>
+    </EditorField>
   );
 };

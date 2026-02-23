@@ -1,35 +1,47 @@
-import React, { FC, useCallback } from 'react';
+import { useCallback, useId } from 'react';
+
 import {
   FieldNamePickerConfigSettings,
   StandardEditorProps,
   StandardEditorsRegistryItem,
   StringFieldConfigSettings,
 } from '@grafana/data';
-import { Button, InlineField, InlineFieldRow, RadioButtonGroup, StringValueEditor } from '@grafana/ui';
+import { t } from '@grafana/i18n';
+import { TextDimensionConfig, TextDimensionMode } from '@grafana/schema';
+import { Button, InlineField, InlineFieldRow, RadioButtonGroup } from '@grafana/ui';
+import { FieldNamePicker } from '@grafana/ui/internal';
+import { StringValueEditor } from 'app/core/components/OptionsUI/string';
 
-import { TextDimensionConfig, TextDimensionMode, TextDimensionOptions } from '../types';
-import { FieldNamePicker } from '../../../../../packages/grafana-ui/src/components/MatchersUI/FieldNamePicker';
+import { TextDimensionOptions } from '../types';
 
-const textOptions = [
-  { label: 'Fixed', value: TextDimensionMode.Fixed, description: 'Fixed value' },
-  { label: 'Field', value: TextDimensionMode.Field, description: 'Display field value' },
-  //  { label: 'Template', value: TextDimensionMode.Template, description: 'use template text' },
-];
-
-const dummyFieldSettings: StandardEditorsRegistryItem<string, FieldNamePickerConfigSettings> = {
+const dummyFieldSettings = {
   settings: {},
-} as any;
+} as StandardEditorsRegistryItem<string, FieldNamePickerConfigSettings>;
 
-const dummyStringSettings: StandardEditorsRegistryItem<string, StringFieldConfigSettings> = {
+const dummyStringSettings = {
   settings: {},
-} as any;
+} as StandardEditorsRegistryItem<string, StringFieldConfigSettings>;
 
-export const TextDimensionEditor: FC<StandardEditorProps<TextDimensionConfig, TextDimensionOptions, any>> = (props) => {
-  const { value, context, onChange } = props;
+type Props = StandardEditorProps<TextDimensionConfig, TextDimensionOptions>;
+
+export const TextDimensionEditor = ({ value, context, onChange }: Props) => {
+  const textOptions = [
+    {
+      label: t('dimensions.text-dimension-editor.label-fixed', 'Fixed'),
+      value: TextDimensionMode.Fixed,
+      description: t('dimensions.text-dimension-editor.description-fixed', 'Fixed value'),
+    },
+    {
+      label: t('dimensions.text-dimension-editor.label-field', 'Field'),
+      value: TextDimensionMode.Field,
+      description: t('dimensions.text-dimension-editor.description-field', 'Display field value'),
+    },
+    //  { label: 'Template', value: TextDimensionMode.Template, description: 'use template text' },
+  ];
   const labelWidth = 9;
 
   const onModeChange = useCallback(
-    (mode) => {
+    (mode: TextDimensionMode) => {
       onChange({
         ...value,
         mode,
@@ -39,7 +51,7 @@ export const TextDimensionEditor: FC<StandardEditorProps<TextDimensionConfig, Te
   );
 
   const onFieldChange = useCallback(
-    (field) => {
+    (field?: string) => {
       onChange({
         ...value,
         field,
@@ -49,7 +61,7 @@ export const TextDimensionEditor: FC<StandardEditorProps<TextDimensionConfig, Te
   );
 
   const onFixedChange = useCallback(
-    (fixed) => {
+    (fixed = '') => {
       onChange({
         ...value,
         fixed,
@@ -58,25 +70,35 @@ export const TextDimensionEditor: FC<StandardEditorProps<TextDimensionConfig, Te
     [onChange, value]
   );
 
-  const onClearFixedText = () => {
-    // Need to first change to field in order to clear fixed value in editor
-    onChange({ mode: TextDimensionMode.Field, fixed: '', field: '' });
-    onChange({ mode: TextDimensionMode.Fixed, fixed: '', field: '' });
+  const onClearFixed = () => {
+    onFixedChange('');
   };
 
-  const mode = value?.mode ?? TextDimensionMode.Fixed;
+  const fieldInputId = useId();
+  const valueInputId = useId();
+  const templateInputId = useId();
 
+  const mode = value?.mode ?? TextDimensionMode.Fixed;
   return (
     <>
       <InlineFieldRow>
-        <InlineField label="Source" labelWidth={labelWidth} grow={true}>
+        <InlineField
+          label={t('dimensions.text-dimension-editor.label-source', 'Source')}
+          labelWidth={labelWidth}
+          grow={true}
+        >
           <RadioButtonGroup value={mode} options={textOptions} onChange={onModeChange} fullWidth />
         </InlineField>
       </InlineFieldRow>
       {mode !== TextDimensionMode.Fixed && (
         <InlineFieldRow>
-          <InlineField label="Field" labelWidth={labelWidth} grow={true}>
+          <InlineField
+            label={t('dimensions.text-dimension-editor.label-field', 'Field')}
+            labelWidth={labelWidth}
+            grow={true}
+          >
             <FieldNamePicker
+              id={fieldInputId}
               context={context}
               value={value.field ?? ''}
               onChange={onFieldChange}
@@ -86,26 +108,43 @@ export const TextDimensionEditor: FC<StandardEditorProps<TextDimensionConfig, Te
         </InlineFieldRow>
       )}
       {mode === TextDimensionMode.Fixed && (
-        <InlineFieldRow>
-          <InlineField label={'Value'} labelWidth={labelWidth} grow={true}>
-            <>
-              <StringValueEditor
-                context={context}
-                value={value?.fixed}
-                onChange={onFixedChange}
-                item={dummyStringSettings}
-              />
-              {value?.fixed && (
-                <Button icon="times" variant="secondary" fill="text" size="sm" onClick={onClearFixedText} />
-              )}
-            </>
+        <InlineFieldRow key={value?.fixed}>
+          <InlineField
+            label={t('dimensions.text-dimension-editor.label-value', 'Value')}
+            labelWidth={labelWidth}
+            grow={true}
+          >
+            <StringValueEditor
+              id={valueInputId}
+              context={context}
+              value={value?.fixed}
+              onChange={onFixedChange}
+              item={dummyStringSettings}
+              suffix={
+                value?.fixed && (
+                  <Button
+                    aria-label={t('dimensions.text-dimension-editor.aria-label-clear-value', 'Clear value')}
+                    icon="times"
+                    variant="secondary"
+                    fill="text"
+                    size="sm"
+                    onClick={onClearFixed}
+                  />
+                )
+              }
+            />
           </InlineField>
         </InlineFieldRow>
       )}
       {mode === TextDimensionMode.Template && (
         <InlineFieldRow>
-          <InlineField label="Template" labelWidth={labelWidth} grow={true}>
+          <InlineField
+            label={t('dimensions.text-dimension-editor.label-template', 'Template')}
+            labelWidth={labelWidth}
+            grow={true}
+          >
             <StringValueEditor // This could be a code editor
+              id={templateInputId}
               context={context}
               value={value?.fixed}
               onChange={onFixedChange}

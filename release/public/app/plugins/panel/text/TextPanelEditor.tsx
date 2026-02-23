@@ -1,21 +1,19 @@
-import React, { FC, useMemo } from 'react';
 import { css, cx } from '@emotion/css';
-import AutoSizer from 'react-virtualized-auto-sizer';
+import { useMemo } from 'react';
+
+import { GrafanaTheme2, StandardEditorProps } from '@grafana/data';
 import {
   CodeEditor,
-  stylesFactory,
-  useTheme,
+  useStyles2,
   CodeEditorSuggestionItem,
   variableSuggestionToCodeEditorSuggestion,
 } from '@grafana/ui';
-import { GrafanaTheme, StandardEditorProps } from '@grafana/data';
 
-import { PanelOptions, TextMode } from './models.gen';
+import { Options, TextMode } from './panelcfg.gen';
 
-export const TextPanelEditor: FC<StandardEditorProps<string, any, PanelOptions>> = ({ value, onChange, context }) => {
+export const TextPanelEditor = ({ value, onChange, context }: StandardEditorProps<string, {}, Options>) => {
   const language = useMemo(() => context.options?.mode ?? TextMode.Markdown, [context]);
-  const theme = useTheme();
-  const styles = getStyles(theme);
+  const styles = useStyles2(getStyles);
 
   const getSuggestions = (): CodeEditorSuggestionItem[] => {
     if (!context.getSuggestions) {
@@ -26,36 +24,25 @@ export const TextPanelEditor: FC<StandardEditorProps<string, any, PanelOptions>>
 
   return (
     <div className={cx(styles.editorBox)}>
-      <AutoSizer disableHeight>
-        {({ width }) => {
-          if (width === 0) {
-            return null;
-          }
-          return (
-            <CodeEditor
-              value={value}
-              onBlur={onChange}
-              onSave={onChange}
-              language={language}
-              width={width}
-              showMiniMap={false}
-              showLineNumbers={false}
-              height="500px"
-              getSuggestions={getSuggestions}
-            />
-          );
-        }}
-      </AutoSizer>
+      <CodeEditor
+        value={value}
+        onBlur={onChange}
+        onSave={onChange}
+        language={language}
+        width="100%"
+        showMiniMap={false}
+        showLineNumbers={false}
+        height="500px"
+        getSuggestions={getSuggestions}
+      />
     </div>
   );
 };
 
-const getStyles = stylesFactory((theme: GrafanaTheme) => ({
-  editorBox: css`
-    label: editorBox;
-    border: ${theme.border.width.sm} solid ${theme.colors.border2};
-    border-radius: ${theme.border.radius.sm};
-    margin: ${theme.spacing.xs} 0;
-    width: 100%;
-  `,
-}));
+const getStyles = (theme: GrafanaTheme2) => ({
+  editorBox: css({
+    label: 'editorBox',
+    margin: theme.spacing(0.5, 0),
+    width: '100%',
+  }),
+});

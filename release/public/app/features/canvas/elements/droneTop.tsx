@@ -1,11 +1,13 @@
-import React, { FC } from 'react';
 import { css } from '@emotion/css';
-import { GrafanaTheme2 } from '@grafana/data';
-import { useStyles2 } from '@grafana/ui';
 
-import { ScalarDimensionEditor } from 'app/features/dimensions/editors';
-import { CanvasElementItem, CanvasElementProps } from '../element';
-import { DimensionContext, ScalarDimensionConfig } from 'app/features/dimensions';
+import { GrafanaTheme2 } from '@grafana/data';
+import { t } from '@grafana/i18n';
+import { ScalarDimensionConfig } from '@grafana/schema';
+import { useStyles2 } from '@grafana/ui';
+import { DimensionContext } from 'app/features/dimensions/context';
+import { ScalarDimensionEditor } from 'app/features/dimensions/editors/ScalarDimensionEditor';
+
+import { CanvasElementItem, CanvasElementOptions, CanvasElementProps, defaultBgColor } from '../element';
 
 interface DroneTopData {
   bRightRotorRPM?: number;
@@ -23,10 +25,8 @@ interface DroneTopConfig {
   yawAngle?: ScalarDimensionConfig;
 }
 
-const DroneTopDisplay: FC<CanvasElementProps<DroneTopConfig, DroneTopData>> = (props) => {
+const DroneTopDisplay = ({ data }: CanvasElementProps<DroneTopConfig, DroneTopData>) => {
   const styles = useStyles2(getStyles);
-
-  const { data } = props;
 
   const fRightRotorAnimation = `spin ${data?.fRightRotorRPM ? 60 / Math.abs(data.fRightRotorRPM) : 0}s linear infinite`;
 
@@ -44,7 +44,7 @@ const DroneTopDisplay: FC<CanvasElementProps<DroneTopConfig, DroneTopData>> = (p
       xmlnsXlink="http://www.w3.org/1999/xlink"
       viewBox="-43 -43 640 640"
       xmlSpace="preserve"
-      style={{ transform: droneTopTransformStyle }}
+      style={{ transform: droneTopTransformStyle, fill: defaultBgColor }}
     >
       <path
         fillRule="evenodd"
@@ -80,7 +80,7 @@ const DroneTopDisplay: FC<CanvasElementProps<DroneTopConfig, DroneTopData>> = (p
   );
 };
 
-export const droneTopItem: CanvasElementItem<any, any> = {
+export const droneTopItem: CanvasElementItem = {
   id: 'droneTop',
   name: 'Drone Top',
   description: 'Drone top',
@@ -94,80 +94,100 @@ export const droneTopItem: CanvasElementItem<any, any> = {
 
   getNewOptions: (options) => ({
     ...options,
+    background: {
+      color: {
+        fixed: 'transparent',
+      },
+    },
+    links: options?.links ?? [],
   }),
 
   // Called when data changes
-  prepareData: (ctx: DimensionContext, cfg: DroneTopConfig) => {
+  prepareData: (dimensionContext: DimensionContext, elementOptions: CanvasElementOptions<DroneTopConfig>) => {
+    const droneTopConfig = elementOptions.config;
+
     const data: DroneTopData = {
-      bRightRotorRPM: cfg?.bRightRotorRPM ? ctx.getScalar(cfg.bRightRotorRPM).value() : 0,
-      bLeftRotorRPM: cfg?.bLeftRotorRPM ? ctx.getScalar(cfg.bLeftRotorRPM).value() : 0,
-      fRightRotorRPM: cfg?.fRightRotorRPM ? ctx.getScalar(cfg.fRightRotorRPM).value() : 0,
-      fLeftRotorRPM: cfg?.fLeftRotorRPM ? ctx.getScalar(cfg.fLeftRotorRPM).value() : 0,
-      yawAngle: cfg?.yawAngle ? ctx.getScalar(cfg.yawAngle).value() : 0,
+      bRightRotorRPM: droneTopConfig?.bRightRotorRPM
+        ? dimensionContext.getScalar(droneTopConfig.bRightRotorRPM).value()
+        : 0,
+      bLeftRotorRPM: droneTopConfig?.bLeftRotorRPM
+        ? dimensionContext.getScalar(droneTopConfig.bLeftRotorRPM).value()
+        : 0,
+      fRightRotorRPM: droneTopConfig?.fRightRotorRPM
+        ? dimensionContext.getScalar(droneTopConfig.fRightRotorRPM).value()
+        : 0,
+      fLeftRotorRPM: droneTopConfig?.fLeftRotorRPM
+        ? dimensionContext.getScalar(droneTopConfig.fLeftRotorRPM).value()
+        : 0,
+      yawAngle: droneTopConfig?.yawAngle ? dimensionContext.getScalar(droneTopConfig.yawAngle).value() : 0,
     };
 
     return data;
   },
 
   registerOptionsUI: (builder) => {
-    const category = ['Drone Top'];
+    const category = [t('canvas.drone-top-item.category-drone-top', 'Drone Top')];
     builder
       .addCustomEditor({
         category,
         id: 'yawAngle',
         path: 'config.yawAngle',
-        name: 'Yaw Angle',
+        name: t('canvas.drone-top-item.name-yaw-angle', 'Yaw Angle'),
         editor: ScalarDimensionEditor,
       })
       .addCustomEditor({
         category,
         id: 'fRightRotorRPM',
         path: 'config.fRightRotorRPM',
-        name: 'Front Right Rotor RPM',
+        name: t('canvas.drone-top-item.name-front-right-rotor-rpm', 'Front Right Rotor RPM'),
         editor: ScalarDimensionEditor,
       })
       .addCustomEditor({
         category,
         id: 'fLeftRotorRPM',
         path: 'config.fLeftRotorRPM',
-        name: 'Front Left Rotor RPM',
+        name: t('canvas.drone-top-item.name-front-left-rotor-rpm', 'Front Left Rotor RPM'),
         editor: ScalarDimensionEditor,
       })
       .addCustomEditor({
         category,
         id: 'bRightRotorRPM',
         path: 'config.bRightRotorRPM',
-        name: 'Back Right Rotor RPM',
+        name: t('canvas.drone-top-item.name-back-right-rotor-rpm', 'Back Right Rotor RPM'),
         editor: ScalarDimensionEditor,
       })
       .addCustomEditor({
         category,
         id: 'bLeftRotorRPM',
         path: 'config.bLeftRotorRPM',
-        name: 'Back Left Rotor RPM',
+        name: t('canvas.drone-top-item.name-back-left-rotor-rpm', 'Back Left Rotor RPM'),
         editor: ScalarDimensionEditor,
       });
   },
 };
 
 const getStyles = (theme: GrafanaTheme2) => ({
-  propeller: css`
-    transform-origin: 50% 50%;
-    transform-box: fill-box;
-    display: block;
-    @keyframes spin {
-      from {
-        transform: rotate(0deg);
-      }
-      to {
-        transform: rotate(360deg);
-      }
-    }
-  `,
-  propellerCW: css`
-    animation-direction: normal;
-  `,
-  propellerCCW: css`
-    animation-direction: reverse;
-  `,
+  propeller: css({
+    transformOrigin: '50% 50%',
+    transformBox: 'fill-box',
+    display: 'block',
+    '@keyframes spin': {
+      from: {
+        transform: 'rotate(0deg)',
+      },
+      to: {
+        transform: 'rotate(360deg)',
+      },
+    },
+  }),
+  propellerCW: css({
+    // TODO: figure out what styles to apply when prefers-reduced-motion is set
+    // eslint-disable-next-line @grafana/no-unreduced-motion
+    animationDirection: 'normal',
+  }),
+  propellerCCW: css({
+    // TODO: figure out what styles to apply when prefers-reduced-motion is set
+    // eslint-disable-next-line @grafana/no-unreduced-motion
+    animationDirection: 'reverse',
+  }),
 });

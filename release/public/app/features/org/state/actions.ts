@@ -1,13 +1,15 @@
-import { ThunkResult } from 'app/types';
 import { getBackendSrv } from '@grafana/runtime';
-import { organizationLoaded, userOrganizationsLoaded } from './reducers';
 import { updateConfigurationSubtitle } from 'app/core/actions';
+import { ThunkResult } from 'app/types/store';
+import { UserOrg } from 'app/types/user';
+
+import { organizationLoaded, userOrganizationsLoaded } from './reducers';
 
 type OrganizationDependencies = { getBackendSrv: typeof getBackendSrv };
 
 export function loadOrganization(
   dependencies: OrganizationDependencies = { getBackendSrv: getBackendSrv }
-): ThunkResult<any> {
+): ThunkResult<void> {
   return async (dispatch) => {
     const organizationResponse = await dependencies.getBackendSrv().get('/api/org');
     dispatch(organizationLoaded(organizationResponse));
@@ -18,7 +20,7 @@ export function loadOrganization(
 
 export function updateOrganization(
   dependencies: OrganizationDependencies = { getBackendSrv: getBackendSrv }
-): ThunkResult<any> {
+): ThunkResult<void> {
   return async (dispatch, getStore) => {
     const organization = getStore().organization.organization;
 
@@ -32,7 +34,7 @@ export function updateOrganization(
 export function setUserOrganization(
   orgId: number,
   dependencies: OrganizationDependencies = { getBackendSrv: getBackendSrv }
-): ThunkResult<any> {
+): ThunkResult<void> {
   return async (dispatch) => {
     const organizationResponse = await dependencies.getBackendSrv().post('/api/user/using/' + orgId);
 
@@ -43,7 +45,7 @@ export function setUserOrganization(
 export function createOrganization(
   newOrg: { name: string },
   dependencies: OrganizationDependencies = { getBackendSrv: getBackendSrv }
-): ThunkResult<any> {
+): ThunkResult<void> {
   return async (dispatch) => {
     const result = await dependencies.getBackendSrv().post('/api/orgs/', newOrg);
 
@@ -53,9 +55,9 @@ export function createOrganization(
 
 export function getUserOrganizations(
   dependencies: OrganizationDependencies = { getBackendSrv: getBackendSrv }
-): ThunkResult<any> {
+): ThunkResult<Promise<UserOrg[]>> {
   return async (dispatch) => {
-    const result = await dependencies.getBackendSrv().get('/api/user/orgs');
+    const result = await dependencies.getBackendSrv().get<UserOrg[]>('/api/user/orgs');
     dispatch(userOrganizationsLoaded(result));
 
     return result;

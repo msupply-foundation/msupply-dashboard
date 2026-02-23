@@ -1,5 +1,7 @@
+import { isString } from 'lodash';
 import { Observable, of, OperatorFunction } from 'rxjs';
 import { map, mergeMap } from 'rxjs/operators';
+
 import {
   AnnotationEvent,
   AnnotationEventFieldSource,
@@ -7,14 +9,16 @@ import {
   AnnotationQuery,
   AnnotationSupport,
   DataFrame,
+  DataSourceApi,
+  DataTransformContext,
   Field,
   FieldType,
   getFieldDisplayName,
   KeyValue,
   standardTransformers,
 } from '@grafana/data';
-
-import { isString } from 'lodash';
+import { t } from '@grafana/i18n';
+import { config } from 'app/core/config';
 
 export const standardAnnotationSupport: AnnotationSupport = {
   /**
@@ -26,23 +30,22 @@ export const standardAnnotationSupport: AnnotationSupport = {
       return {
         ...rest,
         target: {
+          refId: 'annotation_query',
           query,
         },
         mappings: {},
       };
     }
-    return json as AnnotationQuery;
+    return json;
   },
 
   /**
-   * Convert the stored JSON model and environment to a standard data source query object.
-   * This query will be executed in the data source and the results converted into events.
-   * Returning an undefined result will quietly skip query execution
+   * Default will just return target from the annotation.
    */
   prepareQuery: (anno: AnnotationQuery) => anno.target,
 
   /**
-   * When the standard frame > event processing is insufficient, this allows explicit control of the mappings
+   * Provides default processing from dataFrame to annotation events.
    */
   processEvents: (anno: AnnotationQuery, data: DataFrame[]) => {
     return getAnnotationsFromData(data, anno.mappings);
@@ -50,7 +53,7 @@ export const standardAnnotationSupport: AnnotationSupport = {
 };
 
 /**
- * Flatten all panel data into a single frame
+ * Flatten all frames into a single frame with mergeTransformer.
  */
 
 export function singleFrameFromPanelData(): OperatorFunction<DataFrame[], DataFrame | undefined> {
@@ -65,8 +68,12 @@ export function singleFrameFromPanelData(): OperatorFunction<DataFrame[], DataFr
           return of(data[0]);
         }
 
+        const ctx: DataTransformContext = {
+          interpolate: (v: string) => v,
+        };
+
         return of(data).pipe(
-          standardTransformers.mergeTransformer.operator({}),
+          standardTransformers.mergeTransformer.operator({}, ctx),
           map((d) => d[0])
         );
       })
@@ -83,7 +90,7 @@ interface AnnotationEventFieldSetter {
 
 export interface AnnotationFieldInfo {
   key: keyof AnnotationEvent;
-
+  label?: string;
   split?: string;
   field?: (frame: DataFrame) => Field | undefined;
   placeholder?: string;
@@ -91,31 +98,66 @@ export interface AnnotationFieldInfo {
 }
 
 // These fields get added to the standard UI
-export const annotationEventNames: AnnotationFieldInfo[] = [
+export const getAnnotationEventNames: () => AnnotationFieldInfo[] = () => [
   {
     key: 'time',
     field: (frame: DataFrame) => frame.fields.find((f) => f.type === FieldType.time),
-    placeholder: 'time, or the first time field',
+    placeholder: t(
+      'annotations.get-annotation-event-names.placeholder.time-or-the-first-field',
+      '{{defaultField}}, or the first time field',
+      { defaultField: 'time' }
+    ),
   },
-  { key: 'timeEnd', help: 'When this field is defined, the annotation will be treated as a range' },
+  {
+    key: 'timeEnd',
+    // label: 'end time',
+    help: t(
+      'annotations.get-annotation-event-names.help.annotation-treated-as-range',
+      'When this field is defined, the annotation will be treated as a range'
+    ),
+  },
   {
     key: 'title',
   },
   {
     key: 'text',
     field: (frame: DataFrame) => frame.fields.find((f) => f.type === FieldType.string),
-    placeholder: 'text, or the first text field',
+    placeholder: t(
+      'annotations.get-annotation-event-names.placeholder.text-or-the-first-field',
+      '{{defaultField}}, or the first text field',
+      { defaultField: 'text' }
+    ),
   },
-  { key: 'tags', split: ',', help: 'The results will be split on comma (,)' },
+  {
+    key: 'tags',
+    split: ',',
+    help: t(
+      'annotations.get-annotation-event-names.help.results-split-on-comma',
+      'The results will be split on comma (,)'
+    ),
+  },
   {
     key: 'id',
+  },
+];
+
+export const publicDashboardEventNames: AnnotationFieldInfo[] = [
+  {
+    key: 'color',
+  },
+  {
+    key: 'isRegion',
+  },
+  {
+    key: 'source',
   },
 ];
 
 // Given legacy infrastructure, alert events are passed though the same annotation
 // pipeline, but include fields that should not be exposed generally
 const alertEventAndAnnotationFields: AnnotationFieldInfo[] = [
-  ...annotationEventNames,
+  ...(config.publicDashboardAccessToken ? publicDashboardEventNames : []),
+  ...getAnnotationEventNames(),
   { key: 'userId' },
   { key: 'login' },
   { key: 'email' },
@@ -125,6 +167,7 @@ const alertEventAndAnnotationFields: AnnotationFieldInfo[] = [
   { key: 'panelId' },
   { key: 'alertId' },
   { key: 'dashboardId' },
+  { key: 'dashboardUID' },
 ];
 
 export function getAnnotationsFromData(
@@ -184,7 +227,8 @@ export function getAnnotationsFromData(
       }
 
       if (!hasTime || !hasText) {
-        return []; // throw an error?
+        console.error('Cannot process annotation fields. No time or text present.');
+        return [];
       }
 
       // Add each value to the string
@@ -197,12 +241,12 @@ export function getAnnotationsFromData(
         };
 
         for (const f of fields) {
-          let v: any = undefined;
+          let v = undefined;
 
           if (f.text) {
             v = f.text; // TODO support templates!
           } else if (f.field) {
-            v = f.field.values.get(i);
+            v = f.field.values[i];
             if (v !== undefined && f.regex) {
               const match = f.regex.exec(v);
               if (match) {
@@ -215,7 +259,7 @@ export function getAnnotationsFromData(
             if (f.split && typeof v === 'string') {
               v = v.split(',');
             }
-            (anno as any)[f.key] = v;
+            anno[f.key] = v;
           }
         }
 
@@ -225,4 +269,33 @@ export function getAnnotationsFromData(
       return events;
     })
   );
+}
+
+// These opt outs are here only for quicker and easier migration to react based annotations editors and because
+// annotation support API needs some work to support less "standard" editors like prometheus and here it is not
+// polluting public API.
+
+const legacyRunner = [
+  'loki',
+  'elasticsearch',
+  'grafana-opensearch-datasource', // external
+];
+
+/**
+ * Opt out of using the default mapping functionality on frontend.
+ */
+export function shouldUseMappingUI(datasource: DataSourceApi): boolean {
+  const { type } = datasource;
+  return !(
+    type === 'datasource' || //  ODD behavior for "-- Grafana --" datasource
+    legacyRunner.includes(type)
+  );
+}
+
+/**
+ * Use legacy runner. Used only as an escape hatch for easier transition to React based annotation editor.
+ */
+export function shouldUseLegacyRunner(datasource: DataSourceApi): boolean {
+  const { type } = datasource;
+  return legacyRunner.includes(type);
 }

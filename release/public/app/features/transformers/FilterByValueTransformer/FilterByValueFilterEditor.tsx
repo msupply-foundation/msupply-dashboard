@@ -1,7 +1,10 @@
-import React, { useCallback } from 'react';
-import { Button, Select } from '@grafana/ui';
+import { useCallback } from 'react';
+
 import { Field, SelectableValue, valueMatchers } from '@grafana/data';
-import { FilterByValueFilter } from '@grafana/data/src/transformations/transformers/filterByValue';
+import { FilterByValueFilter } from '@grafana/data/internal';
+import { t } from '@grafana/i18n';
+import { Button, Select, InlineField, InlineFieldRow, Box } from '@grafana/ui';
+
 import { valueMatchersUI } from './ValueMatchers/valueMatchersUI';
 
 interface Props {
@@ -16,7 +19,7 @@ export interface DataFrameFieldsInfo {
   fieldByDisplayName: Record<string, Field>;
 }
 
-export const FilterByValueFilterEditor: React.FC<Props> = (props) => {
+export const FilterByValueFilterEditor = (props: Props) => {
   const { onDelete, onChange, filter, fieldsInfo } = props;
   const { fieldsAsOptions, fieldByDisplayName } = fieldsInfo;
   const fieldName = getFieldName(filter, fieldsAsOptions) ?? '';
@@ -56,7 +59,7 @@ export const FilterByValueFilterEditor: React.FC<Props> = (props) => {
   );
 
   const onChangeMatcherOptions = useCallback(
-    (options) => {
+    (options: unknown) => {
       onChange({
         ...filter,
         config: {
@@ -73,37 +76,37 @@ export const FilterByValueFilterEditor: React.FC<Props> = (props) => {
   }
 
   return (
-    <div className="gf-form-inline">
-      <div className="gf-form gf-form-spacing">
-        <div className="gf-form-label width-7">Field</div>
+    <InlineFieldRow>
+      <InlineField label={t('transformers.filter-by-value-filter-editor.label-field', 'Field')} labelWidth={14}>
         <Select
-          menuShouldPortal
           className="min-width-15 max-width-24"
-          placeholder="Field Name"
+          placeholder={t('transformers.filter-by-value-filter-editor.placeholder-field-name', 'Field name')}
           options={fieldsAsOptions}
           value={filter.fieldName}
           onChange={onChangeField}
         />
-      </div>
-      <div className="gf-form gf-form-spacing">
-        <div className="gf-form-label">Match</div>
+      </InlineField>
+      <InlineField label={t('transformers.filter-by-value-filter-editor.label-match', 'Match')}>
         <Select
-          menuShouldPortal
           className="width-12"
-          placeholder="Select test"
+          placeholder={t('transformers.filter-by-value-filter-editor.placeholder-select-test', 'Select test')}
           options={matcherOptions}
           value={matcherId}
           onChange={onChangeMatcher}
         />
-      </div>
-      <div className="gf-form gf-form--grow gf-form-spacing">
-        <div className="gf-form-label">Value</div>
+      </InlineField>
+      <InlineField label={t('transformers.filter-by-value-filter-editor.label-value', 'Value')} grow>
         <editor.component field={field} options={filter.config.options ?? {}} onChange={onChangeMatcherOptions} />
-      </div>
-      <div className="gf-form">
-        <Button icon="times" onClick={onDelete} variant="secondary" />
-      </div>
-    </div>
+      </InlineField>
+      <Box marginBottom={0.5}>
+        <Button
+          aria-label={t('transformers.filter-by-value-filter-editor.aria-label-remove-filter', 'Remove filter')}
+          icon="times"
+          onClick={onDelete}
+          variant="secondary"
+        />
+      </Box>
+    </InlineFieldRow>
   );
 };
 

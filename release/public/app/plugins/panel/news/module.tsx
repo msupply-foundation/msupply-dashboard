@@ -1,23 +1,31 @@
 import { PanelPlugin } from '@grafana/data';
-import { NewsPanel } from './NewsPanel';
-import { PanelOptions, defaultPanelOptions } from './models.gen';
-import { DEFAULT_FEED_URL } from './constants';
+import { t } from '@grafana/i18n';
 
-export const plugin = new PanelPlugin<PanelOptions>(NewsPanel).setPanelOptions((builder) => {
+import { NewsPanel } from './NewsPanel';
+import { DEFAULT_FEED_URL } from './constants';
+import { Options, defaultOptions } from './panelcfg.gen';
+
+export const plugin = new PanelPlugin<Options>(NewsPanel).setPanelOptions((builder) => {
+  const category = [t('news.category-news', 'News')];
   builder
     .addTextInput({
       path: 'feedUrl',
-      name: 'URL',
-      description: 'Supports RSS and Atom feeds',
+      name: t('news.name-url', 'URL'),
+      category,
+      description: t('news.description-url', 'Supports RSS and Atom feeds'),
       settings: {
         placeholder: DEFAULT_FEED_URL,
       },
-      defaultValue: defaultPanelOptions.feedUrl,
+      defaultValue: defaultOptions.feedUrl,
     })
     .addBooleanSwitch({
       path: 'showImage',
-      name: 'Show image',
-      description: 'Controls if the news item social (og:image) image is shown above text content',
-      defaultValue: defaultPanelOptions.showImage,
+      name: t('news.name-show-image', 'Show image'),
+      category,
+      description: t(
+        'news.description-show-image',
+        'Controls if the news item social (og:image) image is shown above text content'
+      ),
+      defaultValue: defaultOptions.showImage,
     });
 });

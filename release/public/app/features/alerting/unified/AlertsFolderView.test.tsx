@@ -1,15 +1,9 @@
-import { render } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { configureStore } from 'app/store/configureStore';
-import { FolderState } from 'app/types';
-import { CombinedRuleNamespace } from 'app/types/unified-alerting';
-import React from 'react';
-import { Provider } from 'react-redux';
-import { MemoryRouter } from 'react-router-dom';
+import { render } from 'test/test-utils';
 import { byTestId } from 'testing-library-selector';
+
 import { AlertsFolderView } from './AlertsFolderView';
-import { mockCombinedRule } from './mocks';
-import { GRAFANA_RULES_SOURCE_NAME } from './utils/datasource';
+import { mockFolder } from './mocks';
+import { alertingFactory } from './mocks/server/db';
 
 const ui = {
   filter: {
@@ -21,166 +15,60 @@ const ui = {
   },
 };
 
-const combinedNamespaceMock = jest.fn<CombinedRuleNamespace[], any>();
-jest.mock('./hooks/useCombinedRuleNamespaces', () => ({
-  useCombinedRuleNamespaces: () => combinedNamespaceMock(),
-}));
-
-const mockFolder = (folderOverride: Partial<FolderState> = {}): FolderState => {
-  return {
-    id: 1,
-    title: 'Folder with alerts',
-    uid: 'folder-1',
-    hasChanged: false,
-    canSave: false,
-    url: '/folder-1',
-    version: 1,
-    permissions: [],
-    canViewFolderPermissions: false,
-    canDelete: false,
-    ...folderOverride,
-  };
-};
+const alertingRuleBuilder = alertingFactory.ruler.grafana.alertingRule;
 
 describe('AlertsFolderView tests', () => {
-  it('Should display grafana alert rules when the namespace name matches the folder name', () => {
+  it('Should display grafana alert rules when the folder uid matches the name space uid', () => {
     // Arrange
-    const store = configureStore();
     const folder = mockFolder();
-
-    const grafanaNamespace: CombinedRuleNamespace = {
-      name: folder.title,
-      rulesSource: GRAFANA_RULES_SOURCE_NAME,
-      groups: [
-        {
-          name: 'default',
-          rules: [
-            mockCombinedRule({ name: 'Test Alert 1' }),
-            mockCombinedRule({ name: 'Test Alert 2' }),
-            mockCombinedRule({ name: 'Test Alert 3' }),
-          ],
-        },
-      ],
-    };
-
-    combinedNamespaceMock.mockReturnValue([grafanaNamespace]);
+    const folderRules = alertingRuleBuilder.buildList(6);
 
     // Act
-    render(
-      <Provider store={store}>
-        <MemoryRouter>
-          <AlertsFolderView folder={folder} />
-        </MemoryRouter>
-      </Provider>
-    );
+    render(<AlertsFolderView folder={folder} rules={folderRules} />);
 
     // Assert
     const alertRows = ui.ruleList.row.queryAll();
-    expect(alertRows).toHaveLength(3);
-    expect(alertRows[0]).toHaveTextContent('Test Alert 1');
-    expect(alertRows[1]).toHaveTextContent('Test Alert 2');
-    expect(alertRows[2]).toHaveTextContent('Test Alert 3');
+    expect(alertRows).toHaveLength(6);
+    expect(alertRows[0]).toHaveTextContent('Alerting rule 1');
+    expect(alertRows[1]).toHaveTextContent('Alerting rule 2');
+    expect(alertRows[2]).toHaveTextContent('Alerting rule 3');
+    expect(alertRows[3]).toHaveTextContent('Alerting rule 4');
+    expect(alertRows[4]).toHaveTextContent('Alerting rule 5');
+    expect(alertRows[5]).toHaveTextContent('Alerting rule 6');
   });
 
-  it('Shold not display alert rules when the namespace name does not match the folder name', () => {
+  it('Should filter alert rules by the name, case insensitive', async () => {
     // Arrange
-    const store = configureStore();
     const folder = mockFolder();
 
-    const grafanaNamespace: CombinedRuleNamespace = {
-      name: 'Folder without alerts',
-      rulesSource: GRAFANA_RULES_SOURCE_NAME,
-      groups: [
-        {
-          name: 'default',
-          rules: [
-            mockCombinedRule({ name: 'Test Alert from other folder 1' }),
-            mockCombinedRule({ name: 'Test Alert from other folder 2' }),
-          ],
-        },
-      ],
-    };
-
-    combinedNamespaceMock.mockReturnValue([grafanaNamespace]);
+    const folderRules = [
+      alertingRuleBuilder.build({ grafana_alert: { title: 'CPU Alert' } }),
+      alertingRuleBuilder.build({ grafana_alert: { title: 'RAM usage alert' } }),
+    ];
 
     // Act
-    render(
-      <Provider store={store}>
-        <MemoryRouter>
-          <AlertsFolderView folder={folder} />
-        </MemoryRouter>
-      </Provider>
-    );
+    const { user } = render(<AlertsFolderView folder={folder} rules={folderRules} />);
 
-    // Assert
-    expect(ui.ruleList.row.queryAll()).toHaveLength(0);
-  });
-
-  it('Should filter alert rules by the name, case insensitive', () => {
-    // Arrange
-    const store = configureStore();
-    const folder = mockFolder();
-
-    const grafanaNamespace: CombinedRuleNamespace = {
-      name: folder.title,
-      rulesSource: GRAFANA_RULES_SOURCE_NAME,
-      groups: [
-        {
-          name: 'default',
-          rules: [mockCombinedRule({ name: 'CPU Alert' }), mockCombinedRule({ name: 'RAM usage alert' })],
-        },
-      ],
-    };
-
-    combinedNamespaceMock.mockReturnValue([grafanaNamespace]);
-
-    // Act
-    render(
-      <Provider store={store}>
-        <MemoryRouter>
-          <AlertsFolderView folder={folder} />
-        </MemoryRouter>
-      </Provider>
-    );
-
-    userEvent.type(ui.filter.name.get(), 'cpu');
+    await user.type(ui.filter.name.get(), 'cpu');
 
     // Assert
     expect(ui.ruleList.row.queryAll()).toHaveLength(1);
     expect(ui.ruleList.row.get()).toHaveTextContent('CPU Alert');
   });
 
-  it('Should filter alert rule by labels', () => {
+  it('Should filter alert rule by labels', async () => {
     // Arrange
-    const store = configureStore();
     const folder = mockFolder();
 
-    const grafanaNamespace: CombinedRuleNamespace = {
-      name: folder.title,
-      rulesSource: GRAFANA_RULES_SOURCE_NAME,
-      groups: [
-        {
-          name: 'default',
-          rules: [
-            mockCombinedRule({ name: 'CPU Alert', labels: {} }),
-            mockCombinedRule({ name: 'RAM usage alert', labels: { severity: 'critical' } }),
-          ],
-        },
-      ],
-    };
-
-    combinedNamespaceMock.mockReturnValue([grafanaNamespace]);
+    const folderRules = [
+      alertingRuleBuilder.build({ grafana_alert: { title: 'CPU Alert' }, labels: {} }),
+      alertingRuleBuilder.build({ grafana_alert: { title: 'RAM usage alert' }, labels: { severity: 'critical' } }),
+    ];
 
     // Act
-    render(
-      <Provider store={store}>
-        <MemoryRouter>
-          <AlertsFolderView folder={folder} />
-        </MemoryRouter>
-      </Provider>
-    );
+    const { user } = render(<AlertsFolderView folder={folder} rules={folderRules} />);
 
-    userEvent.type(ui.filter.label.get(), 'severity=critical');
+    await user.type(ui.filter.label.get(), 'severity=critical');
 
     // Assert
     expect(ui.ruleList.row.queryAll()).toHaveLength(1);

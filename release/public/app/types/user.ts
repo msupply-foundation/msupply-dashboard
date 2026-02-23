@@ -1,5 +1,7 @@
-import { OrgRole } from '.';
-import { SelectableValue, WithAccessControlMetadata } from '@grafana/data';
+import { OrgRole, SelectableValue, WithAccessControlMetadata } from '@grafana/data';
+
+import { Role } from './accessControl';
+
 export interface OrgUser extends WithAccessControlMetadata {
   avatarUrl: string;
   email: string;
@@ -9,7 +11,15 @@ export interface OrgUser extends WithAccessControlMetadata {
   name: string;
   orgId: number;
   role: OrgRole;
+  // RBAC roles
+  roles?: Role[];
   userId: number;
+  uid: string;
+  isDisabled: boolean;
+  authLabels?: string[];
+  isExternallySynced?: boolean;
+  // Externally provisioned
+  isProvisioned?: boolean;
 }
 
 export interface User {
@@ -26,6 +36,7 @@ export type Unit = { name: string; url: string };
 
 export interface UserDTO extends WithAccessControlMetadata {
   id: number;
+  uid: string;
   login: string;
   email: string;
   name: string;
@@ -38,11 +49,15 @@ export interface UserDTO extends WithAccessControlMetadata {
   theme?: string;
   avatarUrl?: string;
   orgId?: number;
+  lastSeenAt?: string;
   lastSeenAtAge?: string;
   licensedRole?: string;
   permissions?: string[];
   teams?: Unit[];
   orgs?: Unit[];
+  isExternallySynced?: boolean;
+  isGrafanaAdminExternallySynced?: boolean;
+  isProvisioned?: boolean;
 }
 
 export interface Invitee {
@@ -65,12 +80,15 @@ export interface Invitee {
 export interface UsersState {
   users: OrgUser[];
   searchQuery: string;
-  searchPage: number;
-  canInvite: boolean;
   externalUserMngLinkUrl: string;
   externalUserMngLinkName: string;
   externalUserMngInfo: string;
-  hasFetched: boolean;
+  isLoading: boolean;
+  rolesLoading?: boolean;
+  page: number;
+  perPage: number;
+  totalPages: number;
+  sort?: string;
 }
 
 export interface UserSession {
@@ -81,6 +99,7 @@ export interface UserSession {
   seenAt: string;
   browser: string;
   browserVersion: string;
+  authModule?: string;
   os: string;
   osVersion: string;
   device: string;
@@ -115,4 +134,28 @@ export interface UserListAdminState {
   showPaging: boolean;
   filters: UserFilter[];
   isLoading: boolean;
+  sort?: string;
+}
+
+export interface UserAnonymousDeviceDTO {
+  login?: string;
+  clientIp: string;
+  deviceId: string;
+  userAgent: string;
+  updatedAt: string;
+  lastSeenAt: string;
+  avatarUrl?: string;
+}
+
+export type AnonUserFilter = Record<string, string | boolean | SelectableValue[]>;
+
+export interface UserListAnonymousDevicesState {
+  devices: UserAnonymousDeviceDTO[];
+  query: string;
+  perPage: number;
+  page: number;
+  totalPages: number;
+  showPaging: boolean;
+  filters: AnonUserFilter[];
+  sort?: string;
 }

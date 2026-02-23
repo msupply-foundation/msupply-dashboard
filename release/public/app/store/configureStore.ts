@@ -1,10 +1,19 @@
-import { configureStore as reduxConfigureStore } from '@reduxjs/toolkit';
-import { setStore } from './store';
+import { configureStore as reduxConfigureStore, createListenerMiddleware } from '@reduxjs/toolkit';
+import { setupListeners } from '@reduxjs/toolkit/query';
+import { Middleware } from 'redux';
+
+import { notificationsAPIv0alpha1, rulesAPIv0alpha1 } from '@grafana/alerting/unstable';
+import { allMiddleware as allApiClientMiddleware } from '@grafana/api-clients/rtkq';
+import { legacyAPI } from 'app/api/clients/legacy';
+import { browseDashboardsAPI } from 'app/features/browse-dashboards/api/browseDashboardsAPI';
+import { publicDashboardApi } from 'app/features/dashboard/api/publicDashboardApi';
 import { StoreState } from 'app/types/store';
-import { addReducer, createRootReducer } from '../core/reducers/root';
+
 import { buildInitialState } from '../core/reducers/navModel';
-import { ThunkMiddlewareFor } from '@reduxjs/toolkit/src/getDefaultMiddleware';
-import { AnyAction } from 'redux';
+import { addReducer, createRootReducer } from '../core/reducers/root';
+import { alertingApi } from '../features/alerting/unified/api/alertingApi';
+
+import { setStore } from './store';
 
 export function addRootReducer(reducers: any) {
   // this is ok now because we add reducers before configureStore is called
@@ -13,15 +22,31 @@ export function addRootReducer(reducers: any) {
   addReducer(reducers);
 }
 
+const listenerMiddleware = createListenerMiddleware();
+const extraMiddleware: Middleware[] = [];
+
+export function addExtraMiddleware(middleware: Middleware) {
+  extraMiddleware.push(middleware);
+}
+
 export function configureStore(initialState?: Partial<StoreState>) {
-  const store = reduxConfigureStore<
-    StoreState,
-    AnyAction,
-    ReadonlyArray<ThunkMiddlewareFor<StoreState, { thunk: true }>>
-  >({
+  const store = reduxConfigureStore({
     reducer: createRootReducer(),
     middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ thunk: true, serializableCheck: false, immutableCheck: false }),
+      getDefaultMiddleware({ thunk: true, serializableCheck: false, immutableCheck: false }).concat(
+        listenerMiddleware.middleware,
+        // older internal alerting API client
+        alertingApi.middleware,
+        // @grafana/alerting clients for managing (Alertmanager) notification entities and rules
+        notificationsAPIv0alpha1.middleware,
+        rulesAPIv0alpha1.middleware,
+        // other Grafana core APIs
+        publicDashboardApi.middleware,
+        browseDashboardsAPI.middleware,
+        legacyAPI.middleware,
+        ...allApiClientMiddleware,
+        ...extraMiddleware
+      ),
     devTools: process.env.NODE_ENV !== 'production',
     preloadedState: {
       navIndex: buildInitialState(),
@@ -29,44 +54,12 @@ export function configureStore(initialState?: Partial<StoreState>) {
     },
   });
 
+  // this enables "refetchOnFocus" and "refetchOnReconnect" for RTK Query
+  setupListeners(store.dispatch);
+
   setStore(store);
   return store;
 }
 
-/*
-function getActionsToIgnoreSerializableCheckOn() {
-  return [
-    'dashboard/setPanelAngularComponent',
-    'dashboard/panelModelAndPluginReady',
-    'dashboard/dashboardInitCompleted',
-    'plugins/panelPluginLoaded',
-    'explore/initializeExplore',
-    'explore/changeRange',
-    'explore/updateDatasourceInstance',
-    'explore/queryStoreSubscription',
-    'explore/queryStreamUpdated',
-  ];
-}
-
-function getPathsToIgnoreMutationAndSerializableCheckOn() {
-  return [
-    'plugins.panels',
-    'dashboard.panels',
-    'dashboard.getModel',
-    'payload.plugin',
-    'panelEditorNew.getPanel',
-    'panelEditorNew.getSourcePanel',
-    'panelEditorNew.getData',
-    'explore.left.queryResponse',
-    'explore.right.queryResponse',
-    'explore.left.datasourceInstance',
-    'explore.right.datasourceInstance',
-    'explore.left.range',
-    'explore.left.eventBridge',
-    'explore.right.eventBridge',
-    'explore.right.range',
-    'explore.left.querySubscription',
-    'explore.right.querySubscription',
-  ];
-}
-*/
+export type RootState = ReturnType<ReturnType<typeof configureStore>['getState']>;
+export type AppDispatch = ReturnType<typeof configureStore>['dispatch'];

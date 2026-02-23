@@ -1,21 +1,22 @@
-import React, { PropsWithChildren } from 'react';
-import { ElasticDatasource } from '../datasource';
+import { renderHook } from '@testing-library/react';
+import { PropsWithChildren } from 'react';
 import { from } from 'rxjs';
-import { ElasticsearchProvider } from '../components/QueryEditor/ElasticsearchQueryContext';
+
 import { getDefaultTimeRange } from '@grafana/data';
-import { ElasticsearchQuery } from '../types';
-import { defaultBucketAgg, defaultMetricAgg } from '../query_def';
-import { renderHook } from '@testing-library/react-hooks';
+
+import { ElasticsearchProvider } from '../components/QueryEditor/ElasticsearchQueryContext';
+import { ElasticsearchDataQuery, BucketAggregationType, MetricAggregationType } from '../dataquery.gen';
+import { ElasticDatasource } from '../datasource';
+import { defaultBucketAgg, defaultMetricAgg } from '../queryDef';
+
 import { useFields } from './useFields';
-import { MetricAggregationType } from '../components/QueryEditor/MetricAggregationsEditor/aggregations';
-import { BucketAggregationType } from '../components/QueryEditor/BucketAggregationsEditor/aggregations';
 
 describe('useFields hook', () => {
   // TODO: If we move the field type to the configuration objects as described in the hook's source
   // we can stop testing for getField to be called with the correct parameters.
   it("returns a function that calls datasource's getFields with the correct parameters", async () => {
     const timeRange = getDefaultTimeRange();
-    const query: ElasticsearchQuery = {
+    const query: ElasticsearchDataQuery = {
       refId: 'A',
       query: '',
       metrics: [defaultMetricAgg()],

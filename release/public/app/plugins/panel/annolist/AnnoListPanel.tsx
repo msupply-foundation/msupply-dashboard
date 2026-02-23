@@ -1,26 +1,26 @@
-// Libraries
-import React, { PureComponent } from 'react';
-// Types
-import { AnnoOptions } from './types';
+import { css } from '@emotion/css';
+import { createRef, PureComponent } from 'react';
+import { Subscription } from 'rxjs';
+
 import {
   AnnotationChangeEvent,
   AnnotationEvent,
   AppEvents,
   dateTime,
-  DurationUnit,
-  GrafanaTheme,
+  dateMath,
+  GrafanaTheme2,
   locationUtil,
   PanelProps,
 } from '@grafana/data';
+import { Trans, t } from '@grafana/i18n';
 import { config, getBackendSrv, locationService } from '@grafana/runtime';
-import { AbstractList } from '@grafana/ui/src/components/List/AbstractList';
-import { getDashboardSrv } from 'app/features/dashboard/services/DashboardSrv';
+import { Button, ScrollContainer, stylesFactory, TagList } from '@grafana/ui';
+import { AbstractList } from '@grafana/ui/internal';
 import appEvents from 'app/core/app_events';
+import { getDashboardSrv } from 'app/features/dashboard/services/DashboardSrv';
+
 import { AnnotationListItem } from './AnnotationListItem';
-import { CustomScrollbar, stylesFactory, TagList } from '@grafana/ui';
-import { css } from '@emotion/css';
-import { Subscription } from 'rxjs';
-import { FocusScope } from '@react-aria/focus';
+import { Options } from './panelcfg.gen';
 
 interface UserInfo {
   id?: number;
@@ -28,18 +28,19 @@ interface UserInfo {
   email?: string;
 }
 
-export interface Props extends PanelProps<AnnoOptions> {}
+export interface Props extends PanelProps<Options> {}
 interface State {
   annotations: AnnotationEvent[];
   timeInfo: string;
   loaded: boolean;
   queryUser?: UserInfo;
   queryTags: string[];
+  requestId: string;
 }
 export class AnnoListPanel extends PureComponent<Props, State> {
-  style = getStyles(config.theme);
+  style = getStyles(config.theme2);
   subs = new Subscription();
-  tagListRef = React.createRef<HTMLUListElement>();
+  tagListRef = createRef<HTMLUListElement>();
 
   constructor(props: Props) {
     super(props);
@@ -49,6 +50,7 @@ export class AnnoListPanel extends PureComponent<Props, State> {
       timeInfo: '',
       loaded: false,
       queryTags: [],
+      requestId: `anno-list-panel-${Math.random()}`,
     };
   }
 
@@ -75,6 +77,7 @@ export class AnnoListPanel extends PureComponent<Props, State> {
       options !== prevProps.options ||
       this.state.queryTags !== prevState.queryTags ||
       this.state.queryUser !== prevState.queryUser ||
+      prevProps.renderCounter !== this.props.renderCounter ||
       (options.onlyInTimeRange && timeRange !== prevProps.timeRange);
 
     if (needsQuery) {
@@ -90,14 +93,18 @@ export class AnnoListPanel extends PureComponent<Props, State> {
     const { options } = this.props;
     const { queryUser, queryTags } = this.state;
 
-    const params: any = {
+    const params: {
+      tags: typeof options.tags;
+      limit: typeof options.limit;
+      type: string;
+    } & Record<string, unknown> = {
       tags: options.tags,
       limit: options.limit,
       type: 'annotation', // Skip the Annotations that are really alerts.  (Use the alerts panel!)
     };
 
     if (options.onlyFromThisDashboard) {
-      params.dashboardId = getDashboardSrv().getCurrent()?.id;
+      params.dashboardUID = getDashboardSrv().getCurrent()?.uid;
     }
 
     let timeInfo = '';
@@ -121,7 +128,7 @@ export class AnnoListPanel extends PureComponent<Props, State> {
       params.tags = params.tags ? [...params.tags, ...queryTags] : queryTags;
     }
 
-    const annotations = await getBackendSrv().get('/api/annotations', params, `anno-list-panel-${this.props.id}`);
+    const annotations = await getBackendSrv().get('/api/annotations', params, this.state.requestId);
 
     this.setState({
       annotations,
@@ -139,30 +146,27 @@ export class AnnoListPanel extends PureComponent<Props, State> {
     const dashboardSrv = getDashboardSrv();
     const current = dashboardSrv.getCurrent();
 
-    const params: any = {
+    const params = {
       from: this._timeOffset(anno.time, options.navigateBefore, true),
       to: this._timeOffset(anno.timeEnd ?? anno.time, options.navigateAfter, false),
+      viewPanel: options.navigateToPanel && anno.panelId ? anno.panelId : undefined,
     };
 
-    if (options.navigateToPanel) {
-      params.viewPanel = anno.panelId;
-    }
-
-    if (current?.id === anno.dashboardId) {
+    if (!anno.dashboardUID || current?.uid === anno.dashboardUID) {
       locationService.partial(params);
       return;
     }
 
-    const result = await getBackendSrv().get('/api/search', { dashboardIds: anno.dashboardId });
-    if (result && result.length && result[0].id === anno.dashboardId) {
+    const result = await getBackendSrv().get('/api/search', { dashboardUIDs: anno.dashboardUID });
+    if (result && result.length && result[0].uid === anno.dashboardUID) {
       const dash = result[0];
       const url = new URL(dash.url, window.location.origin);
-      url.searchParams.set('from', params.from);
-      url.searchParams.set('to', params.to);
+      url.searchParams.set('from', String(params.from));
+      url.searchParams.set('to', String(params.to));
       locationService.push(locationUtil.stripBaseFromUrl(url.toString()));
       return;
     }
-    appEvents.emit(AppEvents.alertWarning, ['Unknown Dashboard: ' + anno.dashboardId]);
+    appEvents.emit(AppEvents.alertWarning, ['Unknown Dashboard: ' + anno.dashboardUID]);
   };
 
   _timeOffset(time: number, offset: string, subtract = false): number {
@@ -178,7 +182,12 @@ export class AnnoListPanel extends PureComponent<Props, State> {
     if (subtract) {
       incr *= -1;
     }
-    return t.add(incr, unit as DurationUnit).valueOf();
+
+    if (!dateMath.isDurationUnit(unit)) {
+      return 0;
+    }
+
+    return t.add(incr, unit).valueOf();
   }
 
   onTagClick = (tag: string, remove?: boolean) => {
@@ -246,7 +255,11 @@ export class AnnoListPanel extends PureComponent<Props, State> {
   render() {
     const { loaded, annotations, queryUser, queryTags } = this.state;
     if (!loaded) {
-      return <div>loading...</div>;
+      return (
+        <div>
+          <Trans i18nKey="annolist.anno-list-panel.loading">Loading...</Trans>
+        </div>
+      );
     }
 
     // Previously we showed inidication that it covered all time
@@ -258,52 +271,66 @@ export class AnnoListPanel extends PureComponent<Props, State> {
 
     const hasFilter = queryUser || queryTags.length > 0;
     return (
-      <CustomScrollbar autoHeightMin="100%">
+      <ScrollContainer minHeight="100%">
         {hasFilter && (
           <div className={this.style.filter}>
-            <b>Filter:</b>
+            <b>
+              <Trans i18nKey="annolist.anno-list-panel.filter">Filter:</Trans>
+            </b>
             {queryUser && (
-              <span onClick={this.onClearUser} className="pointer">
+              <Button
+                size="sm"
+                variant="secondary"
+                fill="text"
+                onClick={this.onClearUser}
+                aria-label={t(
+                  'annolist.anno-list-panel.aria-label-remove-filter',
+                  'Remove filter: {{filterToRemove}}',
+                  { filterToRemove: queryUser.email }
+                )}
+              >
                 {queryUser.email}
-              </span>
+              </Button>
             )}
             {queryTags.length > 0 && (
-              <FocusScope restoreFocus>
-                <TagList
-                  icon="times"
-                  tags={queryTags}
-                  onClick={(tag) => this.onTagClick(tag, true)}
-                  getAriaLabel={(name) => `Remove ${name} tag`}
-                  className={this.style.tagList}
-                  ref={this.tagListRef}
-                />
-              </FocusScope>
+              <TagList
+                icon="times"
+                tags={queryTags}
+                onClick={(tag) => this.onTagClick(tag, true)}
+                getAriaLabel={(name) => `Remove ${name} tag`}
+                className={this.style.tagList}
+                ref={this.tagListRef}
+              />
             )}
           </div>
         )}
 
-        {annotations.length < 1 && <div className={this.style.noneFound}>No Annotations Found</div>}
+        {annotations.length < 1 && (
+          <div className={this.style.noneFound}>
+            <Trans i18nKey="annolist.anno-list-panel.no-annotations-found">No annotations found</Trans>
+          </div>
+        )}
 
         <AbstractList items={annotations} renderItem={this.renderItem} getItemKey={(item) => `${item.id}`} />
-      </CustomScrollbar>
+      </ScrollContainer>
     );
   }
 }
 
-const getStyles = stylesFactory((theme: GrafanaTheme) => ({
-  noneFound: css`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: calc(100% - 30px);
-  `,
-  filter: css({
+const getStyles = stylesFactory((theme: GrafanaTheme2) => ({
+  noneFound: css({
     display: 'flex',
-    padding: `0px ${theme.spacing.xs}`,
-    b: {
-      paddingRight: theme.spacing.sm,
-    },
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: 'calc(100% - 30px)',
+  }),
+  filter: css({
+    alignItems: 'center',
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: theme.spacing(0.5),
+    padding: theme.spacing(0.5),
   }),
   tagList: css({
     justifyContent: 'flex-start',

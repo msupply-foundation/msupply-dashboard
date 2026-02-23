@@ -1,13 +1,17 @@
-import React, { PropsWithChildren } from 'react';
-import { renderHook } from '@testing-library/react-hooks';
-import { ElasticsearchProvider } from '../components/QueryEditor/ElasticsearchQueryContext';
-import { useNextId } from './useNextId';
-import { ElasticsearchQuery } from '../types';
+import { renderHook } from '@testing-library/react';
+import { PropsWithChildren } from 'react';
+
 import { getDefaultTimeRange } from '@grafana/data';
+
+import { ElasticsearchProvider } from '../components/QueryEditor/ElasticsearchQueryContext';
+import { ElasticsearchDataQuery } from '../dataquery.gen';
+import { ElasticDatasource } from '../datasource';
+
+import { useNextId } from './useNextId';
 
 describe('useNextId', () => {
   it('Should return the next available id', () => {
-    const query: ElasticsearchQuery = {
+    const query: ElasticsearchDataQuery = {
       refId: 'A',
       query: '',
       metrics: [{ id: '1', type: 'avg' }],
@@ -17,7 +21,7 @@ describe('useNextId', () => {
       return (
         <ElasticsearchProvider
           query={query}
-          datasource={{} as any}
+          datasource={{} as ElasticDatasource}
           onChange={() => {}}
           onRunQuery={() => {}}
           range={getDefaultTimeRange()}

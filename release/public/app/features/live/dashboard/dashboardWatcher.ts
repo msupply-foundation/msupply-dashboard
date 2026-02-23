@@ -1,6 +1,6 @@
-import { getGrafanaLiveSrv, locationService } from '@grafana/runtime';
-import { getDashboardSrv } from '../../dashboard/services/DashboardSrv';
-import { appEvents, contextSrv } from 'app/core/core';
+import { Unsubscribable } from 'rxjs';
+import { v4 as uuidv4 } from 'uuid';
+
 import {
   AppEvents,
   isLiveChannelMessageEvent,
@@ -10,11 +10,18 @@ import {
   LiveChannelEvent,
   LiveChannelScope,
 } from '@grafana/data';
+import { getGrafanaLiveSrv, locationService } from '@grafana/runtime';
+import { appEvents, contextSrv } from 'app/core/core';
+
+import { ShowModalReactEvent } from '../../../types/events';
+import { getDashboardSrv } from '../../dashboard/services/DashboardSrv';
+
 import { DashboardChangedModal } from './DashboardChangedModal';
 import { DashboardEvent, DashboardEventAction } from './types';
-import { sessionId } from 'app/features/live';
-import { ShowModalReactEvent } from '../../../types/events';
-import { Unsubscribable } from 'rxjs';
+
+// sessionId is not a security-sensitive value.
+// It is used for filtering out dashboard edit events from the same browsing session
+const sessionId = uuidv4();
 
 class DashboardWatcher {
   channel?: LiveChannelAddress; // path to the channel
@@ -102,7 +109,7 @@ class DashboardWatcher {
           return; // skip internal messages
         }
 
-        const { action } = event.message;
+        const { action, message } = event.message;
         switch (action) {
           case DashboardEventAction.EditingStarted:
           case DashboardEventAction.Saved: {
@@ -117,7 +124,13 @@ class DashboardWatcher {
               return;
             }
 
-            const showPopup = this.editing || dash.hasUnsavedChanges();
+            let showPopup = this.editing || dash.hasUnsavedChanges();
+
+            // Dashboard could have unsaved changes but if user has already restored from a version
+            // the reloadPage should be called below
+            if (message?.includes('Restored from version')) {
+              showPopup = false;
+            }
 
             if (action === DashboardEventAction.Saved) {
               if (showPopup) {

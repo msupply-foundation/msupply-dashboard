@@ -1,21 +1,29 @@
 const applyFieldOverridesMock = jest.fn(); // needs to be first in this file
 
 import { Subject } from 'rxjs';
+
 // Importing this way to be able to spy on grafana/data
+
 import * as grafanaData from '@grafana/data';
-import { DashboardModel } from '../../dashboard/state/index';
-import { setDataSourceSrv, setEchoSrv } from '@grafana/runtime';
+import { DataSourceApi, DataTransformerID, dateTime, TypedVariableModel } from '@grafana/data';
+import { FrameType, mockTransformationsRegistry } from '@grafana/data/internal';
+import { DataSourceSrv, setDataSourceSrv, setEchoSrv } from '@grafana/runtime';
+import { TemplateSrvMock } from 'app/features/templating/template_srv.mock';
+
 import { Echo } from '../../../core/services/echo/Echo';
-import { emptyResult } from './DashboardQueryRunner/utils';
+import { createDashboardModelFixture } from '../../dashboard/state/__fixtures__/dashboardFixtures';
+
 import {
   createDashboardQueryRunner,
+  DashboardQueryRunnerFactoryArgs,
   setDashboardQueryRunnerFactory,
 } from './DashboardQueryRunner/DashboardQueryRunner';
-import { PanelQueryRunner } from './PanelQueryRunner';
+import { emptyResult } from './DashboardQueryRunner/utils';
+import { PanelQueryRunner, QueryRunnerOptions } from './PanelQueryRunner';
 
 jest.mock('@grafana/data', () => ({
   __esModule: true,
-  ...(jest.requireActual('@grafana/data') as any),
+  ...jest.requireActual('@grafana/data'),
   applyFieldOverrides: applyFieldOverridesMock,
 }));
 
@@ -27,7 +35,7 @@ jest.mock('app/core/config', () => ({
   }),
 }));
 
-const dashboardModel = new DashboardModel({
+const dashboardModel = createDashboardModelFixture({
   panels: [{ id: 1, type: 'graph' }],
 });
 
@@ -37,6 +45,30 @@ jest.mock('app/features/dashboard/services/DashboardSrv', () => ({
       getCurrent: () => dashboardModel,
     };
   },
+}));
+
+jest.mock('app/features/templating/template_srv', () => ({
+  ...jest.requireActual('app/features/templating/template_srv'),
+  getTemplateSrv: () =>
+    new TemplateSrvMock([
+      {
+        name: 'server',
+        type: 'datasource',
+        current: { text: 'Server1', value: 'server' },
+        options: [{ text: 'Server1', value: 'server1' }],
+      },
+      //multi value variable
+      {
+        name: 'multi',
+        type: 'datasource',
+        multi: true,
+        current: { text: 'Server1,Server2', value: ['server-1', 'server-2'] },
+        options: [
+          { text: 'Server1', value: 'server1' },
+          { text: 'Server2', value: 'server2' },
+        ],
+      },
+    ] as TypedVariableModel[]),
 }));
 
 interface ScenarioContext {
@@ -80,7 +112,7 @@ function describeQueryRunnerScenario(
       },
     };
 
-    const response: any = {
+    const response = {
       data: [
         {
           target: 'hello',
@@ -92,21 +124,21 @@ function describeQueryRunnerScenario(
       ],
     };
 
-    setDataSourceSrv({} as any);
+    setDataSourceSrv({} as DataSourceSrv);
     setDashboardQueryRunnerFactory(() => ({
       getResult: emptyResult,
       run: () => undefined,
       cancel: () => undefined,
-      cancellations: () => new Subject<any>(),
+      cancellations: () => new Subject(),
       destroy: () => undefined,
     }));
-    createDashboardQueryRunner({} as any);
+    createDashboardQueryRunner({} as DashboardQueryRunnerFactoryArgs);
 
     beforeEach(async () => {
       setEchoSrv(new Echo());
       setupFn();
 
-      const datasource: any = {
+      const datasource = {
         name: 'TestDB',
         uid: 'TestDB-uid',
         interval: ctx.dsInterval,
@@ -116,21 +148,22 @@ function describeQueryRunnerScenario(
         },
         getRef: () => ({ type: 'test', uid: 'TestDB-uid' }),
         testDatasource: jest.fn(),
-      };
+      } as unknown as DataSourceApi;
 
-      const args: any = {
+      const args = {
         datasource,
         scopedVars: ctx.scopedVars,
         minInterval: ctx.minInterval,
-        maxDataPoints: ctx.maxDataPoints,
+        maxDataPoints: ctx.maxDataPoints ?? Infinity,
         timeRange: {
-          from: grafanaData.dateTime().subtract(1, 'days'),
-          to: grafanaData.dateTime(),
+          from: dateTime('2023-01-01T12:00:00Z'),
+          to: dateTime('2023-01-02T12:00:00Z'),
           raw: { from: '1d', to: 'now' },
         },
         panelId: 1,
-        queries: [{ refId: 'A', test: 1 }],
-      };
+        panelName: 'PanelName',
+        queries: [{ refId: 'A' }],
+      } as QueryRunnerOptions;
 
       ctx.runner = new PanelQueryRunner(panelConfig || defaultPanelConfig);
       ctx.runner.getData({ withTransforms: true, withFieldConfig: true }).subscribe({
@@ -149,6 +182,11 @@ function describeQueryRunnerScenario(
 }
 
 describe('PanelQueryRunner', () => {
+  beforeAll(() => {
+    const { convertFrameTypeTransformer } = grafanaData.standardTransformers;
+    mockTransformationsRegistry([convertFrameTypeTransformer]);
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -163,9 +201,14 @@ describe('PanelQueryRunner', () => {
     });
 
     it('should pass scopedVars to datasource with interval props', async () => {
-      expect(ctx.queryCalledWith?.scopedVars.server.text).toBe('Server1');
-      expect(ctx.queryCalledWith?.scopedVars.__interval.text).toBe('5m');
-      expect(ctx.queryCalledWith?.scopedVars.__interval_ms.text).toBe('300000');
+      expect(ctx.queryCalledWith?.scopedVars.server!.text).toBe('Server1');
+      expect(ctx.queryCalledWith?.scopedVars.__interval!.text).toBe('5m');
+      expect(ctx.queryCalledWith?.scopedVars.__interval_ms!.text).toBe('300000');
+    });
+
+    it('should pass the panel id and name', async () => {
+      expect(ctx.queryCalledWith?.panelId).toBe(1);
+      expect(ctx.queryCalledWith?.panelName).toBe('PanelName');
     });
   });
 
@@ -283,6 +326,48 @@ describe('PanelQueryRunner', () => {
   );
 
   describeQueryRunnerScenario(
+    'transformations',
+    (ctx) => {
+      it('should re-categorize any anno frames returned by series transformations', async () => {
+        ctx.runner.getData({ withTransforms: true, withFieldConfig: false }).subscribe({
+          next: (data: grafanaData.PanelData) => {
+            try {
+              expect(data.series).toEqual([]);
+              expect(data.annotations).toEqual([
+                {
+                  name: 'exemplar',
+                  meta: { custom: { resultType: 'exemplar' }, dataTopic: 'annotations' },
+                  length: 2,
+                  fields: [
+                    { config: {}, name: 'Time', state: null, type: 'time', values: [1000, 2000] },
+                    { config: {}, name: 'Value', state: null, type: 'number', values: [1, 2] },
+                  ],
+                },
+              ]);
+              return data;
+            } catch (e) {
+              return Promise.reject(e instanceof Error ? e.message : e);
+            }
+          },
+        });
+      });
+    },
+    {
+      getFieldOverrideOptions: () => undefined,
+      getTransformations: () => [
+        {
+          id: DataTransformerID.convertFrameType,
+          topic: grafanaData.DataTopic.Series,
+          options: {
+            targetType: FrameType.Exemplar,
+          },
+        },
+      ],
+      getDataSupport: () => ({ annotations: true, alertStates: false }),
+    }
+  );
+
+  describeQueryRunnerScenario(
     'getData',
     (ctx) => {
       it('should not apply transformations when transform option is false', async () => {
@@ -393,6 +478,55 @@ describe('PanelQueryRunner', () => {
     {
       ...defaultPanelConfig,
       snapshotData,
+    }
+  );
+
+  describeQueryRunnerScenario(
+    'shouldAddErrorwhenDatasourceVariableIsMultiple',
+    (ctx) => {
+      it('should add error when datasource variable is multiple and not repeated', async () => {
+        // scopedVars is an object that represent the variables repeated in a panel
+        const scopedVars = {
+          server: { text: 'Server1', value: 'server-1' },
+        };
+
+        // We are spying on the replace method of the TemplateSrvMock to check if the custom format function is being called
+        const spyReplace = jest.spyOn(TemplateSrvMock.prototype, 'replace');
+
+        const response = {
+          data: [
+            {
+              target: 'hello',
+              datapoints: [
+                [1, 1000],
+                [2, 2000],
+              ],
+            },
+          ],
+        };
+
+        const datasource = {
+          name: '${multi}',
+          uid: '${multi}',
+          interval: ctx.dsInterval,
+          query: (options: grafanaData.DataQueryRequest) => {
+            ctx.queryCalledWith = options;
+            return Promise.resolve(response);
+          },
+          getRef: () => ({ type: 'test', uid: 'TestDB-uid' }),
+          testDatasource: jest.fn(),
+        } as unknown as DataSourceApi;
+
+        ctx.runner.shouldAddErrorWhenDatasourceVariableIsMultiple(datasource, scopedVars);
+
+        // the test is checking implementation details :(, but it is the only way to check if the error will be added
+        // if the getTemplateSrv.replace is called with the custom format function,it means we will check
+        // if the error should be added
+        expect(spyReplace.mock.calls[0][2]).toBeInstanceOf(Function);
+      });
+    },
+    {
+      ...defaultPanelConfig,
     }
   );
 });

@@ -1,13 +1,16 @@
-import { DataQuery, DataSourceApi, hasQueryExportSupport, hasQueryImportSupport } from '@grafana/data';
-import { isExpressionReference } from '@grafana/runtime/src/utils/DataSourceWithBackend';
+import { CoreApp, DataSourceApi, getNextRefId, hasQueryExportSupport, hasQueryImportSupport } from '@grafana/data';
+import { getTemplateSrv, isExpressionReference } from '@grafana/runtime';
+import { DataQuery } from '@grafana/schema';
 
 export async function updateQueries(
   nextDS: DataSourceApi,
+  nextDSUidOrVariableExpression: string,
   queries: DataQuery[],
   currentDS?: DataSourceApi
 ): Promise<DataQuery[]> {
   let nextQueries = queries;
-  const datasource = { type: nextDS.type, uid: nextDS.uid };
+  const datasource = { ...nextDS.getRef(), uid: nextDSUidOrVariableExpression };
+  const DEFAULT_QUERY = { ...nextDS?.getDefaultQuery?.(CoreApp.PanelEditor), datasource, refId: 'A' };
 
   // we are changing data source type
   if (currentDS?.meta.id !== nextDS.meta.id) {
@@ -24,14 +27,44 @@ export async function updateQueries(
     else if (currentDS && nextDS.importQueries) {
       nextQueries = await nextDS.importQueries(queries, currentDS);
     }
-    // Otherwise clear queries
+    // Otherwise clear queries that do not match the next datasource UID
     else {
-      return [{ refId: 'A', datasource }];
+      if (currentDS) {
+        const templateSrv = getTemplateSrv();
+        const reducedQueries: DataQuery[] = [];
+        let nextUid = nextDS.uid;
+        const nextIsTemplate = templateSrv.containsTemplate(nextDSUidOrVariableExpression);
+        if (nextIsTemplate) {
+          nextUid = templateSrv.replace(nextDS.uid);
+        }
+        // Queries will only be preserved if the datasource UID of the query matches the UID
+        // of the next chosen datasource
+        const nextDsQueries = queries.reduce((reduced, currentQuery) => {
+          if (currentQuery.datasource) {
+            let currUid = currentQuery.datasource.uid;
+            const currIsTemplate = templateSrv.containsTemplate(currUid);
+            if (currIsTemplate) {
+              currUid = templateSrv.replace(currentQuery.datasource.uid);
+            }
+            if (currUid === nextUid && currIsTemplate === nextIsTemplate) {
+              currentQuery.refId = getNextRefId(reduced);
+              return reduced.concat([currentQuery]);
+            }
+          }
+          return reduced;
+        }, reducedQueries);
+
+        if (nextDsQueries.length > 0) {
+          return nextDsQueries;
+        }
+      }
+
+      return [DEFAULT_QUERY];
     }
   }
 
   if (nextQueries.length === 0) {
-    return [{ refId: 'A', datasource }];
+    return [DEFAULT_QUERY];
   }
 
   // Set data source on all queries except expression queries

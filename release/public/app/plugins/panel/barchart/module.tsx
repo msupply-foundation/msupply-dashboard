@@ -3,20 +3,25 @@ import {
   FieldColorModeId,
   FieldConfigProperty,
   FieldType,
-  getFieldDisplayName,
+  identityOverrideProcessor,
   PanelPlugin,
   VizOrientation,
 } from '@grafana/data';
-import { BarChartPanel } from './BarChartPanel';
-import { StackingMode, VisibilityMode } from '@grafana/schema';
-import { graphFieldOptions, commonOptionsBuilder } from '@grafana/ui';
-import { BarChartFieldConfig, PanelOptions, defaultBarChartFieldConfig, defaultPanelOptions } from './models.gen';
-import { BarChartSuggestionsSupplier } from './suggestions';
-import { prepareBarChartDisplayValues } from './utils';
-import { config } from '@grafana/runtime';
-import { TickSpacingEditor } from './TickSpacingEditor';
+import { t } from '@grafana/i18n';
+import { GraphTransform, GraphThresholdsStyleMode, StackingMode, VisibilityMode } from '@grafana/schema';
+import { getGraphFieldOptions, commonOptionsBuilder } from '@grafana/ui';
+import { optsWithHideZeros } from '@grafana/ui/internal';
 
-export const plugin = new PanelPlugin<PanelOptions, BarChartFieldConfig>(BarChartPanel)
+import { ThresholdsStyleEditor } from '../timeseries/ThresholdsStyleEditor';
+
+import { BarChartPanel } from './BarChartPanel';
+import { TickSpacingEditor } from './TickSpacingEditor';
+import { changeToBarChartPanelMigrationHandler } from './migrations';
+import { FieldConfig, Options, defaultFieldConfig, defaultOptions } from './panelcfg.gen';
+import { BarChartSuggestionsSupplier } from './suggestions';
+
+export const plugin = new PanelPlugin<Options, FieldConfig>(BarChartPanel)
+  .setPanelChangeHandler(changeToBarChartPanelMigrationHandler)
   .useFieldConfig({
     standardOptions: {
       [FieldConfigProperty.Color]: {
@@ -28,14 +33,22 @@ export const plugin = new PanelPlugin<PanelOptions, BarChartFieldConfig>(BarChar
           mode: FieldColorModeId.PaletteClassic,
         },
       },
+      [FieldConfigProperty.Links]: {
+        settings: {
+          showOneClick: true,
+        },
+      },
+      [FieldConfigProperty.Actions]: {
+        hideFromDefaults: false,
+      },
     },
     useCustomConfig: (builder) => {
-      const cfg = defaultBarChartFieldConfig;
+      const cfg = defaultFieldConfig;
 
       builder
         .addSliderInput({
           path: 'lineWidth',
-          name: 'Line width',
+          name: t('barchart.config.name-line-width', 'Line width'),
           defaultValue: cfg.lineWidth,
           settings: {
             min: 0,
@@ -45,7 +58,7 @@ export const plugin = new PanelPlugin<PanelOptions, BarChartFieldConfig>(BarChar
         })
         .addSliderInput({
           path: 'fillOpacity',
-          name: 'Fill opacity',
+          name: t('barchart.config.name-fill-opacity', 'Fill opacity'),
           defaultValue: cfg.fillOpacity,
           settings: {
             min: 0,
@@ -55,50 +68,91 @@ export const plugin = new PanelPlugin<PanelOptions, BarChartFieldConfig>(BarChar
         })
         .addRadio({
           path: 'gradientMode',
-          name: 'Gradient mode',
-          defaultValue: graphFieldOptions.fillGradient[0].value,
+          name: t('barchart.config.name-gradient-mode', 'Gradient mode'),
+          defaultValue: getGraphFieldOptions().fillGradient[0].value,
           settings: {
-            options: graphFieldOptions.fillGradient,
+            options: getGraphFieldOptions().fillGradient,
           },
         });
 
-      commonOptionsBuilder.addAxisConfig(builder, cfg, false);
+      builder.addSelect({
+        category: ['Graph styles'],
+        name: t('barchart.config.name-transform', 'Transform'),
+        path: 'transform',
+        settings: {
+          options: [
+            {
+              label: t('barchart.config.transform-options.label-constant', 'Constant'),
+              value: GraphTransform.Constant,
+              description: t(
+                'barchart.config.transform-options.description-constant',
+                'The first value will be shown as a constant line'
+              ),
+            },
+            {
+              label: t('barchart.config.transform-options.label-negative-y', 'Negative Y'),
+              value: GraphTransform.NegativeY,
+              description: t(
+                'barchart.config.transform-options.description-negative-y',
+                'Flip the results to negative values on the y axis'
+              ),
+            },
+          ],
+          isClearable: true,
+        },
+        hideFromDefaults: true,
+      });
+
+      builder.addCustomEditor({
+        id: 'thresholdsStyle',
+        path: 'thresholdsStyle',
+        name: t('barchart.config.name-show-thresholds', 'Show thresholds'),
+        category: [t('barchart.config.category-thresholds', 'Thresholds')],
+        defaultValue: { mode: GraphThresholdsStyleMode.Off },
+        settings: {
+          options: getGraphFieldOptions().thresholdsDisplayModes,
+        },
+        editor: ThresholdsStyleEditor,
+        override: ThresholdsStyleEditor,
+        process: identityOverrideProcessor,
+        shouldApply: () => true,
+      });
+
+      commonOptionsBuilder.addAxisConfig(builder, cfg);
       commonOptionsBuilder.addHideFrom(builder);
     },
   })
-  .setPanelOptions((builder, context) => {
-    const disp = prepareBarChartDisplayValues(context.data, config.theme2, context.options ?? ({} as any));
-    let xaxisPlaceholder = 'First string or time field';
-    const viz = disp.viz ? disp.viz[0] : undefined;
-    if (viz?.fields?.length) {
-      const first = viz.fields[0];
-      xaxisPlaceholder += ` (${getFieldDisplayName(first, viz)})`;
-    }
-
+  .setPanelOptions((builder) => {
     builder
       .addFieldNamePicker({
         path: 'xField',
-        name: 'X Axis',
+        name: t('barchart.config.name-x-axis', 'X Axis'),
         settings: {
-          placeholderText: xaxisPlaceholder,
+          placeholderText: t('barchart.config.placeholder-x-axis', 'First string or time field'),
         },
       })
       .addRadio({
         path: 'orientation',
-        name: 'Orientation',
+        name: t('barchart.config.name-orientation', 'Orientation'),
         settings: {
           options: [
-            { value: VizOrientation.Auto, label: 'Auto' },
-            { value: VizOrientation.Horizontal, label: 'Horizontal' },
-            { value: VizOrientation.Vertical, label: 'Vertical' },
+            { value: VizOrientation.Auto, label: t('barchart.config.orientation-options.label-auto', 'Auto') },
+            {
+              value: VizOrientation.Horizontal,
+              label: t('barchart.config.orientation-options.label-horizontal', 'Horizontal'),
+            },
+            {
+              value: VizOrientation.Vertical,
+              label: t('barchart.config.orientation-options.label-line-vertical', 'Vertical'),
+            },
           ],
         },
-        defaultValue: defaultPanelOptions.orientation,
+        defaultValue: defaultOptions.orientation,
       })
       .addSliderInput({
         path: 'xTickLabelRotation',
-        name: 'Rotate bar labels',
-        defaultValue: defaultPanelOptions.xTickLabelRotation,
+        name: t('barchart.config.name-rotate-x-labels', 'Rotate x-axis tick labels'),
+        defaultValue: defaultOptions.xTickLabelRotation,
         settings: {
           min: -90,
           max: 90,
@@ -106,50 +160,51 @@ export const plugin = new PanelPlugin<PanelOptions, BarChartFieldConfig>(BarChar
           marks: { '-90': '-90°', '-45': '-45°', 0: '0°', 45: '45°', 90: '90°' },
           included: false,
         },
-        showIf: (opts) => {
-          return opts.orientation === VizOrientation.Auto || opts.orientation === VizOrientation.Vertical;
-        },
       })
       .addNumberInput({
         path: 'xTickLabelMaxLength',
-        name: 'Bar label max length',
-        description: 'Bar labels will be truncated to the length provided',
+        name: t('barchart.config.name-x-label-max-length', 'X-axis tick label max length'),
+        description: t(
+          'barchart.config.description-x-label-max-length',
+          'X-axis labels will be truncated to the length provided'
+        ),
         settings: {
-          placeholder: 'None',
+          placeholder: t('barchart.config.placeholder-x-label-max-length', 'None'),
           min: 0,
         },
+        showIf: (opts) => opts.xTickLabelRotation !== 0,
       })
       .addCustomEditor({
         id: 'xTickLabelSpacing',
         path: 'xTickLabelSpacing',
-        name: 'Bar labels minimum spacing',
-        defaultValue: defaultPanelOptions.xTickLabelSpacing,
+        name: t('barchart.config.name-x-label-min-spacing', 'X-axis labels minimum spacing'),
+        defaultValue: defaultOptions.xTickLabelSpacing,
         editor: TickSpacingEditor,
       })
       .addRadio({
         path: 'showValue',
-        name: 'Show values',
+        name: t('barchart.config.name-show-values', 'Show values'),
         settings: {
           options: [
-            { value: VisibilityMode.Auto, label: 'Auto' },
-            { value: VisibilityMode.Always, label: 'Always' },
-            { value: VisibilityMode.Never, label: 'Never' },
+            { value: VisibilityMode.Auto, label: t('barchart.config.show-values-options.label-auto', 'Auto') },
+            { value: VisibilityMode.Always, label: t('barchart.config.show-values-options.label-always', 'Always') },
+            { value: VisibilityMode.Never, label: t('barchart.config.show-values-options.label-never', 'Never') },
           ],
         },
-        defaultValue: defaultPanelOptions.showValue,
+        defaultValue: defaultOptions.showValue,
       })
       .addRadio({
         path: 'stacking',
-        name: 'Stacking',
+        name: t('barchart.config.name-stacking', 'Stacking'),
         settings: {
-          options: graphFieldOptions.stacking,
+          options: getGraphFieldOptions().stacking,
         },
-        defaultValue: defaultPanelOptions.stacking,
+        defaultValue: defaultOptions.stacking,
       })
       .addSliderInput({
         path: 'groupWidth',
-        name: 'Group width',
-        defaultValue: defaultPanelOptions.groupWidth,
+        name: t('barchart.config.name-group-width', 'Group width'),
+        defaultValue: defaultOptions.groupWidth,
         settings: {
           min: 0,
           max: 1,
@@ -164,8 +219,8 @@ export const plugin = new PanelPlugin<PanelOptions, BarChartFieldConfig>(BarChar
       })
       .addSliderInput({
         path: 'barWidth',
-        name: 'Bar width',
-        defaultValue: defaultPanelOptions.barWidth,
+        name: t('barchart.config.name-bar-width', 'Bar width'),
+        defaultValue: defaultOptions.barWidth,
         settings: {
           min: 0,
           max: 1,
@@ -174,24 +229,33 @@ export const plugin = new PanelPlugin<PanelOptions, BarChartFieldConfig>(BarChar
       })
       .addSliderInput({
         path: 'barRadius',
-        name: 'Bar radius',
-        defaultValue: defaultPanelOptions.barRadius,
+        name: t('barchart.config.name-bar-radius', 'Bar radius'),
+        defaultValue: defaultOptions.barRadius,
         settings: {
           min: 0,
           max: 0.5,
           step: 0.05,
         },
+      })
+      .addBooleanSwitch({
+        path: 'fullHighlight',
+        name: t('barchart.config.name-full-highlight', 'Highlight full area on hover'),
+        defaultValue: defaultOptions.fullHighlight,
+        showIf: (c) => c.stacking === StackingMode.None,
       });
 
     builder.addFieldNamePicker({
       path: 'colorByField',
-      name: 'Color by field',
-      description: 'Use the color value for a sibling field to color each bar value.',
+      name: t('barchart.config.name-color-by-field', 'Color by field'),
+      description: t(
+        'barchart.config.description-color-by-field',
+        'Use the color value for a sibling field to color each bar value.'
+      ),
     });
 
-    commonOptionsBuilder.addTooltipOptions(builder);
+    commonOptionsBuilder.addTooltipOptions(builder, false, false, optsWithHideZeros);
     commonOptionsBuilder.addLegendOptions(builder);
-    commonOptionsBuilder.addTextSizeOptions(builder, false);
+    commonOptionsBuilder.addTextSizeOptions(builder, { withValue: true });
   })
   .setSuggestionsSupplier(new BarChartSuggestionsSupplier());
 

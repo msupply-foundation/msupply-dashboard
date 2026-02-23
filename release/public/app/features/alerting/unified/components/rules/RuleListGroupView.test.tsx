@@ -1,27 +1,38 @@
-import { locationService } from '@grafana/runtime';
-import { render } from '@testing-library/react';
-import { contextSrv } from 'app/core/services/context_srv';
-import { configureStore } from 'app/store/configureStore';
-import { AccessControlAction } from 'app/types';
-import { CombinedRuleNamespace } from 'app/types/unified-alerting';
-import React from 'react';
-import { Provider } from 'react-redux';
-import { Router } from 'react-router-dom';
+import { waitFor } from '@testing-library/react';
+import { render } from 'test/test-utils';
 import { byRole } from 'testing-library-selector';
-import { mockCombinedRule, mockDataSource } from '../../mocks';
+
+import { setPluginLinksHook } from '@grafana/runtime';
+import { contextSrv } from 'app/core/services/context_srv';
+import { AccessControlAction } from 'app/types/accessControl';
+import { CombinedRuleNamespace } from 'app/types/unified-alerting';
+
+import * as analytics from '../../Analytics';
+import { setupMswServer } from '../../mockApi';
+import { mockCombinedRule } from '../../mocks';
+import { mimirDataSource } from '../../mocks/server/configure';
 import { GRAFANA_RULES_SOURCE_NAME } from '../../utils/datasource';
+
 import { RuleListGroupView } from './RuleListGroupView';
 
+jest.spyOn(analytics, 'logInfo');
+
 const ui = {
-  grafanaRulesHeading: byRole('heading', { name: 'Grafana' }),
-  cloudRulesHeading: byRole('heading', { name: 'Mimir / Cortex / Loki' }),
+  grafanaRulesHeading: byRole('heading', { name: 'Grafana-managed' }),
+  cloudRulesHeading: byRole('heading', { name: 'Data source-managed' }),
 };
 
-describe('RuleListGroupView', () => {
-  describe('FGAC', () => {
-    jest.spyOn(contextSrv, 'accessControlEnabled').mockReturnValue(true);
+setPluginLinksHook(() => ({
+  links: [],
+  isLoading: false,
+}));
 
-    it('Should display Grafana rules when the user has the alert rule read permission', () => {
+setupMswServer();
+const mimirDs = mimirDataSource();
+
+describe('RuleListGroupView', () => {
+  describe('RBAC', () => {
+    it('Should display Grafana rules when the user has the alert rule read permission', async () => {
       const grafanaNamespace = getGrafanaNamespace();
       const namespaces: CombinedRuleNamespace[] = [grafanaNamespace];
 
@@ -31,10 +42,12 @@ describe('RuleListGroupView', () => {
 
       renderRuleList(namespaces);
 
-      expect(ui.grafanaRulesHeading.get()).toBeInTheDocument();
+      await waitFor(() => {
+        expect(ui.grafanaRulesHeading.get()).toBeInTheDocument();
+      });
     });
 
-    it('Should display Cloud rules when the user has the external rules read permission', () => {
+    it('Should display Cloud rules when the user has the external rules read permission', async () => {
       const cloudNamespace = getCloudNamespace();
       const namespaces: CombinedRuleNamespace[] = [cloudNamespace];
 
@@ -44,10 +57,12 @@ describe('RuleListGroupView', () => {
 
       renderRuleList(namespaces);
 
-      expect(ui.cloudRulesHeading.get()).toBeInTheDocument();
+      await waitFor(() => {
+        expect(ui.cloudRulesHeading.get()).toBeInTheDocument();
+      });
     });
 
-    it('Should not display Grafana rules when the user does not have alert rule read permission', () => {
+    it('Should not display Grafana rules when the user does not have alert rule read permission', async () => {
       const grafanaNamespace = getGrafanaNamespace();
       const namespaces: CombinedRuleNamespace[] = [grafanaNamespace];
 
@@ -55,10 +70,12 @@ describe('RuleListGroupView', () => {
 
       renderRuleList(namespaces);
 
-      expect(ui.grafanaRulesHeading.query()).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(ui.grafanaRulesHeading.query()).not.toBeInTheDocument();
+      });
     });
 
-    it('Should not display Cloud rules when the user does not have the external rules read permission', () => {
+    it('Should not display Cloud rules when the user does not have the external rules read permission', async () => {
       const cloudNamespace = getCloudNamespace();
 
       const namespaces: CombinedRuleNamespace[] = [cloudNamespace];
@@ -68,21 +85,26 @@ describe('RuleListGroupView', () => {
 
       renderRuleList(namespaces);
 
-      expect(ui.cloudRulesHeading.query()).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(ui.cloudRulesHeading.query()).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Analytics', () => {
+    it('Sends log info when the list is loaded', () => {
+      const grafanaNamespace = getGrafanaNamespace();
+      const namespaces: CombinedRuleNamespace[] = [grafanaNamespace];
+
+      renderRuleList(namespaces);
+
+      expect(analytics.logInfo).toHaveBeenCalledWith(analytics.LogMessages.loadedList);
     });
   });
 });
 
 function renderRuleList(namespaces: CombinedRuleNamespace[]) {
-  const store = configureStore();
-
-  render(
-    <Provider store={store}>
-      <Router history={locationService.getHistory()}>
-        <RuleListGroupView namespaces={namespaces} expandAll />
-      </Router>
-    </Provider>
-  );
+  render(<RuleListGroupView namespaces={namespaces} expandAll />);
 }
 
 function getGrafanaNamespace(): CombinedRuleNamespace {
@@ -93,6 +115,7 @@ function getGrafanaNamespace(): CombinedRuleNamespace {
       {
         name: 'default',
         rules: [mockCombinedRule()],
+        totals: {},
       },
     ],
   };
@@ -101,11 +124,12 @@ function getGrafanaNamespace(): CombinedRuleNamespace {
 function getCloudNamespace(): CombinedRuleNamespace {
   return {
     name: 'Cloud Test Namespace',
-    rulesSource: mockDataSource(),
+    rulesSource: mimirDs.dataSource,
     groups: [
       {
         name: 'Prom group',
         rules: [mockCombinedRule()],
+        totals: {},
       },
     ],
   };
