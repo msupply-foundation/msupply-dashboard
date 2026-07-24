@@ -7,7 +7,11 @@ name: Build windows installers
 # release. The old installer/build-installers.bat orchestration is inlined as
 # steps; only adjustSUFs.js and the .suf projects remain as files.
 on:
+  # TEMPORARY (revert before merge): branch-push trigger for pre-merge dry
+  # runs — workflow_dispatch only works once the workflow is on master.
   push:
+    branches:
+      - build-installers-github-actions
     tags:
       - "v*"
   workflow_dispatch:
@@ -117,7 +121,8 @@ jobs:
       - name: Sign installers
         # inputs are empty on tag pushes, so releases always sign; dispatch
         # runs sign unless skip_signing is set.
-        if: ${{ !inputs.skip_signing }}
+        # TEMPORARY (revert before merge): forced off for branch dry runs.
+        if: false
         shell: cmd
         run: |
           for %%e in ("%GITHUB_WORKSPACE%\installer\dashboard-*.exe") do java -jar "%JSIGN_JAR%" --storetype ETOKEN --storepass %ETOKEN_PASS% --tsaurl %TSA_URL% "%%e" || exit /b 1
