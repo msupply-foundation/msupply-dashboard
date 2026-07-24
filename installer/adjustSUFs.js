@@ -1,22 +1,25 @@
 const fs = require('fs');
-const installerWorkspace = process.env.WORKSPACE;
-const installerFolder = `${installerWorkspace}\\installer`;
-const files = fs.readdirSync(installerFolder);
+const path = require('path');
 
-files.forEach((fileName) => {
-  if (fileName.endsWith('.suf')) {
-    const sufFileName = `${installerFolder}\\${fileName}`;
-    const fileContent = fs.readFileSync(sufFileName, 'utf8');
-    fs.writeFileSync(fileName, replaceVersion(adjustOutputFolder(fileContent)));
-  }
-});
+// Stamps the .suf projects in place before a headless Setup Factory build.
+//   versionTag    e.g. v8.6.0 — names the installer exes and the ProductVer
+//   RELEASE_FOLDER  short path release/ is mirrored to before the build
+//                   (Setup Factory crashes when source file paths are too long)
+const { versionTag, RELEASE_FOLDER } = process.env;
+if (!versionTag) throw new Error('versionTag environment variable is not set');
+if (!RELEASE_FOLDER) throw new Error('RELEASE_FOLDER environment variable is not set');
 
-function replaceVersion(fileContent) {
-  return fileContent.replace(/~~version~~/g, process.env.versionTag);
-}
+const installerFolder = __dirname;
 
-function adjustOutputFolder(fileContent) {
-  return fileContent
-    .replace(/~~installer-folder~~/g, `${installerFolder}`)
-    .replace(/~~release-folder~~/g, `c:\\temp\\release`);
-}
+fs.readdirSync(installerFolder)
+  .filter((fileName) => fileName.endsWith('.suf'))
+  .forEach((fileName) => {
+    const sufPath = path.join(installerFolder, fileName);
+    const adjusted = fs
+      .readFileSync(sufPath, 'utf8')
+      .replace(/~~version~~/g, versionTag)
+      .replace(/~~installer-folder~~/g, installerFolder)
+      .replace(/~~release-folder~~/g, RELEASE_FOLDER);
+    fs.writeFileSync(sufPath, adjusted);
+    console.log(`adjusted ${fileName}`);
+  });

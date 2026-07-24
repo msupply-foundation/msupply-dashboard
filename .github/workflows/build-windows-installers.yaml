@@ -1,0 +1,167 @@
+name: Build windows installers
+
+# Replaces the Jenkins dashboard-installer job (adjust SUFs → Setup Factory →
+# publish). Everything the installers package is committed in release/, so no
+# compile happens here — the workflow stamps the .suf projects, runs Setup
+# Factory headlessly, signs the output and attaches it to the tag's GitHub
+# release. The old installer/build-installers.bat orchestration is inlined as
+# steps; only adjustSUFs.js and the .suf projects remain as files.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      skip_signing:
+        description: "Skip code signing (dry runs without the eToken)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write # upload installers to an existing GitHub release
+
+concurrency:
+  # One eToken on one physical box. GitHub concurrency groups are repo-scoped
+  # so this can't serialise against open-msupply's builds — the single runner
+  # slot on the box does that; this just stops our own runs stacking up.
+  group: windows-build-server
+
+env:
+  # Machine tool locations — centralised here instead of hardcoded in the
+  # steps, so a version bump is a one-line change.
+  JSIGN_JAR: c:\mSupply_installer_codesigning\jsign-6.0.jar
+  SETUP_FACTORY_EXE: C:\Program Files (x86)\Setup Factory 10\SUFDesign.exe
+  TSA_URL: http://timestamp.sectigo.com
+  # Setup Factory crashes when source file paths are too long (the grafana
+  # public/ tree is deep), so release/ is mirrored to a short path first —
+  # same reason Jenkins built from c:\temp\release.
+  RELEASE_FOLDER: C:\temp\dashboard-release
+
+jobs:
+  build:
+    name: Build, sign and package
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 90
+    steps:
+      # fetch-depth: 0 because the version comes from `git describe --tags`.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # versionTag (e.g. v8.6.0) names the installer exes and is stamped into
+      # the .suf ProductVer by adjustSUFs.js — replaces the version.txt the
+      # Jenkins job used to write.
+      - name: Record version
+        shell: pwsh
+        run: |
+          $versionTag = (git describe --tags).Trim()
+          Write-Host "versionTag=$versionTag"
+          "versionTag=$versionTag" >> $env:GITHUB_ENV
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+
+      # The .suf projects reference the "mSupply" installer theme, which Setup
+      # Factory resolves from its machine-wide theme directory — install the
+      # committed copy so the runner needs no manual theme setup (a missing
+      # theme pops a modal dialog, which would hang a headless build).
+      - name: Install Setup Factory theme
+        shell: cmd
+        run: |
+          if not exist "installer\theme\mSupply" (
+            echo installer\theme\mSupply is missing - commit the mSupply theme from the Setup Factory Themes directory on the old Jenkins box
+            exit /b 1
+          )
+          xcopy "installer\theme\mSupply" "C:\ProgramData\IndigoRose\Setup Factory\10.0\Themes\mSupply" /e /c /i /y || exit /b 1
+
+      - name: Mirror release to short path
+        shell: pwsh
+        run: |
+          robocopy release $env:RELEASE_FOLDER /MIR /NFL /NDL /NJH /NP
+          # robocopy exit codes 0-7 are success
+          if ($LASTEXITCODE -ge 8) { throw "robocopy failed with exit code $LASTEXITCODE" }
+          exit 0
+
+      # adjustSUFs.js stamps versionTag, the release source folder and the
+      # output folder into the .suf projects in place (checkout resets them
+      # each run). Jenkins never checked SUFDesign's exit code; here a failed
+      # suf build fails the step — `|| exit /b` doesn't fire after
+      # `start /wait` (start itself succeeds), so errorlevel is checked
+      # explicitly.
+      - name: Build installers (Setup Factory)
+        shell: cmd
+        run: |
+          node "installer\adjustSUFs.js" || exit /b 1
+          echo ##### building dashboard.suf
+          start "" /wait "%SETUP_FACTORY_EXE%" /BUILD /LOG:installer\setup-factory.log "%GITHUB_WORKSPACE%\installer\dashboard.suf"
+          @if %errorlevel% neq 0 exit /b %errorlevel%
+          echo ##### building dashboard-upgrade.suf
+          start "" /wait "%SETUP_FACTORY_EXE%" /BUILD /LOG:installer\setup-factory.log "%GITHUB_WORKSPACE%\installer\dashboard-upgrade.suf"
+          @if %errorlevel% neq 0 exit /b %errorlevel%
+
+      # The Setup Factory log is the only diagnostic SUFDesign produces —
+      # surface it when the build fails.
+      - name: Upload Setup Factory log (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: setup-factory-log
+          path: installer/setup-factory.log
+          if-no-files-found: ignore
+
+      # ETOKEN storetype = SafeNet USB hardware token plugged into the build
+      # box; --storepass avoids the interactive PIN dialog. Requires Java and
+      # the SafeNet Authentication Client drivers on the runner.
+      - name: Sign installers
+        # inputs are empty on tag pushes, so releases always sign; dispatch
+        # runs sign unless skip_signing is set.
+        if: ${{ !inputs.skip_signing }}
+        shell: cmd
+        run: |
+          for %%e in ("%GITHUB_WORKSPACE%\installer\dashboard-*.exe") do java -jar "%JSIGN_JAR%" --storetype ETOKEN --storepass %ETOKEN_PASS% --tsaurl %TSA_URL% "%%e" || exit /b 1
+        env:
+          ETOKEN_PASS: ${{ secrets.ETOKEN_PASS }}
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: msupply-dashboard-installers-${{ env.versionTag }}
+          path: installer/dashboard-*.exe
+
+      # Attach installers to the GitHub release for this tag — but only if a
+      # release already exists (draft or published); the release list is
+      # matched by tag_name (not get-by-tag) so draft releases count too.
+      - name: Upload to GitHub release (if one exists)
+        if: github.ref_type == 'tag'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const tag = context.ref.replace('refs/tags/', '');
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              ...context.repo, per_page: 100,
+            });
+            const release = releases.find(r => r.tag_name === tag);
+            if (!release) {
+              core.info(`No release for ${tag} - skipping upload`);
+              return;
+            }
+            const dir = path.join(process.env.GITHUB_WORKSPACE, 'installer');
+            const installers = fs.readdirSync(dir).filter(f => f.startsWith('dashboard-') && f.endsWith('.exe'));
+            for (const name of installers) {
+              const existing = release.assets.find(a => a.name === name);
+              if (existing) {
+                core.info(`Replacing existing asset ${name}`);
+                await github.rest.repos.deleteReleaseAsset({ ...context.repo, asset_id: existing.id });
+              }
+              core.info(`Uploading ${name}`);
+              await github.rest.repos.uploadReleaseAsset({
+                ...context.repo,
+                release_id: release.id,
+                name,
+                data: fs.readFileSync(path.join(dir, name)),
+                headers: { 'content-type': 'application/octet-stream' },
+              });
+            }
