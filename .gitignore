@@ -2,3 +2,5 @@
 installer/.DS_Store
 node_modules
 dist
+installer/dashboard-*.exe
+installer/setup-factory.log

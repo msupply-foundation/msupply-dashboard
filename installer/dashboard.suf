@@ -6,7 +6,7 @@
 <ArchiveFiles>
 <FileData>
 <FldRef>1</FldRef>
-<FullName>~~release_folder~~\*.*</FullName>
+<FullName>~~release-folder~~\*.*</FullName>
 <FileName>*.*</FileName>
 <Source>~~release-folder~~</Source>
 <Ext>*</Ext>
