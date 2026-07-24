@@ -121,8 +121,7 @@ jobs:
       - name: Sign installers
         # inputs are empty on tag pushes, so releases always sign; dispatch
         # runs sign unless skip_signing is set.
-        # TEMPORARY (revert before merge): forced off for branch dry runs.
-        if: false
+        if: ${{ !inputs.skip_signing }}
         shell: cmd
         run: |
           for %%e in ("%GITHUB_WORKSPACE%\installer\dashboard-*.exe") do java -jar "%JSIGN_JAR%" --storetype ETOKEN --storepass %ETOKEN_PASS% --tsaurl %TSA_URL% "%%e" || exit /b 1
