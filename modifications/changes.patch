@@ -1,7 +1,7 @@
-# mSupply Dashboard customisations to Grafana core, for Grafana v13.2.1.
+# mSupply Dashboard customisations to Grafana core, for Grafana v13.2.2.
 #
 # Apply with `git apply changes.patch` from the root of a Grafana checkout at
-# tag v13.2.1, after copying modifications/public over public/.
+# tag v13.2.2, after copying modifications/public over public/.
 #
 # Only the logo swap still needs a patch. Three hunks that used to live here
 # were dropped on the move to v13:

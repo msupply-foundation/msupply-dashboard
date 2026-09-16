@@ -1,6 +1,6 @@
 # Building and installing the mSupply Dashboard
 
-Target: **Grafana v13.2.1**.
+Target: **Grafana v13.2.2**.
 
 ---
 
@@ -8,9 +8,9 @@ Target: **Grafana v13.2.1**.
 
 `release/` holds a Grafana build with the mSupply branding patch applied. It
 must be rebuilt for each Grafana version — the version currently committed is
-**12.3.x**, so it needs redoing for 13.2.1.
+**12.3.x**, so it needs redoing for 13.2.2.
 
-Toolchain (read from `go.mod` and `package.json` at tag v13.2.1 — these move
+Toolchain (read from `go.mod` and `package.json` at tag v13.2.2 — these move
 every release, check them again on the next bump):
 
 | Tool | Version |
@@ -20,7 +20,7 @@ every release, check them again on the next bump):
 | Yarn | 4.17.1, via corepack — do **not** `npm i -g yarn` |
 
 ```bash
-git clone --depth 1 --branch v13.2.1 https://github.com/grafana/grafana.git
+git clone --depth 1 --branch v13.2.2 https://github.com/grafana/grafana.git
 cd grafana
 
 # adds public/img/msupply_icon.svg and msupply_light_icon.svg, which the
@@ -31,9 +31,9 @@ git apply ../msupply-dashboard/modifications/changes.patch
 corepack enable
 yarn install --immutable
 yarn build                                    # frontend -> public/build
-
-GOOS=windows GOARCH=amd64 make build-go       # backend -> bin/windows/amd64/grafana.exe
 ```
+
+No `make build-go` is needed: the backend is the official download (see below).
 
 Confirm the branding landed before packaging — if it silently did not, the
 release ships Grafana's own logo:
@@ -47,16 +47,27 @@ Then copy into this repo's `release/`, keeping the mSupply-owned files:
 
 | Copy from the build | Into |
 |---|---|
-| `bin/windows/amd64/grafana.exe` | `release/bin/` |
 | `conf/defaults.ini`, `sample.ini`, `ldap.toml`, `ldap_multiple.toml` | `release/conf/` |
-| `public/`, `tools/` | `release/` |
+| `public/` | `release/` |
+
+Only the **frontend** is built here. The backend `grafana.exe` is **not**
+committed and must not be copied in by hand — `build-installers.bat` downloads
+the official Windows amd64 build from the URL in `installer/grafana.url` and
+drops it into `release/bin/` at build time. Keeping one source of truth for the
+backend is what stops `grafana.url` and `release/` drifting to different
+versions, which is how this repo ended up shipping a 12.x frontend against a
+13.x pin.
+
+So `installer/grafana.url` and the tag cloned above **must name the same
+version**. Check that first on every bump.
 
 **Keep** `release/bin/nssm.exe`, `release/conf/custom.ini`,
 `release/conf/provisioning/` and `release/data/grafana.db` — those are ours,
 not Grafana's. Do not copy Grafana's own `conf/custom.ini` over ours.
 
 Grafana 13 ships **only `bin/grafana.exe`**; the `grafana-server.exe` and
-`grafana-cli.exe` wrappers are gone. Delete any leftovers from `release/bin/`.
+`grafana-cli.exe` wrappers are gone, and so is `tools/`. `release/bin/` should
+hold nothing but `nssm.exe` in git.
 
 ## 2. Build the installers
 
@@ -192,3 +203,27 @@ service at `grafana.exe`, and starts it again. It leaves `conf\custom.ini`,
 - The Postgres datasource lives in `data\grafana.db`, not in
   `conf\provisioning\datasources\datasource.yaml` (that file is a commented
   template). A restored database brings the client's own datasource with it.
+- The seed `release/data/grafana.db` is committed **un-migrated**, as Grafana
+  last wrote it, and Grafana migrates it on first start. That has been verified
+  end to end against 13.2.2: `migration_log` goes 689 → 731 rows, all 12
+  dashboards and 6 folders migrate into unified storage, the single user, org
+  and datasource are preserved, the datasource resolves as
+  `grafana-postgresql-datasource`, and all 11 panel types in use
+  (`text stat table gauge timeseries barchart bargauge dashlist piechart geomap
+  state-timeline`) resolve to core plugins — no "panel plugin not found".
+
+  Do **not** commit a pre-migrated copy in its place. Migrating inflates the
+  file from 3.8 MB to 6.8 MB and bakes in runtime artifacts (`resource_history`
+  rows, `advisor.grafana.app` check types) that Grafana regenerates anyway, and
+  the seed never needs the rollback that a client database does. To re-run this
+  check after a Grafana bump, point a throwaway instance at a **copy**:
+
+  ```bash
+  curl -fLO https://dl.grafana.com/oss/release/grafana-<version>.darwin-arm64.tar.gz
+  tar -xzf grafana-<version>.darwin-arm64.tar.gz && cd grafana-<version>
+  mkdir -p /tmp/gtest/data && cp .../release/data/grafana.db /tmp/gtest/data/
+  ./bin/grafana server --homepath . --config /tmp/gtest/custom.ini
+  ```
+
+  Note `grafana cli admin reset-admin-password` is needed to reach the HTTP API,
+  which is itself a reason to run against a copy and throw it away.

@@ -1,6 +1,6 @@
 # mSupply modifications to Grafana core
 
-Targets **Grafana v13.2.1**.
+Targets **Grafana v13.2.2**.
 
 The mSupply Dashboard ships a Grafana built from source with one small patch
 applied, so that the login page and nav bar carry the mSupply mark instead of
@@ -9,7 +9,7 @@ Grafana's.
 ## Applying
 
 ```bash
-git clone --depth 1 --branch v13.2.1 https://github.com/grafana/grafana.git
+git clone --depth 1 --branch v13.2.2 https://github.com/grafana/grafana.git
 cd grafana
 
 # adds public/img/msupply_icon.svg and msupply_light_icon.svg
@@ -43,7 +43,7 @@ time (`[[.FavIcon]]`, `[[.AppleTouchIcon]]`), so copying
 
 ## Build dependencies
 
-Read from `go.mod` and `package.json` at tag v13.2.1 — check them again on the
+Read from `go.mod` and `package.json` at tag v13.2.2 — check them again on the
 next Grafana bump, these move every release.
 
 | Tool | Version |
@@ -54,17 +54,25 @@ next Grafana bump, these move every release.
 
 ## Building
 
+Only the frontend is built here — that is where the branding lives:
+
 ```bash
 corepack enable
 yarn install --immutable
 yarn build          # frontend -> public/build
-
-make build-go       # backend -> bin/
 ```
 
-For a Windows release, cross-compile the backend and copy `bin/`, `conf/`,
-`public/`, `scripts/` and `tools/` into this repo's `release/` folder, then
-build the installers with `installer/build-installers.bat`.
+For a Windows release, copy `public/` and Grafana's own four conf files
+(`defaults.ini`, `sample.ini`, `ldap.toml`, `ldap_multiple.toml`) into this
+repo's `release/`, then build the installers with
+`installer/build-installers.bat`. Do not copy `conf/` wholesale — it would
+overwrite our `release/conf/custom.ini`. See the table in
+`installer/README.md` §1 for the exact mapping and the list of mSupply-owned
+files to keep.
+
+Do **not** build or copy the backend: `build-installers.bat` downloads the
+official `grafana.exe` from the URL in `installer/grafana.url`, and that URL
+must name the same version as the tag cloned above.
 
 ## Checking the result
 
