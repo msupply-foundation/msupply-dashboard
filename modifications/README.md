@@ -1,87 +1,87 @@
-# [Grafana](https://grafana.com) [![Circle CI](https://circleci.com/gh/grafana/grafana.svg?style=svg)](https://circleci.com/gh/grafana/grafana) [![Go Report Card](https://goreportcard.com/badge/github.com/grafana/grafana)](https://goreportcard.com/report/github.com/grafana/grafana) [![codecov](https://codecov.io/gh/grafana/grafana/branch/master/graph/badge.svg)](https://codecov.io/gh/grafana/grafana)
+# mSupply modifications to Grafana core
 
-[Website](https://grafana.com) |
-[Twitter](https://twitter.com/grafana) |
-[Community & Forum](https://community.grafana.com)
+Targets **Grafana v13.2.2**.
 
-Grafana is an open source, feature rich metrics dashboard and graph editor for
-Graphite, Elasticsearch, OpenTSDB, Prometheus and InfluxDB.
+The mSupply Dashboard ships a Grafana built from source with one small patch
+applied, so that the login page and nav bar carry the mSupply mark instead of
+Grafana's.
 
-![](http://docs.grafana.org/assets/img/features/dashboard_ex1.png)
-
-### Modifications
-
-A couple of tweaks have been made to the grafana core. To apply the changes:
-
-- obtain the latest code, copy the folders in this project over the existing codebase. This adds the new binary (image) files.
-- apply the patch: `git apply changes.patch`
-
-### Dependencies
-
-- Go (Latest Stable)
-- NodeJS LTS
-
-### Building the backend
+## Applying
 
 ```bash
-go get github.com/grafana/grafana
-cd $GOPATH/src/github.com/grafana/grafana
-go run build.go setup
-go run build.go build
+git clone --depth 1 --branch v13.2.2 https://github.com/grafana/grafana.git
+cd grafana
+
+# adds public/img/msupply_icon.svg and msupply_light_icon.svg
+cp -r ../msupply-dashboard/modifications/public/. public/
+
+git apply ../msupply-dashboard/modifications/changes.patch
 ```
 
-### Building frontend assets
+## What the patch does
 
-For this you need nodejs (v.6+).
+One hunk, against `public/app/core/components/Branding/Branding.tsx`:
 
-To build the assets, rebuild on file change, and serve them by Grafana's webserver (http://localhost:3000):
+- `LoginLogo` uses `msupply_icon.svg` (the dark mark, on the light login page)
+- `MenuLogo` uses `msupply_light_icon.svg` (the light mark, on the dark nav bar)
+
+Webpack imports these, so they end up content-hashed under
+`public/build/static/img/`. Overwriting `public/img/grafana_icon.svg` on its own
+would *not* change these two logos — hence the patch.
+
+Three hunks that used to be here were dropped for v13:
+
+| Dropped hunk | Why |
+|---|---|
+| `public/sass/base/_icons.scss` | The `.gicon-branding` rule no longer exists. |
+| `public/views/index-template.html` | Renamed to `index.html`. The loading logo comes from `[[.LoadingLogo]]`, which resolves out of `public/img/` at request time, so no patch is needed. |
+| `packages/grafana-ui/src/components/DateTimePickers/options.ts` | Dropped — we now ship Grafana's stock time picker instead of trimming the sub-hour ranges. `quickOptions` also became the i18n'd `getQuickOptions()`, so the old hunk could not apply. To trim them again, set `[time_picker] quick_ranges` in `conf/custom.ini` rather than patching. |
+
+The favicon and Apple touch icon are also served from `public/img/` at request
+time (`[[.FavIcon]]`, `[[.AppleTouchIcon]]`), so copying
+`modifications/public/` over `public/` is enough for those.
+
+## Build dependencies
+
+Read from `go.mod` and `package.json` at tag v13.2.2 — check them again on the
+next Grafana bump, these move every release.
+
+| Tool | Version |
+|---|---|
+| Go | 1.26.6+ |
+| Node.js | >= 22, < 25 |
+| Yarn | 4.17.1 (via corepack — do **not** `npm i -g yarn`) |
+
+## Building
+
+Only the frontend is built here — that is where the branding lives:
 
 ```bash
-npm install -g yarn
-yarn install --pure-lockfile
-yarn watch
+corepack enable
+yarn install --immutable
+yarn build          # frontend -> public/build
 ```
 
-Build the assets, rebuild on file change with Hot Module Replacement (HMR), and serve them by webpack-dev-server (http://localhost:3333):
+For a Windows release, copy `public/` and Grafana's own four conf files
+(`defaults.ini`, `sample.ini`, `ldap.toml`, `ldap_multiple.toml`) into this
+repo's `release/`, then build the installers with
+`installer/build-installers.bat`. Do not copy `conf/` wholesale — it would
+overwrite our `release/conf/custom.ini`. See the table in
+`installer/README.md` §1 for the exact mapping and the list of mSupply-owned
+files to keep.
+
+Do **not** build or copy the backend: `build-installers.bat` downloads the
+official `grafana.exe` from the URL in `installer/grafana.url`, and that URL
+must name the same version as the tag cloned above.
+
+## Checking the result
+
+After building, confirm the branding actually landed:
 
 ```bash
-yarn start
-# OR set a theme
-env GRAFANA_THEME=light yarn start
+ls public/build/static/img/ | grep msupply
+# expect msupply_icon.<hash>.svg and msupply_light_icon.<hash>.svg
 ```
 
-Note: HMR for Angular is not supported. If you edit files in the Angular part of the app, the whole page will reload.
-
-Run tests
-
-```bash
-yarn jest
-```
-
-### Recompile backend on source change
-
-To rebuild on source change.
-
-```bash
-go get github.com/Unknwon/bra
-bra run
-```
-
-#### Building on linux/amd64 (fast)
-
-1. Build the frontend `go run build.go build-frontend`
-2. Build the docker image `make build-docker-dev`
-
-The resulting image will be tagged as `grafana/grafana:dev`
-
-#### Building anywhere (slower)
-
-Choose this option to build on platforms other than linux/amd64 and/or not have to setup the Grafana development environment.
-
-1. `make build-docker-full` or `docker build -t grafana/grafana:dev .`
-
-The resulting image will be tagged as `grafana/grafana:dev`
-
-## License
-
-Grafana is distributed under [Apache 2.0 License](https://github.com/grafana/grafana/blob/master/LICENSE.md).
+If those are missing, the patch did not apply or `modifications/public` was not
+copied first, and the release will ship with Grafana's own logo.

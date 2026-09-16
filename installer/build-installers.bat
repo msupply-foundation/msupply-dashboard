@@ -34,51 +34,36 @@ tar -xzf "%ARCHIVE%" -C "%GRAFANA_TMP%"
 IF ERRORLEVEL 1 EXIT /B 1
 
 @ECHO.
-@ECHO ##### Locating Grafana executables #####
+@ECHO ##### Locating Grafana executable #####
+
+REM Grafana 13 ships a single bin\grafana.exe; the grafana-server.exe and
+REM grafana-cli.exe wrappers were removed. Do not look for them.
 
 SET GRAFANA_EXE=
-SET GRAFANA_SERVER_EXE=
-SET GRAFANA_CLI_EXE=
 
 for /D %%d in ("%GRAFANA_TMP%\grafana-*") do (
     if exist "%%d\bin\grafana.exe" (
         SET GRAFANA_EXE=%%d\bin\grafana.exe
-    )
-    if exist "%%d\bin\grafana-server.exe" (
-        SET GRAFANA_SERVER_EXE=%%d\bin\grafana-server.exe
-    )
-    if exist "%%d\bin\grafana-cli.exe" (
-        SET GRAFANA_CLI_EXE=%%d\bin\grafana-cli.exe
-    )
-
-    REM Check if all three were found
-    if defined GRAFANA_EXE if defined GRAFANA_SERVER_EXE if defined GRAFANA_CLI_EXE (
         goto :found_grafana
     )
 )
 
-ECHO ERROR: One or more Grafana executables not found
-ECHO   grafana.exe        = %GRAFANA_EXE%
-ECHO   grafana-server.exe = %GRAFANA_SERVER_EXE%
-ECHO   grafana-cli.exe    = %GRAFANA_CLI_EXE%
+ECHO ERROR: grafana.exe not found under "%GRAFANA_TMP%\grafana-*\bin\"
 EXIT /B 1
 
 :found_grafana
-ECHO Found Grafana executables:
+ECHO Found Grafana executable:
 ECHO   %GRAFANA_EXE%
-ECHO   %GRAFANA_SERVER_EXE%
-ECHO   %GRAFANA_CLI_EXE%
 
 REM Ensure destination exists
 IF NOT EXIST "%WORKSPACE%\release\bin" (
     mkdir "%WORKSPACE%\release\bin"
 )
 
-copy /Y "%GRAFANA_EXE%"        "%WORKSPACE%\release\bin\"
-copy /Y "%GRAFANA_SERVER_EXE%" "%WORKSPACE%\release\bin\"
-copy /Y "%GRAFANA_CLI_EXE%"    "%WORKSPACE%\release\bin\"
+copy /Y "%GRAFANA_EXE%" "%WORKSPACE%\release\bin\"
+IF ERRORLEVEL 1 EXIT /B 1
 
-ECHO Grafana executables copied successfully
+ECHO Grafana executable copied successfully
 
 rmdir /s /q "%GRAFANA_TMP%"
 ECHO Grafana ready
