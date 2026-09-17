@@ -32,7 +32,11 @@ export const RegionLayer: React.FC<RegionLayerProps> = ({ options, data }) => {
 
   const renderLabel = (region: Iregion) => {
     const { name, prefix = '', suffix = '', value } = region;
-    const displayValue = value.toFixed(decimals);
+    // Defensive: Regions now coerces metrics to numbers, but don't let an
+    // unexpected non-numeric value take the whole panel down with
+    // "toFixed is not a function".
+    const numericValue = typeof value === 'number' ? value : parseFloat(value as any);
+    const displayValue = Number.isFinite(numericValue) ? numericValue.toFixed(decimals) : String(value ?? '');
 
     return !!labelTemplate
       ? labelTemplate

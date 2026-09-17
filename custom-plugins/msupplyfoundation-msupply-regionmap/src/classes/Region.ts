@@ -1,4 +1,4 @@
-import { DisplayValue, Field, Vector } from '@grafana/data';
+import { DisplayValue, Field, ThresholdsConfig, Vector, getActiveThreshold } from '@grafana/data';
 import { PathOptions } from 'leaflet';
 import { GeoJSON } from 'geojson';
 import { Iregion } from '../types';
@@ -21,7 +21,7 @@ export class Region implements Iregion {
     isSelected?: boolean
   ) {
     const displayField = dataField?.display && dataField?.display(value);
-    this._pathOptions = this.getPathOptions(displayField, isSelected);
+    this._pathOptions = this.getPathOptions(displayField, isSelected, value, dataField?.config?.thresholds);
 
     this._key = key;
     this._name = name;
@@ -59,15 +59,31 @@ export class Region implements Iregion {
     return this._value;
   }
 
-  private getPathOptions(displayValue?: DisplayValue, isSelected?: boolean): PathOptions {
-    if (!displayValue) {
+  private getPathOptions(
+    displayValue?: DisplayValue,
+    isSelected?: boolean,
+    value?: number,
+    thresholds?: ThresholdsConfig
+  ): PathOptions {
+    // Resolve the threshold colour from the value directly. Grafana only
+    // attaches a threshold colour to display() output for *numeric* fields,
+    // and CSV/JSON datasources commonly type numeric columns as strings - so
+    // relying on displayValue.color alone left every region on the base
+    // colour. Falls back to display()'s colour when there are no thresholds.
+    const thresholdColor =
+      thresholds && value !== undefined && Number.isFinite(value)
+        ? getActiveThreshold(value, thresholds.steps)?.color
+        : undefined;
+
+    const color = thresholdColor ?? displayValue?.color;
+
+    if (!color) {
       return {};
     }
-    const color = displayValue.color;
-    const fillColor = displayValue.color;
+
     const fillOpacity = isSelected ? 0.5 : 0.2;
     const weight = isSelected ? 3 : 1;
 
-    return { color, fillColor, fillOpacity, weight };
+    return { color, fillColor: color, fillOpacity, weight };
   }
 }

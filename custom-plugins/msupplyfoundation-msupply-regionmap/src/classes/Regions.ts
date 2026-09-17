@@ -35,7 +35,16 @@ export class Regions {
         }
 
         const name: string = nameField?.values?.get(index) || '';
-        const metric: number = metricField?.values?.get(index) || 0;
+
+        // Coerce to a real number: backend parsers (e.g. the Infinity
+        // datasource's CSV parser) hand numeric columns back as strings, which
+        // used to flow straight through as `number`. That broke
+        // `value.toFixed()` in the label ("r.toFixed is not a function") and
+        // made threshold comparisons string-vs-number, so every region got the
+        // base colour regardless of its value.
+        const rawMetric = metricField?.values?.get(index);
+        const parsedMetric = typeof rawMetric === 'number' ? rawMetric : parseFloat(rawMetric);
+        const metric: number = Number.isFinite(parsedMetric) ? parsedMetric : 0;
         const isSelected = this._selectedLinkedVariable?.text === name;
         const region = new Region(index.toString(), name, metric, data, metricField, isSelected);
 

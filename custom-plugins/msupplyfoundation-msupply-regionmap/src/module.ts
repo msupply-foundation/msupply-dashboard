@@ -1,19 +1,14 @@
 import { FieldConfigProperty, PanelPlugin } from '@grafana/data';
-import { loadPluginCss } from '@grafana/runtime';
 
 import { RegionMapOptions } from './types';
 import { RegionMap } from './RegionMap';
 
 export const plugin = new PanelPlugin<RegionMapOptions>(RegionMap)
   .setPanelOptions(builder => {
-    // moved up from /static/ as the signing is having an issue
-    const cssPath = 'plugins/m-supply-foundation-msupply-regionmap/';
-
-    loadPluginCss({
-      light: `${cssPath}regionmap.light.css`,
-      dark: `${cssPath}regionmap.dark.css`,
-    });
-
+    // Theme CSS is bundled via the import in RegionMap.tsx (see
+    // regionmap-panel.css) rather than fetched at runtime - loadPluginCss()
+    // pointed at a stale plugin id and the build doesn't copy loose .css
+    // into dist/, so those requests 404'd and the panel rendered unstyled.
     return builder
       .addTextInput({
         path: 'centre',
