@@ -1,17 +1,18 @@
 import { chain } from 'lodash';
-import { getTemplateSrv } from '@grafana/runtime';
-import { stringToJsRegex } from '@grafana/data';
 
-import { KeyedVariableIdentifier } from '../state/types';
-import { ThunkResult } from '../../../types';
-import { createDataSourceOptions } from './reducer';
-import { validateVariableSelectionState } from '../state/actions';
+import { stringToJsRegex } from '@grafana/data';
+import { getTemplateSrv } from '@grafana/runtime';
+import { ThunkResult } from 'app/types/store';
+
 import { getDatasourceSrv } from '../../plugins/datasource_srv';
-import { getVariable } from '../state/selectors';
-import { DataSourceVariableModel } from '../types';
 import { changeVariableEditorExtended } from '../editor/reducer';
+import { validateVariableSelectionState } from '../state/actions';
 import { toKeyedAction } from '../state/keyedVariablesReducer';
+import { getVariable } from '../state/selectors';
+import { KeyedVariableIdentifier } from '../state/types';
 import { toVariablePayload } from '../utils';
+
+import { createDataSourceOptions } from './reducer';
 
 export interface DataSourceVariableActionDependencies {
   getDatasourceSrv: typeof getDatasourceSrv;
@@ -25,7 +26,11 @@ export const updateDataSourceVariableOptions =
   async (dispatch, getState) => {
     const { rootStateKey } = identifier;
     const sources = dependencies.getDatasourceSrv().getList({ metrics: true, variables: false });
-    const variableInState = getVariable<DataSourceVariableModel>(identifier, getState());
+    const variableInState = getVariable(identifier, getState());
+    if (variableInState.type !== 'datasource') {
+      return;
+    }
+
     let regex;
 
     if (variableInState.regex) {
@@ -46,7 +51,7 @@ export const initDataSourceVariableEditor =
     const dataSources = dependencies.getDatasourceSrv().getList({ metrics: true, variables: true });
     const dataSourceTypes = chain(dataSources)
       .uniqBy('meta.id')
-      .map((ds: any) => {
+      .map((ds) => {
         return { text: ds.meta.name, value: ds.meta.id };
       })
       .value();

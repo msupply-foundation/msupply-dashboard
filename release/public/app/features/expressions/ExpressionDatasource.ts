@@ -1,16 +1,31 @@
+import { from, lastValueFrom, map, mergeMap, Observable } from 'rxjs';
+
 import {
+  DataFrame,
   DataQueryRequest,
   DataQueryResponse,
   DataSourceInstanceSettings,
   DataSourcePluginMeta,
   PluginType,
   ScopedVars,
+  TimeRange,
 } from '@grafana/data';
-import { ExpressionQuery, ExpressionQueryType } from './types';
+import { SQLQuery } from '@grafana/plugin-ui';
+import {
+  BackendDataSourceResponse,
+  DataSourceWithBackend,
+  FetchResponse,
+  getBackendSrv,
+  getDataSourceSrv,
+  getTemplateSrv,
+  toDataQueryResponse,
+} from '@grafana/runtime';
+import { ExpressionDatasourceRef } from '@grafana/runtime/internal';
+import { DataQuery } from '@grafana/schema/dist/esm/index';
+import icnDatasourceSvg from 'img/icn-datasource.svg';
+
 import { ExpressionQueryEditor } from './ExpressionQueryEditor';
-import { DataSourceWithBackend, getDataSourceSrv, getTemplateSrv } from '@grafana/runtime';
-import { ExpressionDatasourceRef } from '@grafana/runtime/src/utils/DataSourceWithBackend';
-import { Observable, from, mergeMap } from 'rxjs';
+import { ExpressionDatasourceUID, ExpressionQuery, ExpressionQueryType } from './types';
 
 /**
  * This is a singleton instance that just pretends to be a DataSource
@@ -20,7 +35,7 @@ export class ExpressionDatasourceApi extends DataSourceWithBackend<ExpressionQue
     super(instanceSettings);
   }
 
-  applyTemplateVariables(query: ExpressionQuery, scopedVars: ScopedVars): Record<string, any> {
+  applyTemplateVariables(query: ExpressionQuery, scopedVars: ScopedVars) {
     const templateSrv = getTemplateSrv();
     return {
       ...query,
@@ -41,7 +56,7 @@ export class ExpressionDatasourceApi extends DataSourceWithBackend<ExpressionQue
         return query;
       }
 
-      return ds?.interpolateVariablesInQueries([query], {})[0] as ExpressionQuery;
+      return ds?.interpolateVariablesInQueries([query], request.scopedVars, request.filters)[0] as ExpressionQuery;
     });
 
     let sub = from(Promise.all(targets));
@@ -51,23 +66,49 @@ export class ExpressionDatasourceApi extends DataSourceWithBackend<ExpressionQue
   newQuery(query?: Partial<ExpressionQuery>): ExpressionQuery {
     return {
       refId: '--', // Replaced with query
-      type: query?.type ?? ExpressionQueryType.math,
       datasource: ExpressionDatasourceRef,
-      conditions: query?.conditions ?? undefined,
+      type: query?.type ?? ExpressionQueryType.math,
+      ...query,
     };
   }
-}
 
-/**
- * MATCHES a constant in DataSourceWithBackend, this should be '__expr__'
- * @deprecated
- */
-export const ExpressionDatasourceUID = '-100';
+  runMetaSQLExprQuery(request: Partial<SQLQuery>, range: TimeRange, queries: DataQuery[]): Promise<DataFrame> {
+    const refId = request.refId || 'meta';
+    const metaSqlExpressionQuery: ExpressionQuery = {
+      window: '',
+      hide: false,
+      expression: request.rawSql,
+      datasource: ExpressionDatasourceRef,
+      refId,
+      type: ExpressionQueryType.sql,
+    };
+    return lastValueFrom(
+      getBackendSrv()
+        .fetch<BackendDataSourceResponse>({
+          url: '/api/ds/query',
+          method: 'POST',
+          headers: this.getRequestHeaders(),
+          data: {
+            from: range.from.valueOf().toString(),
+            to: range.to.valueOf().toString(),
+            queries: [...queries, metaSqlExpressionQuery],
+          },
+          requestId: refId,
+        })
+        .pipe(
+          map((res: FetchResponse<BackendDataSourceResponse>) => {
+            const rsp = toDataQueryResponse(res, queries);
+            return rsp.data[0] ?? { fields: [] };
+          })
+        )
+    );
+  }
+}
 
 export const instanceSettings: DataSourceInstanceSettings = {
   id: -100,
   uid: ExpressionDatasourceUID,
-  name: ExpressionDatasourceRef.type,
+  name: ExpressionDatasourceRef.name,
   type: ExpressionDatasourceRef.type,
   access: 'proxy',
   meta: {
@@ -81,8 +122,8 @@ export const instanceSettings: DataSourceInstanceSettings = {
         name: 'Grafana Labs',
       },
       logos: {
-        small: 'public/img/icn-datasource.svg',
-        large: 'public/img/icn-datasource.svg',
+        small: icnDatasourceSvg,
+        large: icnDatasourceSvg,
       },
       description: 'Adds expression support to Grafana',
       screenshots: [],
@@ -92,6 +133,7 @@ export const instanceSettings: DataSourceInstanceSettings = {
     },
   },
   jsonData: {},
+  readOnly: true,
 };
 
 export const dataSource = new ExpressionDatasourceApi(instanceSettings);
@@ -99,8 +141,8 @@ dataSource.meta = {
   id: ExpressionDatasourceRef.type,
   info: {
     logos: {
-      small: 'public/img/icn-datasource.svg',
-      large: 'public/img/icn-datasource.svg',
+      small: icnDatasourceSvg,
+      large: icnDatasourceSvg,
     },
   },
 } as DataSourcePluginMeta;

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { noop } from 'lodash';
-import React from 'react';
+
 import { CollapseToggle } from './CollapseToggle';
 
 describe('TestToggle', () => {

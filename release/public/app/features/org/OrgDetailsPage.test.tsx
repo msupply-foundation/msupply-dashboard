@@ -1,21 +1,34 @@
-import React from 'react';
-import { shallow } from 'enzyme';
+import { mockToolkitActionCreator } from 'test/core/redux/mocks';
+import { render, screen } from 'test/test-utils';
+
 import { NavModel } from '@grafana/data';
+import { ModalRoot } from '@grafana/ui';
+import { Organization } from 'app/types/organization';
+
+import { backendSrv } from '../../core/services/backend_srv';
 
 import { OrgDetailsPage, Props } from './OrgDetailsPage';
-import { Organization } from '../../types';
-import { mockToolkitActionCreator } from 'test/core/redux/mocks';
 import { setOrganizationName } from './state/reducers';
 
 jest.mock('app/core/core', () => {
   return {
+    ...jest.requireActual('app/core/core'),
     contextSrv: {
+      ...jest.requireActual('app/core/core').contextSrv,
       hasPermission: () => true,
     },
   };
 });
 
 const setup = (propOverrides?: object) => {
+  jest.clearAllMocks();
+  // needed because SharedPreferences is rendered in the test
+  jest.spyOn(backendSrv, 'put');
+  jest
+    .spyOn(backendSrv, 'get')
+    .mockResolvedValue({ timezone: 'UTC', homeDashboardUID: 'home-dashboard', theme: 'dark' });
+  jest.spyOn(backendSrv, 'search').mockResolvedValue([]);
+
   const props: Props = {
     organization: {} as Organization,
     navModel: {
@@ -30,32 +43,64 @@ const setup = (propOverrides?: object) => {
     setOrganizationName: mockToolkitActionCreator(setOrganizationName),
     updateOrganization: jest.fn(),
   };
-
   Object.assign(props, propOverrides);
 
-  return shallow(<OrgDetailsPage {...props} />);
+  return render(
+    <>
+      <OrgDetailsPage {...props} />
+      <ModalRoot />
+    </>
+  );
 };
 
-describe('Render', () => {
-  it('should render component', () => {
-    const wrapper = setup();
+jest.mock('app/features/dashboard/api/dashboard_api', () => ({
+  getDashboardAPI: () => ({
+    getDashboardDTO: jest.fn().mockResolvedValue({}),
+  }),
+}));
 
-    expect(wrapper).toMatchSnapshot();
+describe('Render', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  it('should render component', () => {
+    expect(() => setup()).not.toThrow();
   });
 
   it('should render organization and preferences', () => {
-    const wrapper = setup({
+    expect(() =>
+      setup({
+        organization: {
+          name: 'Cool org',
+          id: 1,
+        },
+        preferences: {
+          homeDashboardUID: 'home-dashboard',
+          theme: 'Default',
+          timezone: 'Default',
+          locale: '',
+        },
+      })
+    ).not.toThrow();
+  });
+
+  it('should show a modal when submitting', async () => {
+    const { user } = setup({
       organization: {
         name: 'Cool org',
         id: 1,
       },
       preferences: {
-        homeDashboardId: 1,
+        homeDashboardUID: 'home-dashboard',
         theme: 'Default',
         timezone: 'Default',
+        locale: '',
       },
     });
 
-    expect(wrapper).toMatchSnapshot();
+    await user.click(screen.getByRole('button', { name: 'Save preferences' }));
+
+    expect(await screen.findByText('Confirm preferences update')).toBeInTheDocument();
   });
 });

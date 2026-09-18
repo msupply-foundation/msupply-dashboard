@@ -1,12 +1,15 @@
-import React, { ReactElement, useEffect, useState } from 'react';
 import { css } from '@emotion/css';
+import { ReactElement, useEffect, useState } from 'react';
 import { useAsync } from 'react-use';
-import { CollapsableSection, HorizontalGroup, Icon, Spinner, Tooltip, useStyles, VerticalGroup } from '@grafana/ui';
-import { GrafanaTheme } from '@grafana/data';
-import { reportInteraction } from '@grafana/runtime';
 
+import { GrafanaTheme2 } from '@grafana/data';
+import { Trans, t } from '@grafana/i18n';
+import { reportInteraction } from '@grafana/runtime';
+import { CollapsableSection, Icon, Spinner, Stack, Tooltip, useStyles2 } from '@grafana/ui';
+
+import { DashboardModel } from '../../dashboard/state/DashboardModel';
 import { VariableModel } from '../types';
-import { DashboardModel } from '../../dashboard/state';
+
 import { VariablesUnknownButton } from './VariablesUnknownButton';
 import { getUnknownsNetwork, UsagesToNetwork } from './utils';
 
@@ -21,7 +24,7 @@ export function VariablesUnknownTable({ variables, dashboard }: VariablesUnknown
   const [open, setOpen] = useState(false);
   const [changed, setChanged] = useState(0);
   const [usages, setUsages] = useState<UsagesToNetwork[]>([]);
-  const style = useStyles(getStyles);
+  const style = useStyles2(getStyles);
   useEffect(() => setChanged((prevState) => prevState + 1), [variables, dashboard]);
   const { loading } = useAsync(async () => {
     if (open && changed > 0) {
@@ -53,12 +56,14 @@ export function VariablesUnknownTable({ variables, dashboard }: VariablesUnknown
     <div className={style.container}>
       <CollapsableSection label={<CollapseLabel />} isOpen={open} onToggle={onToggle}>
         {loading && (
-          <VerticalGroup justify="center">
-            <HorizontalGroup justify="center">
-              <span>Loading...</span>
-              <Spinner size={16} />
-            </HorizontalGroup>
-          </VerticalGroup>
+          <Stack direction="column" justifyContent="center">
+            <Stack justifyContent="center">
+              <span>
+                <Trans i18nKey="variables.variables-unknown-table.loading">Loading...</Trans>
+              </span>
+              <Spinner />
+            </Stack>
+          </Stack>
         )}
         {!loading && usages && (
           <>
@@ -72,11 +77,17 @@ export function VariablesUnknownTable({ variables, dashboard }: VariablesUnknown
 }
 
 function CollapseLabel(): ReactElement {
-  const style = useStyles(getStyles);
+  const style = useStyles2(getStyles);
+
   return (
     <h5>
-      Renamed or missing variables
-      <Tooltip content="Click to expand a list with all variable references that have been renamed or are missing from the dashboard.">
+      <Trans i18nKey="variables.variables-unknown-table.collapse-label">Renamed or missing variables</Trans>
+      <Tooltip
+        content={t(
+          'variables.variables-unknown-table.collapse-tooltip',
+          'Click to expand a list with all variable references that have been renamed or are missing from the dashboard.'
+        )}
+      >
         <Icon name="info-circle" className={style.infoIcon} />
       </Tooltip>
     </h5>
@@ -84,16 +95,24 @@ function CollapseLabel(): ReactElement {
 }
 
 function NoUnknowns(): ReactElement {
-  return <span>No renamed or missing variables found.</span>;
+  return (
+    <span>
+      <Trans i18nKey="variables.no-unknowns.no-renamed-or-missing-variables-found">
+        No renamed or missing variables found.
+      </Trans>
+    </span>
+  );
 }
 
 function UnknownTable({ usages }: { usages: UsagesToNetwork[] }): ReactElement {
-  const style = useStyles(getStyles);
+  const style = useStyles2(getStyles);
   return (
     <table className="filter-table filter-table--hover">
       <thead>
         <tr>
-          <th>Variable</th>
+          <th>
+            <Trans i18nKey="variables.unknown-table.variable">Variable</Trans>
+          </th>
           <th colSpan={5} />
         </tr>
       </thead>
@@ -120,27 +139,27 @@ function UnknownTable({ usages }: { usages: UsagesToNetwork[] }): ReactElement {
   );
 }
 
-const getStyles = (theme: GrafanaTheme) => ({
-  container: css`
-    margin-top: ${theme.spacing.xl};
-    padding-top: ${theme.spacing.xl};
-  `,
-  infoIcon: css`
-    margin-left: ${theme.spacing.sm};
-  `,
-  defaultColumn: css`
-    width: 1%;
-  `,
-  firstColumn: css`
-    width: 1%;
-    vertical-align: top;
-    color: ${theme.colors.textStrong};
-  `,
-  lastColumn: css`
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    width: 100%;
-    text-align: right;
-  `,
+const getStyles = (theme: GrafanaTheme2) => ({
+  container: css({
+    marginTop: theme.spacing(4),
+    paddingTop: theme.spacing(4),
+  }),
+  infoIcon: css({
+    marginLeft: theme.spacing(1),
+  }),
+  defaultColumn: css({
+    width: '1%',
+  }),
+  firstColumn: css({
+    width: '1%',
+    verticalAlign: 'top',
+    color: theme.colors.text.maxContrast,
+  }),
+  lastColumn: css({
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    width: '100%',
+    textAlign: 'right',
+  }),
 });

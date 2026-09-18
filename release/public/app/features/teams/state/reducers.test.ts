@@ -1,29 +1,35 @@
+import { TeamsState, TeamState } from 'app/types/teams';
+
+import { reducerTester } from '../../../../test/core/redux/reducerTester';
+import { getMockTeam, getMockTeamGroups } from '../mocks/teamMocks';
+
 import {
   initialTeamsState,
   initialTeamState,
-  setSearchMemberQuery,
-  setSearchQuery,
   teamGroupsLoaded,
   teamLoaded,
-  teamMembersLoaded,
+  queryChanged,
   teamReducer,
   teamsLoaded,
   teamsReducer,
 } from './reducers';
-import { getMockTeam, getMockTeamGroups, getMockTeamMember } from '../__mocks__/teamMocks';
-import { reducerTester } from '../../../../test/core/redux/reducerTester';
-import { TeamsState, TeamState } from '../../../types';
 
 describe('teams reducer', () => {
   describe('when teamsLoaded is dispatched', () => {
     it('then state should be correct', () => {
       reducerTester<TeamsState>()
         .givenReducer(teamsReducer, { ...initialTeamsState })
-        .whenActionIsDispatched(teamsLoaded([getMockTeam()]))
+        .whenActionIsDispatched(
+          teamsLoaded({ teams: [getMockTeam()], page: 1, perPage: 30, noTeams: false, totalCount: 100 })
+        )
         .thenStateShouldEqual({
           ...initialTeamsState,
           hasFetched: true,
           teams: [getMockTeam()],
+          noTeams: false,
+          totalPages: 4,
+          perPage: 30,
+          page: 1,
         });
     });
   });
@@ -32,10 +38,10 @@ describe('teams reducer', () => {
     it('then state should be correct', () => {
       reducerTester<TeamsState>()
         .givenReducer(teamsReducer, { ...initialTeamsState })
-        .whenActionIsDispatched(setSearchQuery('test'))
+        .whenActionIsDispatched(queryChanged('test'))
         .thenStateShouldEqual({
           ...initialTeamsState,
-          searchQuery: 'test',
+          query: 'test',
         });
     });
   });
@@ -50,30 +56,6 @@ describe('team reducer', () => {
         .thenStateShouldEqual({
           ...initialTeamState,
           team: getMockTeam(),
-        });
-    });
-  });
-
-  describe('when loadTeamMembersAction is dispatched', () => {
-    it('then state should be correct', () => {
-      reducerTester<TeamState>()
-        .givenReducer(teamReducer, { ...initialTeamState })
-        .whenActionIsDispatched(teamMembersLoaded([getMockTeamMember()]))
-        .thenStateShouldEqual({
-          ...initialTeamState,
-          members: [getMockTeamMember()],
-        });
-    });
-  });
-
-  describe('when setSearchMemberQueryAction is dispatched', () => {
-    it('then state should be correct', () => {
-      reducerTester<TeamState>()
-        .givenReducer(teamReducer, { ...initialTeamState })
-        .whenActionIsDispatched(setSearchMemberQuery('member'))
-        .thenStateShouldEqual({
-          ...initialTeamState,
-          searchMemberQuery: 'member',
         });
     });
   });

@@ -1,5 +1,8 @@
+import { v4 as uuiv4 } from 'uuid';
+
 import { OptionsPaneCategoryDescriptor } from '../OptionsPaneCategoryDescriptor';
 import { OptionsPaneItemDescriptor } from '../OptionsPaneItemDescriptor';
+
 import { OptionSearchEngine } from './OptionSearchEngine';
 
 describe('OptionSearchEngine', () => {
@@ -50,18 +53,21 @@ function getOptionCategories(): OptionsPaneCategoryDescriptor[] {
       .addItem(
         new OptionsPaneItemDescriptor({
           title: 'Title',
+          id: uuiv4(),
           render: jest.fn(),
         })
       )
       .addItem(
         new OptionsPaneItemDescriptor({
           title: 'Min',
+          id: uuiv4(),
           render: jest.fn(),
         })
       )
       .addItem(
         new OptionsPaneItemDescriptor({
           title: 'ASDSADASDSADA',
+          id: uuiv4(),
           description: 'DescriptionMatch',
           render: jest.fn(),
         })
@@ -73,18 +79,21 @@ function getOptionCategories(): OptionsPaneCategoryDescriptor[] {
       .addItem(
         new OptionsPaneItemDescriptor({
           title: 'Min',
+          id: uuiv4(),
           render: jest.fn(),
         })
       )
       .addItem(
         new OptionsPaneItemDescriptor({
           title: 'DescriptionMatch',
+          id: uuiv4(),
           render: jest.fn(),
         })
       )
       .addItem(
         new OptionsPaneItemDescriptor({
           title: 'Frame',
+          id: uuiv4(),
           render: jest.fn(),
         })
       ),
@@ -100,18 +109,21 @@ function getOverrides(): OptionsPaneCategoryDescriptor[] {
       .addItem(
         new OptionsPaneItemDescriptor({
           title: 'Match by name',
+          id: uuiv4(),
           render: jest.fn(),
         })
       )
       .addItem(
         new OptionsPaneItemDescriptor({
           title: 'Min',
+          id: uuiv4(),
           render: jest.fn(),
         })
       )
       .addItem(
         new OptionsPaneItemDescriptor({
           title: 'Max',
+          id: uuiv4(),
           render: jest.fn(),
         })
       ),
@@ -122,18 +134,21 @@ function getOverrides(): OptionsPaneCategoryDescriptor[] {
       .addItem(
         new OptionsPaneItemDescriptor({
           title: 'Match by name',
+          id: uuiv4(),
           render: jest.fn(),
         })
       )
       .addItem(
         new OptionsPaneItemDescriptor({
           title: 'Threshold',
+          id: uuiv4(),
           render: jest.fn(),
         })
       )
       .addItem(
         new OptionsPaneItemDescriptor({
           title: 'Max',
+          id: uuiv4(),
           render: jest.fn(),
         })
       ),

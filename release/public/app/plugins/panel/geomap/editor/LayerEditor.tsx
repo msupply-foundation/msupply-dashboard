@@ -1,12 +1,16 @@
-import { FrameGeometrySourceMode, MapLayerOptions, MapLayerRegistryItem, PluginState } from '@grafana/data';
-import { DEFAULT_BASEMAP_CONFIG, geomapLayerRegistry } from '../layers/registry';
-import { NestedPanelOptions, NestedValueAccess } from '@grafana/data/src/utils/OptionsUIBuilders';
-import { defaultMarkersConfig } from '../layers/data/markersLayer';
-import { hasAlphaPanels } from 'app/core/config';
-import { MapLayerState } from '../types';
 import { get as lodashGet, isEqual } from 'lodash';
+
+import { FrameGeometrySourceMode, getFrameMatchers, MapLayerOptions } from '@grafana/data';
+import { NestedPanelOptions, NestedValueAccess } from '@grafana/data/internal';
+import { t } from '@grafana/i18n';
 import { setOptionImmutably } from 'app/features/dashboard/components/PanelEditor/utils';
 import { addLocationFields } from 'app/features/geo/editor/locationEditor';
+
+import { defaultMarkersConfig } from '../layers/data/markersLayer';
+import { DEFAULT_BASEMAP_CONFIG, geomapLayerRegistry, getLayersOptions } from '../layers/registry';
+import { MapLayerState } from '../types';
+
+import { FrameSelectionEditor } from './FrameSelectionEditor';
 
 export interface LayerEditorOptions {
   state: MapLayerState;
@@ -24,13 +28,12 @@ export function getLayerEditor(opts: LayerEditorOptions): NestedPanelOptions<Map
         return { ...parent, options: opts.state.options, instanceState: opts.state };
       },
       getValue: (path: string) => lodashGet(opts.state.options, path),
-      onChange: (path: string, value: any) => {
+      onChange: (path: string, value: string) => {
         const { state } = opts;
         const { options } = state;
         if (path === 'type' && value) {
           const layer = geomapLayerRegistry.getIfExists(value);
           if (layer) {
-            console.log('Change layer type:', value, state);
             const opts = {
               ...options, // keep current shared options
               type: layer.id,
@@ -52,27 +55,37 @@ export function getLayerEditor(opts: LayerEditorOptions): NestedPanelOptions<Map
     }),
     build: (builder, context) => {
       if (!opts.state) {
-        console.log('MISSING LAYER!!!', opts);
         return;
       }
 
       const { handler, options } = opts.state;
       const layer = geomapLayerRegistry.getIfExists(options?.type);
 
-      const layerTypes = geomapLayerRegistry.selectOptions(
+      const layerTypes = getLayersOptions(
+        opts.basemaps,
         options?.type // the selected value
-          ? [options.type] // as an array
-          : [DEFAULT_BASEMAP_CONFIG.type],
-        opts.basemaps ? baseMapFilter : dataLayerFilter
+          ? options.type
+          : DEFAULT_BASEMAP_CONFIG.type
       );
 
       builder.addSelect({
         path: 'type',
-        name: 'Layer type', // required, but hide space
+        name: t('geomap.layer-editor.name-layer-type', 'Layer type'), // required, but hide space
         settings: {
           options: layerTypes.options,
         },
       });
+
+      // Show data filter if the layer type can do something with the data query results
+      if (handler.update) {
+        builder.addCustomEditor({
+          id: 'filterData',
+          path: 'filterData',
+          name: t('geomap.layer-editor.name-data', 'Data'),
+          editor: FrameSelectionEditor,
+          defaultValue: undefined,
+        });
+      }
 
       if (!layer) {
         return; // unknown layer type
@@ -84,43 +97,40 @@ export function getLayerEditor(opts: LayerEditorOptions): NestedPanelOptions<Map
       }
 
       if (layer.showLocation) {
-        addLocationFields('Location', 'location.', builder, options.location);
+        let data = context.data;
+        // If `filterData` exists filter data feeding into location editor
+        if (options.filterData) {
+          const matcherFunc = getFrameMatchers(options.filterData);
+          if (data.some(matcherFunc)) {
+            data = data.filter(matcherFunc);
+          }
+        }
+
+        addLocationFields('Location', 'location.', builder, options.location, data);
       }
       if (handler.registerOptionsUI) {
-        handler.registerOptionsUI(builder);
+        handler.registerOptionsUI(builder, context);
       }
-      if (layer.showOpacity) {
-        // TODO -- add opacity check
-      }
-
-      if (!isEqual(opts.category, ['Base layer'])) {
+      if (!isEqual(opts.category, [t('geomap.layer-editor.category-base-layer', 'Base layer')])) {
+        if (!layer.hideOpacity) {
+          builder.addSliderInput({
+            path: 'opacity',
+            name: t('geomap.layer-editor.name-opacity', 'Opacity'),
+            defaultValue: 1,
+            settings: {
+              min: 0,
+              max: 1,
+              step: 0.1,
+            },
+          });
+        }
         builder.addBooleanSwitch({
-          path: 'tooltip',
-          name: 'Display tooltip',
-          description: 'Show the tooltip for layer',
+          path: 'layer-tooltip',
+          name: t('geomap.layer-editor.name-display-tooltip', 'Display tooltip'),
+          description: t('geomap.layer-editor.description-display-tooltip', 'Show the tooltip for layer'),
           defaultValue: true,
         });
       }
     },
   };
-}
-
-function baseMapFilter(layer: MapLayerRegistryItem): boolean {
-  if (!layer.isBaseMap) {
-    return false;
-  }
-  if (layer.state === PluginState.alpha) {
-    return hasAlphaPanels;
-  }
-  return true;
-}
-
-export function dataLayerFilter(layer: MapLayerRegistryItem): boolean {
-  if (layer.isBaseMap) {
-    return false;
-  }
-  if (layer.state === PluginState.alpha) {
-    return hasAlphaPanels;
-  }
-  return true;
 }

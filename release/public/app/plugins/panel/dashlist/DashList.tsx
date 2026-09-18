@@ -1,20 +1,25 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { take } from 'lodash';
-import { css, cx } from '@emotion/css';
+import { useEffect, useMemo, useState } from 'react';
+import { useThrottle } from 'react-use';
 
-import { GrafanaTheme2, InterpolateFunction, PanelProps } from '@grafana/data';
-import { CustomScrollbar, stylesFactory, useStyles2 } from '@grafana/ui';
-import { Icon, IconProps } from '@grafana/ui/src/components/Icon/Icon';
-import { getFocusStyles } from '@grafana/ui/src/themes/mixins';
-import { getBackendSrv } from 'app/core/services/backend_srv';
-import { getDashboardSrv } from 'app/features/dashboard/services/DashboardSrv';
+import { InterpolateFunction, PanelProps, textUtil } from '@grafana/data';
+import { t } from '@grafana/i18n';
+import { useStyles2, ScrollContainer, Box, Text, EmptyState, Link } from '@grafana/ui';
+import { getConfig } from 'app/core/config';
 import impressionSrv from 'app/core/services/impression_srv';
-import { DashboardSearchHit } from 'app/features/search/types';
-import { getStyles } from './styles';
-import { PanelLayout, PanelOptions } from './models.gen';
-import { SearchCard } from 'app/features/search/components/SearchCard';
+import { getGrafanaSearcher } from 'app/features/search/service/searcher';
+import { DashboardQueryResult, LocationInfo, QueryResponse, SearchQuery } from 'app/features/search/service/types';
+import { StarToolbarButton } from 'app/features/stars/StarToolbarButton';
 
-type Dashboard = DashboardSearchHit & { isSearchResult?: boolean; isRecent?: boolean };
+import { Options } from './panelcfg.gen';
+import { getStyles } from './styles';
+import { useDashListUrlParams } from './utils';
+
+type Dashboard = DashboardQueryResult & {
+  isSearchResult?: boolean;
+  isRecent?: boolean;
+  isStarred?: boolean;
+};
 
 interface DashboardGroup {
   show: boolean;
@@ -22,223 +27,225 @@ interface DashboardGroup {
   dashboards: Dashboard[];
 }
 
-async function fetchDashboards(options: PanelOptions, replaceVars: InterpolateFunction) {
-  let starredDashboards: Promise<Dashboard[]> = Promise.resolve([]);
+async function fetchDashboards(options: Options, replaceVars: InterpolateFunction) {
+  const searcher = getGrafanaSearcher();
+  let starredDashboards: Promise<QueryResponse | void> = Promise.resolve();
+  let recentDashboards: Promise<QueryResponse | void> = Promise.resolve();
+  let searchedDashboards: Promise<QueryResponse | void> = Promise.resolve();
+
   if (options.showStarred) {
-    const params = { limit: options.maxItems, starred: 'true' };
-    starredDashboards = getBackendSrv().search(params);
+    const params: SearchQuery = { limit: options.maxItems, starred: true };
+    starredDashboards = searcher.starred(params);
   }
 
-  let recentDashboards: Promise<Dashboard[]> = Promise.resolve([]);
-  let dashIds: number[] = [];
+  let dashUIDs: string[] = [];
   if (options.showRecentlyViewed) {
-    dashIds = take<number>(impressionSrv.getDashboardOpened(), options.maxItems);
-    recentDashboards = getBackendSrv().search({ dashboardIds: dashIds, limit: options.maxItems });
+    let uids = await impressionSrv.getDashboardOpened();
+    dashUIDs = take<string>(uids, options.maxItems);
+
+    recentDashboards = searcher.search({ uid: dashUIDs, limit: options.maxItems, kind: ['dashboard'] });
   }
 
-  let searchedDashboards: Promise<Dashboard[]> = Promise.resolve([]);
   if (options.showSearch) {
-    const params = {
+    const uid = options.folderUID === '' ? 'general' : options.folderUID;
+    const params: SearchQuery = {
       limit: options.maxItems,
       query: replaceVars(options.query, {}, 'text'),
-      folderIds: options.folderId,
-      tag: options.tags.map((tag: string) => replaceVars(tag, {}, 'text')),
-      type: 'dash-db',
+      location: uid,
+      tags: options.tags.map((tag: string) => replaceVars(tag, {}, 'text')),
+      kind: ['dashboard'],
     };
 
-    searchedDashboards = getBackendSrv().search(params);
+    searchedDashboards = searcher.search(params);
   }
 
-  const [starred, searched, recent] = await Promise.all([starredDashboards, searchedDashboards, recentDashboards]);
+  const [starred, searched, recent] = await Promise.allSettled([
+    starredDashboards,
+    searchedDashboards,
+    recentDashboards,
+  ]);
 
   // We deliberately deal with recent dashboards first so that the order of dash IDs is preserved
-  let dashMap = new Map<number, Dashboard>();
-  for (const dashId of dashIds) {
-    const dash = recent.find((d) => d.id === dashId);
-    if (dash) {
-      dashMap.set(dashId, { ...dash, isRecent: true });
+  let dashMap = new Map<string, DashboardQueryResult>();
+  if (recent && recent.status === 'fulfilled') {
+    for (const dashUID of dashUIDs) {
+      const dash = recent.value?.view.find((d: DashboardQueryResult): d is DashboardQueryResult => {
+        return d.uid === dashUID;
+      });
+      if (dash) {
+        dashMap.set(dashUID, { ...dash, title: dash.name, isRecent: true });
+      }
     }
   }
 
-  searched.forEach((dash) => {
-    if (dashMap.has(dash.id)) {
-      dashMap.get(dash.id)!.isSearchResult = true;
-    } else {
-      dashMap.set(dash.id, { ...dash, isSearchResult: true });
-    }
-  });
+  if (searched && searched.status === 'fulfilled') {
+    searched?.value?.view.forEach((dash) => {
+      if (!dash.uid) {
+        return;
+      }
+      if (dashMap.has(dash.uid)) {
+        dashMap.get(dash.uid)!.isSearchResult = true;
+      } else {
+        dashMap.set(dash.uid, { ...dash, isSearchResult: true });
+      }
+    });
+  }
 
-  starred.forEach((dash) => {
-    if (dashMap.has(dash.id)) {
-      dashMap.get(dash.id)!.isStarred = true;
-    } else {
-      dashMap.set(dash.id, { ...dash, isStarred: true });
-    }
-  });
+  if (starred && starred.status === 'fulfilled') {
+    starred?.value?.view.forEach((dash) => {
+      if (!dash.uid) {
+        return;
+      }
+      if (dashMap.has(dash.uid)) {
+        dashMap.get(dash.uid)!.isStarred = true;
+      } else {
+        dashMap.set(dash.uid, { ...dash, isStarred: true });
+      }
+    });
+  }
 
   return dashMap;
 }
 
-export function DashList(props: PanelProps<PanelOptions>) {
-  const [dashboards, setDashboards] = useState(new Map<number, Dashboard>());
+async function fetchDashboardFolders() {
+  return getGrafanaSearcher().getLocationInfo();
+}
+
+const collator = new Intl.Collator();
+
+export function DashList(props: PanelProps<Options>) {
+  const [dashboards, setDashboards] = useState(new Map<string, Dashboard>());
+  const [foldersTitleMap, setFoldersTitleMap] = useState<Record<string, LocationInfo>>({});
+
+  const throttledRenderCount = useThrottle(props.renderCounter, 5000);
+
   useEffect(() => {
     fetchDashboards(props.options, props.replaceVariables).then((dashes) => {
       setDashboards(dashes);
     });
-  }, [props.options, props.replaceVariables, props.renderCounter]);
+  }, [props.options, props.replaceVariables, throttledRenderCount]);
 
-  const toggleDashboardStar = async (e: React.SyntheticEvent, dash: Dashboard) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const isStarred = await getDashboardSrv().starDashboard(dash.id.toString(), dash.isStarred);
-    const updatedDashboards = new Map(dashboards);
-    updatedDashboards.set(dash.id, { ...dash, isStarred });
-    setDashboards(updatedDashboards);
-  };
+  useEffect(() => {
+    if (props.options.showFolderNames && dashboards.size > 0) {
+      fetchDashboardFolders().then((locationInfo) => {
+        setFoldersTitleMap(locationInfo);
+      });
+    }
+  }, [props.options.showFolderNames, dashboards]);
 
   const [starredDashboards, recentDashboards, searchedDashboards] = useMemo(() => {
     const dashboardList = [...dashboards.values()];
+    const dashboardsGroupsMap: Record<string, Dashboard[]> = {
+      starred: [],
+      recent: [],
+      searched: [],
+    };
+
+    for (const dash of dashboardList) {
+      if (dash.isStarred) {
+        dashboardsGroupsMap.starred.push(dash);
+      }
+      if (dash.isRecent) {
+        dashboardsGroupsMap.recent.push(dash);
+      }
+      if (dash.isSearchResult) {
+        dashboardsGroupsMap.searched.push(dash);
+      }
+    }
     return [
-      dashboardList.filter((dash) => dash.isStarred).sort((a, b) => a.title.localeCompare(b.title)),
-      dashboardList.filter((dash) => dash.isRecent),
-      dashboardList.filter((dash) => dash.isSearchResult).sort((a, b) => a.title.localeCompare(b.title)),
+      dashboardsGroupsMap.starred.sort((a, b) => collator.compare(a.name, b.name)),
+      dashboardsGroupsMap.recent,
+      dashboardsGroupsMap.searched.sort((a, b) => collator.compare(a.name, b.name)),
     ];
   }, [dashboards]);
 
-  const { showStarred, showRecentlyViewed, showHeadings, showSearch, layout } = props.options;
+  const { showStarred, showRecentlyViewed, showHeadings, showFolderNames, showSearch } = props.options;
 
   const dashboardGroups: DashboardGroup[] = [
     {
-      header: 'Starred dashboards',
+      header: t('panel.dashlist.starred-dashboards', 'Starred dashboards'),
       dashboards: starredDashboards,
       show: showStarred,
     },
     {
-      header: 'Recently viewed dashboards',
+      header: t('panel.dashlist.recently-viewed-dashboards', 'Recently viewed dashboards'),
       dashboards: recentDashboards,
       show: showRecentlyViewed,
     },
     {
-      header: 'Search',
+      header: t('panel.dashlist.search', 'Search'),
       dashboards: searchedDashboards,
       show: showSearch,
     },
   ];
 
+  const handleStarChange = (id: string, isStarred: boolean) => {
+    const updatedDashboards = new Map(dashboards);
+    updatedDashboards.set(id, { ...dashboards.get(id)!, isStarred });
+    setDashboards(updatedDashboards);
+  };
+
   const css = useStyles2(getStyles);
+  const urlParams = useDashListUrlParams(props);
 
   const renderList = (dashboards: Dashboard[]) => (
     <ul>
-      {dashboards.map((dash) => (
-        <li className={css.dashlistItem} key={`dash-${dash.id}`}>
-          <div className={css.dashlistLink}>
-            <div className={css.dashlistLinkBody}>
-              <a className={css.dashlistTitle} href={dash.url}>
-                {dash.title}
-              </a>
-              {dash.folderTitle && <div className={css.dashlistFolder}>{dash.folderTitle}</div>}
+      {dashboards.map((dash) => {
+        let url = dash.url + urlParams;
+        url = getConfig().disableSanitizeHtml ? url : textUtil.sanitizeUrl(url);
+
+        const locationInfo = showFolderNames && dash.location ? foldersTitleMap[dash.location] : undefined;
+        return (
+          <li key={`dash-${dash.uid}`}>
+            <div className={css.dashlistLink}>
+              <Box flex={1}>
+                <Link href={url}>{dash.name}</Link>
+                {showFolderNames && locationInfo && (
+                  <Text color="secondary" variant="bodySmall" element="p">
+                    {locationInfo?.name}
+                  </Text>
+                )}
+              </Box>
+              <StarToolbarButton
+                title={dash.name}
+                group="dashboard.grafana.app"
+                kind="Dashboard"
+                id={dash.uid}
+                onStarChange={handleStarChange}
+              />
             </div>
-            <IconToggle
-              aria-label={`Star dashboard "${dash.title}".`}
-              className={css.dashlistStar}
-              enabled={{ name: 'favorite', type: 'mono' }}
-              disabled={{ name: 'star', type: 'default' }}
-              checked={dash.isStarred}
-              onClick={(e) => toggleDashboardStar(e, dash)}
-            />
-          </div>
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ul>
   );
 
-  const renderPreviews = (dashboards: Dashboard[]) => (
-    <ul className={css.gridContainer}>
-      {dashboards.map((dash) => (
-        <li key={dash.uid}>
-          <SearchCard item={dash} />
-        </li>
-      ))}
-    </ul>
-  );
+  const showEmptyState = dashboardGroups.every(({ show }) => !show);
 
   return (
-    <CustomScrollbar autoHeightMin="100%" autoHeightMax="100%">
+    <ScrollContainer minHeight="100%">
+      {showEmptyState && (
+        <EmptyState
+          hideImage
+          variant="call-to-action"
+          message={t('panel.dashlist.empty-state-message', 'No dashboard groups configured')}
+        />
+      )}
       {dashboardGroups.map(
         ({ show, header, dashboards }, i) =>
           show && (
-            <div className={css.dashlistSection} key={`dash-group-${i}`}>
-              {showHeadings && <h6 className={css.dashlistSectionHeader}>{header}</h6>}
-              {layout === PanelLayout.Previews ? renderPreviews(dashboards) : renderList(dashboards)}
-            </div>
+            <Box marginBottom={2} paddingTop={0.5} key={`dash-group-${i}`}>
+              {showHeadings && (
+                <Box marginRight={1} paddingX={1} paddingY={0.25}>
+                  <Text variant="h6" element="h6">
+                    {header}
+                  </Text>
+                </Box>
+              )}
+              {renderList(dashboards)}
+            </Box>
           )
       )}
-    </CustomScrollbar>
+    </ScrollContainer>
   );
 }
-
-interface IconToggleProps extends Partial<IconProps> {
-  enabled: IconProps;
-  disabled: IconProps;
-  checked: boolean;
-}
-
-function IconToggle({
-  enabled,
-  disabled,
-  checked,
-  onClick,
-  className,
-  'aria-label': ariaLabel,
-  ...otherProps
-}: IconToggleProps) {
-  const toggleCheckbox = useCallback(
-    (e: React.MouseEvent<HTMLInputElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      onClick?.(e);
-    },
-    [onClick]
-  );
-
-  const iconPropsOverride = checked ? enabled : disabled;
-  const iconProps = { ...otherProps, ...iconPropsOverride };
-  const styles = useStyles2(getCheckboxStyles);
-  return (
-    <label className={styles.wrapper}>
-      <input
-        type="checkbox"
-        defaultChecked={checked}
-        onClick={toggleCheckbox}
-        className={styles.checkBox}
-        aria-label={ariaLabel}
-      />
-      <Icon className={cx(styles.icon, className)} {...iconProps} />
-    </label>
-  );
-}
-
-export const getCheckboxStyles = stylesFactory((theme: GrafanaTheme2) => {
-  return {
-    wrapper: css({
-      display: 'flex',
-      alignSelf: 'center',
-      cursor: 'pointer',
-      zIndex: 100,
-    }),
-    checkBox: css({
-      appearance: 'none',
-      '&:focus-visible + *': {
-        ...getFocusStyles(theme),
-        borderRadius: theme.shape.borderRadius(1),
-      },
-    }),
-    icon: css({
-      marginBottom: 0,
-      verticalAlign: 'baseline',
-      display: 'flex',
-    }),
-  };
-});

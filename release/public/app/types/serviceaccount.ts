@@ -1,5 +1,7 @@
-import { SelectableValue, WithAccessControlMetadata } from '@grafana/data';
-import { ApiKey, OrgRole, Role } from '.';
+import { OrgRole, WithAccessControlMetadata } from '@grafana/data';
+
+import { Role } from './accessControl';
+import { ApiKey } from './apiKeys';
 
 export interface OrgServiceAccount extends WithAccessControlMetadata {
   serviceAccountId: number;
@@ -26,6 +28,7 @@ export interface ServiceAccount {
 
 export interface ServiceAccountDTO extends WithAccessControlMetadata {
   id: number;
+  uid: string;
   orgId: number;
   tokens: number;
   name: string;
@@ -33,23 +36,43 @@ export interface ServiceAccountDTO extends WithAccessControlMetadata {
   avatarUrl?: string;
   createdAt: string;
   isDisabled: boolean;
+  isExternal?: boolean;
+  requiredBy?: string;
   teams: string[];
   role: OrgRole;
+  roles?: Role[];
+}
+
+export interface ServiceAccountCreateApiResponse {
+  avatarUrl?: string;
+  id: number;
+  uid: string;
+  isDisabled: boolean;
+  login: string;
+  name: string;
+  orgId: number;
+  role: OrgRole;
+  tokens: number;
 }
 
 export interface ServiceAccountProfileState {
   serviceAccount: ServiceAccountDTO;
   isLoading: boolean;
+  rolesLoading?: boolean;
   tokens: ApiKey[];
 }
 
-export type ServiceAccountFilter = Record<string, string | boolean | SelectableValue[]>;
+export enum ServiceAccountStateFilter {
+  All = 'All',
+  WithExpiredTokens = 'WithExpiredTokens',
+  External = 'External',
+  Disabled = 'Disabled',
+}
+
 export interface ServiceAccountsState {
   serviceAccounts: ServiceAccountDTO[];
   isLoading: boolean;
   roleOptions: Role[];
-  serviceAccountToRemove: ServiceAccountDTO | null;
-  builtInRoles: Record<string, Role[]>;
 
   // search / filtering
   query: string;
@@ -57,5 +80,9 @@ export interface ServiceAccountsState {
   page: number;
   totalPages: number;
   showPaging: boolean;
-  filters: ServiceAccountFilter[];
+  serviceAccountStateFilter: ServiceAccountStateFilter;
+}
+
+export interface ServiceAccountsUpgradeStatus {
+  upgraded: boolean;
 }

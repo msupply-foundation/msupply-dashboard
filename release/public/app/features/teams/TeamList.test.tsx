@@ -1,138 +1,55 @@
-import React from 'react';
-import { shallow } from 'enzyme';
-import { Props, TeamList } from './TeamList';
-import { OrgRole, Team } from '../../types';
-import { getMockTeam, getMultipleMockTeams } from './__mocks__/teamMocks';
-import { contextSrv, User } from 'app/core/services/context_srv';
-import { NavModel } from '@grafana/data';
-import { mockToolkitActionCreator } from 'test/core/redux/mocks';
-import { setSearchQuery, setTeamsSearchPage } from './state/reducers';
+import { render, screen, waitFor } from 'test/test-utils';
 
-jest.mock('app/core/config', () => {
-  return {
-    featureToggles: { accesscontrol: false },
-  };
-});
+import { setBackendSrv } from '@grafana/runtime';
+import { setupMockServer } from '@grafana/test-utils/server';
+import { MOCK_TEAMS } from '@grafana/test-utils/unstable';
+import { backendSrv } from 'app/core/services/backend_srv';
+import { contextSrv } from 'app/core/services/context_srv';
 
-const setup = (propOverrides?: object) => {
-  const props: Props = {
-    navModel: {
-      main: {
-        text: 'Configuration',
-      },
-      node: {
-        text: 'Team List',
-      },
-    } as NavModel,
-    teams: [] as Team[],
-    loadTeams: jest.fn(),
-    deleteTeam: jest.fn(),
-    setSearchQuery: mockToolkitActionCreator(setSearchQuery),
-    setTeamsSearchPage: mockToolkitActionCreator(setTeamsSearchPage),
-    searchQuery: '',
-    searchPage: 1,
-    teamsCount: 0,
-    hasFetched: false,
-    editorsCanAdmin: false,
-    signedInUser: {
-      id: 1,
-      orgRole: OrgRole.Viewer,
-    } as User,
-  };
+import TeamList from './TeamList';
 
-  Object.assign(props, propOverrides);
+setBackendSrv(backendSrv);
+setupMockServer();
 
-  contextSrv.user = props.signedInUser;
-
-  const wrapper = shallow(<TeamList {...props} />);
-  const instance = wrapper.instance() as TeamList;
-
-  return {
-    wrapper,
-    instance,
-  };
-};
-
-describe('Render', () => {
-  it('should render component', () => {
-    const { wrapper } = setup();
-    expect(wrapper).toMatchSnapshot();
+describe('TeamList', () => {
+  beforeEach(() => {
+    jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
+    jest.spyOn(contextSrv, 'hasPermissionInMetadata').mockReturnValue(true);
+    jest.spyOn(contextSrv, 'fetchUserPermissions').mockResolvedValue();
   });
 
-  it('should render teams table', () => {
-    const { wrapper } = setup({
-      teams: getMultipleMockTeams(5),
-      teamsCount: 5,
-      hasFetched: true,
-    });
-
-    expect(wrapper).toMatchSnapshot();
+  it('should render teams table', async () => {
+    render(<TeamList />);
+    await waitFor(() =>
+      expect(screen.getAllByRole('row'))
+        // Number of teams plus table header row
+        .toHaveLength(MOCK_TEAMS.length + 1)
+    );
   });
 
-  describe('when feature toggle editorsCanAdmin is turned on', () => {
-    describe('and signedin user is not viewer', () => {
-      it('should enable the new team button', () => {
-        const { wrapper } = setup({
-          teams: getMultipleMockTeams(1),
-          teamsCount: 1,
-          hasFetched: true,
-          editorsCanAdmin: true,
-          signedInUser: {
-            id: 1,
-            orgRole: OrgRole.Editor,
-          } as User,
-        });
+  it('deletes a team', async () => {
+    const mockTeam = MOCK_TEAMS[0];
+    const { user } = render(<TeamList />);
+    await user.click(await screen.findByRole('button', { name: `Delete team ${mockTeam.spec.title}` }));
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
 
-        expect(wrapper).toMatchSnapshot();
-      });
-    });
-
-    describe('and signedin user is a viewer', () => {
-      it('should disable the new team button', () => {
-        const { wrapper } = setup({
-          teams: getMultipleMockTeams(1),
-          teamsCount: 1,
-          hasFetched: true,
-          editorsCanAdmin: true,
-          signedInUser: {
-            id: 1,
-            orgRole: OrgRole.Viewer,
-          } as User,
-        });
-
-        expect(wrapper).toMatchSnapshot();
-      });
-    });
+    await waitFor(() => expect(screen.queryByText(mockTeam.spec.title)).not.toBeInTheDocument());
   });
-});
 
-describe('Life cycle', () => {
-  it('should call loadTeams', () => {
-    const { instance } = setup();
+  describe('when user has access to create a team', () => {
+    it('should enable the new team button', async () => {
+      render(<TeamList />);
 
-    instance.componentDidMount();
-
-    expect(instance.props.loadTeams).toHaveBeenCalled();
-  });
-});
-
-describe('Functions', () => {
-  describe('Delete team', () => {
-    it('should call delete team', () => {
-      const { instance } = setup();
-      instance.deleteTeam(getMockTeam());
-
-      expect(instance.props.deleteTeam).toHaveBeenCalledWith(1);
+      expect(screen.getByRole('link', { name: /new team/i })).not.toHaveStyle('pointer-events: none');
     });
   });
 
-  describe('on search query change', () => {
-    it('should call setSearchQuery', () => {
-      const { instance } = setup();
+  describe('when user does not have access to create a team', () => {
+    it('should disable the new team button', () => {
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(false);
+      render(<TeamList />);
 
-      instance.onSearchQueryChange('test');
-
-      expect(instance.props.setSearchQuery).toHaveBeenCalledWith('test');
+      expect(screen.getByRole('link', { name: /new team/i })).toHaveStyle('pointer-events: none');
     });
   });
 });

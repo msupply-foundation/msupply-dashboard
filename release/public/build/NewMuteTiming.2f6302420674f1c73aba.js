@@ -1,0 +1,3 @@
+"use strict";(self.webpackChunkgrafana=self.webpackChunkgrafana||[]).push([[8302],{35388:(g,t,a)=>{a.r(t),a.d(t,{default:()=>P});var n=a(74848),E=a(92745),e=a(88547),i=a(36826),_=a(83192);function r(){return(0,n.jsx)(i.y,{navId:"am-routes",pageNav:{id:"alert-policy-new",text:(0,E.t)("alerting.new-mute-timing-page.text.add-time-interval","Add time interval")},accessType:"notification",children:(0,n.jsx)(_.A,{})})}const P=(0,e.S)(r)}}]);
+
+//# sourceMappingURL=NewMuteTiming.2f6302420674f1c73aba.js.map

@@ -1,15 +1,25 @@
-import React from 'react';
 import { DataSourcePluginOptionsEditorProps, DataSourceSettings } from '@grafana/data';
-import { AlertingSettings, DataSourceHttpSettings } from '@grafana/ui';
+import {
+  ConfigSection,
+  DataSourceDescription,
+  ConnectionSettings,
+  Auth,
+  convertLegacyAuthProps,
+  AdvancedHttpSettings,
+} from '@grafana/plugin-ui';
+import { config } from '@grafana/runtime';
+import { Divider, SecureSocksProxySettings, Stack } from '@grafana/ui';
+
 import { LokiOptions } from '../types';
-import { MaxLinesField } from './MaxLinesField';
+
+import { AlertingSettings } from './AlertingSettings';
 import { DerivedFields } from './DerivedFields';
-import { getAllAlertmanagerDataSources } from 'app/features/alerting/unified/utils/alertmanager';
+import { QuerySettings } from './QuerySettings';
 
 export type Props = DataSourcePluginOptionsEditorProps<LokiOptions>;
 
 const makeJsonUpdater =
-  <T extends any>(field: keyof LokiOptions) =>
+  <T,>(field: keyof LokiOptions) =>
   (options: DataSourceSettings<LokiOptions>, value: T): DataSourceSettings<LokiOptions> => {
     return {
       ...options,
@@ -25,38 +35,45 @@ const setDerivedFields = makeJsonUpdater('derivedFields');
 
 export const ConfigEditor = (props: Props) => {
   const { options, onOptionsChange } = props;
-  const alertmanagers = getAllAlertmanagerDataSources();
-
   return (
     <>
-      <DataSourceHttpSettings
-        defaultUrl={'http://localhost:3100'}
-        dataSourceConfig={options}
-        showAccessOptions={false}
-        onChange={onOptionsChange}
+      <DataSourceDescription
+        dataSourceName="Loki"
+        docsLink="https://grafana.com/docs/grafana/latest/datasources/loki/configure-loki-data-source/"
+        hasRequiredFields={false}
       />
-
-      <AlertingSettings<LokiOptions>
-        alertmanagerDataSources={alertmanagers}
-        options={options}
-        onOptionsChange={onOptionsChange}
+      <Divider spacing={4} />
+      <ConnectionSettings config={options} onChange={onOptionsChange} urlPlaceholder="http://localhost:3100" />
+      <Divider spacing={4} />
+      <Auth
+        {...convertLegacyAuthProps({
+          config: options,
+          onChange: onOptionsChange,
+        })}
       />
-
-      <div className="gf-form-group">
-        <div className="gf-form-inline">
-          <div className="gf-form">
-            <MaxLinesField
-              value={options.jsonData.maxLines || ''}
-              onChange={(value) => onOptionsChange(setMaxLines(options, value))}
-            />
-          </div>
-        </div>
-      </div>
-
-      <DerivedFields
-        value={options.jsonData.derivedFields}
-        onChange={(value) => onOptionsChange(setDerivedFields(options, value))}
-      />
+      <Divider spacing={4} />
+      <ConfigSection
+        title="Additional settings"
+        description="Additional settings are optional settings that can be configured for more control over your data source."
+        isCollapsible={true}
+        isInitiallyOpen
+      >
+        <Stack gap={5} direction="column">
+          <AdvancedHttpSettings config={options} onChange={onOptionsChange} />
+          {config.secureSocksDSProxyEnabled && (
+            <SecureSocksProxySettings options={options} onOptionsChange={onOptionsChange} />
+          )}
+          <AlertingSettings options={options} onOptionsChange={onOptionsChange} />
+          <QuerySettings
+            maxLines={options.jsonData.maxLines || ''}
+            onMaxLinedChange={(value) => onOptionsChange(setMaxLines(options, value))}
+          />
+          <DerivedFields
+            fields={options.jsonData.derivedFields}
+            onChange={(value) => onOptionsChange(setDerivedFields(options, value))}
+          />
+        </Stack>
+      </ConfigSection>
     </>
   );
 };

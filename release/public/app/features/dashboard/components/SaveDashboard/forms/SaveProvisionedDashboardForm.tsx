@@ -1,15 +1,13 @@
-import React, { useCallback, useState } from 'react';
 import { css } from '@emotion/css';
 import { saveAs } from 'file-saver';
-import { Button, ClipboardButton, HorizontalGroup, stylesFactory, TextArea, useTheme } from '@grafana/ui';
-import { SaveDashboardFormProps } from '../types';
-import { GrafanaTheme } from '@grafana/data';
-import { useAppNotification } from 'app/core/copy/appNotification';
-import { Stack } from '@grafana/experimental';
+import { useCallback, useState } from 'react';
 
-export const SaveProvisionedDashboardForm: React.FC<SaveDashboardFormProps> = ({ dashboard, onCancel }) => {
-  const theme = useTheme();
-  const notifyApp = useAppNotification();
+import { Trans } from '@grafana/i18n';
+import { Button, ClipboardButton, TextArea, Stack, TextLink } from '@grafana/ui';
+
+import { SaveDashboardFormProps } from '../types';
+
+export const SaveProvisionedDashboardForm = ({ dashboard, onCancel }: Omit<SaveDashboardFormProps, 'isLoading'>) => {
   const [dashboardJSON, setDashboardJson] = useState(() => {
     const clone = dashboard.getSaveModelClone();
     delete clone.id;
@@ -23,32 +21,31 @@ export const SaveProvisionedDashboardForm: React.FC<SaveDashboardFormProps> = ({
     saveAs(blob, dashboard.title + '-' + new Date().getTime() + '.json');
   }, [dashboard.title, dashboardJSON]);
 
-  const onCopyToClipboardSuccess = useCallback(() => {
-    notifyApp.success('Dashboard JSON copied to clipboard');
-  }, [notifyApp]);
-
-  const styles = getStyles(theme);
   return (
     <>
       <Stack direction="column" gap={2}>
         <div>
-          This dashboard cannot be saved from the Grafana UI because it has been provisioned from another source. Copy
-          the JSON or save it to a file below, then you can update your dashboard in the provisioning source.
+          <Trans i18nKey="dashboard.save-provisioned-dashboard-form.cannot-be-saved">
+            This dashboard cannot be saved from the Grafana UI because it has been provisioned from another source. Copy
+            the JSON or save it to a file below, then you can update your dashboard in the provisioning source.
+          </Trans>
           <br />
           <i>
-            See{' '}
-            <a
-              className="external-link"
-              href="https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards"
-              target="_blank"
-              rel="noreferrer"
-            >
-              documentation
-            </a>{' '}
-            for more information about provisioning.
+            <Trans i18nKey="dashboard.save-provisioned-dashboard-form.see-docs">
+              See{' '}
+              <TextLink href="https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards" external>
+                documentation
+              </TextLink>{' '}
+              for more information about provisioning.
+            </Trans>
           </i>
           <br /> <br />
-          <strong>File path: </strong> {dashboard.meta.provisionedExternalId}
+          <Trans
+            i18nKey="dashboard.save-provisioned-dashboard-form.file-path"
+            values={{ filePath: dashboard.meta.provisionedExternalId }}
+          >
+            <strong>File path:</strong> {'{{filePath}}'}
+          </Trans>
         </div>
         <TextArea
           spellCheck={false}
@@ -58,28 +55,30 @@ export const SaveProvisionedDashboardForm: React.FC<SaveDashboardFormProps> = ({
           }}
           className={styles.json}
         />
-        <HorizontalGroup>
+        <Stack>
           <Button variant="secondary" onClick={onCancel} fill="outline">
-            Cancel
+            <Trans i18nKey="dashboard.save-provisioned-dashboard-form.cancel">Cancel</Trans>
           </Button>
-          <ClipboardButton getText={() => dashboardJSON} onClipboardCopy={onCopyToClipboardSuccess}>
-            Copy JSON to clipboard
+          <ClipboardButton icon="copy" getText={() => dashboardJSON}>
+            <Trans i18nKey="dashboard.save-provisioned-dashboard-form.copy-json-to-clipboard">
+              Copy JSON to clipboard
+            </Trans>
           </ClipboardButton>
-          <Button onClick={saveToFile}>Save JSON to file</Button>
-        </HorizontalGroup>
+          <Button type="submit" onClick={saveToFile}>
+            <Trans i18nKey="dashboard.save-provisioned-dashboard-form.save-json-to-file">Save JSON to file</Trans>
+          </Button>
+        </Stack>
       </Stack>
     </>
   );
 };
 
-const getStyles = stylesFactory((theme: GrafanaTheme) => {
-  return {
-    json: css`
-      height: 400px;
-      width: 100%;
-      overflow: auto;
-      resize: none;
-      font-family: monospace;
-    `,
-  };
-});
+const styles = {
+  json: css({
+    height: '400px',
+    width: '100%',
+    overflow: 'auto',
+    resize: 'none',
+    fontFamily: 'monospace',
+  }),
+};

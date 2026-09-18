@@ -1,13 +1,25 @@
-import { DataFrame } from '@grafana/data';
-import { Feature } from 'ol';
+import Feature from 'ol/Feature';
 import { Geometry } from 'ol/geom';
 import VectorSource from 'ol/source/Vector';
+
+import { DataFrame } from '@grafana/data';
+
 import { getGeometryField, LocationFieldMatchers } from './location';
 
 export interface FrameVectorSourceOptions {}
 
-export class FrameVectorSource<T extends Geometry = Geometry> extends VectorSource<T> {
-  constructor(private location: LocationFieldMatchers) {
+// Helper function to create properly typed Features
+function createFeature<T extends Geometry>(properties: {
+  frame: DataFrame;
+  rowIndex: number;
+  geometry: T;
+}): Feature<T> {
+  const feature = new Feature(properties);
+  return feature;
+}
+
+export class FrameVectorSource<T extends Geometry = Geometry> extends VectorSource<Feature<T>> {
+  constructor(public location: LocationFieldMatchers) {
     super({});
   }
 
@@ -20,11 +32,12 @@ export class FrameVectorSource<T extends Geometry = Geometry> extends VectorSour
     }
 
     for (let i = 0; i < frame.length; i++) {
+      const geometry = info.field.values[i] as T;
       this.addFeatureInternal(
-        new Feature({
+        createFeature({
           frame,
           rowIndex: i,
-          geometry: info.field.values.get(i) as T,
+          geometry,
         })
       );
     }
