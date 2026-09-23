@@ -1551,6 +1551,10 @@ begin
 end $procedure$
 ;
 
+-- SUPERSEDED: redefined by the POSTGRES AGGREGATOR block at the end of this
+-- file (#799). That version takes an advisory lock and derives AMC from the
+-- latest AMC run only, instead of max(value) across every AMC row. Kept here
+-- for reference/history; the later definition is the one that takes effect.
 CREATE OR REPLACE PROCEDURE public.aggregate_current_mos()
 	LANGUAGE plpgsql
 AS $$
@@ -2175,3 +2179,1454 @@ $procedure$;
 ;
 
 
+
+
+-- ============================================================================
+-- POSTGRES AGGREGATOR (#799 - move aggregator to postgres from 4d server)
+--
+-- Source: msupply-dashboard-clients/Standard/aggregator_procedures/
+--   aggregator_table.sql, aggregator_dispatch.sql, aggregator_run.sql
+--
+-- aggregator_dispatch() and aggregator_run() are defined twice in that folder:
+-- once standalone and once (superseded, newer) at the end of aggregator_table.sql.
+-- Only the newer pair is carried over here - it skips the four procedures that
+-- are never listed in the scheduler_aggregation pref and calls them directly
+-- from aggregator_run() instead. The standalone pair is deliberately omitted so
+-- each procedure is defined exactly once.
+--
+-- The standalone aggregator_dispatch() also lazily created public.aggregator if
+-- it was missing. public.aggregator is already created at the top of this file,
+-- so that guard is redundant here and is not carried over.
+--
+-- Entry point:  CALL public.aggregator_run();
+-- ============================================================================
+
+-- aggregator_run() reads its method list from public.pref. pref, and the three
+-- tables below, are normally populated by the mSupply export rather than created
+-- here - these guards only ensure a fresh install can load and run this file
+-- without erroring on a missing relation.
+CREATE TABLE IF NOT EXISTS public.pref (
+	item TEXT,
+	data JSONB
+);
+
+-- Written by aggregator_storePeriodSchedules() (TRUNCATE + INSERT).
+CREATE TABLE IF NOT EXISTS public.store_period_schedules (
+	storeid TEXT,
+	periodscheduleid TEXT,
+	programid TEXT
+);
+
+-- Read by aggregator_storePeriodSchedules().
+CREATE TABLE IF NOT EXISTS public.periodschedule (
+	id TEXT,
+	"name" TEXT
+);
+
+-- Read by create_stock_status_matview().
+CREATE TABLE IF NOT EXISTS public.item_store_program (
+	storeid TEXT,
+	itemid TEXT,
+	program TEXT,
+	minimum REAL,
+	maximum REAL
+);
+
+
+
+-- Preferred dataElement-style aliases with snake_case naming.
+CREATE OR REPLACE PROCEDURE public.aggregator_stockHistory(
+    IN p_options jsonb DEFAULT '{}'::jsonb)
+LANGUAGE 'plpgsql'
+AS $BODY$
+DECLARE
+    v_run_date date := COALESCE(NULLIF(p_options->>'runDate', '')::date, current_date - 1);
+    v_to_date date := NULLIF(p_options->>'toDate', '')::date;
+    v_from_date date := NULLIF(p_options->>'fromDate', '')::date;
+    v_lookback_period integer := COALESCE((p_options->>'lookBackPeriod')::integer, 13);
+    v_include_current_month boolean := COALESCE((p_options->>'includeCurrentMonth')::boolean, true);
+    v_execute_in_postgres boolean := COALESCE((p_options->>'executeInPostgres')::boolean, false);
+    v_use_previous_day_seed boolean := COALESCE((p_options->>'usePreviousDaySeed')::boolean, false);
+    v_sparse_mode boolean := COALESCE((p_options->>'sparseMode')::boolean, false);
+    v_start_time timestamp;
+BEGIN
+    IF NOT v_execute_in_postgres THEN
+        RAISE NOTICE '[SKIP] aggregator_stockHistory: executeInPostgres=%, skipping. Options: %',
+            COALESCE(p_options->>'executeInPostgres', 'not set'), p_options;
+        RETURN;
+    END IF;
+
+    IF v_lookback_period < 1 THEN
+        RAISE EXCEPTION 'lookBackPeriod must be >= 1';
+    END IF;
+
+    IF v_to_date IS NULL THEN
+        IF v_include_current_month THEN
+            v_to_date := v_run_date;
+        ELSE
+            v_to_date := (date_trunc('month', v_run_date)::date - 1);
+        END IF;
+    END IF;
+
+    IF v_from_date IS NULL THEN
+        v_from_date := (date_trunc('month', v_to_date)::date - make_interval(months => GREATEST(v_lookback_period - 1, 0)))::date;
+    END IF;
+
+    IF v_from_date > v_to_date THEN
+        RAISE EXCEPTION 'fromDate must be <= toDate';
+    END IF;
+
+    -- anchorDate removed: use current_date as the anchor for movement upper-bounds
+
+    PERFORM pg_advisory_xact_lock(4815162342);
+    v_start_time := clock_timestamp();
+--6 second
+    DROP TABLE IF EXISTS tmp_anchor_stock;
+    CREATE TEMP TABLE tmp_anchor_stock ON COMMIT DROP AS
+    SELECT
+        il.store_id::text AS storeid,
+        il.item_id::text AS itemid,
+        SUM((il.available * il.pack_size)::numeric) AS soh_anchor
+    FROM item_line il
+    JOIN store s
+      ON s.id::text = il.store_id::text
+     AND s.disabled = false
+    GROUP BY 1, 2;
+    RAISE NOTICE '[TIMING] tmp_anchor_stock created in % ms', EXTRACT(EPOCH FROM (clock_timestamp() - v_start_time)) * 1000;
+    v_start_time := clock_timestamp();
+
+    -- No need for tmp_pairs UNION—all items are already in tmp_anchor_stock
+    -- Just separate into moving vs static pairs below
+
+    IF v_sparse_mode THEN
+        -- keep sparse-mode logic mostly unchanged (movement-days only already)
+        DROP TABLE IF EXISTS tmp_move_day_sparse;
+        CREATE TEMP TABLE tmp_move_day_sparse ON COMMIT DROP AS
+        SELECT
+            m.storeid,
+            m.itemid,
+            m.fulldate,
+            SUM(m.value)::numeric AS movement_value
+        FROM aggregator m
+        WHERE m.dataelement = 'stockMovement'
+            AND m.fulldate BETWEEN v_from_date AND v_to_date
+        GROUP BY 1, 2, 3;
+
+        CREATE INDEX tmp_move_day_sparse_idx ON tmp_move_day_sparse (storeid, itemid, fulldate);
+        RAISE NOTICE '[TIMING] tmp_move_day_sparse created in % ms', EXTRACT(EPOCH FROM (clock_timestamp() - v_start_time)) * 1000;
+        v_start_time := clock_timestamp();
+
+        DROP TABLE IF EXISTS tmp_first_move_sparse;
+        CREATE TEMP TABLE tmp_first_move_sparse ON COMMIT DROP AS
+        SELECT
+            d.storeid,
+            d.itemid,
+            MIN(d.fulldate) AS first_move_date
+        FROM tmp_move_day_sparse d
+        WHERE d.movement_value <> 0
+        GROUP BY 1, 2;
+
+        CREATE INDEX tmp_first_move_sparse_idx ON tmp_first_move_sparse (storeid, itemid);
+
+        DROP TABLE IF EXISTS tmp_sum_move_sparse;
+        CREATE TEMP TABLE tmp_sum_move_sparse ON COMMIT DROP AS
+        SELECT
+            d.storeid,
+            d.itemid,
+            SUM(d.movement_value)::numeric AS move_sum
+        FROM tmp_move_day_sparse d
+        GROUP BY 1, 2;
+
+        CREATE INDEX tmp_sum_move_sparse_idx ON tmp_sum_move_sparse (storeid, itemid);
+        RAISE NOTICE '[TIMING] tmp_first_move_sparse and tmp_sum_move_sparse created in % ms', EXTRACT(EPOCH FROM (clock_timestamp() - v_start_time)) * 1000;
+        v_start_time := clock_timestamp();
+
+        DELETE FROM aggregator
+        WHERE dataelement = 'stockHistory'
+            AND fulldate BETWEEN v_from_date AND v_to_date;
+
+        -- Movement days only: backward ledger from end-date SOH.
+        INSERT INTO aggregator (storeid, itemid, fulldate, monthyear, dataelement, value)
+        SELECT
+            d.storeid,
+            d.itemid,
+            d.fulldate,
+            to_char(d.fulldate, 'YYYYMM') AS monthyear,
+            'stockHistory',
+            (a.soh_anchor
+             - COALESCE(
+                 SUM(d.movement_value) OVER (
+                     PARTITION BY d.storeid, d.itemid
+                     ORDER BY d.fulldate DESC
+                     ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                 ),
+                 0::numeric
+                 )) AS value
+        FROM tmp_move_day_sparse d
+        JOIN tmp_anchor_stock a
+            ON a.storeid = d.storeid
+         AND a.itemid = d.itemid
+        WHERE d.movement_value <> 0;
+
+        -- If first movement is after fromDate, insert only one baseline row at fromDate.
+        INSERT INTO aggregator (storeid, itemid, fulldate, monthyear, dataelement, value)
+        SELECT
+            fm.storeid,
+            fm.itemid,
+            v_from_date,
+            to_char(v_from_date, 'YYYYMM') AS monthyear,
+            'stockHistory',
+            (a.soh_anchor - COALESCE(sm.move_sum, 0::numeric)) AS value
+        FROM tmp_first_move_sparse fm
+        JOIN tmp_anchor_stock a
+            ON a.storeid = fm.storeid
+         AND a.itemid = fm.itemid
+        LEFT JOIN tmp_sum_move_sparse sm
+            ON sm.storeid = fm.storeid
+         AND sm.itemid = fm.itemid
+        WHERE fm.first_move_date > v_from_date;
+
+        -- No movement in range: insert only one baseline row at fromDate.
+        INSERT INTO aggregator (storeid, itemid, fulldate, monthyear, dataelement, value)
+        SELECT
+            a.storeid,
+            a.itemid,
+            v_from_date,
+            to_char(v_from_date, 'YYYYMM') AS monthyear,
+            'stockHistory',
+            a.soh_anchor
+        FROM tmp_anchor_stock a
+        LEFT JOIN tmp_first_move_sparse fm
+            ON fm.storeid = a.storeid
+         AND fm.itemid = a.itemid
+        WHERE fm.storeid IS NULL;
+
+        RETURN;
+    END IF;
+
+    DROP TABLE IF EXISTS tmp_moving_pairs;
+    CREATE TEMP TABLE tmp_moving_pairs ON COMMIT DROP AS
+    SELECT DISTINCT m.storeid, m.itemid
+    FROM aggregator m
+    WHERE m.dataelement = 'stockMovement'
+        AND m.fulldate BETWEEN (v_from_date + 1) AND current_date;
+
+    CREATE INDEX tmp_moving_pairs_idx ON tmp_moving_pairs (storeid, itemid);
+    RAISE NOTICE '[TIMING] tmp_moving_pairs created in % ms', EXTRACT(EPOCH FROM (clock_timestamp() - v_start_time)) * 1000;
+    v_start_time := clock_timestamp();
+
+    DROP TABLE IF EXISTS tmp_static_pairs;
+    CREATE TEMP TABLE tmp_static_pairs ON COMMIT DROP AS
+    SELECT p.storeid, p.itemid
+    FROM tmp_anchor_stock p
+    LEFT JOIN tmp_moving_pairs mp
+        ON mp.storeid = p.storeid
+     AND mp.itemid = p.itemid
+    WHERE mp.storeid IS NULL;
+
+    CREATE INDEX tmp_static_pairs_idx ON tmp_static_pairs (storeid, itemid);
+    RAISE NOTICE '[TIMING] tmp_static_pairs created in % ms', EXTRACT(EPOCH FROM (clock_timestamp() - v_start_time)) * 1000;
+    v_start_time := clock_timestamp();
+
+    -- Aggregate daily movement range (movement dates only)
+    DROP TABLE IF EXISTS tmp_daily_move_range;
+    CREATE TEMP TABLE tmp_daily_move_range ON COMMIT DROP AS
+    SELECT
+        m.storeid,
+        m.itemid,
+        m.fulldate,
+        SUM(m.value)::numeric AS movement_value
+    FROM aggregator m
+    WHERE m.dataelement = 'stockMovement'
+            AND m.fulldate BETWEEN v_from_date AND v_to_date
+    GROUP BY 1, 2, 3;
+
+    CREATE INDEX tmp_daily_move_range_idx ON tmp_daily_move_range (storeid, itemid, fulldate);
+    RAISE NOTICE '[TIMING] tmp_daily_move_range created in % ms', EXTRACT(EPOCH FROM (clock_timestamp() - v_start_time)) * 1000;
+    v_start_time := clock_timestamp();
+
+    DROP TABLE IF EXISTS tmp_hist_moving;
+    CREATE TEMP TABLE tmp_hist_moving ON COMMIT DROP AS
+    SELECT
+            d.storeid,
+            d.itemid,
+            d.fulldate,
+            COALESCE(a.soh_anchor, 0::numeric) AS soh_anchor,
+            COALESCE(d.movement_value, 0::numeric) AS movement_value
+    FROM tmp_daily_move_range d
+    JOIN tmp_moving_pairs mp
+      ON mp.storeid = d.storeid
+     AND mp.itemid = d.itemid
+    LEFT JOIN tmp_anchor_stock a
+            ON a.storeid = d.storeid
+         AND a.itemid = d.itemid;
+
+    CREATE INDEX tmp_hist_moving_idx ON tmp_hist_moving (storeid, itemid, fulldate);
+    RAISE NOTICE '[TIMING] tmp_hist_moving created in % ms', EXTRACT(EPOCH FROM (clock_timestamp() - v_start_time)) * 1000;
+    v_start_time := clock_timestamp();
+
+        DELETE FROM aggregator
+        WHERE dataelement = 'stockHistory'
+            AND fulldate BETWEEN v_from_date AND v_to_date;
+
+        -- Ensure current-date stockHistory row exists (idempotent)
+        INSERT INTO aggregator (storeid, itemid, fulldate, monthyear, dataelement, value)
+        SELECT
+                a.storeid,
+                a.itemid,
+                current_date AS fulldate,
+                to_char(current_date, 'YYYYMM') AS monthyear,
+                'stockHistory',
+                a.soh_anchor
+        FROM tmp_anchor_stock a
+        WHERE NOT EXISTS (
+            SELECT 1 FROM aggregator x
+            WHERE x.storeid = a.storeid
+                AND x.itemid = a.itemid
+                AND x.fulldate = current_date
+                AND x.dataelement = 'stockHistory'
+        );
+
+        -- Ensure baseline at v_from_date for pairs that have movements after v_from_date
+        WITH move_sums AS (
+            SELECT m.storeid, m.itemid, SUM(m.value)::numeric AS sum_after_from
+            FROM aggregator m
+            WHERE m.dataelement = 'stockMovement'
+                AND m.fulldate BETWEEN (v_from_date + 1) AND current_date
+            GROUP BY 1,2
+        )
+        INSERT INTO aggregator (storeid, itemid, fulldate, monthyear, dataelement, value)
+        SELECT
+            a.storeid,
+            a.itemid,
+            v_from_date AS fulldate,
+            to_char(v_from_date, 'YYYYMM') AS monthyear,
+            'stockHistory',
+            (a.soh_anchor - COALESCE(ms.sum_after_from,0::numeric)) AS value
+        FROM tmp_anchor_stock a
+        LEFT JOIN move_sums ms ON ms.storeid = a.storeid AND ms.itemid = a.itemid
+        WHERE NOT EXISTS (
+            SELECT 1 FROM aggregator x
+            WHERE x.storeid = a.storeid
+                AND x.itemid = a.itemid
+                AND x.fulldate = v_from_date
+                AND x.dataelement = 'stockHistory'
+        )
+        AND EXISTS (
+            SELECT 1 FROM aggregator mm
+            WHERE mm.dataelement = 'stockMovement'
+                AND mm.storeid = a.storeid
+                AND mm.itemid = a.itemid
+                AND mm.fulldate BETWEEN (v_from_date + 1) AND current_date
+        );
+
+    DROP TABLE IF EXISTS tmp_first_movement_date;
+    CREATE TEMP TABLE tmp_first_movement_date ON COMMIT DROP AS
+    SELECT
+        d.storeid,
+        d.itemid,
+        MIN(d.fulldate) AS first_move_date
+    FROM tmp_daily_move_range d
+    WHERE d.movement_value <> 0
+    GROUP BY 1, 2;
+
+    CREATE INDEX tmp_first_movement_date_idx ON tmp_first_movement_date (storeid, itemid);
+    RAISE NOTICE '[TIMING] tmp_first_movement_date created in % ms', EXTRACT(EPOCH FROM (clock_timestamp() - v_start_time)) * 1000;
+    v_start_time := clock_timestamp();
+
+    DROP TABLE IF EXISTS tmp_hist_moving_calc;
+    CREATE TEMP TABLE tmp_hist_moving_calc ON COMMIT DROP AS
+    SELECT
+        h.storeid,
+        h.itemid,
+        h.fulldate,
+        (h.soh_anchor
+         - COALESCE(
+             SUM(h.movement_value) OVER (
+                 PARTITION BY h.storeid, h.itemid
+                 ORDER BY h.fulldate DESC
+                 ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+             ),
+             0::numeric
+         )) AS value
+    FROM tmp_hist_moving h;
+
+    CREATE INDEX tmp_hist_moving_calc_idx ON tmp_hist_moving_calc (storeid, itemid, fulldate);
+    
+    RAISE NOTICE '[TIMING] tmp_hist_moving_calc created in % ms', EXTRACT(EPOCH FROM (clock_timestamp() - v_start_time)) * 1000;
+    v_start_time := clock_timestamp();
+
+    INSERT INTO aggregator (storeid, itemid, fulldate, monthyear, dataelement, value)
+    SELECT
+        hc.storeid,
+        hc.itemid,
+        hc.fulldate,
+        to_char(hc.fulldate, 'YYYYMM') AS monthyear,
+        'stockHistory',
+        CASE
+            WHEN fm.first_move_date IS NOT NULL
+             AND fm.first_move_date > v_from_date
+             AND hc.fulldate = v_from_date
+                THEN COALESCE(hf.value, hc.value)
+            ELSE hc.value
+        END AS value
+    FROM tmp_hist_moving_calc hc
+    LEFT JOIN tmp_first_movement_date fm
+      ON fm.storeid = hc.storeid
+     AND fm.itemid = hc.itemid
+    LEFT JOIN tmp_hist_moving_calc hf
+      ON hf.storeid = hc.storeid
+     AND hf.itemid = hc.itemid
+     AND hf.fulldate = fm.first_move_date
+    WHERE hc.fulldate BETWEEN v_from_date AND v_to_date;
+
+    -- Pairs with no movement in the reconstruction horizon: insert a single baseline row at v_from_date.
+    INSERT INTO aggregator (storeid, itemid, fulldate, monthyear, dataelement, value)
+    SELECT
+        sp.storeid,
+        sp.itemid,
+        v_from_date,
+        to_char(v_from_date, 'YYYYMM') AS monthyear,
+        'stockHistory',
+        COALESCE(a.soh_anchor, 0::numeric)
+    FROM tmp_static_pairs sp
+    LEFT JOIN tmp_anchor_stock a
+      ON a.storeid = sp.storeid
+     AND a.itemid = sp.itemid;
+
+    IF v_use_previous_day_seed THEN
+        -- If the caller explicitly requests daily carry-forward, run carry logic
+        -- Use per-pair LATERAL generate_series to avoid a global calendar expansion.
+        DROP TABLE IF EXISTS tmp_prev_day_stock;
+        CREATE TEMP TABLE tmp_prev_day_stock ON COMMIT DROP AS
+        SELECT
+                h.storeid,
+                h.itemid,
+                h.value AS prev_value
+        FROM aggregator h
+        WHERE h.dataelement = 'stockHistory'
+            AND h.fulldate = (v_from_date - 1);
+
+        CREATE INDEX tmp_prev_day_stock_idx ON tmp_prev_day_stock (storeid, itemid);
+
+        DELETE FROM aggregator h
+        USING tmp_prev_day_stock cp
+        WHERE h.dataelement = 'stockHistory'
+            AND h.fulldate BETWEEN v_from_date AND v_to_date
+            AND h.storeid = cp.storeid
+            AND h.itemid = cp.itemid;
+
+        INSERT INTO aggregator (storeid, itemid, fulldate, monthyear, dataelement, value)
+        SELECT
+            cp.storeid,
+            cp.itemid,
+            c.fulldate,
+            to_char(c.fulldate, 'YYYYMM') AS monthyear,
+            'stockHistory',
+            cp.prev_value
+            + COALESCE(
+                SUM(COALESCE(dm.movement_value, 0::numeric)) OVER (
+                    PARTITION BY cp.storeid, cp.itemid
+                    ORDER BY c.fulldate
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                ),
+                0::numeric
+                ) AS value
+        FROM tmp_prev_day_stock cp
+        CROSS JOIN LATERAL generate_series(v_from_date, v_to_date, interval '1 day') AS c(fulldate)
+        LEFT JOIN tmp_daily_move_range dm
+            ON dm.storeid = cp.storeid
+         AND dm.itemid = cp.itemid
+         AND dm.fulldate = c.fulldate;
+    END IF;
+
+    RAISE NOTICE '[TIMING] Total procedure execution time: % ms', EXTRACT(EPOCH FROM (clock_timestamp() - v_start_time)) * 1000;
+END;
+$BODY$;
+
+CREATE OR REPLACE PROCEDURE public.aggregator_monthlyConsumption(
+    IN p_options jsonb DEFAULT '{}'::jsonb
+)
+LANGUAGE plpgsql
+AS $BODY$
+DECLARE
+    v_run_date date := COALESCE(NULLIF(p_options->>'runDate', '')::date, current_date - 1);
+    v_lookback_period integer := COALESCE((p_options->>'lookBackPeriod')::integer, (p_options->>'lookbackMonths')::integer, 13);
+    v_include_current_month boolean := COALESCE((p_options->>'includeCurrentMonth')::boolean, true);
+    v_include_placeholder_lines boolean := COALESCE((p_options->>'includePlaceholderLines')::boolean, true);
+    v_execute_in_postgres boolean := COALESCE((p_options->>'executeInPostgres')::boolean, false);
+    v_to_month_start date;
+    v_from_month_start date;
+    v_from_monthyear text;
+    v_to_monthyear text;
+BEGIN
+    IF NOT v_execute_in_postgres THEN
+        RAISE NOTICE '[SKIP] aggregator_monthlyConsumption: executeInPostgres=%, skipping. Options: %',
+            COALESCE(p_options->>'executeInPostgres', 'not set'), p_options;
+        RETURN;
+    END IF;
+
+    IF v_lookback_period < 1 THEN
+        RAISE EXCEPTION 'lookBackPeriod must be >= 1';
+    END IF;
+
+    IF v_include_current_month THEN
+        v_to_month_start := date_trunc('month', v_run_date)::date;
+    ELSE
+        v_to_month_start := (date_trunc('month', v_run_date)::date - interval '1 month')::date;
+    END IF;
+
+    v_from_month_start := (v_to_month_start - make_interval(months => GREATEST(v_lookback_period - 1, 0)))::date;
+    v_from_monthyear := to_char(v_from_month_start, 'YYYYMM');
+    v_to_monthyear := to_char(v_to_month_start, 'YYYYMM');
+
+    PERFORM pg_advisory_xact_lock(4815162342);
+
+    -- Query CI transactions only (consumption/issue), not SC (stock count)
+    DROP TABLE IF EXISTS tmp_monthly_consumption_sep;
+    CREATE TEMP TABLE tmp_monthly_consumption_sep ON COMMIT DROP AS
+    SELECT
+        t.store_id::text AS storeid,
+        tl.item_id::text AS itemid,
+        to_char(t.confirm_date::date, 'YYYYMM') AS monthyear,
+        SUM((tl.quantity * COALESCE(tl.pack_size, 1))::numeric) AS qty_out
+    FROM transact t
+    JOIN trans_line tl
+      ON tl.transaction_id = t.id
+    WHERE t.confirm_date::date >= v_from_month_start
+      AND t.confirm_date::date < (v_to_month_start + interval '1 month')
+      AND t.type = 'ci'
+      AND t.status IN ('fn', 'cn')
+      AND (tl.type = 'stock_out' OR (v_include_placeholder_lines AND tl.type = 'placeholder'))
+    GROUP BY 1, 2, 3;
+
+    CREATE INDEX tmp_monthly_consumption_sep_idx ON tmp_monthly_consumption_sep (storeid, itemid, monthyear);
+
+    DELETE FROM aggregator
+    WHERE dataelement = 'monthlyConsumption'
+      AND monthyear BETWEEN v_from_monthyear AND v_to_monthyear;
+
+    INSERT INTO aggregator (storeid, itemid, fulldate, monthyear, dataelement, value)
+    SELECT
+        mc.storeid,
+        mc.itemid,
+        to_date(mc.monthyear || '01', 'YYYYMMDD'),
+        mc.monthyear,
+        'monthlyConsumption',
+        mc.qty_out
+    FROM tmp_monthly_consumption_sep mc
+    WHERE mc.qty_out <> 0;
+
+END;
+$BODY$;
+
+
+CREATE OR REPLACE PROCEDURE public.aggregator_stockConsumption(
+    IN p_options jsonb DEFAULT '{}'::jsonb
+)
+LANGUAGE plpgsql
+AS $BODY$
+DECLARE
+    v_run_date date := COALESCE(NULLIF(p_options->>'runDate', '')::date, current_date - 1);
+    v_lookback_period integer := COALESCE((p_options->>'lookBackPeriod')::integer, 13);
+    v_include_current_month boolean := COALESCE((p_options->>'includeCurrentMonth')::boolean, true);
+    v_include_placeholder_lines boolean := COALESCE((p_options->>'includePlaceholderLines')::boolean, false);
+    v_execute_in_postgres boolean := COALESCE((p_options->>'executeInPostgres')::boolean, false);
+    v_from_date date;
+    v_to_date date;
+    v_count integer;
+BEGIN
+    IF NOT v_execute_in_postgres THEN
+        RAISE NOTICE '[SKIP] aggregator_stockConsumption: executeInPostgres=%, skipping. Options: %',
+            COALESCE(p_options->>'executeInPostgres', 'not set'), p_options;
+        RETURN;
+    END IF;
+
+    IF v_lookback_period < 1 THEN
+        RAISE EXCEPTION 'lookBackPeriod must be >= 1';
+    END IF;
+
+    IF v_include_current_month THEN
+        v_to_date := v_run_date;
+    ELSE
+        v_to_date := (date_trunc('month', v_run_date)::date - 1);
+    END IF;
+
+    v_from_date := (date_trunc('month', v_to_date)::date - make_interval(months => GREATEST(v_lookback_period - 1, 0)))::date;
+
+    PERFORM pg_advisory_xact_lock(4815162342);
+
+    DELETE FROM aggregator
+    WHERE dataelement = 'stockConsumption'
+      AND fulldate BETWEEN v_from_date AND v_to_date;
+
+    INSERT INTO aggregator (storeid, itemid, fulldate, monthyear, dataelement, value)
+    SELECT
+        t.store_id::text,
+        tl.item_id::text,
+        t.confirm_date::date,
+        to_char(t.confirm_date::date, 'YYYYMM'),
+        'stockConsumption',
+        SUM((tl.quantity * COALESCE(tl.pack_size, 1))::numeric)
+    FROM transact t
+    JOIN trans_line tl ON tl.transaction_id = t.id
+    WHERE t.confirm_date::date BETWEEN v_from_date AND v_to_date
+      AND t.type IN ('ci', 'sc')
+      AND t.status IN ('fn', 'cn')
+      AND (tl.type = 'stock_out' OR (v_include_placeholder_lines AND tl.type = 'placeholder'))
+    GROUP BY 1, 2, 3, 4;
+
+    GET DIAGNOSTICS v_count = ROW_COUNT;
+
+    RAISE NOTICE 'aggregator_stockConsumption: inserted % rows, looked back to %', v_count, v_from_date;
+END;
+$BODY$;
+
+ALTER PROCEDURE public.aggregator_stockConsumption(jsonb)
+    OWNER TO postgres;
+
+
+CREATE OR REPLACE PROCEDURE public.aggregator_AMC(
+    IN p_options jsonb DEFAULT '{}'::jsonb
+)
+LANGUAGE plpgsql
+AS $BODY$
+DECLARE
+    v_run_date date := COALESCE(NULLIF(p_options->>'runDate', '')::date, current_date - 1);
+    v_lookback_period integer := COALESCE((p_options->>'lookBackPeriod')::integer, (p_options->>'lookbackMonths')::integer, 13);
+    v_enforce_lookback_period boolean := COALESCE((p_options->>'enforceLookBackPeriod')::boolean, true);
+    v_include_current_month boolean := COALESCE((p_options->>'includeCurrentMonth')::boolean, true);
+    v_execute_in_postgres boolean := COALESCE((p_options->>'executeInPostgres')::boolean, false);
+    v_to_month_start date;
+    v_from_month_start date;
+    v_from_monthyear text;
+    v_to_monthyear text;
+BEGIN
+    IF NOT v_execute_in_postgres THEN
+        RAISE NOTICE '[SKIP] aggregator_AMC: executeInPostgres=%, skipping. Options: %',
+            COALESCE(p_options->>'executeInPostgres', 'not set'), p_options;
+        RETURN;
+    END IF;
+
+    IF v_lookback_period < 1 THEN
+        RAISE EXCEPTION 'lookBackPeriod must be >= 1';
+    END IF;
+
+    IF v_include_current_month THEN
+        v_to_month_start := date_trunc('month', v_run_date)::date;
+    ELSE
+        v_to_month_start := (date_trunc('month', v_run_date)::date - interval '1 month')::date;
+    END IF;
+
+    v_from_month_start := (v_to_month_start - make_interval(months => GREATEST(v_lookback_period - 1, 0)))::date;
+    v_from_monthyear := to_char(v_from_month_start, 'YYYYMM');
+    v_to_monthyear := to_char(v_to_month_start, 'YYYYMM');
+
+    PERFORM pg_advisory_xact_lock(4815162342);
+
+    DROP TABLE IF EXISTS tmp_amc_base;
+    CREATE TEMP TABLE tmp_amc_base ON COMMIT DROP AS
+    SELECT
+        mc.storeid,
+        mc.itemid,
+        SUM(mc.value) AS total_value,
+        COUNT(DISTINCT mc.monthyear) AS months_with_data
+    FROM aggregator mc
+    WHERE mc.dataelement = 'monthlyConsumption'
+      AND mc.monthyear BETWEEN v_from_monthyear AND v_to_monthyear
+    GROUP BY 1, 2;
+
+    DELETE FROM aggregator
+    WHERE fulldate = v_run_date
+      AND dataelement = 'AMC';
+
+    INSERT INTO aggregator (storeid, itemid, fulldate, monthyear, dataelement, value)
+    SELECT
+        b.storeid,
+        b.itemid,
+        v_run_date,
+        to_char(v_run_date, 'YYYYMM'),
+        'AMC',
+        CASE
+            WHEN v_enforce_lookback_period THEN COALESCE(b.total_value / NULLIF(v_lookback_period::numeric, 0), 0)
+            ELSE COALESCE(b.total_value / NULLIF(b.months_with_data::numeric, 0), 0)
+        END
+    FROM tmp_amc_base b
+    WHERE v_enforce_lookback_period
+       OR (NOT v_enforce_lookback_period AND b.months_with_data > 0);
+
+END;
+$BODY$;
+
+CREATE OR REPLACE PROCEDURE public.aggregator_monthlyDOS(
+    IN p_options jsonb DEFAULT '{}'::jsonb
+)
+LANGUAGE plpgsql
+AS $BODY$
+DECLARE
+    v_run_date date := COALESCE(NULLIF(p_options->>'runDate', '')::date, current_date - 1);
+    v_lookback_period integer := COALESCE((p_options->>'lookBackPeriod')::integer, (p_options->>'lookbackMonths')::integer, 13);
+    v_include_current_month boolean := COALESCE((p_options->>'includeCurrentMonth')::boolean, true);
+    v_execute_in_postgres boolean := COALESCE((p_options->>'executeInPostgres')::boolean, false);
+    v_to_month_start date;
+    v_from_month_start date;
+    v_from_monthyear text;
+    v_to_monthyear text;
+BEGIN
+    IF NOT v_execute_in_postgres THEN
+        RAISE NOTICE '[SKIP] aggregator_monthlyDOS: executeInPostgres=%, skipping. Options: %',
+            COALESCE(p_options->>'executeInPostgres', 'not set'), p_options;
+        RETURN;
+    END IF;
+
+    IF v_lookback_period < 1 THEN
+        RAISE EXCEPTION 'lookBackPeriod must be >= 1';
+    END IF;
+
+    IF v_include_current_month THEN
+        v_to_month_start := date_trunc('month', v_run_date)::date;
+    ELSE
+        v_to_month_start := (date_trunc('month', v_run_date)::date - interval '1 month')::date;
+    END IF;
+
+    v_from_month_start := (v_to_month_start - make_interval(months => GREATEST(v_lookback_period - 1, 0)))::date;
+    v_from_monthyear := to_char(v_from_month_start, 'YYYYMM');
+    v_to_monthyear := to_char(v_to_month_start, 'YYYYMM');
+
+    PERFORM pg_advisory_xact_lock(4815162342);
+
+    DROP TABLE IF EXISTS tmp_monthly_dos_months;
+    CREATE TEMP TABLE tmp_monthly_dos_months ON COMMIT DROP AS
+    SELECT generate_series(v_from_month_start, v_to_month_start, interval '1 month')::date AS month_start;
+
+    DROP TABLE IF EXISTS tmp_monthly_dos_prior_rows;
+    CREATE TEMP TABLE tmp_monthly_dos_prior_rows ON COMMIT DROP AS
+    SELECT sh.storeid,
+           sh.itemid,
+           sh.fulldate,
+           sh.value
+    FROM aggregator sh
+    JOIN (
+        SELECT storeid, itemid, MAX(fulldate) AS fulldate
+        FROM aggregator
+        WHERE dataelement = 'stockHistory'
+          AND fulldate < v_from_month_start
+        GROUP BY storeid, itemid
+    ) prior
+      ON prior.storeid = sh.storeid
+     AND prior.itemid = sh.itemid
+     AND prior.fulldate = sh.fulldate;
+
+    DROP TABLE IF EXISTS tmp_monthly_dos_pairs;
+    CREATE TEMP TABLE tmp_monthly_dos_pairs ON COMMIT DROP AS
+    SELECT DISTINCT storeid, itemid
+    FROM (
+        SELECT storeid, itemid FROM tmp_monthly_dos_prior_rows
+        UNION ALL
+        SELECT h.storeid, h.itemid
+        FROM aggregator h
+        WHERE h.dataelement = 'stockHistory'
+          AND h.fulldate BETWEEN v_from_month_start AND v_run_date
+    ) combined;
+
+    DROP TABLE IF EXISTS tmp_monthly_dos_segments;
+    CREATE TEMP TABLE tmp_monthly_dos_segments ON COMMIT DROP AS
+    WITH sh AS (
+        SELECT storeid, itemid, fulldate, value
+        FROM tmp_monthly_dos_prior_rows
+        UNION ALL
+        SELECT h.storeid, h.itemid, h.fulldate, h.value
+        FROM aggregator h
+        WHERE h.dataelement = 'stockHistory'
+          AND h.fulldate BETWEEN v_from_month_start AND v_run_date
+    ),
+    unique_sh AS (
+        SELECT storeid, itemid, fulldate, MAX(value) AS value
+        FROM sh
+        GROUP BY storeid, itemid, fulldate
+    )
+    SELECT
+        u.storeid,
+        u.itemid,
+        u.fulldate AS segment_start,
+        COALESCE(
+            LEAD(u.fulldate) OVER (PARTITION BY u.storeid, u.itemid ORDER BY u.fulldate) - interval '1 day',
+            v_run_date
+        )::date AS segment_end,
+        u.value
+    FROM unique_sh u;
+
+    DELETE FROM aggregator
+    WHERE dataelement = 'monthlyDOS'
+      AND monthyear BETWEEN v_from_monthyear AND v_to_monthyear;
+
+    INSERT INTO aggregator (storeid, itemid, fulldate, monthyear, dataelement, value)
+    SELECT
+        p.storeid,
+        p.itemid,
+        mr.month_start,
+        to_char(mr.month_start, 'YYYYMM'),
+        'monthlyDOS',
+        COALESCE(SUM(
+            CASE
+                WHEN seg.value = 0 THEN
+                    (LEAST(seg.segment_end, (mr.month_start + interval '1 month' - interval '1 day')::date) - GREATEST(seg.segment_start, mr.month_start) + 1)
+                ELSE 0
+            END
+        ), 0)::numeric
+    FROM tmp_monthly_dos_pairs p
+    CROSS JOIN tmp_monthly_dos_months mr
+    LEFT JOIN tmp_monthly_dos_segments seg
+      ON seg.storeid = p.storeid
+     AND seg.itemid = p.itemid
+     AND seg.segment_end >= mr.month_start
+     AND seg.segment_start <= (mr.month_start + interval '1 month' - interval '1 day')::date
+    GROUP BY 1, 2, 3;
+
+END;
+$BODY$;
+
+
+CREATE OR REPLACE PROCEDURE public.aggregator_stockMovement(
+    IN p_options jsonb DEFAULT '{}'::jsonb
+)
+LANGUAGE plpgsql
+AS $BODY$
+DECLARE
+    v_run_date date := COALESCE(NULLIF(p_options->>'runDate', '')::date, current_date - 1);
+    v_to_date date := NULLIF(p_options->>'toDate', '')::date;
+    v_from_date date := NULLIF(p_options->>'fromDate', '')::date;
+    v_lookback_period integer := COALESCE((p_options->>'lookBackPeriod')::integer, 13);
+    v_include_current_month boolean := COALESCE((p_options->>'includeCurrentMonth')::boolean, true);
+    v_include_placeholder_lines boolean := COALESCE((p_options->>'includePlaceholderLines')::boolean, true);
+    v_execute_in_postgres boolean := COALESCE((p_options->>'executeInPostgres')::boolean, false);
+BEGIN
+    IF NOT v_execute_in_postgres THEN
+        RAISE NOTICE '[SKIP] aggregator_stockMovement: executeInPostgres=%, skipping. Options: %',
+            COALESCE(p_options->>'executeInPostgres', 'not set'), p_options;
+        RETURN;
+    END IF;
+
+    IF v_lookback_period < 1 THEN
+        RAISE EXCEPTION 'lookBackPeriod must be >= 1';
+    END IF;
+
+    IF v_to_date IS NULL THEN
+        IF v_include_current_month THEN
+            v_to_date := v_run_date;
+        ELSE
+            v_to_date := (date_trunc('month', v_run_date)::date - 1);
+        END IF;
+    END IF;
+
+    IF v_from_date IS NULL THEN
+        v_from_date := (date_trunc('month', v_to_date)::date - make_interval(months => GREATEST(v_lookback_period - 1, 0)))::date;
+    END IF;
+
+    IF v_from_date > v_to_date THEN
+        RAISE EXCEPTION 'fromDate must be <= toDate';
+    END IF;
+
+    PERFORM pg_advisory_xact_lock(4815162342);
+
+    DROP TABLE IF EXISTS tmp_mov_period_sep;
+    CREATE TEMP TABLE tmp_mov_period_sep ON COMMIT DROP AS
+    SELECT
+        t.store_id::text AS storeid,
+        tl.item_id::text AS itemid,
+        t.confirm_date::date AS fulldate,
+        to_char(t.confirm_date::date, 'YYYYMM') AS monthyear,
+        SUM(
+            CASE
+                WHEN t.type IN ('ci', 'sc') THEN -1 * (tl.quantity * COALESCE(tl.pack_size, 1))::numeric
+                ELSE (tl.quantity * COALESCE(tl.pack_size, 1))::numeric
+            END
+        ) AS value
+    FROM transact t
+    JOIN trans_line tl
+      ON tl.transaction_id = t.id
+    WHERE t.confirm_date::date BETWEEN v_from_date AND v_to_date
+      AND t.type IN ('ci', 'sc', 'si', 'cc')
+      AND t.status IN ('fn', 'cn')
+      AND (tl.type IN ('stock_out', 'stock_in') OR (v_include_placeholder_lines AND tl.type = 'placeholder'))
+    GROUP BY 1, 2, 3, 4;
+
+    CREATE INDEX tmp_mov_period_sep_idx ON tmp_mov_period_sep (fulldate, storeid, itemid);
+
+        DELETE FROM aggregator
+        WHERE dataelement = 'stockMovement'
+            AND fulldate BETWEEN v_from_date AND v_to_date;
+
+        INSERT INTO aggregator (storeid, itemid, fulldate, monthyear, dataelement, value)
+    SELECT
+        m.storeid,
+        m.itemid,
+        m.fulldate,
+        m.monthyear,
+        'stockMovement',
+        m.value
+    FROM tmp_mov_period_sep m;
+
+END;
+$BODY$;
+
+
+ALTER PROCEDURE public.aggregator_stockHistory(jsonb)
+    OWNER TO postgres;
+
+ALTER PROCEDURE public.aggregator_monthlyConsumption(jsonb)
+    OWNER TO postgres;
+
+ALTER PROCEDURE public.aggregator_AMC(jsonb)
+    OWNER TO postgres;
+
+ALTER PROCEDURE public.aggregator_monthlyDOS(jsonb)
+    OWNER TO postgres;
+
+ALTER PROCEDURE public.aggregator_stockMovement(jsonb)
+    OWNER TO postgres;
+
+
+
+CREATE OR REPLACE PROCEDURE public.aggregator_stockValueMovement(
+    IN p_options jsonb DEFAULT '{}'::jsonb
+)
+LANGUAGE plpgsql
+AS $BODY$
+DECLARE
+    v_run_date date := COALESCE(NULLIF(p_options->>'runDate', '')::date, current_date - 1);
+    v_lookback_period integer := COALESCE((p_options->>'lookBackPeriod')::integer, 13);
+    v_include_current_month boolean := COALESCE((p_options->>'includeCurrentMonth')::boolean, true);
+    v_from_date date;
+    v_to_date date;
+BEGIN
+    IF v_lookback_period < 1 THEN
+        RAISE EXCEPTION 'lookBackPeriod must be >= 1';
+    END IF;
+
+    IF v_include_current_month THEN
+        v_to_date := v_run_date;
+    ELSE
+        v_to_date := (date_trunc('month', v_run_date)::date - 1);
+    END IF;
+
+    v_from_date := (date_trunc('month', v_to_date)::date - make_interval(months => GREATEST(v_lookback_period - 1, 0)))::date;
+
+    PERFORM pg_advisory_xact_lock(4815162342);
+
+    DELETE FROM aggregator WHERE dataelement = 'stockValueMovement';
+
+    INSERT INTO aggregator (storeid, itemid, monthyear, fulldate, dataelement, value)
+    SELECT
+        t.store_id,
+        tl.item_id,
+        TO_CHAR(t.confirm_date, 'YYYYMM'),
+        t.confirm_date,
+        'stockValueMovement',
+        SUM(tl.quantity * tl.cost_price * CASE WHEN t.type = 'si' THEN 1 ELSE -1 END)
+    FROM trans_line tl
+    JOIN transact t ON tl.transaction_id = t.id
+    WHERE t.status IN ('fn', 'cn')
+      AND t.confirm_date::date BETWEEN v_from_date AND v_to_date
+      AND (   (t.type IN ('ci', 'sc') AND tl.type = 'stock_out')
+           OR (t.type = 'si'          AND tl.type = 'stock_in'))
+    GROUP BY t.store_id, tl.item_id, t.confirm_date;
+
+END;
+$BODY$;
+
+ALTER PROCEDURE public.aggregator_stockValueMovement(jsonb)
+    OWNER TO postgres;
+
+
+
+CREATE OR REPLACE PROCEDURE public.aggregator_stockValueHistory(
+    IN p_options jsonb DEFAULT '{}'::jsonb
+)
+LANGUAGE plpgsql
+AS $BODY$
+DECLARE
+    v_run_date date := COALESCE(NULLIF(p_options->>'runDate', '')::date, current_date - 1);
+    v_lookback_period integer := COALESCE((p_options->>'lookBackPeriod')::integer, 13);
+    v_include_current_month boolean := COALESCE((p_options->>'includeCurrentMonth')::boolean, true);
+    v_from_date date;
+    v_to_date date;
+BEGIN
+    IF v_lookback_period < 1 THEN
+        RAISE EXCEPTION 'lookBackPeriod must be >= 1';
+    END IF;
+
+    IF v_include_current_month THEN
+        v_to_date := v_run_date;
+    ELSE
+        v_to_date := (date_trunc('month', v_run_date)::date - 1);
+    END IF;
+
+    v_from_date := (date_trunc('month', v_to_date)::date - make_interval(months => GREATEST(v_lookback_period - 1, 0)))::date;
+
+    PERFORM pg_advisory_xact_lock(4815162342);
+
+    DELETE FROM aggregator WHERE dataelement = 'stockValueHistory';
+
+    WITH
+    stock_value_current AS (
+        SELECT
+            store_id AS storeid,
+            item_id  AS itemid,
+            SUM(cost_price * quantity) AS value
+        FROM item_line
+        WHERE quantity <> 0
+        GROUP BY store_id, item_id
+    ),
+    movements AS (
+        SELECT storeid, itemid, fulldate, SUM(value) AS value
+        FROM aggregator
+        WHERE dataelement = 'stockValueMovement'
+          AND fulldate > v_from_date
+          AND fulldate < v_to_date
+        GROUP BY storeid, itemid, fulldate
+        UNION ALL
+        SELECT svc.storeid, svc.itemid, v_from_date, 0
+        FROM stock_value_current svc
+    )
+    INSERT INTO aggregator (storeid, itemid, monthyear, fulldate, dataelement, value)
+    SELECT
+        m.storeid,
+        m.itemid,
+        TO_CHAR(m.fulldate, 'YYYYMM'),
+        m.fulldate,
+        'stockValueHistory',
+        svc.value - COALESCE(
+            SUM(m.value) OVER (
+                PARTITION BY m.storeid, m.itemid
+                ORDER BY m.fulldate
+                ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING
+            ), 0
+        )
+    FROM movements m
+    JOIN stock_value_current svc
+        ON m.storeid = svc.storeid
+        AND m.itemid = svc.itemid
+    UNION ALL
+    SELECT storeid, itemid, TO_CHAR(v_to_date, 'YYYYMM'), v_to_date, 'stockValueHistory', value
+    FROM stock_value_current;
+
+END;
+$BODY$;
+
+ALTER PROCEDURE public.aggregator_stockValueHistory(jsonb)
+    OWNER TO postgres;
+
+
+CREATE OR REPLACE PROCEDURE public.aggregate_current_mos()
+LANGUAGE plpgsql
+AS $BODY$
+BEGIN
+    PERFORM pg_advisory_xact_lock(4815162342);
+
+    DELETE FROM aggregator
+    WHERE dataelement = 'currentMOS';
+
+    INSERT INTO aggregator (storeid, itemid, value, dataelement)
+    WITH stock AS (
+        SELECT
+            il.store_id::text AS storeid,
+            il.item_id::text AS itemid,
+            SUM((il.available * COALESCE(il.pack_size, 1))::numeric) AS stock_value
+        FROM item_line il
+        GROUP BY 1, 2
+    ),
+    latest_amc_run AS (
+        SELECT MAX(a.fulldate) AS fulldate
+        FROM aggregator a
+        WHERE a.dataelement = 'AMC'
+    ),
+    latest_amc AS (
+        SELECT
+            a.storeid,
+            a.itemid,
+            MAX(a.value) AS value
+        FROM aggregator a
+        JOIN latest_amc_run r
+          ON r.fulldate = a.fulldate
+        WHERE a.dataelement = 'AMC'
+        GROUP BY 1, 2
+    )
+    SELECT
+        s.storeid,
+        s.itemid,
+        CASE
+            WHEN s.stock_value <= 0 THEN s.stock_value
+            WHEN COALESCE(a.value, 0) = 0 THEN 0
+            ELSE s.stock_value / a.value
+        END,
+        'currentMOS'
+    FROM stock s
+    LEFT JOIN latest_amc a
+      ON a.storeid = s.storeid
+     AND a.itemid = s.itemid
+    WHERE s.stock_value <= 0
+       OR a.itemid IS NOT NULL;
+END;
+$BODY$;
+
+ALTER PROCEDURE public.aggregate_current_mos()
+    OWNER TO postgres;
+
+
+
+CREATE OR REPLACE PROCEDURE public.aggregator_stockStatus(
+    IN p_options jsonb DEFAULT '{}'::jsonb
+)
+LANGUAGE plpgsql
+AS $BODY$
+BEGIN
+    PERFORM pg_advisory_xact_lock(4815162342);
+
+    DELETE FROM aggregator WHERE dataelement = 'mos';
+
+    INSERT INTO aggregator (storeid, itemid, monthyear, value, fulldate, dataelement)
+    SELECT
+        stock.storeid,
+        stock.itemid,
+        TO_CHAR(date_trunc('month', stock.fulldate), 'YYYYMM'),
+        SUM(stock.value) / amc.value,
+        date_trunc('month', stock.fulldate),
+        'mos'
+    FROM aggregator stock
+    JOIN store ON stock.storeid = store.id
+    JOIN aggregator amc
+        ON  amc.itemid      = stock.itemid
+        AND amc.storeid     = stock.storeid
+        AND amc.dataelement = 'AMC'
+        AND amc.value > 0
+    WHERE
+        stock.dataelement = 'stockHistory'
+        AND store.disabled = FALSE
+        AND stock.value > 0
+    GROUP BY
+        stock.storeid,
+        stock.itemid,
+        date_trunc('month', stock.fulldate),
+        amc.value;
+
+END;
+$BODY$;
+
+ALTER PROCEDURE public.aggregator_stockStatus(jsonb)
+    OWNER TO postgres;
+
+
+
+CREATE OR REPLACE PROCEDURE public.aggregator_storePeriodSchedules()
+LANGUAGE plpgsql
+AS $BODY$
+BEGIN
+    PERFORM pg_advisory_xact_lock(4815162342);
+
+    TRUNCATE TABLE store_period_schedules;
+
+    WITH program_store_tags AS (
+        SELECT
+            lm.id                             AS programid,
+            st.key                            AS tag_key,
+            st.value ->> 'periodScheduleName' AS period_schedule_name,
+            st.value -> 'orderTypes'          AS order_types
+        FROM list_master lm
+        CROSS JOIN LATERAL jsonb_each(lm.programsettings -> 'storeTags') AS st(key, value)
+        WHERE lm.isprogram = true
+    )
+    INSERT INTO store_period_schedules (storeid, periodscheduleid, programid)
+    SELECT DISTINCT
+        s.id,
+        ps.id,
+        pst.programid
+    FROM program_store_tags pst
+    JOIN store s
+        ON s.tags LIKE concat('%', pst.tag_key, '%')
+    JOIN list_master_name_join lmnj
+        ON s.name_id = lmnj.name_id
+        AND pst.programid = lmnj.list_master_id
+    JOIN periodschedule ps
+        ON pst.period_schedule_name = ps.name
+    WHERE EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(pst.order_types) AS ot
+        WHERE ot @> '{"isEmergency": false}'
+    );
+
+END;
+$BODY$;
+
+ALTER PROCEDURE public.aggregator_storePeriodSchedules()
+    OWNER TO postgres;
+
+
+CREATE OR REPLACE PROCEDURE public.create_stock_status_matview()
+LANGUAGE plpgsql
+AS $BODY$
+BEGIN
+    PERFORM pg_advisory_xact_lock(4815162342);
+
+    -- The SELECT's DISTINCT ON/ORDER BY sorts the whole stock_status result
+    -- set (~480k rows). With default work_mem this can spill to disk
+    -- (external merge sort, visible as BuffileRead in pg_stat_activity),
+    -- which is far slower than an in-memory sort. Bump it for just this
+    -- transaction so the sort stays in memory without touching the
+    -- server-wide setting.
+    SET LOCAL work_mem = '256MB';
+
+    -- stock_status is a plain TABLE, refreshed via DELETE + INSERT inside
+    -- this same transaction rather than DROP/TRUNCATE + rebuild. DELETE and
+    -- INSERT only need RowExclusiveLock, which does not conflict with the
+    -- AccessShareLock a Grafana SELECT holds — so this never competes with
+    -- dashboard traffic, the same reason aggregator's much heavier DELETE +
+    -- INSERT traffic has never been a locking problem. And because this all
+    -- runs in one transaction, ordinary MVCC snapshot isolation means no
+    -- other session can see the DELETE or the INSERT until this procedure
+    -- commits: concurrent Grafana reads just keep seeing the complete old
+    -- data throughout the rebuild, then atomically see the complete new data
+    -- the instant it commits. No blocking, no partial state, no swap step.
+    --
+    -- This replaces two earlier designs: rebuilding stock_status in place as
+    -- a materialized view (DROP + CREATE MATERIALIZED VIEW, or
+    -- REFRESH MATERIALIZED VIEW CONCURRENTLY) — both of which needed a lock
+    -- that conflicts with readers — and a blue-green pair of materialized
+    -- views behind a wrapper view, which avoided that but added a swap step
+    -- and twice the storage for no benefit once DELETE + INSERT was on the
+    -- table. The legacy materialized view is dropped manually (once) rather
+    -- than detected/handled here.
+
+    -- Create the table (and its unique index) once, if it doesn't already
+    -- exist as a plain table. Columns are declared explicitly here rather
+    -- than inferred from a second copy of the query below, so there's only
+    -- ever one copy of the actual query in this procedure. Every later run
+    -- skips this block and just DELETEs + INSERTs into this same permanent
+    -- table.
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'stock_status'
+    ) THEN
+        RAISE WARNING 'create_stock_status_matview: creating stock_status table for the first time';
+
+        CREATE TABLE public.stock_status (
+            storeid  text,
+            store    text,
+            itemid   text,
+            name     text,
+            code     text,
+            quantity numeric,
+            amc      numeric,
+            program  text,
+            minimum  real,
+            maximum  real,
+            mos      numeric,
+            status   text
+        );
+
+        CREATE UNIQUE INDEX stock_status_dx
+            ON public.stock_status (storeid, store, name, code, itemid, program);
+    END IF;
+
+    DELETE FROM public.stock_status;
+
+    INSERT INTO public.stock_status
+    -- Universe of (storeid, itemid) comes from item_store_program_dedup, not
+    -- item_line directly: item_store_program_dedup is already an inner-join
+    -- requirement for a row to appear in stock_status at all, so deriving the
+    -- universe here doesn't drop anything that wasn't already excluded. This
+    -- lets the item_line lookup stay filtered to quantity > 0 (fast — most of
+    -- item_line is old, fully-consumed batch lines sitting at quantity = 0)
+    -- while still surfacing genuinely out-of-stock items at quantity = 0
+    -- instead of an unfiltered scan of item_line dropping them or being slow.
+    WITH item_store_program_dedup AS (
+        SELECT
+            isp.storeid::text AS storeid,
+            isp.itemid::text AS itemid,
+            isp.program,
+            MAX(isp.minimum) AS minimum,
+            MAX(isp.maximum) AS maximum
+        FROM item_store_program isp
+        GROUP BY 1, 2, 3
+    ),
+    items AS (
+        SELECT
+            isp.storeid,
+            isp.itemid,
+            s.name AS store,
+            i.item_name AS name,
+            i.code,
+            COALESCE(SUM((il.pack_size * il.quantity)::numeric), 0) AS quantity
+        FROM (SELECT DISTINCT storeid, itemid FROM item_store_program_dedup) isp
+        JOIN store s ON s.id::text = isp.storeid AND s.disabled = false
+        JOIN item i ON i.id::text = isp.itemid
+        LEFT JOIN item_line il
+          ON il.item_id::text = isp.itemid
+         AND il.store_id::text = isp.storeid
+         AND il.quantity > 0
+        GROUP BY isp.storeid, isp.itemid, s.name, i.item_name, i.code
+    ),
+    current_mos AS (
+        SELECT
+            a.storeid,
+            a.itemid,
+            MAX(a.value) AS value
+        FROM aggregator a
+        WHERE a.dataelement = 'currentMOS'
+          AND EXISTS (
+              SELECT 1 FROM items i
+              WHERE i.storeid = a.storeid AND i.itemid = a.itemid
+          )
+        GROUP BY 1, 2
+    ),
+    -- Single pass over aggregator for AMC: compute the running global max
+    -- fulldate via a window function instead of scanning the table again in
+    -- a separate CTE, then restrict to items only after that (so the "latest
+    -- run" date is still the true global max, not skewed by the restriction).
+    latest_amc AS (
+        SELECT
+            a.storeid,
+            a.itemid,
+            MAX(a.value) AS value
+        FROM (
+            SELECT
+                a.storeid,
+                a.itemid,
+                a.value,
+                a.fulldate,
+                MAX(a.fulldate) OVER () AS max_fulldate
+            FROM aggregator a
+            WHERE a.dataelement = 'AMC'
+        ) a
+        WHERE a.fulldate = a.max_fulldate
+          AND EXISTS (
+              SELECT 1 FROM items i
+              WHERE i.storeid = a.storeid AND i.itemid = a.itemid
+          )
+        GROUP BY 1, 2
+    )
+    -- DISTINCT ON the same columns as stock_status_dx: if any upstream join
+    -- (item/store/item_store_program) ever yields more than one row for the
+    -- same key, keep the first and drop the rest rather than failing the
+    -- insert with a unique-index violation.
+    SELECT DISTINCT ON (i.storeid, i.store, i.name, i.code, i.itemid, isp.program)
+        i.storeid,
+        i.store,
+        i.itemid,
+        i.name,
+        i.code,
+        i.quantity,
+        amc.value AS amc,
+        isp.program,
+        isp.minimum,
+        isp.maximum,
+        cm.value AS mos,
+        CASE
+            WHEN i.quantity = 0::numeric THEN '0'
+            WHEN cm.value < isp.minimum THEN '1'
+            WHEN cm.value > isp.maximum THEN '3'
+            ELSE '2'
+        END AS status
+    FROM current_mos cm
+    JOIN items i
+      ON cm.storeid = i.storeid
+     AND cm.itemid = i.itemid
+    JOIN item_store_program_dedup isp
+      ON cm.storeid = isp.storeid
+     AND cm.itemid = isp.itemid
+    LEFT JOIN latest_amc amc
+      ON cm.itemid = amc.itemid
+     AND cm.storeid = amc.storeid
+    ORDER BY i.storeid, i.store, i.name, i.code, i.itemid, isp.program;
+END;
+$BODY$;
+
+ALTER PROCEDURE public.create_stock_status_matview()
+    OWNER TO postgres;
+
+
+-- ─────────────────────────────────────────────────────────────────
+-- Dispatcher: reads pref.json methods array and calls each procedure.
+-- Skips aggregator_resetTable and aggregator_dashboardExport.
+-- Also skips aggregator_stockStatus, aggregator_stockValueHistory,
+-- aggregator_stockValueMovement and aggregator_storePeriodSchedules:
+-- these are never listed in the scheduler_aggregation pref, so they
+-- are instead called directly and unconditionally from aggregator_run().
+-- Called either directly or via the trigger below.
+-- ─────────────────────────────────────────────────────────────────
+CREATE OR REPLACE PROCEDURE public.aggregator_dispatch(
+    IN p_pref jsonb
+)
+LANGUAGE plpgsql
+AS $BODY$
+DECLARE
+    v_method jsonb;
+    v_name   text;
+    v_params jsonb;
+    v_skip   text[] := ARRAY[
+        'aggregator_resetTable',
+        'aggregator_dashboardExport',
+        'aggregator_stockStatus',
+        'aggregator_stockValueHistory',
+        'aggregator_stockValueMovement',
+        'aggregator_storePeriodSchedules'
+    ];
+BEGIN
+    FOR v_method IN SELECT jsonb_array_elements(p_pref->'methods')
+    LOOP
+        v_name   := v_method->>'methodName';
+        v_params := COALESCE(v_method->'parameters', '{}'::jsonb);
+
+        CONTINUE WHEN v_name = ANY(v_skip);
+
+        CASE v_name
+            WHEN 'aggregator_monthlyConsumption'   THEN CALL public.aggregator_monthlyConsumption(v_params);
+            WHEN 'aggregator_AMC'                  THEN CALL public.aggregator_AMC(v_params);
+            WHEN 'aggregator_stockMovement'        THEN CALL public.aggregator_stockMovement(v_params);
+            WHEN 'aggregator_stockHistory'         THEN CALL public.aggregator_stockHistory(v_params);
+            WHEN 'aggregator_monthlyDOS'           THEN CALL public.aggregator_monthlyDOS(v_params);
+            ELSE
+                RAISE NOTICE 'aggregator_dispatch: unhandled method "%", skipping', v_name;
+        END CASE;
+    END LOOP;
+END;
+$BODY$;
+
+ALTER PROCEDURE public.aggregator_dispatch(jsonb)
+    OWNER TO postgres;
+
+
+
+-- ─────────────────────────────────────────────────────────────────
+-- Single entry point: reads pref and runs all aggregation procedures.
+-- Call directly from mSupply: CALL public.aggregator_run();
+--
+-- aggregator_stockStatus, aggregator_stockValueHistory,
+-- aggregator_stockValueMovement and aggregator_storePeriodSchedules
+-- are never listed in the scheduler_aggregation pref (so they get no
+-- parameters from it) and are therefore called here directly and
+-- unconditionally, independent of the pref-driven dispatch above.
+-- ─────────────────────────────────────────────────────────────────
+CREATE OR REPLACE PROCEDURE public.aggregator_run()
+LANGUAGE plpgsql AS $BODY$
+DECLARE
+    v_data jsonb;
+BEGIN
+    SELECT data INTO v_data
+    FROM public.pref
+    WHERE item = 'scheduler_aggregation';
+
+    IF v_data IS NULL THEN
+        RAISE EXCEPTION 'scheduler_aggregation not found in pref table';
+    END IF;
+
+    CALL public.aggregator_dispatch(v_data);
+
+    CALL public.aggregator_stockValueMovement();
+    CALL public.aggregator_stockValueHistory();
+    CALL public.aggregator_stockStatus();
+    CALL public.aggregator_storePeriodSchedules();
+END;
+$BODY$;
+
+ALTER PROCEDURE public.aggregator_run() OWNER TO postgres;
