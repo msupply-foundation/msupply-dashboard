@@ -1,0 +1,68 @@
+.mapcontainer {
+  overflow: hidden;
+}
+
+.info {
+  padding: 6px 8px;
+  font: 14px/16px Arial, Helvetica, sans-serif;
+  background: white;
+  background: rgba(255,255,255,0.8);
+  box-shadow: 0 0 15px rgba(0,0,0,0.2);
+  border-radius: 5px;
+}
+.info h4 {
+  margin: 0 0 5px;
+  color: #777;
+}
+
+.legend {
+  line-height: 18px;
+  color: #555;
+  display: flex;
+  flex-direction: column;
+}
+
+.legend-item {
+  white-space: nowrap;
+}
+.legend i {
+  width: 18px;
+  height: 18px;
+  float: left;
+  margin-right: 8px;
+  opacity: 0.7;
+}
+
+.leaflet-top.leaflet-left, .leaflet-bottom.leaflet-left, .leaflet-bottom.leaflet-right {
+  z-index: 1000;
+}
+
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  color: #d8d9da !important;
+}
+
+/*
+ * Theme styles, previously in regionmap.dark.css / regionmap.light.css and
+ * pulled in at runtime with loadPluginCss(). The create-plugin build doesn't
+ * copy loose .css into dist/, so those requests 404'd and the panel rendered
+ * unstyled. Scoping them by Grafana's body theme class lets webpack bundle
+ * them with the rest of the panel CSS instead.
+ */
+body.theme-dark .map-darken img.leaflet-tile {
+  -webkit-filter: brightness(1.6) grayscale(1) contrast(1);
+  filter: brightness(1.6) grayscale(1) contrast(1);
+}
+
+body.theme-dark .worldmap-popup .leaflet-popup-content-wrapper,
+body.theme-dark .worldmap-popup .leaflet-popup-tip {
+  background-color: #333;
+}
+
+body.theme-light .worldmap-popup .leaflet-popup-content-wrapper,
+body.theme-light .worldmap-popup .leaflet-popup-tip {
+  background-color: #ececec;
+}
+
+body.theme-light .leaflet-popup-content {
+  color: #666;
+}
