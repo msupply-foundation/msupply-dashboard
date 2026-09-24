@@ -1,10 +1,18 @@
-name: CI
+name: Build
 
+# Manual only: run from the Actions tab (or `gh workflow run build.yml`).
+# Nothing triggers on push or pull_request by design.
 on:
-  push:
-    branches: [master, main]
-  pull_request:
   workflow_dispatch:
+    inputs:
+      plugins:
+        description: Build and test the custom plugins
+        type: boolean
+        default: true
+      migration:
+        description: Verify the grafana.db migration
+        type: boolean
+        default: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -13,6 +21,7 @@ concurrency:
 jobs:
   plugins:
     name: ${{ matrix.plugin }}
+    if: inputs.plugins
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -62,7 +71,8 @@ jobs:
           retention-days: 14
 
   grafana-db-migration:
-    name: grafana.db migration (8.x -> 13.2.2)
+    name: grafana.db migration
+    if: inputs.migration
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
