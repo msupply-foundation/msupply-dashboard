@@ -10,9 +10,13 @@
 FOR /F "delims=*" %%i in ('more version.txt') do SET versionTag=%%i
 @ECHO "current tag = %versionTag%"
 
-cd installer
+REM adjustSUFs.js reads RELEASE_FOLDER (it is shared with the GitHub Actions
+REM build, which mirrors release/ to a short path). Locally that path is
+REM c:\temp\release, which the move below creates.
+SET RELEASE_FOLDER=c:\temp\release
+
 node "%WORKSPACE%\installer\adjustSUFs.js"
-cd ..
+@if errorlevel 1 exit /b 1
 
 
 @ECHO.
