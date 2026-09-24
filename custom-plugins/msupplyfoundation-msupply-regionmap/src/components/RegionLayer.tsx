@@ -60,6 +60,7 @@ export const RegionLayer: React.FC<RegionLayerProps> = ({ options, data }) => {
     <>
       {regions.values.map(region => (
         <GeoJSON
+          key={region.key}
           data={region.data}
           pathOptions={region.pathOptions}
           eventHandlers={{
