@@ -1,46 +1,45 @@
-import { identity, omit, pick, pickBy } from 'lodash';
-import { lastValueFrom, Observable, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { map } from 'rxjs/operators';
+
 import {
   DataQueryRequest,
   DataQueryResponse,
-  DataSourceApi,
   DataSourceInstanceSettings,
   DataSourceJsonData,
-  dateMath,
-  DateTime,
   FieldType,
   MutableDataFrame,
+  ScopedVars,
+  toDataFrame,
 } from '@grafana/data';
-import { BackendSrvRequest, getBackendSrv, getTemplateSrv } from '@grafana/runtime';
+import { createNodeGraphFrames, NodeGraphOptions, SpanBarOptions } from '@grafana/o11y-ds-frontend';
+import { DataSourceWithBackend, getTemplateSrv, TemplateSrv } from '@grafana/runtime';
 
-import { serializeParams } from 'app/core/utils/fetch';
-import { getTimeSrv, TimeSrv } from 'app/features/dashboard/services/TimeSrv';
-import { createTableFrame, createTraceFrame } from './responseTransform';
+import { TraceIdTimeParamsOptions } from './configuration/TraceIdTimeParams';
 import { createGraphFrames } from './graphTransform';
+import { createTraceFrame } from './responseTransform';
 import { JaegerQuery } from './types';
-import { convertTagsLogfmt } from './util';
-import { ALL_OPERATIONS_KEY } from './components/SearchForm';
-import { NodeGraphOptions } from 'app/core/components/NodeGraphSettings';
 
 export interface JaegerJsonData extends DataSourceJsonData {
   nodeGraph?: NodeGraphOptions;
+  traceIdTimeParams?: TraceIdTimeParamsOptions;
 }
 
-export class JaegerDatasource extends DataSourceApi<JaegerQuery, JaegerJsonData> {
+export class JaegerDatasource extends DataSourceWithBackend<JaegerQuery, JaegerJsonData> {
   uploadedJson: string | ArrayBuffer | null = null;
   nodeGraph?: NodeGraphOptions;
+  traceIdTimeParams?: TraceIdTimeParamsOptions;
+  spanBar?: SpanBarOptions;
   constructor(
-    private instanceSettings: DataSourceInstanceSettings<JaegerJsonData>,
-    private readonly timeSrv: TimeSrv = getTimeSrv()
+    instanceSettings: DataSourceInstanceSettings<JaegerJsonData>,
+    private readonly templateSrv: TemplateSrv = getTemplateSrv()
   ) {
     super(instanceSettings);
     this.nodeGraph = instanceSettings.jsonData.nodeGraph;
+    this.traceIdTimeParams = instanceSettings.jsonData.traceIdTimeParams;
   }
 
-  async metadataRequest(url: string, params?: Record<string, any>): Promise<any> {
-    const res = await lastValueFrom(this._request(url, params, { hideFromInspector: true }));
-    return res.data.data;
+  async metadataRequest(url: string, params?: Record<string, unknown>) {
+    return await this.getResource(url, params);
   }
 
   query(options: DataQueryRequest<JaegerQuery>): Observable<DataQueryResponse> {
@@ -49,26 +48,6 @@ export class JaegerDatasource extends DataSourceApi<JaegerQuery, JaegerJsonData>
     const target: JaegerQuery = options.targets[0];
     if (!target) {
       return of({ data: [emptyTraceDataFrame] });
-    }
-
-    if (target.queryType !== 'search' && target.query) {
-      return this._request(
-        `/api/traces/${encodeURIComponent(getTemplateSrv().replace(target.query, options.scopedVars))}`
-      ).pipe(
-        map((response) => {
-          const traceData = response?.data?.data?.[0];
-          if (!traceData) {
-            return { data: [emptyTraceDataFrame] };
-          }
-          let data = [createTraceFrame(traceData)];
-          if (this.nodeGraph?.enabled) {
-            data.push(...createGraphFrames(traceData));
-          }
-          return {
-            data,
-          };
-        })
-      );
     }
 
     if (target.queryType === 'upload') {
@@ -84,105 +63,61 @@ export class JaegerDatasource extends DataSourceApi<JaegerQuery, JaegerJsonData>
         }
         return of({ data });
       } catch (error) {
-        return of({ error: { message: 'JSON is not valid Jaeger format' }, data: [] });
+        return of({ error: { message: 'The JSON file uploaded is not in a valid Jaeger format' }, data: [] });
       }
     }
 
-    let jaegerQuery = pick(target, ['operation', 'service', 'tags', 'minDuration', 'maxDuration', 'limit']);
-    // remove empty properties
-    jaegerQuery = pickBy(jaegerQuery, identity);
-    if (jaegerQuery.tags) {
-      jaegerQuery = {
-        ...jaegerQuery,
-        tags: convertTagsLogfmt(getTemplateSrv().replace(jaegerQuery.tags, options.scopedVars)),
-      };
-    }
-
-    if (jaegerQuery.operation === ALL_OPERATIONS_KEY) {
-      jaegerQuery = omit(jaegerQuery, 'operation');
-    }
-
-    // TODO: this api is internal, used in jaeger ui. Officially they have gRPC api that should be used.
-    return this._request(`/api/traces`, {
-      ...jaegerQuery,
-      ...this.getTimeRange(),
-      lookback: 'custom',
-    }).pipe(
+    return super.query({ ...options, targets: [target] }).pipe(
       map((response) => {
-        return {
-          data: [createTableFrame(response.data.data, this.instanceSettings)],
-        };
+        // If the node graph is enabled and the query is a trace ID query, add the node graph frames to the response
+        if (this.nodeGraph?.enabled && !target.queryType) {
+          return addNodeGraphFramesToResponse(response);
+        }
+        return response;
       })
     );
   }
 
-  async testDatasource(): Promise<any> {
-    return lastValueFrom(
-      this._request('/api/services').pipe(
-        map((res) => {
-          const values: any[] = res?.data?.data || [];
-          const testResult =
-            values.length > 0
-              ? { status: 'success', message: 'Data source connected and services found.' }
-              : {
-                  status: 'error',
-                  message:
-                    'Data source connected, but no services received. Verify that Jaeger is configured properly.',
-                };
-          return testResult;
-        }),
-        catchError((err: any) => {
-          let message = 'Jaeger: ';
-          if (err.statusText) {
-            message += err.statusText;
-          } else {
-            message += 'Cannot connect to Jaeger';
-          }
+  interpolateVariablesInQueries(queries: JaegerQuery[], scopedVars: ScopedVars): JaegerQuery[] {
+    if (!queries || queries.length === 0) {
+      return [];
+    }
 
-          if (err.status) {
-            message += `. ${err.status}`;
-          }
-
-          if (err.data && err.data.message) {
-            message += `. ${err.data.message}`;
-          } else if (err.data) {
-            message += `. ${JSON.stringify(err.data)}`;
-          }
-          return of({ status: 'error', message: message });
-        })
-      )
-    );
+    return queries.map((query) => {
+      return {
+        ...query,
+        datasource: this.getRef(),
+        ...this.applyTemplateVariables(query, scopedVars),
+      };
+    });
   }
 
-  getTimeRange(): { start: number; end: number } {
-    const range = this.timeSrv.timeRange();
+  applyTemplateVariables(query: JaegerQuery, scopedVars: ScopedVars) {
+    let expandedQuery = { ...query };
+
+    if (query.tags && this.templateSrv.containsTemplate(query.tags)) {
+      expandedQuery = {
+        ...query,
+        tags: this.templateSrv.replace(query.tags, scopedVars),
+      };
+    }
+
     return {
-      start: getTime(range.from, false),
-      end: getTime(range.to, true),
+      ...expandedQuery,
+      service: this.templateSrv.replace(query.service ?? '', scopedVars),
+      operation: this.templateSrv.replace(query.operation ?? '', scopedVars),
+      minDuration: this.templateSrv.replace(query.minDuration ?? '', scopedVars),
+      maxDuration: this.templateSrv.replace(query.maxDuration ?? '', scopedVars),
     };
+  }
+
+  async testDatasource() {
+    return await super.testDatasource();
   }
 
   getQueryDisplayText(query: JaegerQuery) {
     return query.query || '';
   }
-
-  private _request(apiUrl: string, data?: any, options?: Partial<BackendSrvRequest>): Observable<Record<string, any>> {
-    const params = data ? serializeParams(data) : '';
-    const url = `${this.instanceSettings.url}${apiUrl}${params.length ? `?${params}` : ''}`;
-    const req = {
-      ...options,
-      url,
-    };
-
-    return getBackendSrv().fetch(req);
-  }
-}
-
-function getTime(date: string | DateTime, roundUp: boolean) {
-  if (typeof date === 'string') {
-    date = dateMath.parse(date, roundUp)!;
-  }
-  return date.valueOf() * 1000;
 }
 
 const emptyTraceDataFrame = new MutableDataFrame({
@@ -200,3 +135,18 @@ const emptyTraceDataFrame = new MutableDataFrame({
     },
   },
 });
+
+export function addNodeGraphFramesToResponse(response: DataQueryResponse): DataQueryResponse {
+  if (!response.data || response.data.length === 0) {
+    return response;
+  }
+
+  // Convert the first frame to a DataFrame for node graph processing
+  const frame = toDataFrame(response.data[0]);
+  // Add the node graph frames to the response
+  const data = response.data.concat(createNodeGraphFrames(frame));
+  return {
+    ...response,
+    data,
+  };
+}

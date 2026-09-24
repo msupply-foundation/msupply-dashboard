@@ -10,16 +10,16 @@ deleteDatasources:
 # what's available in the database
 datasources:
   # - name: PostgreSQL
-  #   type: postgres
+  #   type: grafana-postgresql-datasource
   #   orgId: 1
   #   url: [[database_server]]
-  #   database: [[database_name]]
   #   user: [[database_user]]
   #   isDefault: true
   #   secureJsonData:
   #     password: '[[database_password]]'
   #   jsonData:
   #     sslmode: 'disable' # disable/require/verify-ca/verify-full
+  #     database: [[database_name]]
   #     maxOpenConns: 0 # Grafana v5.4+
   #     maxIdleConns: 2 # Grafana v5.4+
   #     connMaxLifetime: 14400 # Grafana v5.4+

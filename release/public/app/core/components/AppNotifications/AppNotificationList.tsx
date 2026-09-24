@@ -1,66 +1,82 @@
-import React, { PureComponent } from 'react';
-import appEvents from 'app/core/app_events';
-import AppNotificationItem from './AppNotificationItem';
+import { css } from '@emotion/css';
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+
+import { AlertErrorPayload, AppEvents, GrafanaTheme2 } from '@grafana/data';
+import { useStyles2, Stack } from '@grafana/ui';
 import { notifyApp, hideAppNotification } from 'app/core/actions';
+import appEvents from 'app/core/app_events';
+import { useGrafana } from 'app/core/context/GrafanaContext';
 import { selectVisible } from 'app/core/reducers/appNotification';
-import { StoreState } from 'app/types';
+import { useSelector, useDispatch } from 'app/types/store';
 
 import {
   createErrorNotification,
+  createInfoNotification,
   createSuccessNotification,
   createWarningNotification,
 } from '../../copy/appNotification';
-import { AppEvents } from '@grafana/data';
-import { connect, ConnectedProps } from 'react-redux';
-import { VerticalGroup } from '@grafana/ui';
 
-export interface OwnProps {}
+import AppNotificationItem from './AppNotificationItem';
 
-const mapStateToProps = (state: StoreState, props: OwnProps) => ({
-  appNotifications: selectVisible(state.appNotifications),
-});
+export function AppNotificationList() {
+  const appNotifications = useSelector((state) => selectVisible(state.appNotifications));
+  const dispatch = useDispatch();
+  const styles = useStyles2(getStyles);
+  const { chrome } = useGrafana();
+  const location = useLocation();
 
-const mapDispatchToProps = {
-  notifyApp,
-  hideAppNotification,
-};
+  useEffect(() => {
+    // Suppress error notifications in kiosk mode on dashboards.
+    // Kiosk mode is typically used for TV displays which are non-interactive.
+    // Backend errors like "Failed to fetch" cannot be dismissed and would remain visible,
+    // degrading the viewing experience. Other notification types (success, warning, info)
+    // are still shown as they indicate successful operations or important information.
+    const handleErrorAlert = (payload: AlertErrorPayload) => {
+      const isKioskDashboard = chrome.state.getValue().kioskMode && location.pathname.startsWith('/d/');
 
-const connector = connect(mapStateToProps, mapDispatchToProps);
+      if (!isKioskDashboard) {
+        dispatch(notifyApp(createErrorNotification(...payload)));
+      }
+    };
 
-export type Props = OwnProps & ConnectedProps<typeof connector>;
+    appEvents.on(AppEvents.alertWarning, (payload) => dispatch(notifyApp(createWarningNotification(...payload))));
+    appEvents.on(AppEvents.alertSuccess, (payload) => dispatch(notifyApp(createSuccessNotification(...payload))));
+    appEvents.on(AppEvents.alertError, handleErrorAlert);
+    appEvents.on(AppEvents.alertInfo, (payload) => dispatch(notifyApp(createInfoNotification(...payload))));
+  }, [dispatch, chrome, location.pathname]);
 
-export class AppNotificationListUnConnected extends PureComponent<Props> {
-  componentDidMount() {
-    const { notifyApp } = this.props;
-
-    appEvents.on(AppEvents.alertWarning, (payload) => notifyApp(createWarningNotification(...payload)));
-    appEvents.on(AppEvents.alertSuccess, (payload) => notifyApp(createSuccessNotification(...payload)));
-    appEvents.on(AppEvents.alertError, (payload) => notifyApp(createErrorNotification(...payload)));
-  }
-
-  onClearAppNotification = (id: string) => {
-    this.props.hideAppNotification(id);
+  const onClearAppNotification = (id: string) => {
+    dispatch(hideAppNotification(id));
   };
 
-  render() {
-    const { appNotifications } = this.props;
-
-    return (
-      <div className="page-alert-list">
-        <VerticalGroup>
-          {appNotifications.map((appNotification, index) => {
-            return (
-              <AppNotificationItem
-                key={`${appNotification.id}-${index}`}
-                appNotification={appNotification}
-                onClearNotification={(id) => this.onClearAppNotification(id)}
-              />
-            );
-          })}
-        </VerticalGroup>
-      </div>
-    );
-  }
+  return (
+    <div className={styles.wrapper}>
+      <Stack direction="column">
+        {appNotifications.map((appNotification, index) => {
+          return (
+            <AppNotificationItem
+              key={`${appNotification.id}-${index}`}
+              appNotification={appNotification}
+              onClearNotification={onClearAppNotification}
+            />
+          );
+        })}
+      </Stack>
+    </div>
+  );
 }
 
-export const AppNotificationList = connector(AppNotificationListUnConnected);
+function getStyles(theme: GrafanaTheme2) {
+  return {
+    wrapper: css({
+      label: 'app-notifications-list',
+      zIndex: theme.zIndex.portal,
+      minWidth: 400,
+      maxWidth: 600,
+      position: 'fixed',
+      right: 6,
+      top: 88,
+    }),
+  };
+}

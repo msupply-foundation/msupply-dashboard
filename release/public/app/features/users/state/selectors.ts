@@ -1,4 +1,4 @@
-import { UsersState } from 'app/types';
+import { UsersState } from 'app/types/user';
 
 export const getUsers = (state: UsersState) => {
   const regex = new RegExp(state.searchQuery, 'i');
@@ -9,4 +9,3 @@ export const getUsers = (state: UsersState) => {
 };
 
 export const getUsersSearchQuery = (state: UsersState) => state.searchQuery;
-export const getUsersSearchPage = (state: UsersState) => state.searchPage;

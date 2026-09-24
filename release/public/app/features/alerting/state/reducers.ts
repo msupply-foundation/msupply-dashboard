@@ -1,6 +1,6 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { PayloadAction, createSlice } from '@reduxjs/toolkit';
+
 import { dateTime } from '@grafana/data';
-import alertDef from './alertDef';
 import {
   AlertRule,
   AlertRuleDTO,
@@ -8,8 +8,11 @@ import {
   NotificationChannelOption,
   NotificationChannelState,
   NotifierDTO,
-} from 'app/types';
+} from 'app/features/alerting/unified/types/alerting';
+
 import unifiedAlertingReducer from '../unified/state/reducers';
+
+import alertDef from './alertDef';
 
 export const initialState: AlertRulesState = {
   items: [],

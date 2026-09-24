@@ -1,5 +1,6 @@
-import React, { useMemo, useCallback } from 'react';
-import { css } from '@emotion/css';
+import { cloneDeep } from 'lodash';
+import { useMemo, useCallback } from 'react';
+
 import {
   DataTransformerID,
   standardTransformers,
@@ -11,34 +12,48 @@ import {
   FieldType,
   ValueMatcherID,
   valueMatchers,
+  TransformerCategory,
 } from '@grafana/data';
-import { Button, RadioButtonGroup, stylesFactory } from '@grafana/ui';
-import { cloneDeep } from 'lodash';
 import {
   FilterByValueFilter,
   FilterByValueMatch,
   FilterByValueTransformerOptions,
   FilterByValueType,
-} from '@grafana/data/src/transformations/transformers/filterByValue';
+} from '@grafana/data/internal';
+import { Trans, t } from '@grafana/i18n';
+import { Button, RadioButtonGroup, InlineField, Box } from '@grafana/ui';
+
+import { getTransformationContent } from '../docs/getTransformationContent';
+import darkImage from '../images/dark/filterByValue.svg';
+import lightImage from '../images/light/filterByValue.svg';
 
 import { DataFrameFieldsInfo, FilterByValueFilterEditor } from './FilterByValueFilterEditor';
 
-const filterTypes: Array<SelectableValue<FilterByValueType>> = [
-  { label: 'Include', value: FilterByValueType.include },
-  { label: 'Exclude', value: FilterByValueType.exclude },
-];
-
-const filterMatch: Array<SelectableValue<FilterByValueMatch>> = [
-  { label: 'Match all', value: FilterByValueMatch.all },
-  { label: 'Match any', value: FilterByValueMatch.any },
-];
-
-export const FilterByValueTransformerEditor: React.FC<TransformerUIProps<FilterByValueTransformerOptions>> = (
-  props
-) => {
+export const FilterByValueTransformerEditor = (props: TransformerUIProps<FilterByValueTransformerOptions>) => {
   const { input, options, onChange } = props;
-  const styles = getEditorStyles();
   const fieldsInfo = useFieldsInfo(input);
+
+  const filterTypes: Array<SelectableValue<FilterByValueType>> = [
+    {
+      label: t('transformers.filter-by-value-transformer-editor.filter-types.label.include', 'Include'),
+      value: FilterByValueType.include,
+    },
+    {
+      label: t('transformers.filter-by-value-transformer-editor.filter-types.label.exclude', 'Exclude'),
+      value: FilterByValueType.exclude,
+    },
+  ];
+
+  const filterMatch: Array<SelectableValue<FilterByValueMatch>> = [
+    {
+      label: t('transformers.filter-by-value-transformer-editor.filter-match.label.match-all', 'Match all'),
+      value: FilterByValueMatch.all,
+    },
+    {
+      label: t('transformers.filter-by-value-transformer-editor.filter-match.label.match-any', 'Match any'),
+      value: FilterByValueMatch.any,
+    },
+  ];
 
   const onAddFilter = useCallback(() => {
     const frame = input[0];
@@ -49,7 +64,7 @@ export const FilterByValueTransformerEditor: React.FC<TransformerUIProps<FilterB
     }
 
     const filters = cloneDeep(options.filters);
-    const matcher = valueMatchers.get(ValueMatcherID.greater);
+    const matcher = valueMatchers.get(ValueMatcherID.isNull);
 
     filters.push({
       fieldName: getFieldDisplayName(field, frame, input),
@@ -101,19 +116,25 @@ export const FilterByValueTransformerEditor: React.FC<TransformerUIProps<FilterB
 
   return (
     <div>
-      <div className="gf-form gf-form-inline">
-        <div className="gf-form-label width-8">Filter type</div>
+      <InlineField
+        label={t('transformers.filter-by-value-transformer-editor.label-filter-type', 'Filter type')}
+        labelWidth={16}
+      >
         <div className="width-15">
           <RadioButtonGroup options={filterTypes} value={options.type} onChange={onChangeType} fullWidth />
         </div>
-      </div>
-      <div className="gf-form gf-form-inline">
-        <div className="gf-form-label width-8">Conditions</div>
-        <div className="width-15">
-          <RadioButtonGroup options={filterMatch} value={options.match} onChange={onChangeMatch} fullWidth />
-        </div>
-      </div>
-      <div className={styles.conditions}>
+      </InlineField>
+      {options.filters.length > 1 && (
+        <InlineField
+          label={t('transformers.filter-by-value-transformer-editor.label-conditions', 'Conditions')}
+          labelWidth={16}
+        >
+          <div className="width-15">
+            <RadioButtonGroup options={filterMatch} value={options.match} onChange={onChangeMatch} fullWidth />
+          </div>
+        </InlineField>
+      )}
+      <Box paddingLeft={2}>
         {options.filters.map((filter, idx) => (
           <FilterByValueFilterEditor
             key={idx}
@@ -123,30 +144,29 @@ export const FilterByValueTransformerEditor: React.FC<TransformerUIProps<FilterB
             onDelete={() => onDeleteFilter(idx)}
           />
         ))}
-        <div className="gf-form">
-          <Button icon="plus" size="sm" onClick={onAddFilter} variant="secondary">
-            Add condition
-          </Button>
-        </div>
-      </div>
+        <Button icon="plus" size="sm" onClick={onAddFilter} variant="secondary">
+          <Trans i18nKey="transformers.filter-by-value-transformer-editor.add-condition">Add condition</Trans>
+        </Button>
+      </Box>
     </div>
   );
 };
 
-export const filterByValueTransformRegistryItem: TransformerRegistryItem<FilterByValueTransformerOptions> = {
-  id: DataTransformerID.filterByValue,
-  editor: FilterByValueTransformerEditor,
-  transformation: standardTransformers.filterByValueTransformer,
-  name: standardTransformers.filterByValueTransformer.name,
-  description:
-    'Removes rows of the query results using user-defined filters. This is useful if you can not filter your data in the data source.',
-};
-
-const getEditorStyles = stylesFactory(() => ({
-  conditions: css`
-    padding-left: 16px;
-  `,
-}));
+export const getFilterByValueTransformRegistryItem: () => TransformerRegistryItem<FilterByValueTransformerOptions> =
+  () => ({
+    id: DataTransformerID.filterByValue,
+    editor: FilterByValueTransformerEditor,
+    transformation: standardTransformers.filterByValueTransformer,
+    name: t('transformers.filter-by-value-transformer-editor.name.filter-data-by-values', 'Filter data by values'),
+    description: t(
+      'transformers.filter-by-value-transformer-editor.description.remove-rows-query-results-user-defined-filters',
+      'Remove rows from the query results using user-defined filters.'
+    ),
+    categories: new Set([TransformerCategory.Filter]),
+    help: getTransformationContent(DataTransformerID.filterByValue).helperDocs,
+    imageDark: darkImage,
+    imageLight: lightImage,
+  });
 
 const useFieldsInfo = (data: DataFrame[]): DataFrameFieldsInfo => {
   return useMemo(() => {

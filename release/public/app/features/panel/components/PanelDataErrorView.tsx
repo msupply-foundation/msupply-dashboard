@@ -1,16 +1,28 @@
-import React from 'react';
-import { CoreApp, GrafanaTheme2, PanelDataSummary, VisualizationSuggestionsBuilder } from '@grafana/data';
-import { usePanelContext, useStyles2 } from '@grafana/ui';
 import { css } from '@emotion/css';
-import { PanelDataErrorViewProps } from '@grafana/runtime';
+
+import {
+  CoreApp,
+  GrafanaTheme2,
+  PanelDataSummary,
+  VisualizationSuggestionsBuilder,
+  VisualizationSuggestion,
+} from '@grafana/data';
+import { selectors } from '@grafana/e2e-selectors';
+import { t, Trans } from '@grafana/i18n';
+import { PanelDataErrorViewProps, locationService } from '@grafana/runtime';
+import { VizPanel } from '@grafana/scenes';
+import { usePanelContext, useStyles2 } from '@grafana/ui';
 import { CardButton } from 'app/core/components/CardButton';
-import { useDispatch } from 'react-redux';
-import { toggleVizPicker } from 'app/features/dashboard/components/PanelEditor/state/reducers';
-import { changePanelPlugin } from '../state/actions';
-import { getDashboardSrv } from 'app/features/dashboard/services/DashboardSrv';
-import store from 'app/core/store';
 import { LS_VISUALIZATION_SELECT_TAB_KEY } from 'app/core/constants';
+import store from 'app/core/store';
+import { toggleVizPicker } from 'app/features/dashboard/components/PanelEditor/state/reducers';
 import { VisualizationSelectPaneTab } from 'app/features/dashboard/components/PanelEditor/types';
+import { getDashboardSrv } from 'app/features/dashboard/services/DashboardSrv';
+import { DashboardScene } from 'app/features/dashboard-scene/scene/DashboardScene';
+import { findVizPanelByKey, getVizPanelKeyForPanelId } from 'app/features/dashboard-scene/utils/utils';
+import { useDispatch } from 'app/types/store';
+
+import { changePanelPlugin } from '../state/actions';
 
 export function PanelDataErrorView(props: PanelDataErrorViewProps) {
   const styles = useStyles2(getStyles);
@@ -20,14 +32,33 @@ export function PanelDataErrorView(props: PanelDataErrorViewProps) {
   const message = getMessageFor(props, dataSummary);
   const dispatch = useDispatch();
 
+  const dashboardScene: DashboardScene | undefined = window.__grafanaSceneContext;
+  let panel;
+  if (dashboardScene instanceof DashboardScene) {
+    panel = findVizPanelByKey(dashboardScene, getVizPanelKeyForPanelId(props.panelId));
+  } else {
+    panel = getDashboardSrv().getCurrent()?.getPanelById(props.panelId);
+  }
+
   const openVizPicker = () => {
     store.setObject(LS_VISUALIZATION_SELECT_TAB_KEY, VisualizationSelectPaneTab.Suggestions);
+    if (dashboardScene) {
+      dashboardScene.state.editPanel?.state.optionsPane?.onToggleVizPicker();
+
+      return;
+    }
+
     dispatch(toggleVizPicker(true));
   };
 
   const switchToTable = () => {
-    const panel = getDashboardSrv().getCurrent()?.getPanelById(props.panelId);
     if (!panel) {
+      return;
+    }
+
+    if (panel instanceof VizPanel) {
+      panel.changePluginType('table');
+
       return;
     }
 
@@ -39,16 +70,52 @@ export function PanelDataErrorView(props: PanelDataErrorViewProps) {
     );
   };
 
+  const loadSuggestion = (s: VisualizationSuggestion) => {
+    if (!panel) {
+      return;
+    }
+
+    if (panel instanceof VizPanel) {
+      panel.changePluginType(s.pluginId, s.options, s.fieldConfig);
+    } else {
+      dispatch(
+        changePanelPlugin({
+          ...s, // includes panelId, config, etc
+          panel,
+        })
+      );
+    }
+
+    if (s.transformations) {
+      setTimeout(() => {
+        locationService.partial({ tab: 'transform' });
+      }, 100);
+    }
+  };
+
   return (
     <div className={styles.wrapper}>
-      <div className={styles.message}>{message}</div>
-      {context.app === CoreApp.PanelEditor && dataSummary.hasData && (
+      <div className={styles.message} data-testid={selectors.components.Panels.Panel.PanelDataErrorMessage}>
+        {message}
+      </div>
+      {context.app === CoreApp.PanelEditor && dataSummary.hasData && panel && (
         <div className={styles.actions}>
+          {props.suggestions && (
+            <>
+              {props.suggestions.map((v) => (
+                <CardButton key={v.name} icon="process" onClick={() => loadSuggestion(v)}>
+                  {v.name}
+                </CardButton>
+              ))}
+            </>
+          )}
           <CardButton icon="table" onClick={switchToTable}>
-            Switch to table
+            <Trans i18nKey="panel.panel-data-error-view.switch-to-table">Switch to table</Trans>
           </CardButton>
           <CardButton icon="chart-line" onClick={openVizPicker}>
-            Open visualization suggestions
+            <Trans i18nKey="panel.panel-data-error-view.open-visualization-suggestions">
+              Open visualization suggestions
+            </Trans>
           </CardButton>
         </div>
       )}
@@ -57,31 +124,30 @@ export function PanelDataErrorView(props: PanelDataErrorViewProps) {
 }
 
 function getMessageFor(
-  { data, message, needsNumberField, needsTimeField, needsStringField }: PanelDataErrorViewProps,
+  { data, fieldConfig, message, needsNumberField, needsTimeField, needsStringField }: PanelDataErrorViewProps,
   dataSummary: PanelDataSummary
 ): string {
   if (message) {
     return message;
   }
 
-  // In some cases there is a data frame but with no fields
-  if (!data.series || data.series.length === 0 || (data.series.length === 1 && data.series[0].fields.length === 0)) {
-    return 'No data';
+  if (!data.series || data.series.length === 0 || data.series.every((frame) => frame.length === 0)) {
+    return fieldConfig?.defaults.noValue ?? t('panel.panel-data-error-view.no-value.default', 'No data');
   }
 
   if (needsStringField && !dataSummary.hasStringField) {
-    return 'Data is missing a string field';
+    return t('panel.panel-data-error-view.missing-value.string', 'Data is missing a string field');
   }
 
   if (needsNumberField && !dataSummary.hasNumberField) {
-    return 'Data is missing a number field';
+    return t('panel.panel-data-error-view.missing-value.number', 'Data is missing a number field');
   }
 
   if (needsTimeField && !dataSummary.hasTimeField) {
-    return 'Data is missing a time field';
+    return t('panel.panel-data-error-view.missing-value.time', 'Data is missing a time field');
   }
 
-  return 'Cannot visualize data';
+  return t('panel.panel-data-error-view.missing-value.unknown', 'Cannot visualize data');
 }
 
 const getStyles = (theme: GrafanaTheme2) => {

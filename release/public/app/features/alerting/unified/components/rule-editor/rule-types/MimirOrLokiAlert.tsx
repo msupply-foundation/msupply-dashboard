@@ -1,25 +1,30 @@
-import React, { FC } from 'react';
-import { RuleType, SharedProps } from './RuleType';
-import { DisabledTooltip } from './DisabledTooltip';
+import { Trans } from '@grafana/i18n';
+import mimirLogoSvg from 'img/alerting/mimir_logo.svg';
+
 import { RuleFormType } from '../../../types/rule-form';
+
+import { DisabledTooltip } from './DisabledTooltip';
+import { RuleType, SharedProps } from './RuleType';
 
 interface Props extends SharedProps {
   onClick: (value: RuleFormType) => void;
 }
 
-const MimirFlavoredType: FC<Props> = ({ selected = false, disabled = false, onClick }) => {
+const MimirFlavoredType = ({ selected = false, disabled = false, onClick }: Props) => {
   return (
     <DisabledTooltip visible={disabled}>
       <RuleType
         name="Mimir or Loki alert"
         description={
           <span>
-            Use a Mimir, Loki or Cortex datasource.
-            <br />
-            Expressions are not supported.
+            <Trans i18nKey="alerting.mimir-flavored-type.description">
+              Use a Mimir, Loki or Cortex datasource.
+              <br />
+              Expressions are not supported.
+            </Trans>
           </span>
         }
-        image="/public/img/alerting/mimir_logo.svg"
+        image={mimirLogoSvg}
         selected={selected}
         disabled={disabled}
         value={RuleFormType.cloudAlerting}

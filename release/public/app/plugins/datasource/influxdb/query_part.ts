@@ -1,9 +1,11 @@
-import { map, clone } from 'lodash';
-import { QueryPartDef, QueryPart, functionRenderer, suffixRenderer } from 'app/features/alerting/state/query_part';
+import { clone, map } from 'lodash';
 
-const index: any[] = [];
-const categories: any = {
+import { functionRenderer, QueryPart, QueryPartDef, suffixRenderer } from 'app/features/alerting/state/query_part';
+
+const index: QueryPartDef[] = [];
+const categories = {
   Aggregations: [],
+  GroupByTimeFunctions: [],
   Selectors: [],
   Transformations: [],
   Predictors: [],
@@ -12,7 +14,7 @@ const categories: any = {
   Fields: [],
 };
 
-function createPart(part: any): any {
+function createPart(part: any) {
   const def = index[part.type];
   if (!def) {
     throw { message: 'Could not find query part ' + part.type };
@@ -26,17 +28,28 @@ function register(options: any) {
   options.category.push(index[options.type]);
 }
 
-const groupByTimeFunctions: any[] = [];
-
 function aliasRenderer(part: { params: string[] }, innerExpr: string) {
   return innerExpr + ' AS ' + '"' + part.params[0] + '"';
 }
 
-function fieldRenderer(part: { params: string[] }, innerExpr: any) {
-  if (part.params[0] === '*') {
+function fieldRenderer(part: { params: string[] }) {
+  const param = part.params[0];
+
+  if (param === '*') {
     return '*';
   }
-  return '"' + part.params[0] + '"';
+
+  let escapedParam = `"${param}"`;
+
+  if (param.endsWith('::tag')) {
+    escapedParam = `"${param.slice(0, -5)}"::tag`;
+  }
+
+  if (param.endsWith('::field')) {
+    escapedParam = `"${param.slice(0, -7)}"::field`;
+  }
+
+  return escapedParam;
 }
 
 function replaceAggregationAddStrategy(selectParts: any[], partModel: { def: { type: string } }) {
@@ -126,7 +139,7 @@ function addAliasStrategy(selectParts: any[], partModel: any) {
 
 function addFieldStrategy(selectParts: any, partModel: any, query: { selectModels: any[][] }) {
   // copy all parts
-  const parts = map(selectParts, (part: any) => {
+  const parts = map(selectParts, (part) => {
     return createPart({ type: part.def.type, params: clone(part.params) });
   });
 
@@ -294,7 +307,7 @@ register({
 
 register({
   type: 'time',
-  category: groupByTimeFunctions,
+  category: categories.GroupByTimeFunctions,
   params: [
     {
       name: 'interval',
@@ -308,7 +321,7 @@ register({
 
 register({
   type: 'fill',
-  category: groupByTimeFunctions,
+  category: categories.GroupByTimeFunctions,
   params: [
     {
       name: 'fill',
@@ -426,7 +439,7 @@ register({
 
 register({
   type: 'tag',
-  category: groupByTimeFunctions,
+  category: categories.GroupByTimeFunctions,
   params: [{ name: 'tag', type: 'string', dynamicLookup: true }],
   defaultParams: ['tag'],
   renderer: fieldRenderer,

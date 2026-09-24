@@ -1,18 +1,20 @@
-import React, { FC, PureComponent, useRef, useState } from 'react';
-import { AccessControlAction, UserDTO } from 'app/types';
 import { css, cx } from '@emotion/css';
-import { config } from 'app/core/config';
-import { GrafanaTheme } from '@grafana/data';
-import { Button, ConfirmButton, ConfirmModal, Input, LegacyInputStatus, stylesFactory } from '@grafana/ui';
+import { PureComponent, useRef, useState } from 'react';
+import * as React from 'react';
+
+import { Trans, t } from '@grafana/i18n';
+import { Button, ConfirmButton, ConfirmModal, Input, LegacyInputStatus, Stack } from '@grafana/ui';
 import { contextSrv } from 'app/core/core';
+import { AccessControlAction } from 'app/types/accessControl';
+import { UserDTO } from 'app/types/user';
 
 interface Props {
   user: UserDTO;
 
   onUserUpdate: (user: UserDTO) => void;
-  onUserDelete: (userId: number) => void;
-  onUserDisable: (userId: number) => void;
-  onUserEnable: (userId: number) => void;
+  onUserDelete: (userUid: string) => void;
+  onUserDisable: (userUid: string) => void;
+  onUserEnable: (userUid: string) => void;
   onPasswordChange(password: string): void;
 }
 
@@ -43,11 +45,11 @@ export function UserProfile({
     }
   };
 
-  const handleUserDelete = () => onUserDelete(user.id);
+  const handleUserDelete = () => onUserDelete(user.uid);
 
-  const handleUserDisable = () => onUserDisable(user.id);
+  const handleUserDisable = () => onUserDisable(user.uid);
 
-  const handleUserEnable = () => onUserEnable(user.id);
+  const handleUserEnable = () => onUserEnable(user.uid);
 
   const onUserNameChange = (newValue: string) => {
     onUserUpdate({
@@ -70,47 +72,59 @@ export function UserProfile({
     });
   };
 
-  const authSource = user.authLabels?.length && user.authLabels[0];
+  let authSource = user.authLabels?.length && user.authLabels[0];
+  if (user.isProvisioned) {
+    authSource = 'SCIM';
+  }
   const lockMessage = authSource ? `Synced via ${authSource}` : '';
-  const styles = getStyles(config.theme);
 
-  const editLocked = user.isExternal || !contextSrv.hasPermissionInMetadata(AccessControlAction.UsersWrite, user);
+  const editLocked =
+    user.isExternal || user.isProvisioned || !contextSrv.hasPermissionInMetadata(AccessControlAction.UsersWrite, user);
   const passwordChangeLocked =
-    user.isExternal || !contextSrv.hasPermissionInMetadata(AccessControlAction.UsersPasswordUpdate, user);
+    user.isExternal ||
+    user.isProvisioned ||
+    !contextSrv.hasPermissionInMetadata(AccessControlAction.UsersPasswordUpdate, user);
   const canDelete = contextSrv.hasPermissionInMetadata(AccessControlAction.UsersDelete, user);
   const canDisable = contextSrv.hasPermissionInMetadata(AccessControlAction.UsersDisable, user);
   const canEnable = contextSrv.hasPermissionInMetadata(AccessControlAction.UsersEnable, user);
 
   return (
-    <>
-      <h3 className="page-heading">User information</h3>
-      <div className="gf-form-group">
-        <div className="gf-form">
+    <div>
+      <h3 className="page-heading">
+        <Trans i18nKey="admin.user-profile.title">User information</Trans>
+      </h3>
+      <Stack direction="column" gap={1.5}>
+        <div>
           <table className="filter-table form-inline">
             <tbody>
               <UserProfileRow
-                label="Name"
+                label={t('admin.user-profile.label-numerical-identifier', 'Numerical identifier')}
+                value={user.id.toString()}
+                locked={true}
+              />
+              <UserProfileRow
+                label={t('admin.user-profile.label-name', 'Name')}
                 value={user.name}
                 locked={editLocked}
                 lockMessage={lockMessage}
                 onChange={onUserNameChange}
               />
               <UserProfileRow
-                label="Email"
+                label={t('admin.user-profile.label-email', 'Email')}
                 value={user.email}
                 locked={editLocked}
                 lockMessage={lockMessage}
                 onChange={onUserEmailChange}
               />
               <UserProfileRow
-                label="Username"
+                label={t('admin.user-profile.label-username', 'Username')}
                 value={user.login}
                 locked={editLocked}
                 lockMessage={lockMessage}
                 onChange={onUserLoginChange}
               />
               <UserProfileRow
-                label="Password"
+                label={t('admin.user-profile.label-password', 'Password')}
                 value="********"
                 inputType="password"
                 locked={passwordChangeLocked}
@@ -120,17 +134,17 @@ export function UserProfile({
             </tbody>
           </table>
         </div>
-        <div className={styles.buttonRow}>
+        <Stack gap={2}>
           {canDelete && (
             <>
               <Button variant="destructive" onClick={showDeleteUserModal(true)} ref={deleteUserRef}>
-                Delete user
+                <Trans i18nKey="admin.user-profile.delete-button">Delete user</Trans>
               </Button>
               <ConfirmModal
                 isOpen={showDeleteModal}
-                title="Delete user"
-                body="Are you sure you want to delete this user?"
-                confirmText="Delete user"
+                title={t('admin.user-profile.title-delete-user', 'Delete user')}
+                body={t('admin.user-profile.body-delete', 'Are you sure you want to delete this user?')}
+                confirmText={t('admin.user-profile.confirmText-delete-user', 'Delete user')}
                 onConfirm={handleUserDelete}
                 onDismiss={showDeleteUserModal(false)}
               />
@@ -138,40 +152,29 @@ export function UserProfile({
           )}
           {user.isDisabled && canEnable && (
             <Button variant="secondary" onClick={handleUserEnable}>
-              Enable user
+              <Trans i18nKey="admin.user-profile.enable-button">Enable user</Trans>
             </Button>
           )}
           {!user.isDisabled && canDisable && (
             <>
               <Button variant="secondary" onClick={showDisableUserModal(true)} ref={disableUserRef}>
-                Disable user
+                <Trans i18nKey="admin.user-profile.disable-button">Disable user</Trans>
               </Button>
               <ConfirmModal
                 isOpen={showDisableModal}
-                title="Disable user"
-                body="Are you sure you want to disable this user?"
-                confirmText="Disable user"
+                title={t('admin.user-profile.title-disable-user', 'Disable user')}
+                body={t('admin.user-profile.body-disable', 'Are you sure you want to disable this user?')}
+                confirmText={t('admin.user-profile.confirmText-disable-user', 'Disable user')}
                 onConfirm={handleUserDisable}
                 onDismiss={showDisableUserModal(false)}
               />
             </>
           )}
-        </div>
-      </div>
-    </>
+        </Stack>
+      </Stack>
+    </div>
   );
 }
-
-const getStyles = stylesFactory((theme: GrafanaTheme) => {
-  return {
-    buttonRow: css`
-      margin-top: 0.8rem;
-      > * {
-        margin-right: 16px;
-      }
-    `,
-  };
-});
 
 interface UserProfileRowProps {
   label: string;
@@ -202,7 +205,7 @@ export class UserProfileRow extends PureComponent<UserProfileRowProps, UserProfi
     value: this.props.value || '',
   };
 
-  setInputElem = (elem: any) => {
+  setInputElem = (elem: HTMLInputElement) => {
     this.inputElem = elem;
   };
 
@@ -224,7 +227,9 @@ export class UserProfileRow extends PureComponent<UserProfileRowProps, UserProfi
       return;
     }
 
-    this.setState({ value: event.target.value });
+    this.setState({
+      value: event.target.value,
+    });
   };
 
   onInputBlur = (event: React.FocusEvent<HTMLInputElement>, status?: LegacyInputStatus) => {
@@ -232,7 +237,9 @@ export class UserProfileRow extends PureComponent<UserProfileRowProps, UserProfi
       return;
     }
 
-    this.setState({ value: event.target.value });
+    this.setState({
+      value: event.target.value,
+    });
   };
 
   focusInput = () => {
@@ -252,9 +259,9 @@ export class UserProfileRow extends PureComponent<UserProfileRowProps, UserProfi
     const { value } = this.state;
     const labelClass = cx(
       'width-16',
-      css`
-        font-weight: 500;
-      `
+      css({
+        fontWeight: 500,
+      })
     );
 
     if (locked) {
@@ -284,12 +291,12 @@ export class UserProfileRow extends PureComponent<UserProfileRowProps, UserProfi
         </td>
         <td>
           <ConfirmButton
-            confirmText="Save"
+            confirmText={t('admin.user-profile-row.confirmText-save', 'Save')}
             onClick={this.onEditClick}
             onConfirm={this.onSave}
             onCancel={this.onCancelClick}
           >
-            Edit
+            {t('admin.user-profile.edit-button', 'Edit')}
           </ConfirmButton>
         </td>
       </tr>
@@ -299,20 +306,20 @@ export class UserProfileRow extends PureComponent<UserProfileRowProps, UserProfi
 
 interface LockedRowProps {
   label: string;
-  value?: any;
+  value?: string;
   lockMessage?: string;
 }
 
-export const LockedRow: FC<LockedRowProps> = ({ label, value, lockMessage }) => {
-  const lockMessageClass = css`
-    font-style: italic;
-    margin-right: 0.6rem;
-  `;
+export const LockedRow = ({ label, value, lockMessage }: LockedRowProps) => {
+  const lockMessageClass = css({
+    fontStyle: 'italic',
+    marginRight: '0.6rem',
+  });
   const labelClass = cx(
     'width-16',
-    css`
-      font-weight: 500;
-    `
+    css({
+      fontWeight: 500,
+    })
   );
 
   return (

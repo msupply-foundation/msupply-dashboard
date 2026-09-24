@@ -1,66 +1,72 @@
-import { configure } from 'enzyme';
-import { EventBusSrv } from '@grafana/data';
-import Adapter from '@wojtekmaj/enzyme-adapter-react-17';
-import $ from 'jquery';
+// This import has side effects, and must be at the top so jQuery is made global first
+import './global-jquery-shim';
+
+import { TransformStream } from 'node:stream/web';
+import { TextEncoder, TextDecoder } from 'util';
+
+// we need to isolate the `@grafana/data` module here now that it depends on `@grafana/i18n`
+jest.isolateModulesAsync(async () => {
+  const { EventBusSrv } = await import('@grafana/data');
+  const testAppEvents = new EventBusSrv();
+  jest.mock('../app/core/core', () => ({
+    ...jest.requireActual('../app/core/core'),
+    appEvents: testAppEvents,
+  }));
+});
+import { GrafanaBootConfig } from '@grafana/runtime';
+
+import 'blob-polyfill';
 import 'mutationobserver-shim';
 import './mocks/workers';
 
-const testAppEvents = new EventBusSrv();
-const global = window as any;
-global.$ = global.jQuery = $;
-
-// https://jestjs.io/docs/manual-mocks#mocking-methods-which-are-not-implemented-in-jsdom
-Object.defineProperty(global, 'matchMedia', {
-  writable: true,
-  value: jest.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(), // deprecated
-    removeListener: jest.fn(), // deprecated
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-});
-
 import '../vendor/flot/jquery.flot';
 import '../vendor/flot/jquery.flot.time';
-import angular from 'angular';
 
-angular.module('grafana', ['ngRoute']);
-angular.module('grafana.services', ['ngRoute', '$strap.directives']);
-angular.module('grafana.panels', []);
-angular.module('grafana.controllers', []);
-angular.module('grafana.directives', []);
-angular.module('grafana.filters', []);
-angular.module('grafana.routes', ['ngRoute']);
+const global = window as any;
 
-jest.mock('../app/core/core', () => ({ appEvents: testAppEvents }));
-jest.mock('../app/angular/partials', () => ({}));
-jest.mock('../app/features/plugins/plugin_loader', () => ({}));
+// mock the default window.grafanaBootData settings
+const settings: Partial<GrafanaBootConfig> = {
+  featureToggles: {},
+};
+global.grafanaBootData = {
+  settings,
+  user: {
+    locale: 'en-US',
+  },
+  navTree: [],
+};
 
-configure({ adapter: new Adapter() });
+window.matchMedia = (query) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addListener: jest.fn(), // Deprecated
+  removeListener: jest.fn(), // Deprecated
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+  dispatchEvent: jest.fn(),
+});
 
-const localStorageMock = (() => {
-  let store: any = {};
-  return {
-    getItem: (key: string) => {
-      return store[key];
-    },
-    setItem: (key: string, value: any) => {
-      store[key] = value.toString();
-    },
-    clear: () => {
-      store = {};
-    },
-    removeItem: (key: string) => {
-      delete store[key];
-    },
-  };
-})();
+// mock the intersection observer and just say everything is in view
+const mockIntersectionObserver = jest
+  .fn()
+  .mockImplementation((callback: (arg: IntersectionObserverEntry[]) => void) => ({
+    observe: jest.fn().mockImplementation((elem: HTMLElement) => {
+      callback([{ target: elem, isIntersecting: true }] as unknown as IntersectionObserverEntry[]);
+    }),
+    unobserve: jest.fn(),
+    disconnect: jest.fn(),
+  }));
+global.IntersectionObserver = mockIntersectionObserver;
+Object.defineProperty(document, 'fonts', {
+  value: { ready: Promise.resolve({}) },
+});
 
-global.localStorage = localStorageMock;
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
+global.TransformStream = TransformStream;
+// add scrollTo interface since it's not implemented in jsdom
+Element.prototype.scrollTo = () => {};
 
 const throwUnhandledRejections = () => {
   process.on('unhandledRejection', (err) => {
@@ -69,3 +75,62 @@ const throwUnhandledRejections = () => {
 };
 
 throwUnhandledRejections();
+
+// Used by useMeasure
+global.ResizeObserver = class ResizeObserver {
+  static #observationEntry: ResizeObserverEntry = {
+    contentRect: {
+      x: 1,
+      y: 2,
+      width: 500,
+      height: 500,
+      top: 100,
+      bottom: 0,
+      left: 100,
+      right: 0,
+    },
+    target: {
+      // Needed for react-virtual to work in tests
+      getAttribute: () => 1,
+    },
+  } as unknown as ResizeObserverEntry;
+
+  #isObserving = false;
+  #callback: ResizeObserverCallback;
+
+  constructor(callback: ResizeObserverCallback) {
+    this.#callback = callback;
+  }
+
+  #emitObservation() {
+    setTimeout(() => {
+      if (!this.#isObserving) {
+        return;
+      }
+
+      this.#callback([ResizeObserver.#observationEntry], this);
+    });
+  }
+
+  observe() {
+    this.#isObserving = true;
+    this.#emitObservation();
+  }
+
+  disconnect() {
+    this.#isObserving = false;
+  }
+
+  unobserve() {
+    this.#isObserving = false;
+  }
+};
+
+global.BroadcastChannel = class BroadcastChannel {
+  onmessage() {}
+  onmessageerror() {}
+  postMessage(data: unknown) {}
+  close() {}
+  addEventListener() {}
+  removeEventListener() {}
+};

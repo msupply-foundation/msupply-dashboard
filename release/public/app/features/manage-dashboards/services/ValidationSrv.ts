@@ -1,60 +1,82 @@
-import { backendSrv } from 'app/core/services/backend_srv';
+import { t } from '@grafana/i18n';
+import { getGrafanaSearcher } from 'app/features/search/service/searcher';
 
-const hitTypes = {
-  FOLDER: 'dash-folder',
-  DASHBOARD: 'dash-db',
-};
+class ValidationError extends Error {
+  type: string;
+
+  constructor(type: string, message: string) {
+    super(message);
+    this.type = type;
+  }
+}
 
 export class ValidationSrv {
   rootName = 'general';
 
-  validateNewDashboardName(folderId: any, name: string) {
-    return this.validate(folderId, name, 'A dashboard or a folder with the same name already exists');
+  validateNewDashboardName(folderUID: string, name: string) {
+    return this.validate(
+      folderUID,
+      name,
+      t(
+        'manage-dashboards.validation-srv.message-same-name',
+        'A dashboard or a folder with the same name already exists'
+      )
+    );
   }
 
-  validateNewFolderName(name?: string) {
-    return this.validate(0, name, 'A folder or dashboard in the general folder with the same name already exists');
+  validateNewFolderName(name?: string, parentFolderUid?: string) {
+    const validationMessage = parentFolderUid
+      ? t(
+          'manage-dashboards.validation-srv.message-same-name-current-folder',
+          'A dashboard or a folder with the same name already exists in the current folder'
+        )
+      : t(
+          'manage-dashboards.validation-srv.message-same-name-general',
+          'A folder or dashboard with the same name already exists in the root folder'
+        );
+
+    return this.validate(parentFolderUid || this.rootName, name, validationMessage);
   }
 
-  private async validate(folderId: any, name: string | undefined, existingErrorMessage: string) {
+  private async validate(
+    /** Folder in which to validate newly created resource */
+    folderUID: string,
+    /** Name of the resource being created */
+    name: string | undefined,
+    /** Error message to throw if the resource already exists */
+    existingErrorMessage: string
+  ) {
     name = (name || '').trim();
     const nameLowerCased = name.toLowerCase();
 
     if (name.length === 0) {
-      throw {
-        type: 'REQUIRED',
-        message: 'Name is required',
-      };
+      throw new ValidationError(
+        'REQUIRED',
+        t('manage-dashboards.validation-srv.message-name-required', 'Name is required')
+      );
     }
 
-    if (folderId === 0 && nameLowerCased === this.rootName) {
-      throw {
-        type: 'EXISTING',
-        message: 'This is a reserved name and cannot be used for a folder.',
-      };
+    if (nameLowerCased === this.rootName) {
+      throw new ValidationError(
+        'EXISTING',
+        t(
+          'manage-dashboards.validation-srv.message-reserved-name',
+          'This is a reserved name and cannot be used for a folder.'
+        )
+      );
     }
 
-    const promises = [];
-    promises.push(backendSrv.search({ type: hitTypes.FOLDER, folderIds: [folderId], query: name }));
-    promises.push(backendSrv.search({ type: hitTypes.DASHBOARD, folderIds: [folderId], query: name }));
+    const searcher = getGrafanaSearcher();
 
-    const res = await Promise.all(promises);
-    let hits: any[] = [];
+    const dashboardResults = await searcher.search({
+      kind: ['dashboard', 'folder'],
+      query: name,
+      location: folderUID || 'general',
+    });
 
-    if (res.length > 0 && res[0].length > 0) {
-      hits = res[0];
-    }
-
-    if (res.length > 1 && res[1].length > 0) {
-      hits = hits.concat(res[1]);
-    }
-
-    for (const hit of hits) {
-      if (nameLowerCased === hit.title.toLowerCase()) {
-        throw {
-          type: 'EXISTING',
-          message: existingErrorMessage,
-        };
+    for (const result of dashboardResults.view) {
+      if (nameLowerCased === result.name.toLowerCase()) {
+        throw new ValidationError('EXISTING', existingErrorMessage);
       }
     }
 

@@ -1,6 +1,8 @@
-import { AccessControlAction } from 'app/types';
-import { isGrafanaRulesSource } from './datasource';
+import { getConfig } from 'app/core/config';
 import { contextSrv } from 'app/core/services/context_srv';
+import { AccessControlAction } from 'app/types/accessControl';
+
+import { GRAFANA_RULES_SOURCE_NAME, isGrafanaRulesSource } from './datasource';
 
 type RulesSourceType = 'grafana' | 'external';
 
@@ -8,7 +10,7 @@ function getRulesSourceType(alertManagerSourceName: string): RulesSourceType {
   return isGrafanaRulesSource(alertManagerSourceName) ? 'grafana' : 'external';
 }
 
-const instancesPermissions = {
+export const instancesPermissions = {
   read: {
     grafana: AccessControlAction.AlertingInstanceRead,
     external: AccessControlAction.AlertingInstancesExternalRead,
@@ -27,23 +29,44 @@ const instancesPermissions = {
   },
 };
 
-const notificationsPermissions = {
+export const notificationsPermissions = {
   read: {
     grafana: AccessControlAction.AlertingNotificationsRead,
     external: AccessControlAction.AlertingNotificationsExternalRead,
   },
   create: {
-    grafana: AccessControlAction.AlertingNotificationsCreate,
+    grafana: AccessControlAction.AlertingNotificationsWrite,
     external: AccessControlAction.AlertingNotificationsExternalWrite,
   },
   update: {
-    grafana: AccessControlAction.AlertingNotificationsUpdate,
+    grafana: AccessControlAction.AlertingNotificationsWrite,
     external: AccessControlAction.AlertingNotificationsExternalWrite,
   },
   delete: {
-    grafana: AccessControlAction.AlertingNotificationsDelete,
+    grafana: AccessControlAction.AlertingNotificationsWrite,
     external: AccessControlAction.AlertingNotificationsExternalWrite,
   },
+};
+
+export const silencesPermissions = {
+  read: {
+    grafana: AccessControlAction.AlertingSilenceRead,
+    external: AccessControlAction.AlertingInstanceRead,
+  },
+  create: {
+    grafana: AccessControlAction.AlertingSilenceCreate,
+    external: AccessControlAction.AlertingInstancesExternalWrite,
+  },
+  update: {
+    grafana: AccessControlAction.AlertingSilenceUpdate,
+    external: AccessControlAction.AlertingInstancesExternalWrite,
+  },
+};
+
+export const provisioningPermissions = {
+  read: AccessControlAction.AlertingProvisioningRead,
+  readSecrets: AccessControlAction.AlertingProvisioningReadSecrets,
+  write: AccessControlAction.AlertingProvisioningWrite,
 };
 
 const rulesPermissions = {
@@ -84,6 +107,7 @@ export function getNotificationsPermissions(rulesSourceName: string) {
     create: notificationsPermissions.create[sourceType],
     update: notificationsPermissions.update[sourceType],
     delete: notificationsPermissions.delete[sourceType],
+    provisioning: provisioningPermissions,
   };
 }
 
@@ -98,19 +122,31 @@ export function getRulesPermissions(rulesSourceName: string) {
   };
 }
 
-export function evaluateAccess(actions: AccessControlAction[], fallBackUserRoles: string[]) {
+export function evaluateAccess(actions: AccessControlAction[]) {
   return () => {
-    return contextSrv.evaluatePermission(() => fallBackUserRoles, actions);
+    return contextSrv.evaluatePermission(actions);
   };
 }
 
 export function getRulesAccess() {
   return {
     canCreateGrafanaRules:
-      contextSrv.hasEditPermissionInFolders &&
-      contextSrv.hasAccess(rulesPermissions.create.grafana, contextSrv.isEditor),
-    canCreateCloudRules: contextSrv.hasAccess(rulesPermissions.create.external, contextSrv.isEditor),
-    canEditRules: (rulesSourceName: string) =>
-      contextSrv.hasAccess(getRulesPermissions(rulesSourceName).update, contextSrv.isEditor),
+      contextSrv.hasPermission(AccessControlAction.FoldersRead) &&
+      contextSrv.hasPermission(rulesPermissions.create.grafana),
+    canCreateCloudRules:
+      contextSrv.hasPermission(AccessControlAction.DataSourcesRead) &&
+      contextSrv.hasPermission(rulesPermissions.create.external),
+    canEditRules: (rulesSourceName: string) => {
+      return contextSrv.hasPermission(getRulesPermissions(rulesSourceName).update);
+    },
   };
+}
+
+export function getCreateAlertInMenuAvailability() {
+  const { unifiedAlertingEnabled } = getConfig();
+  const hasRuleReadPermissions = contextSrv.hasPermission(getRulesPermissions(GRAFANA_RULES_SOURCE_NAME).read);
+  const hasRuleUpdatePermissions = contextSrv.hasPermission(getRulesPermissions(GRAFANA_RULES_SOURCE_NAME).update);
+  const isAlertingAvailableForRead = unifiedAlertingEnabled && hasRuleReadPermissions;
+
+  return isAlertingAvailableForRead && hasRuleUpdatePermissions;
 }

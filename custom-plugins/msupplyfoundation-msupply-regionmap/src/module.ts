@@ -73,5 +73,19 @@ export const plugin = new PanelPlugin<RegionMapOptions>(RegionMap)
       });
   })
   .useFieldConfig({
-    standardOptions: [FieldConfigProperty.Thresholds, FieldConfigProperty.Links, FieldConfigProperty.Unit],
+    // Grafana 13 replaced the `standardOptions` allow-list array with a keyed
+    // record, so the equivalent of "only Thresholds/Links/Unit" is to disable
+    // every other standard option.
+    disableStandardOptions: [
+      FieldConfigProperty.Min,
+      FieldConfigProperty.Max,
+      FieldConfigProperty.FieldMinMax,
+      FieldConfigProperty.Decimals,
+      FieldConfigProperty.DisplayName,
+      FieldConfigProperty.NoValue,
+      FieldConfigProperty.Mappings,
+      FieldConfigProperty.Actions,
+      FieldConfigProperty.Color,
+      FieldConfigProperty.Filterable,
+    ],
   });

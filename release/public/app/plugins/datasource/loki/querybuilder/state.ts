@@ -1,5 +1,5 @@
-import store from 'app/core/store';
-import { QueryEditorMode } from '../../prometheus/querybuilder/shared/types';
+import { QueryEditorMode } from '@grafana/plugin-ui';
+
 import { LokiQuery, LokiQueryType } from '../types';
 
 const queryEditorModeDefaultLocalStorageKey = 'LokiQueryEditorModeDefault';
@@ -7,7 +7,7 @@ const queryEditorModeDefaultLocalStorageKey = 'LokiQueryEditorModeDefault';
 export function changeEditorMode(query: LokiQuery, editorMode: QueryEditorMode, onChange: (query: LokiQuery) => void) {
   // If empty query store new mode as default
   if (query.expr === '') {
-    store.set(queryEditorModeDefaultLocalStorageKey, editorMode);
+    window.localStorage.setItem(queryEditorModeDefaultLocalStorageKey, editorMode);
   }
 
   onChange({ ...query, editorMode });
@@ -19,12 +19,12 @@ export function getDefaultEditorMode(expr: string) {
     return QueryEditorMode.Code;
   }
 
-  const value = store.get(queryEditorModeDefaultLocalStorageKey) as QueryEditorMode;
+  const value: string | null = window.localStorage.getItem(queryEditorModeDefaultLocalStorageKey);
   switch (value) {
-    case QueryEditorMode.Builder:
-    case QueryEditorMode.Code:
-    case QueryEditorMode.Explain:
-      return value;
+    case 'code':
+      return QueryEditorMode.Code;
+
+    case 'builder':
     default:
       return QueryEditorMode.Builder;
   }

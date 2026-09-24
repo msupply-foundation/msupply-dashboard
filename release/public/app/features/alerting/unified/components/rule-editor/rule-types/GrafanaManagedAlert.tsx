@@ -1,19 +1,24 @@
-import React, { FC } from 'react';
-import { RuleType, SharedProps } from './RuleType';
+import { Trans } from '@grafana/i18n';
+import grafanaIconSvg from 'img/grafana_icon.svg';
+
 import { RuleFormType } from '../../../types/rule-form';
 
-const GrafanaManagedRuleType: FC<SharedProps> = ({ selected = false, disabled, onClick }) => {
+import { RuleType, SharedProps } from './RuleType';
+
+const GrafanaManagedRuleType = ({ selected = false, disabled, onClick }: SharedProps) => {
   return (
     <RuleType
       name="Grafana managed alert"
       description={
         <span>
-          Supports multiple data sources of any kind.
-          <br />
-          Transform data with expressions.
+          <Trans i18nKey="alerting.grafana-managed-rule-type.description">
+            Supports multiple data sources of any kind.
+            <br />
+            Transform data with expressions.
+          </Trans>
         </span>
       }
-      image="/public/img/grafana_icon.svg"
+      image={grafanaIconSvg}
       selected={selected}
       disabled={disabled}
       value={RuleFormType.grafana}

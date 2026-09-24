@@ -1,64 +1,54 @@
 import { ComponentType } from 'react';
 import { Observable } from 'rxjs';
+
 import {
-  CustomVariableSupport,
+  AdHocVariableModel,
+  ConstantVariableModel,
   DataQuery,
   DataQueryRequest,
   DataQueryResponse,
   DataSourceApi,
   DataSourceJsonData,
   DataSourceRef,
+  LegacyMetricFindQueryOptions,
   MetricFindValue,
+  QueryVariableModel,
   StandardVariableQuery,
-  StandardVariableSupport,
   VariableModel,
   VariableSupportType,
-} from '@grafana/data';
-
-import {
-  AdHocVariableModel,
-  ConstantVariableModel,
-  QueryVariableModel,
-  VariableQueryEditorType,
-  VariableQueryEditorProps,
   VariableWithMultiSupport,
   VariableWithOptions,
-} from './types';
-import { LEGACY_VARIABLE_QUERY_EDITOR_NAME } from './editor/LegacyVariableQueryEditor';
+} from '@grafana/data';
 
+import { LEGACY_VARIABLE_QUERY_EDITOR_NAME } from './editor/LegacyVariableQueryEditor';
+import { VariableQueryEditorType, VariableQueryEditorProps } from './types';
+
+/** @deprecated use a if (model.type === "query") type narrowing check instead */
 export const isQuery = (model: VariableModel): model is QueryVariableModel => {
   return model.type === 'query';
 };
 
+/** @deprecated use a if (model.type === "adhoc") type narrowing check instead */
 export const isAdHoc = (model: VariableModel): model is AdHocVariableModel => {
   return model.type === 'adhoc';
 };
 
+/** @deprecated use a if (model.type === "constant") type narrowing check instead */
 export const isConstant = (model: VariableModel): model is ConstantVariableModel => {
   return model.type === 'constant';
 };
 
 export const isMulti = (model: VariableModel): model is VariableWithMultiSupport => {
-  const withMulti = model as VariableWithMultiSupport;
-  return withMulti.hasOwnProperty('multi') && typeof withMulti.multi === 'boolean';
+  return 'multi' in model;
 };
 
 export const hasOptions = (model: VariableModel): model is VariableWithOptions => {
-  return hasObjectProperty(model, 'options');
+  return 'options' in model;
 };
 
 export const hasCurrent = (model: VariableModel): model is VariableWithOptions => {
-  return hasObjectProperty(model, 'current');
+  return 'current' in model;
 };
-
-function hasObjectProperty(model: VariableModel, property: string): model is VariableWithOptions {
-  if (!model) {
-    return false;
-  }
-
-  const withProperty = model as Record<string, any>;
-  return withProperty.hasOwnProperty(property) && typeof withProperty[property] === 'object';
-}
 
 export function isLegacyAdHocDataSource(datasource: null | DataSourceRef | string): datasource is string {
   if (datasource === null) {
@@ -70,15 +60,15 @@ export function isLegacyAdHocDataSource(datasource: null | DataSourceRef | strin
 
 interface DataSourceWithLegacyVariableSupport<
   TQuery extends DataQuery = DataQuery,
-  TOptions extends DataSourceJsonData = DataSourceJsonData
+  TOptions extends DataSourceJsonData = DataSourceJsonData,
 > extends DataSourceApi<TQuery, TOptions> {
-  metricFindQuery(query: any, options?: any): Promise<MetricFindValue[]>;
+  metricFindQuery(query: string, options?: LegacyMetricFindQueryOptions): Promise<MetricFindValue[]>;
   variables: undefined;
 }
 
 interface DataSourceWithStandardVariableSupport<
   TQuery extends DataQuery = DataQuery,
-  TOptions extends DataSourceJsonData = DataSourceJsonData
+  TOptions extends DataSourceJsonData = DataSourceJsonData,
 > extends DataSourceApi<TQuery, TOptions> {
   variables: {
     getType(): VariableSupportType;
@@ -88,9 +78,8 @@ interface DataSourceWithStandardVariableSupport<
 }
 
 interface DataSourceWithCustomVariableSupport<
-  VariableQuery extends DataQuery = any,
   TQuery extends DataQuery = DataQuery,
-  TOptions extends DataSourceJsonData = DataSourceJsonData
+  TOptions extends DataSourceJsonData = DataSourceJsonData,
 > extends DataSourceApi<TQuery, TOptions> {
   variables: {
     getType(): VariableSupportType;
@@ -101,7 +90,7 @@ interface DataSourceWithCustomVariableSupport<
 
 interface DataSourceWithDatasourceVariableSupport<
   TQuery extends DataQuery = DataQuery,
-  TOptions extends DataSourceJsonData = DataSourceJsonData
+  TOptions extends DataSourceJsonData = DataSourceJsonData,
 > extends DataSourceApi<TQuery, TOptions> {
   variables: {
     getType(): VariableSupportType;
@@ -114,7 +103,7 @@ interface DataSourceWithDatasourceVariableSupport<
  * */
 export const hasLegacyVariableSupport = <
   TQuery extends DataQuery = DataQuery,
-  TOptions extends DataSourceJsonData = DataSourceJsonData
+  TOptions extends DataSourceJsonData = DataSourceJsonData,
 >(
   datasource: DataSourceApi<TQuery, TOptions>
 ): datasource is DataSourceWithLegacyVariableSupport<TQuery, TOptions> => {
@@ -123,7 +112,7 @@ export const hasLegacyVariableSupport = <
 
 export const hasStandardVariableSupport = <
   TQuery extends DataQuery = DataQuery,
-  TOptions extends DataSourceJsonData = DataSourceJsonData
+  TOptions extends DataSourceJsonData = DataSourceJsonData,
 >(
   datasource: DataSourceApi<TQuery, TOptions>
 ): datasource is DataSourceWithStandardVariableSupport<TQuery, TOptions> => {
@@ -135,17 +124,16 @@ export const hasStandardVariableSupport = <
     return false;
   }
 
-  const variableSupport = datasource.variables as StandardVariableSupport<DataSourceApi<TQuery, TOptions>>;
-
-  return Boolean(variableSupport.toDataQuery);
+  const variableSupport = datasource.variables;
+  return 'toDataQuery' in variableSupport && Boolean(variableSupport.toDataQuery);
 };
 
 export const hasCustomVariableSupport = <
   TQuery extends DataQuery = DataQuery,
-  TOptions extends DataSourceJsonData = DataSourceJsonData
+  TOptions extends DataSourceJsonData = DataSourceJsonData,
 >(
   datasource: DataSourceApi<TQuery, TOptions>
-): datasource is DataSourceWithCustomVariableSupport<any, TQuery, TOptions> => {
+): datasource is DataSourceWithCustomVariableSupport<TQuery, TOptions> => {
   if (!datasource.variables) {
     return false;
   }
@@ -154,14 +142,18 @@ export const hasCustomVariableSupport = <
     return false;
   }
 
-  const variableSupport = datasource.variables as CustomVariableSupport<DataSourceApi<TQuery, TOptions>>;
-
-  return Boolean(variableSupport.query) && Boolean(variableSupport.editor);
+  const variableSupport = datasource.variables;
+  return (
+    'query' in variableSupport &&
+    'editor' in variableSupport &&
+    Boolean(variableSupport.query) &&
+    Boolean(variableSupport.editor)
+  );
 };
 
 export const hasDatasourceVariableSupport = <
   TQuery extends DataQuery = DataQuery,
-  TOptions extends DataSourceJsonData = DataSourceJsonData
+  TOptions extends DataSourceJsonData = DataSourceJsonData,
 >(
   datasource: DataSourceApi<TQuery, TOptions>
 ): datasource is DataSourceWithDatasourceVariableSupport<TQuery, TOptions> => {
@@ -174,7 +166,7 @@ export const hasDatasourceVariableSupport = <
 
 export function isLegacyQueryEditor<
   TQuery extends DataQuery = DataQuery,
-  TOptions extends DataSourceJsonData = DataSourceJsonData
+  TOptions extends DataSourceJsonData = DataSourceJsonData,
 >(
   component: VariableQueryEditorType,
   datasource: DataSourceApi<TQuery, TOptions>
@@ -188,7 +180,7 @@ export function isLegacyQueryEditor<
 
 export function isQueryEditor<
   TQuery extends DataQuery = DataQuery,
-  TOptions extends DataSourceJsonData = DataSourceJsonData
+  TOptions extends DataSourceJsonData = DataSourceJsonData,
 >(
   component: VariableQueryEditorType,
   datasource: DataSourceApi<TQuery, TOptions>

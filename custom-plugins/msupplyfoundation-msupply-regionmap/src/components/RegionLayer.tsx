@@ -11,8 +11,14 @@ interface RegionLayerProps {
   options: RegionMapOptions;
 }
 
+// Variable dropdown entries carry a `selected` flag, which `ScopedVar` does not
+// model (Grafana 13 tightened that type). Describe the shape we actually read.
+interface VariableOption extends ScopedVar {
+  selected?: boolean;
+}
+
 interface ScopedVariable extends VariableModel {
-  options: ScopedVar[];
+  options: VariableOption[];
 }
 export const RegionLayer: React.FC<RegionLayerProps> = ({ options, data }) => {
   const { decimals, labelTemplate, linkedVariable } = options;
@@ -54,6 +60,7 @@ export const RegionLayer: React.FC<RegionLayerProps> = ({ options, data }) => {
     <>
       {regions.values.map(region => (
         <GeoJSON
+          key={region.key}
           data={region.data}
           pathOptions={region.pathOptions}
           eventHandlers={{

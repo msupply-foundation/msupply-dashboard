@@ -1,6 +1,9 @@
 import { Action } from 'redux';
-import { Filter } from '../../../aggregations';
+
+import { Filter } from 'app/plugins/datasource/elasticsearch/dataquery.gen';
+
 import { defaultFilter } from '../utils';
+
 import { addFilter, changeFilter, removeFilter } from './actions';
 
 export const reducer = (state: Filter[] = [], action: Action) => {
