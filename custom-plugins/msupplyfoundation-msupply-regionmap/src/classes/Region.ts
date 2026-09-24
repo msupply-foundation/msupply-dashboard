@@ -1,4 +1,4 @@
-import { DisplayValue, Field, ThresholdsConfig, Vector, getActiveThreshold } from '@grafana/data';
+import { DisplayValue, Field, ThresholdsConfig, getActiveThreshold } from '@grafana/data';
 import { PathOptions } from 'leaflet';
 import { GeoJSON } from 'geojson';
 import { Iregion } from '../types';
@@ -17,7 +17,7 @@ export class Region implements Iregion {
     name: string,
     value: number,
     data: GeoJSON,
-    dataField?: Field<any, Vector<any>>,
+    dataField?: Field<any>,
     isSelected?: boolean
   ) {
     const displayField = dataField?.display && dataField?.display(value);

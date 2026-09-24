@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { LegendDisplayMode } from '@grafana/schema';
+import { useEffect, useState } from 'react';
+import { Subscription } from 'rxjs';
+
 import {
   DataHoverClearEvent,
   DataHoverEvent,
@@ -9,11 +10,8 @@ import {
   getFieldDisplayValues,
   PanelProps,
 } from '@grafana/data';
-
-import { PieChart } from './PieChart';
-
-import { PieChartLegendOptions, PieChartLegendValues, PieChartOptions } from './types';
-import { Subscription } from 'rxjs';
+import { PanelDataErrorView } from '@grafana/runtime';
+import { HideSeriesConfig, SortOrder, LegendDisplayMode } from '@grafana/schema';
 import {
   SeriesVisibilityChangeBehavior,
   usePanelContext,
@@ -22,22 +20,26 @@ import {
   VizLegend,
   VizLegendItem,
 } from '@grafana/ui';
+
+import { PieChart } from './PieChart';
+import { PieChartLegendOptions, PieChartLegendValues, Options } from './panelcfg.gen';
 import { filterDisplayItems, sumDisplayItemsReducer } from './utils';
 
 const defaultLegendOptions: PieChartLegendOptions = {
   displayMode: LegendDisplayMode.List,
+  showLegend: true,
   placement: 'right',
   calcs: [],
   values: [PieChartLegendValues.Percent],
 };
 
-interface Props extends PanelProps<PieChartOptions> {}
+interface Props extends PanelProps<Options> {}
 
 /**
  * @beta
  */
 export function PieChartPanel(props: Props) {
-  const { data, timeZone, fieldConfig, replaceVariables, width, height, options } = props;
+  const { data, timeZone, fieldConfig, replaceVariables, width, height, options, id } = props;
 
   const theme = useTheme2();
   const highlightedTitle = useSliceHighlightState();
@@ -51,11 +53,7 @@ export function PieChartPanel(props: Props) {
   });
 
   if (!hasFrames(fieldDisplayValues)) {
-    return (
-      <div className="panel-empty">
-        <p>No data</p>
-      </div>
-    );
+    return <PanelDataErrorView panelId={id} fieldConfig={fieldConfig} data={data} />;
   }
 
   return (
@@ -69,6 +67,7 @@ export function PieChartPanel(props: Props) {
             fieldDisplayValues={fieldDisplayValues}
             tooltipOptions={options.tooltip}
             pieType={options.pieType}
+            sort={options.sort}
             displayLabels={options.displayLabels}
           />
         );
@@ -80,30 +79,30 @@ export function PieChartPanel(props: Props) {
 function getLegend(props: Props, displayValues: FieldDisplay[]) {
   const legendOptions = props.options.legend ?? defaultLegendOptions;
 
-  if (legendOptions.displayMode === LegendDisplayMode.Hidden) {
+  if (legendOptions.showLegend === false) {
     return undefined;
   }
+
+  const sortedDisplayValues = displayValues.sort(comparePieChartItemsByValue(props.options.sort));
+
   const total = displayValues.filter(filterDisplayItems).reduce(sumDisplayItemsReducer, 0);
 
-  const legendItems = displayValues
-    // Since the pie chart is always sorted, let's sort the legend as well.
-    .sort((a, b) => {
-      if (isNaN(a.display.numeric)) {
-        return 1;
-      } else if (isNaN(b.display.numeric)) {
-        return -1;
-      } else {
-        return b.display.numeric - a.display.numeric;
+  const legendItems: VizLegendItem[] = sortedDisplayValues
+    .map<VizLegendItem | undefined>((value: FieldDisplay, idx: number) => {
+      const hideFrom: HideSeriesConfig = value.field.custom?.hideFrom ?? {};
+
+      if (hideFrom.legend) {
+        return undefined;
       }
-    })
-    .map<VizLegendItem>((value, idx) => {
-      const hidden = value.field.custom.hideFrom.viz;
+
+      const hideFromViz = Boolean(hideFrom.viz);
+
       const display = value.display;
       return {
         label: display.title ?? '',
         color: display.color ?? FALLBACK_COLOR,
         yAxis: 1,
-        disabled: hidden,
+        disabled: hideFromViz,
         getItemKey: () => (display.title ?? '') + idx,
         getDisplayValues: () => {
           const valuesToShow = legendOptions.values ?? [];
@@ -114,15 +113,15 @@ function getLegend(props: Props, displayValues: FieldDisplay[]) {
           }
 
           if (valuesToShow.includes(PieChartLegendValues.Percent)) {
-            const fractionOfTotal = hidden ? 0 : display.numeric / total;
+            const fractionOfTotal = hideFromViz ? 0 : display.numeric / total;
             const percentOfTotal = fractionOfTotal * 100;
 
             displayValues.push({
               numeric: fractionOfTotal,
               percent: percentOfTotal,
               text:
-                hidden || isNaN(fractionOfTotal)
-                  ? props.fieldConfig.defaults.noValue ?? '-'
+                hideFromViz || isNaN(fractionOfTotal)
+                  ? (props.fieldConfig.defaults.noValue ?? '-')
                   : percentOfTotal.toFixed(value.field.decimals ?? 0) + '%',
               title: valuesToShow.length > 1 ? 'Percent' : '',
             });
@@ -131,16 +130,39 @@ function getLegend(props: Props, displayValues: FieldDisplay[]) {
           return displayValues;
         },
       };
-    });
+    })
+    .filter((i): i is VizLegendItem => !!i);
 
   return (
-    <VizLegend
-      items={legendItems}
-      seriesVisibilityChangeBehavior={SeriesVisibilityChangeBehavior.Hide}
-      placement={legendOptions.placement}
-      displayMode={legendOptions.displayMode}
-    />
+    <VizLayout.Legend placement={legendOptions.placement} width={legendOptions.width}>
+      <VizLegend
+        items={legendItems}
+        seriesVisibilityChangeBehavior={SeriesVisibilityChangeBehavior.Hide}
+        placement={legendOptions.placement}
+        displayMode={legendOptions.displayMode}
+      />
+    </VizLayout.Legend>
   );
+}
+
+export function comparePieChartItemsByValue(sort: SortOrder): (a: FieldDisplay, b: FieldDisplay) => number {
+  return function (a: FieldDisplay, b: FieldDisplay) {
+    if (isNaN(a.display.numeric)) {
+      return 1;
+    }
+    if (isNaN(b.display.numeric)) {
+      return -1;
+    }
+
+    if (sort === SortOrder.Descending) {
+      return b.display.numeric - a.display.numeric;
+    }
+    if (sort === SortOrder.Ascending) {
+      return a.display.numeric - b.display.numeric;
+    }
+
+    return 0;
+  };
 }
 
 function hasFrames(fieldDisplayValues: FieldDisplay[]) {

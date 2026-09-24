@@ -1,9 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { GrafanaTheme2, MappingType, SelectableValue, SpecialValueMatch, ValueMapping } from '@grafana/data';
-import { ValueMappingEditRow, ValueMappingEditRowModel } from './ValueMappingEditRow';
-import { DragDropContext, Droppable, DropResult } from 'react-beautiful-dnd';
 import { css } from '@emotion/css';
+import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
+import { uniqueId } from 'lodash';
+import { useEffect, useState } from 'react';
+
+import { GrafanaTheme2, MappingType, SelectableValue, SpecialValueMatch, ValueMapping } from '@grafana/data';
+import { Trans, t } from '@grafana/i18n';
 import { useStyles2, Modal, ValuePicker, Button } from '@grafana/ui';
+
+import { ValueMappingEditRow, ValueMappingEditRowModel } from './ValueMappingEditRow';
 
 export interface Props {
   value: ValueMapping[];
@@ -45,25 +49,46 @@ export function ValueMappingsEditorModal({ value, onChange, onClose, showIconPic
   };
 
   const mappingTypes: Array<SelectableValue<MappingType>> = [
-    { label: 'Value', value: MappingType.ValueToText, description: 'Match a specific text value' },
-    { label: 'Range', value: MappingType.RangeToText, description: 'Match a numerical range of values' },
-    { label: 'Regex', value: MappingType.RegexToText, description: 'Match a regular expression with replacement' },
-    { label: 'Special', value: MappingType.SpecialValue, description: 'Match on null, NaN, boolean and empty values' },
+    {
+      label: t('dimensions.value-mappings-editor-modal.mapping-types.label.value', 'Value'),
+      value: MappingType.ValueToText,
+      description: t(
+        'dimensions.value-mappings-editor-modal.mapping-types.description.match-a-specific-text-value',
+        'Match a specific text value'
+      ),
+    },
+    {
+      label: t('dimensions.value-mappings-editor-modal.mapping-types.label.range', 'Range'),
+      value: MappingType.RangeToText,
+      description: t(
+        'dimensions.value-mappings-editor-modal.mapping-types.description.match-a-numerical-range-of-values',
+        'Match a numerical range of values'
+      ),
+    },
+    {
+      label: t('dimensions.value-mappings-editor-modal.mapping-types.label.regex', 'Regex'),
+      value: MappingType.RegexToText,
+      description: t(
+        'dimensions.value-mappings-editor-modal.mapping-types.description.match-a-regular-expression-with-replacement',
+        'Match a regular expression with replacement'
+      ),
+    },
+    {
+      label: t('dimensions.value-mappings-editor-modal.mapping-types.label.special', 'Special'),
+      value: MappingType.SpecialValue,
+      description: t(
+        'dimensions.value-mappings-editor-modal.mapping-types.description.match-boolean-empty-values',
+        'Match on null, NaN, boolean and empty values'
+      ),
+    },
   ];
 
   const onAddValueMapping = (value: SelectableValue<MappingType>) => {
-    updateRows([
-      ...rows,
-      {
-        type: value.value!,
-        isNew: true,
-        result: {},
-      },
-    ]);
+    updateRows([...rows, createRow({ type: value.value!, result: {}, isNew: true })]);
   };
 
   const onDuplicateMapping = (index: number) => {
-    const sourceRow = rows[index];
+    const sourceRow = duplicateRow(rows[index]);
     const copy = [...rows];
     copy.splice(index, 0, { ...sourceRow });
 
@@ -95,11 +120,19 @@ export function ValueMappingsEditorModal({ value, onChange, onClose, showIconPic
             <tr>
               <th style={{ width: '1%' }}></th>
               <th style={{ width: '40%', textAlign: 'left' }} colSpan={2}>
-                Condition
+                <Trans i18nKey="dimensions.value-mappings-editor-modal.condition">Condition</Trans>
               </th>
-              <th style={{ textAlign: 'left' }}>Display text</th>
-              <th style={{ width: '10%' }}>Color</th>
-              {showIconPicker && <th style={{ width: '10%' }}>Icon</th>}
+              <th style={{ textAlign: 'left' }}>
+                <Trans i18nKey="dimensions.value-mappings-editor-modal.display-text">Display text</Trans>
+              </th>
+              <th style={{ width: '10%' }}>
+                <Trans i18nKey="dimensions.value-mappings-editor-modal.color">Color</Trans>
+              </th>
+              {showIconPicker && (
+                <th style={{ width: '10%' }}>
+                  <Trans i18nKey="dimensions.value-mappings-editor-modal.icon">Icon</Trans>
+                </th>
+              )}
               <th style={{ width: '1%' }}></th>
             </tr>
           </thead>
@@ -109,7 +142,7 @@ export function ValueMappingsEditorModal({ value, onChange, onClose, showIconPic
                 <tbody ref={provided.innerRef} {...provided.droppableProps}>
                   {rows.map((row, index) => (
                     <ValueMappingEditRow
-                      key={index.toString()}
+                      key={row.id}
                       mapping={row}
                       index={index}
                       onChange={onChangeMapping}
@@ -129,7 +162,7 @@ export function ValueMappingsEditorModal({ value, onChange, onClose, showIconPic
       <Modal.ButtonRow
         leftItems={
           <ValuePicker
-            label="Add a new mapping"
+            label={t('dimensions.value-mappings-editor-modal.label-add-a-new-mapping', 'Add a new mapping')}
             variant="secondary"
             size="md"
             icon="plus"
@@ -141,10 +174,10 @@ export function ValueMappingsEditorModal({ value, onChange, onClose, showIconPic
         }
       >
         <Button variant="secondary" fill="outline" onClick={onClose}>
-          Cancel
+          <Trans i18nKey="dimensions.value-mappings-editor-modal.cancel">Cancel</Trans>
         </Button>
         <Button variant="primary" onClick={onUpdate}>
-          Update
+          <Trans i18nKey="dimensions.value-mappings-editor-modal.update">Update</Trans>
         </Button>
       </Modal.ButtonRow>
     </>
@@ -152,11 +185,9 @@ export function ValueMappingsEditorModal({ value, onChange, onClose, showIconPic
 }
 
 export const getStyles = (theme: GrafanaTheme2) => ({
-  tableWrap: css`
-    max-height: calc(80vh - 170px);
-    min-height: 40px;
-    overflow: auto;
-  `,
+  tableWrap: css({
+    minHeight: '40px',
+  }),
 
   editTable: css({
     width: '100%',
@@ -175,6 +206,27 @@ export const getStyles = (theme: GrafanaTheme2) => ({
     },
   }),
 });
+
+function getRowUniqueId(): string {
+  return uniqueId('mapping-');
+}
+
+function createRow(row: Partial<ValueMappingEditRowModel>): ValueMappingEditRowModel {
+  return {
+    type: MappingType.ValueToText,
+    result: {},
+    id: getRowUniqueId(),
+    ...row,
+  };
+}
+
+function duplicateRow(row: Partial<ValueMappingEditRowModel>): ValueMappingEditRowModel {
+  return {
+    ...createRow(row),
+    // provide a new unique id to the duplicated row, to preserve focus when dragging 2 duplicated rows
+    id: getRowUniqueId(),
+  };
+}
 
 export function editModelToSaveModel(rows: ValueMappingEditRowModel[]) {
   const mappings: ValueMapping[] = [];
@@ -201,12 +253,12 @@ export function editModelToSaveModel(rows: ValueMappingEditRowModel[]) {
         }
         break;
       case MappingType.RangeToText:
-        if (item.from != null && item.to != null) {
+        if (item.from != null || item.to != null) {
           mappings.push({
             type: item.type,
             options: {
-              from: item.from,
-              to: item.to,
+              from: item.from ?? null,
+              to: item.to ?? null,
               result,
             },
           });
@@ -247,35 +299,43 @@ export function buildEditRowModels(value: ValueMapping[]) {
     for (const mapping of value) {
       switch (mapping.type) {
         case MappingType.ValueToText:
-          for (const key of Object.keys(mapping.options)) {
-            editRows.push({
-              type: mapping.type,
-              result: mapping.options[key],
-              key,
-            });
+          for (const key in mapping.options) {
+            editRows.push(
+              createRow({
+                type: mapping.type,
+                result: mapping.options[key],
+                key,
+              })
+            );
           }
           break;
         case MappingType.RangeToText:
-          editRows.push({
-            type: mapping.type,
-            result: mapping.options.result,
-            from: mapping.options.from ?? 0,
-            to: mapping.options.to ?? 0,
-          });
+          editRows.push(
+            createRow({
+              type: mapping.type,
+              result: mapping.options.result,
+              from: mapping.options.from,
+              to: mapping.options.to,
+            })
+          );
           break;
         case MappingType.RegexToText:
-          editRows.push({
-            type: mapping.type,
-            result: mapping.options.result,
-            pattern: mapping.options.pattern,
-          });
+          editRows.push(
+            createRow({
+              type: mapping.type,
+              result: mapping.options.result,
+              pattern: mapping.options.pattern,
+            })
+          );
           break;
         case MappingType.SpecialValue:
-          editRows.push({
-            type: mapping.type,
-            result: mapping.options.result,
-            specialMatch: mapping.options.match ?? SpecialValueMatch.Null,
-          });
+          editRows.push(
+            createRow({
+              type: mapping.type,
+              result: mapping.options.result,
+              specialMatch: mapping.options.match ?? SpecialValueMatch.Null,
+            })
+          );
       }
     }
   }

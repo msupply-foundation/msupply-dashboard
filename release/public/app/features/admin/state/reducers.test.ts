@@ -1,4 +1,8 @@
 import { reducerTester } from 'test/core/redux/reducerTester';
+
+import { LdapState, LdapUser } from 'app/types/ldap';
+import { UserAdminState, UserListAdminState, UserDTO } from 'app/types/user';
+
 import {
   clearUserMappingInfoAction,
   ldapConnectionInfoLoadedAction,
@@ -14,7 +18,6 @@ import {
   queryChanged,
   filterChanged,
 } from './reducers';
-import { LdapState, LdapUser, UserAdminState, UserDTO, UserListAdminState } from 'app/types';
 
 const makeInitialLdapState = (): LdapState => ({
   connectionInfo: [],
@@ -54,6 +57,7 @@ const getTestUserMapping = (): LdapUser => ({
 
 const getTestUser = (): UserDTO => ({
   id: 1,
+  uid: 'aaaaaa',
   email: 'user@localhost',
   login: 'user',
   name: 'User',

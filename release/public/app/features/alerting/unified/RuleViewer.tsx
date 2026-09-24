@@ -1,249 +1,96 @@
-import { css } from '@emotion/css';
-import { GrafanaTheme2, LoadingState, PanelData } from '@grafana/data';
-import {
-  Alert,
-  Button,
-  Icon,
-  LoadingPlaceholder,
-  PanelChromeLoadingIndicator,
-  useStyles2,
-  VerticalGroup,
-  withErrorBoundary,
-} from '@grafana/ui';
-import { GrafanaRouteComponentProps } from 'app/core/navigation/types';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useObservable } from 'react-use';
-import { AlertQuery } from '../../../types/unified-alerting-dto';
-import { AlertLabels } from './components/AlertLabels';
-import { DetailsField } from './components/DetailsField';
-import { RuleViewerLayout, RuleViewerLayoutContent } from './components/rule-viewer/RuleViewerLayout';
-import { RuleViewerVisualization } from './components/rule-viewer/RuleViewerVisualization';
-import { RuleDetailsActionButtons } from './components/rules/RuleDetailsActionButtons';
-import { RuleDetailsAnnotations } from './components/rules/RuleDetailsAnnotations';
-import { RuleDetailsDataSources } from './components/rules/RuleDetailsDataSources';
-import { RuleDetailsExpression } from './components/rules/RuleDetailsExpression';
-import { RuleDetailsFederatedSources } from './components/rules/RuleDetailsFederatedSources';
-import { RuleDetailsMatchingInstances } from './components/rules/RuleDetailsMatchingInstances';
-import { RuleHealth } from './components/rules/RuleHealth';
-import { RuleState } from './components/rules/RuleState';
-import { useAlertQueriesStatus } from './hooks/useAlertQueriesStatus';
+import { useMemo } from 'react';
+import { useParams } from 'react-router-dom-v5-compat';
+
+import { NavModelItem } from '@grafana/data';
+import { t } from '@grafana/i18n';
+import { isFetchError } from '@grafana/runtime';
+import { Alert } from '@grafana/ui';
+import { EntityNotFound } from 'app/core/components/PageNotFound/EntityNotFound';
+
+import { AlertingPageWrapper } from './components/AlertingPageWrapper';
+import { AlertRuleProvider } from './components/rule-viewer/RuleContext';
+import DetailView, { ActiveTab, useActiveTab } from './components/rule-viewer/RuleViewer';
 import { useCombinedRule } from './hooks/useCombinedRule';
-import { AlertingQueryRunner } from './state/AlertingQueryRunner';
-import { getRulesSourceByName } from './utils/datasource';
-import { alertRuleToQueries } from './utils/query';
-import * as ruleId from './utils/rule-id';
-import { isFederatedRuleGroup } from './utils/rules';
+import { stringifyErrorLike } from './utils/misc';
+import { getRuleIdFromPathname, parse as parseRuleId } from './utils/rule-id';
+import { withPageErrorBoundary } from './withPageErrorBoundary';
 
-type RuleViewerProps = GrafanaRouteComponentProps<{ id?: string; sourceName?: string }>;
+const RuleViewer = () => {
+  const params = useParams();
+  const id = getRuleIdFromPathname(params);
 
-const errorMessage = 'Could not find data source for rule';
-const errorTitle = 'Could not view rule';
-const pageTitle = 'Alerting / View rule';
+  const [activeTab] = useActiveTab();
+  const instancesTab = activeTab === ActiveTab.Instances;
 
-export function RuleViewer({ match }: RuleViewerProps) {
-  const styles = useStyles2(getStyles);
-  const { id, sourceName } = match.params;
-  const identifier = ruleId.tryParse(id, true);
-  const { loading, error, result: rule } = useCombinedRule(identifier, sourceName);
-  const runner = useMemo(() => new AlertingQueryRunner(), []);
-  const data = useObservable(runner.get());
-  const queries2 = useMemo(() => alertRuleToQueries(rule), [rule]);
-  const [queries, setQueries] = useState<AlertQuery[]>([]);
+  // We will fetch no instances by default to speed up loading times and reduce memory footprint _unless_ we are visiting
+  // the "instances" tab. This optimization is only available for the Grafana-managed ruler.
+  const limitAlerts = instancesTab ? undefined : 0; // "0" means "do not include alert rule instances in the response"
 
-  const { allDataSourcesAvailable } = useAlertQueriesStatus(queries2);
-
-  const onRunQueries = useCallback(() => {
-    if (queries.length > 0 && allDataSourcesAvailable) {
-      runner.run(queries);
+  // we convert the stringified ID to a rule identifier object which contains additional
+  // type and source information
+  const identifier = useMemo(() => {
+    if (!id) {
+      throw new Error('Rule ID is required');
     }
-  }, [queries, runner, allDataSourcesAvailable]);
 
-  useEffect(() => {
-    setQueries(queries2);
-  }, [queries2]);
+    return parseRuleId(id, true);
+  }, [id]);
 
-  useEffect(() => {
-    if (allDataSourcesAvailable) {
-      onRunQueries();
-    }
-  }, [onRunQueries, allDataSourcesAvailable]);
+  // we then fetch the rule from the correct API endpoint(s)
+  const { loading, error, result: rule } = useCombinedRule({ ruleIdentifier: identifier, limitAlerts });
 
-  useEffect(() => {
-    return () => runner.destroy();
-  }, [runner]);
-
-  const onChangeQuery = useCallback((query: AlertQuery) => {
-    setQueries((queries) =>
-      queries.map((q) => {
-        if (q.refId === query.refId) {
-          return query;
-        }
-        return q;
-      })
-    );
-  }, []);
-
-  if (!sourceName) {
+  if (error) {
     return (
-      <RuleViewerLayout title={pageTitle}>
-        <Alert title={errorTitle}>
-          <details className={styles.errorMessage}>{errorMessage}</details>
-        </Alert>
-      </RuleViewerLayout>
+      <AlertingPageWrapper pageNav={defaultPageNav} navId="alert-list">
+        <ErrorMessage error={error} />
+      </AlertingPageWrapper>
     );
   }
-
-  const rulesSource = getRulesSourceByName(sourceName);
 
   if (loading) {
+    return <AlertingPageWrapper pageNav={defaultPageNav} navId="alert-list" isLoading={true} />;
+  }
+
+  if (rule) {
     return (
-      <RuleViewerLayout title={pageTitle}>
-        <LoadingPlaceholder text="Loading rule..." />
-      </RuleViewerLayout>
+      <AlertRuleProvider identifier={identifier} rule={rule}>
+        <DetailView />
+      </AlertRuleProvider>
     );
   }
 
-  if (error || !rulesSource) {
+  // if we get here assume we can't find the rule
+  if (!rule && !loading) {
     return (
-      <RuleViewerLayout title={pageTitle}>
-        <Alert title={errorTitle}>
-          <details className={styles.errorMessage}>
-            {error?.message ?? errorMessage}
-            <br />
-            {!!error?.stack && error.stack}
-          </details>
-        </Alert>
-      </RuleViewerLayout>
+      <AlertingPageWrapper pageNav={defaultPageNav} navId="alert-list">
+        <EntityNotFound entity="Rule" />
+      </AlertingPageWrapper>
     );
   }
 
-  if (!rule) {
-    return (
-      <RuleViewerLayout title={pageTitle}>
-        <span>Rule could not be found.</span>
-      </RuleViewerLayout>
-    );
-  }
+  // we should never get to this state
+  return null;
+};
 
-  const annotations = Object.entries(rule.annotations).filter(([_, value]) => !!value.trim());
-  const isFederatedRule = isFederatedRuleGroup(rule.group);
+export const defaultPageNav: NavModelItem = {
+  id: 'alert-rule-view',
+  text: '',
+};
+
+interface ErrorMessageProps {
+  error: unknown;
+}
+
+function ErrorMessage({ error }: ErrorMessageProps) {
+  if (isFetchError(error) && error.status === 404) {
+    return <EntityNotFound entity="Rule" />;
+  }
 
   return (
-    <RuleViewerLayout wrapInContent={false} title={pageTitle}>
-      {isFederatedRule && (
-        <Alert severity="info" title="This rule is part of a federated rule group.">
-          <VerticalGroup>
-            Federated rule groups are currently an experimental feature.
-            <Button fill="text" icon="book">
-              <a href="https://grafana.com/docs/metrics-enterprise/latest/tenant-management/tenant-federation/#cross-tenant-alerting-and-recording-rule-federation">
-                Read documentation
-              </a>
-            </Button>
-          </VerticalGroup>
-        </Alert>
-      )}
-      <RuleViewerLayoutContent>
-        <div>
-          <h4>
-            <Icon name="bell" size="lg" /> {rule.name}
-          </h4>
-          <RuleState rule={rule} isCreating={false} isDeleting={false} />
-          <RuleDetailsActionButtons rule={rule} rulesSource={rulesSource} />
-        </div>
-        <div className={styles.details}>
-          <div className={styles.leftSide}>
-            {rule.promRule && (
-              <DetailsField label="Health" horizontal={true}>
-                <RuleHealth rule={rule.promRule} />
-              </DetailsField>
-            )}
-            {!!rule.labels && !!Object.keys(rule.labels).length && (
-              <DetailsField label="Labels" horizontal={true}>
-                <AlertLabels labels={rule.labels} />
-              </DetailsField>
-            )}
-            <RuleDetailsExpression rulesSource={rulesSource} rule={rule} annotations={annotations} />
-            <RuleDetailsAnnotations annotations={annotations} />
-          </div>
-          <div className={styles.rightSide}>
-            <RuleDetailsDataSources rule={rule} rulesSource={rulesSource} />
-            {isFederatedRule && <RuleDetailsFederatedSources group={rule.group} />}
-            <DetailsField label="Namespace / Group">{`${rule.namespace.name} / ${rule.group.name}`}</DetailsField>
-          </div>
-        </div>
-        <div>
-          <RuleDetailsMatchingInstances promRule={rule.promRule} />
-        </div>
-      </RuleViewerLayoutContent>
-      {!isFederatedRule && data && Object.keys(data).length > 0 && (
-        <>
-          <div className={styles.queriesTitle}>
-            Query results <PanelChromeLoadingIndicator loading={isLoading(data)} onCancel={() => runner.cancel()} />
-          </div>
-          <RuleViewerLayoutContent padding={0}>
-            <div className={styles.queries}>
-              {queries.map((query) => {
-                return (
-                  <div key={query.refId} className={styles.query}>
-                    <RuleViewerVisualization
-                      query={query}
-                      data={data && data[query.refId]}
-                      onChangeQuery={onChangeQuery}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </RuleViewerLayoutContent>
-        </>
-      )}
-      {!isFederatedRule && !allDataSourcesAvailable && (
-        <Alert title="Query not available" severity="warning" className={styles.queryWarning}>
-          Cannot display the query preview. Some of the data sources used in the queries are not available.
-        </Alert>
-      )}
-    </RuleViewerLayout>
+    <Alert title={t('alerting.rule-viewer.error-loading', 'Something went wrong loading the rule')}>
+      {stringifyErrorLike(error)}
+    </Alert>
   );
 }
 
-function isLoading(data: Record<string, PanelData>): boolean {
-  return !!Object.values(data).find((d) => d.state === LoadingState.Loading);
-}
-
-const getStyles = (theme: GrafanaTheme2) => {
-  return {
-    errorMessage: css`
-      white-space: pre-wrap;
-    `,
-    queries: css`
-      height: 100%;
-      width: 100%;
-    `,
-    queriesTitle: css`
-      padding: ${theme.spacing(2, 0.5)};
-      font-size: ${theme.typography.h5.fontSize};
-      font-weight: ${theme.typography.fontWeightBold};
-      font-family: ${theme.typography.h5.fontFamily};
-    `,
-    query: css`
-      border-bottom: 1px solid ${theme.colors.border.medium};
-      padding: ${theme.spacing(2)};
-    `,
-    queryWarning: css`
-      margin: ${theme.spacing(4, 0)};
-    `,
-    details: css`
-      display: flex;
-      flex-direction: row;
-    `,
-    leftSide: css`
-      flex: 1;
-    `,
-    rightSide: css`
-      padding-left: 90px;
-      width: 300px;
-    `,
-  };
-};
-
-export default withErrorBoundary(RuleViewer, { style: 'page' });
+export default withPageErrorBoundary(RuleViewer);

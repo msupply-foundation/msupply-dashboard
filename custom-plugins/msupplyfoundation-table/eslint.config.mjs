@@ -33,6 +33,9 @@ export default defineConfig([
       'playwright/.auth/',
       '**/.idea',
       '**/.eslintcache',
+      // Local debugging helper driven by hand against a dev Grafana; not part
+      // of the plugin build.
+      'verify_panel.mjs',
     ],
   },
   ...baseConfig,

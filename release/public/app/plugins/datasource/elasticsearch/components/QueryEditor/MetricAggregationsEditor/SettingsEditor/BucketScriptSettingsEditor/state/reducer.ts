@@ -1,6 +1,9 @@
 import { Action } from '@reduxjs/toolkit';
-import { PipelineVariable } from '../../../aggregations';
+
+import { PipelineVariable } from 'app/plugins/datasource/elasticsearch/dataquery.gen';
+
 import { defaultPipelineVariable, generatePipelineVariableName } from '../utils';
+
 import {
   addPipelineVariable,
   changePipelineVariableMetric,

@@ -1,4 +1,4 @@
 .DS_Store
 installer/.DS_Store
 node_modules
-dist
+custom-plugins/*/dist

@@ -1,0 +1,228 @@
+name: Build
+
+# Manual only: run from the Actions tab (or `gh workflow run build.yml`).
+# Nothing triggers on push or pull_request by design.
+on:
+  workflow_dispatch:
+    inputs:
+      plugins:
+        description: Build and test the custom plugins
+        type: boolean
+        default: true
+      migration:
+        description: Verify the grafana.db migration
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plugins:
+    name: ${{ matrix.plugin }}
+    if: inputs.plugins
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        plugin:
+          - msupplyfoundation-table
+          - msupplyfoundation-msupply-regionmap
+    defaults:
+      run:
+        working-directory: custom-plugins/${{ matrix.plugin }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: custom-plugins/${{ matrix.plugin }}/package-lock.json
+
+      # `npm ci` is deliberate: it fails if package.json and the lockfile have
+      # drifted, which is what would happen if someone bumps @grafana/* without
+      # regenerating the lockfile.
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test:ci
+
+      - name: Build
+        run: npm run build
+
+      # A plugin that builds but emits no module.js is broken in a way the
+      # build step does not report, so assert the artifact exists.
+      - name: Check build output
+        run: test -f dist/module.js && test -f dist/plugin.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.plugin }}-dist
+          path: custom-plugins/${{ matrix.plugin }}/dist/
+          retention-days: 14
+
+  grafana-db-migration:
+    name: grafana.db migration
+    if: inputs.migration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install sqlite3
+        run: sudo apt-get update && sudo apt-get install -y sqlite3
+
+      # Keep the target version in one place: installer/grafana.url is what the
+      # Windows installer build downloads, so CI verifies the same version the
+      # installer ships.
+      - name: Resolve target Grafana version
+        id: ver
+        run: |
+          url="$(tr -d '[:space:]' < installer/grafana.url)"
+          version="$(sed -E 's|.*/grafana-([0-9]+\.[0-9]+\.[0-9]+)\..*|\1|' <<<"$url")"
+          if [ -z "$version" ] || [ "$version" = "$url" ]; then
+            echo "Could not parse a version out of installer/grafana.url: $url" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Target Grafana version: $version"
+
+      - name: Download Grafana
+        run: |
+          curl -fsSL "https://dl.grafana.com/oss/release/grafana-${{ steps.ver.outputs.version }}.linux-amd64.tar.gz" -o grafana.tar.gz
+          tar -xzf grafana.tar.gz
+
+      # Migrations run automatically when the server starts; there is no
+      # separate migrate command. Run against a copy so the committed database
+      # is never modified.
+      - name: Migrate a copy of release/data/grafana.db
+        run: |
+          set -euo pipefail
+          version="${{ steps.ver.outputs.version }}"
+          # Grafana resolves bundled assets relative to --homepath and rejects a
+          # path it cannot resolve, so pass an absolute one.
+          home="$PWD/grafana-$version"
+
+          mkdir -p work/data work/conf work/logs work/plugins
+          cp release/data/grafana.db work/data/grafana.db
+
+          before="$(sqlite3 work/data/grafana.db 'SELECT COUNT(*) FROM migration_log;')"
+          echo "migrations before: $before"
+
+          cat > work/conf/ci.ini <<'INI'
+          [server]
+          http_port = 3999
+          [database]
+          type = sqlite3
+          [plugins]
+          preinstall_disabled = true
+          [analytics]
+          reporting_enabled = false
+          check_for_updates = false
+          INI
+
+          # These paths must be absolute: Grafana resolves a relative
+          # paths.data against --homepath, not the working directory, and would
+          # silently create and migrate a brand new database instead of ours.
+          "$home/bin/grafana" server \
+            --homepath "$home" \
+            --config "$PWD/work/conf/ci.ini" \
+            cfg:default.paths.data="$PWD/work/data" \
+            cfg:default.paths.logs="$PWD/work/logs" \
+            cfg:default.paths.plugins="$PWD/work/plugins" \
+            > work/migrate.log 2>&1 &
+          pid=$!
+
+          # Wait for this process to report it is listening, which happens after
+          # migrations finish. Watch our own log rather than probing the port so
+          # an unrelated server cannot mask a failure.
+          ready=""
+          for _ in $(seq 1 90); do
+            if grep -q "HTTP Server Listen" work/migrate.log 2>/dev/null; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+              echo "Grafana exited during migration:" >&2
+              tail -40 work/migrate.log >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          kill "$pid" 2>/dev/null || true
+          wait "$pid" 2>/dev/null || true
+
+          if [ -z "$ready" ]; then
+            echo "Timed out waiting for migrations:" >&2
+            tail -40 work/migrate.log >&2
+            exit 1
+          fi
+
+          after="$(sqlite3 work/data/grafana.db 'SELECT COUNT(*) FROM migration_log;')"
+          failed="$(sqlite3 work/data/grafana.db 'SELECT COUNT(*) FROM migration_log WHERE success=0;')"
+          integrity="$(sqlite3 work/data/grafana.db 'PRAGMA integrity_check;')"
+
+          echo "migrations after:  $after"
+          echo "failed migrations: $failed"
+          echo "integrity:         $integrity"
+
+          if grep -qiE "migration failed|failed to migrate" work/migrate.log; then
+            echo "::error::Grafana reported migration failures"
+            grep -iE "migration failed|failed to migrate" work/migrate.log >&2
+            exit 1
+          fi
+          [ "$failed" = "0" ] || { echo "::error::$failed migrations recorded success=0"; exit 1; }
+          [ "$integrity" = "ok" ] || { echo "::error::integrity_check returned $integrity"; exit 1; }
+
+          # The committed database may already be at the target schema, in which
+          # case a clean start applying nothing is the correct outcome. Only
+          # report which happened.
+          if [ "$after" -gt "$before" ]; then
+            echo "Applied $((after - before)) migrations."
+          else
+            echo "Database was already current; no migrations needed."
+          fi
+
+      # Upgrading to Grafana 13 lowercases every user.login/user.email. If two
+      # accounts differ only by case they collide on the unique index and the
+      # affected users cannot log in, so fail loudly rather than ship that.
+      - name: Check for case-collision data loss
+        run: |
+          set -euo pipefail
+          collisions="$(sqlite3 release/data/grafana.db \
+            "SELECT COUNT(*) FROM (SELECT lower(login) FROM user GROUP BY lower(login) HAVING COUNT(*) > 1);")"
+          email_collisions="$(sqlite3 release/data/grafana.db \
+            "SELECT COUNT(*) FROM (SELECT lower(email) FROM user WHERE email <> '' GROUP BY lower(email) HAVING COUNT(*) > 1);")"
+          echo "login collisions: $collisions, email collisions: $email_collisions"
+          if [ "$collisions" != "0" ] || [ "$email_collisions" != "0" ]; then
+            echo "::error::Users differ only by case; the Grafana 13 lowercase migration would merge or drop accounts"
+            exit 1
+          fi
+
+      # user_auth.auth_id is how Grafana 13 matches OAuth logins. Rows left
+      # empty after an upgrade mean those users cannot sign in until
+      # grafanadb-update.bat backfills [user]ID, so surface the count.
+      - name: Report OAuth auth_id backfill status
+        run: |
+          total="$(sqlite3 work/data/grafana.db "SELECT COUNT(*) FROM user_auth WHERE auth_module='oauth_generic_oauth';")"
+          empty="$(sqlite3 work/data/grafana.db "SELECT COUNT(*) FROM user_auth WHERE auth_module='oauth_generic_oauth' AND (auth_id IS NULL OR auth_id='');")"
+          echo "OAuth identities: $total, missing auth_id: $empty"
+          if [ "$empty" != "0" ]; then
+            echo "::warning::$empty of $total OAuth users have no auth_id; run conf/provisioning/grafanadb-update.bat after upgrading or they cannot log in"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: grafana-migration-log
+          path: work/migrate.log
+          retention-days: 14

@@ -1,17 +1,28 @@
+import { useEffect, useState } from 'react';
+
 import { DataSourceInstanceSettings } from '@grafana/data';
-import { PromBasedDataSource } from 'app/types/unified-alerting';
-import { getDataSourceByName } from '../utils/datasource';
-import { useUnifiedAlertingSelector } from './useUnifiedAlertingSelector';
 
-export function useRulesSourcesWithRuler(): DataSourceInstanceSettings[] {
-  const dataSources = useUnifiedAlertingSelector((state) => state.dataSources);
+import { featureDiscoveryApi } from '../api/featureDiscoveryApi';
+import { getRulesDataSources } from '../utils/datasource';
 
-  const dataSourcesWithRuler = Object.values(dataSources)
-    .map((ds) => ds.result)
-    .filter((ds): ds is PromBasedDataSource => Boolean(ds?.rulerConfig));
-  // try fetching rules for each prometheus to see if it has ruler
+const { useLazyDiscoverDsFeaturesQuery } = featureDiscoveryApi;
 
-  return dataSourcesWithRuler
-    .map((ds) => getDataSourceByName(ds.name))
-    .filter((dsConfig): dsConfig is DataSourceInstanceSettings => Boolean(dsConfig));
+export function useRulesSourcesWithRuler(): {
+  rulesSourcesWithRuler: DataSourceInstanceSettings[];
+  isLoading: boolean;
+} {
+  const [rulesSourcesWithRuler, setRulesSourcesWithRuler] = useState<DataSourceInstanceSettings[]>([]);
+  const [discoverDsFeatures, { isLoading }] = useLazyDiscoverDsFeaturesQuery();
+
+  useEffect(() => {
+    const dataSources = getRulesDataSources();
+    dataSources.forEach(async (ds) => {
+      const { data: dsFeatures } = await discoverDsFeatures({ uid: ds.uid }, true);
+      if (dsFeatures?.rulerConfig) {
+        setRulesSourcesWithRuler((prev) => [...prev, ds]);
+      }
+    });
+  }, [discoverDsFeatures]);
+
+  return { rulesSourcesWithRuler, isLoading };
 }

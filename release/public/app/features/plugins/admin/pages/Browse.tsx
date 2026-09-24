@@ -1,61 +1,73 @@
-import React, { ReactElement } from 'react';
 import { css } from '@emotion/css';
-import { SelectableValue, GrafanaTheme2 } from '@grafana/data';
-import { LoadingPlaceholder, Select, RadioButtonGroup, useStyles2, Tooltip } from '@grafana/ui';
-import { useLocation } from 'react-router-dom';
-import { locationSearchToObject } from '@grafana/runtime';
-import { GrafanaRouteComponentProps } from 'app/core/navigation/types';
-import { PluginList } from '../components/PluginList';
-import { SearchField } from '../components/SearchField';
-import { useHistory } from '../hooks/useHistory';
-import { PluginAdminRoutes, PluginListDisplayMode } from '../types';
-import { Page as PluginPage } from '../components/Page';
-import { HorizontalGroup } from '../components/HorizontalGroup';
-import { Page } from 'app/core/components/Page/Page';
-import { useSelector } from 'react-redux';
-import { StoreState } from 'app/types/store';
-import { getNavModel } from 'app/core/selectors/navModel';
-import { useGetAllWithFilters, useIsRemotePluginsAvailable, useDisplayMode } from '../state/hooks';
-import { Sorters } from '../helpers';
+import { useState } from 'react';
+import { useLocation } from 'react-router-dom-v5-compat';
 
-export default function Browse({ route }: GrafanaRouteComponentProps): ReactElement | null {
+import { SelectableValue, GrafanaTheme2, PluginType } from '@grafana/data';
+import { Trans, t } from '@grafana/i18n';
+import { locationSearchToObject } from '@grafana/runtime';
+import { Select, RadioButtonGroup, useStyles2, Tooltip, Field, TextLink } from '@grafana/ui';
+import { Page } from 'app/core/components/Page/Page';
+import { getNavModel } from 'app/core/selectors/navModel';
+import { AdvisorRedirectNotice } from 'app/features/connections/components/AdvisorRedirectNotice/AdvisorRedirectNotice';
+import { ROUTES as CONNECTIONS_ROUTES } from 'app/features/connections/constants';
+import { useSelector } from 'app/types/store';
+
+import { HorizontalGroup } from '../components/HorizontalGroup';
+import { PluginList } from '../components/PluginList';
+import { RoadmapLinks } from '../components/RoadmapLinks';
+import { SearchField } from '../components/SearchField';
+import UpdateAllButton from '../components/UpdateAllButton';
+import { UpdateAllModal } from '../components/UpdateAllModal';
+import { Sorters } from '../helpers';
+import { useHistory } from '../hooks/useHistory';
+import { useGetAll, useGetUpdatable, useIsRemotePluginsAvailable } from '../state/hooks';
+
+export default function Browse() {
   const location = useLocation();
   const locationSearch = locationSearchToObject(location.search);
-  const navModelId = getNavModelId(route.routeName);
-  const navModel = useSelector((state: StoreState) => getNavModel(state.navIndex, navModelId));
-  const { displayMode, setDisplayMode } = useDisplayMode();
+  const navModel = useSelector((state) => getNavModel(state.navIndex, 'plugins'));
   const styles = useStyles2(getStyles);
   const history = useHistory();
   const remotePluginsAvailable = useIsRemotePluginsAvailable();
-  const query = (locationSearch.q as string) || '';
-  const filterBy = (locationSearch.filterBy as string) || 'installed';
-  const filterByType = (locationSearch.filterByType as string) || 'all';
+
+  const keyword = locationSearch.q?.toString() || '';
+  const filterBy = locationSearch.filterBy?.toString() || 'all';
+  const filterByType = (locationSearch.filterByType as PluginType | 'all') || 'all';
   const sortBy = (locationSearch.sortBy as Sorters) || Sorters.nameAsc;
-  const { isLoading, error, plugins } = useGetAllWithFilters({
-    query,
-    filterBy,
-    filterByType,
-    sortBy,
-  });
+  const { isLoading, error, plugins } = useGetAll(
+    {
+      keyword,
+      type: filterByType !== 'all' ? filterByType : undefined,
+      isInstalled: filterBy === 'installed' ? true : undefined,
+      hasUpdate: filterBy === 'has-update' ? true : undefined,
+    },
+    sortBy
+  );
+
   const filterByOptions = [
-    { value: 'all', label: 'All' },
-    { value: 'installed', label: 'Installed' },
+    { value: 'all', label: t('plugins.browse.filter-by-options.label.all', 'All') },
+    { value: 'installed', label: t('plugins.browse.filter-by-options.label.installed', 'Installed') },
+    { value: 'has-update', label: t('plugins.browse.filter-by-options.label.new-updates', 'New Updates') },
   ];
 
-  const onSortByChange = (value: SelectableValue<string>) => {
-    history.push({ query: { sortBy: value.value } });
-  };
+  const { isLoading: areUpdatesLoading, updatablePlugins } = useGetUpdatable();
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const disableUpdateAllButton = updatablePlugins.length <= 0 || areUpdatesLoading;
 
   const onFilterByChange = (value: string) => {
     history.push({ query: { filterBy: value } });
   };
 
-  const onFilterByTypeChange = (value: string) => {
-    history.push({ query: { filterByType: value } });
+  const onFilterByTypeChange = (value: SelectableValue<string>) => {
+    history.push({ query: { filterByType: value.value } });
   };
 
-  const onSearch = (q: any) => {
-    history.push({ query: { filterBy: 'all', filterByType: 'all', q } });
+  const onSearch = (q: string) => {
+    history.push({ query: { filterBy, filterByType, q } });
+  };
+
+  const onUpdateAll = () => {
+    setShowUpdateModal(true);
   };
 
   // How should we handle errors?
@@ -64,124 +76,115 @@ export default function Browse({ route }: GrafanaRouteComponentProps): ReactElem
     return null;
   }
 
+  const subTitle = (
+    <div>
+      <Trans i18nKey="plugins.browse.subtitle">
+        Extend the Grafana experience with panel plugins and apps. To find more data sources go to{' '}
+        <TextLink href={`${CONNECTIONS_ROUTES.AddNewConnection}?cat=data-source`}>Connections</TextLink>.
+      </Trans>
+    </div>
+  );
+
+  const updateAllButton = (
+    <UpdateAllButton
+      disabled={disableUpdateAllButton}
+      onUpdateAll={onUpdateAll}
+      updatablePluginsLength={updatablePlugins.length}
+    />
+  );
+
   return (
-    <Page navModel={navModel}>
+    <Page navModel={navModel} actions={updateAllButton} subTitle={subTitle} className={styles.pageContainer}>
       <Page.Contents>
-        <PluginPage>
+        <AdvisorRedirectNotice />
+        <div className={styles.searchContainer}>
           <HorizontalGroup wrap>
-            <SearchField value={query} onSearch={onSearch} />
+            <Field label={t('plugins.browse.label-search', 'Search')}>
+              <SearchField value={keyword} onSearch={onSearch} />
+            </Field>
             <HorizontalGroup wrap className={styles.actionBar}>
               {/* Filter by type */}
-              <div>
-                <RadioButtonGroup
+              <Field label={t('plugins.browse.label-type', 'Type')}>
+                <Select
+                  aria-label={t('plugins.browse.aria-label-plugin-type-filter', 'Plugin type filter')}
                   value={filterByType}
                   onChange={onFilterByTypeChange}
+                  width={18}
                   options={[
-                    { value: 'all', label: 'All' },
-                    { value: 'datasource', label: 'Data sources' },
-                    { value: 'panel', label: 'Panels' },
-                    { value: 'app', label: 'Applications' },
+                    { value: 'all', label: t('plugins.browse.label.all', 'All') },
+                    { value: 'datasource', label: t('plugins.browse.label.data-sources', 'Data sources') },
+                    { value: 'panel', label: t('plugins.browse.label.panels', 'Panels') },
+                    { value: 'app', label: t('plugins.browse.label.applications', 'Applications') },
                   ]}
                 />
-              </div>
+              </Field>
 
               {/* Filter by installed / all */}
               {remotePluginsAvailable ? (
-                <div>
+                <Field label={t('plugins.browse.label-state', 'State')}>
                   <RadioButtonGroup value={filterBy} onChange={onFilterByChange} options={filterByOptions} />
-                </div>
+                </Field>
               ) : (
                 <Tooltip
-                  content="This filter has been disabled because the Grafana server cannot access grafana.com"
+                  content={t(
+                    'plugins.browse.tooltip-filter-disabled',
+                    'This filter has been disabled because the Grafana server cannot access grafana.com'
+                  )}
                   placement="top"
                 >
                   <div>
-                    <RadioButtonGroup
-                      disabled={true}
-                      value={filterBy}
-                      onChange={onFilterByChange}
-                      options={filterByOptions}
-                    />
+                    <Field label={t('plugins.browse.label-state', 'State')}>
+                      <RadioButtonGroup
+                        disabled={true}
+                        value={filterBy}
+                        onChange={onFilterByChange}
+                        options={filterByOptions}
+                      />
+                    </Field>
                   </div>
                 </Tooltip>
               )}
-
-              {/* Sorting */}
-              <div>
-                <Select
-                  menuShouldPortal
-                  aria-label="Sort Plugins List"
-                  width={24}
-                  value={sortBy}
-                  onChange={onSortByChange}
-                  options={[
-                    { value: 'nameAsc', label: 'Sort by name (A-Z)' },
-                    { value: 'nameDesc', label: 'Sort by name (Z-A)' },
-                    { value: 'updated', label: 'Sort by updated date' },
-                    { value: 'published', label: 'Sort by published date' },
-                    { value: 'downloads', label: 'Sort by downloads' },
-                  ]}
-                />
-              </div>
-
-              {/* Display mode */}
-              <div>
-                <RadioButtonGroup<PluginListDisplayMode>
-                  className={styles.displayAs}
-                  value={displayMode}
-                  onChange={setDisplayMode}
-                  options={[
-                    {
-                      value: PluginListDisplayMode.Grid,
-                      icon: 'table',
-                      description: 'Display plugins in a grid layout',
-                    },
-                    { value: PluginListDisplayMode.List, icon: 'list-ul', description: 'Display plugins in list' },
-                  ]}
-                />
-              </div>
             </HorizontalGroup>
           </HorizontalGroup>
-          <div className={styles.listWrap}>
-            {isLoading ? (
-              <LoadingPlaceholder
-                className={css`
-                  margin-bottom: 0;
-                `}
-                text="Loading results"
-              />
-            ) : (
-              <PluginList plugins={plugins} displayMode={displayMode} />
-            )}
-          </div>
-        </PluginPage>
+        </div>
+        <div className={styles.listWrap}>
+          <PluginList plugins={plugins} isLoading={isLoading} />
+        </div>
+        <RoadmapLinks />
+        <UpdateAllModal
+          isOpen={showUpdateModal}
+          isLoading={areUpdatesLoading}
+          onDismiss={() => setShowUpdateModal(false)}
+          plugins={updatablePlugins}
+        />
       </Page.Contents>
     </Page>
   );
 }
 
 const getStyles = (theme: GrafanaTheme2) => ({
-  actionBar: css`
-    ${theme.breakpoints.up('xl')} {
-      margin-left: auto;
-    }
-  `,
-  listWrap: css`
-    margin-top: ${theme.spacing(2)};
-  `,
-  displayAs: css`
-    svg {
-      margin-right: 0;
-    }
-  `,
+  pageContainer: css({
+    height: '100vh',
+    overflow: 'hidden',
+  }),
+  searchContainer: css({
+    paddingTop: theme.spacing(0.5),
+    paddingBottom: theme.spacing(1),
+    borderBottom: `1px solid ${theme.colors.border.weak}`,
+    marginBottom: theme.spacing(3),
+  }),
+  listWrap: css({
+    height: 'calc(100vh - 350px)',
+    overflowY: 'auto',
+  }),
+  actionBar: css({
+    [theme.breakpoints.up('xl')]: {
+      marginLeft: 'auto',
+    },
+  }),
+  displayAs: css({
+    svg: {
+      marginRight: 0,
+    },
+  }),
 });
-
-// Because the component is used under multiple paths (/plugins and /admin/plugins) we need to get
-// the correct navModel from the store
-const getNavModelId = (routeName?: string) => {
-  if (routeName === PluginAdminRoutes.HomeAdmin || routeName === PluginAdminRoutes.BrowseAdmin) {
-    return 'admin-plugins';
-  }
-
-  return 'plugins';
-};

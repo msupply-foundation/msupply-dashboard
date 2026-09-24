@@ -1,5 +1,5 @@
-import React from 'react';
 import { render, screen } from '@testing-library/react';
+
 import { MetaInfoText, MetaItemProps } from './MetaInfoText';
 describe('MetaInfoText', () => {
   it('should render component and items', () => {

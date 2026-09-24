@@ -1,9 +1,23 @@
-import { DataQuery, DataSourceJsonData, TimeRange } from '@grafana/data';
+import { DataQueryRequest, DataSourceJsonData, TimeRange } from '@grafana/data';
+import { TemplateSrv } from '@grafana/runtime';
+import { DataQuery } from '@grafana/schema';
+
 import { GraphiteDatasource } from './datasource';
-import { TemplateSrv } from '../../../features/templating/template_srv';
+
+export enum GraphiteQueryType {
+  Default = 'Default',
+  Value = 'Value',
+  MetricName = 'Metric Name',
+}
 
 export interface GraphiteQuery extends DataQuery {
+  queryType?: string;
+  textEditor?: boolean;
   target?: string;
+  targetFull?: string;
+  tags?: string[];
+  fromAnnotations?: boolean;
+  isMetricTank?: boolean;
 }
 
 export interface GraphiteOptions extends DataSourceJsonData {
@@ -37,6 +51,11 @@ export interface MetricTankSeriesMeta {
 export interface MetricTankMeta {
   request: MetricTankRequestMeta;
   info: MetricTankSeriesMeta[];
+}
+
+export interface GraphiteParserError {
+  message: string;
+  pos: number;
 }
 
 export type GraphiteQueryImportConfiguration = {
@@ -80,3 +99,20 @@ export type GraphiteQueryEditorDependencies = {
   // schedule onChange/onRunQuery after the reducer actions finishes
   refresh: () => void;
 };
+
+export interface GraphiteQueryRequest extends DataQueryRequest {
+  format: string;
+}
+
+export interface GraphiteEventsRequest {
+  from: number;
+  until: number;
+  tags: string;
+}
+
+export interface GraphiteEvents {
+  when: number;
+  what: string;
+  tags: string[];
+  data: string;
+}

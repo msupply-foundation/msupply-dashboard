@@ -1,33 +1,59 @@
-import React, { useLayoutEffect, useRef } from 'react';
-import { TimeRange, AbsoluteTimeRange } from '@grafana/data';
+import { useLayoutEffect, useRef, useState } from 'react';
+import uPlot, { TypedArray, Scale } from 'uplot';
+
+import { AbsoluteTimeRange } from '@grafana/data';
+import { Trans } from '@grafana/i18n';
 import { UPlotConfigBuilder, Button } from '@grafana/ui';
-import uPlot from 'uplot';
 
 interface ThresholdControlsPluginProps {
   config: UPlotConfigBuilder;
-  range: TimeRange;
   onChangeTimeRange: (timeRange: AbsoluteTimeRange) => void;
 }
 
-export const OutsideRangePlugin: React.FC<ThresholdControlsPluginProps> = ({ config, range, onChangeTimeRange }) => {
+export const OutsideRangePlugin = ({ config, onChangeTimeRange }: ThresholdControlsPluginProps) => {
   const plotInstance = useRef<uPlot>();
+  const [timevalues, setTimeValues] = useState<number[] | TypedArray>([]);
+  const [timeRange, setTimeRange] = useState<Scale | undefined>();
 
   useLayoutEffect(() => {
     config.addHook('init', (u) => {
       plotInstance.current = u;
     });
+
+    config.addHook('setScale', (u) => {
+      setTimeValues(u.data?.[0] ?? []);
+      setTimeRange(u.scales['x'] ?? undefined);
+    });
   }, [config]);
 
-  const timevalues = plotInstance.current?.data?.[0];
-  if (!timevalues || !plotInstance.current || timevalues.length < 2 || !onChangeTimeRange) {
+  if (timevalues.length < 2 || !onChangeTimeRange) {
+    return null;
+  }
+
+  if (!timeRange || !timeRange.time || !timeRange.min || !timeRange.max!) {
     return null;
   }
 
   // Time values are always sorted for uPlot to work
-  const first = timevalues[0];
-  const last = timevalues[timevalues.length - 1];
-  const fromX = range.from.valueOf();
-  const toX = range.to.valueOf();
+  let i = 0,
+    j = timevalues.length - 1;
+
+  while (i <= j && timevalues[i] == null) {
+    i++;
+  }
+
+  while (j >= 0 && timevalues[j] == null) {
+    j--;
+  }
+
+  const first = timevalues[i];
+  const last = timevalues[j];
+  const fromX = timeRange.min;
+  const toX = timeRange.max;
+
+  if (first == null || last == null) {
+    return null;
+  }
 
   // (StartA <= EndB) and (EndA >= StartB)
   if (first <= toX && last >= fromX) {
@@ -45,9 +71,15 @@ export const OutsideRangePlugin: React.FC<ThresholdControlsPluginProps> = ({ con
       }}
     >
       <div>
-        <div>Data outside time range</div>
-        <Button onClick={(v) => onChangeTimeRange({ from: first, to: last })} variant="secondary">
-          Zoom to data
+        <div>
+          <Trans i18nKey="timeseries.outside-range-plugin.data-outside-time-range">Data outside time range</Trans>
+        </div>
+        <Button
+          onClick={(v) => onChangeTimeRange({ from: first, to: last })}
+          variant="secondary"
+          data-testid="time-series-zoom-to-data"
+        >
+          <Trans i18nKey="timeseries.outside-range-plugin.zoom-to-data">Zoom to data</Trans>
         </Button>
       </div>
     </div>

@@ -1,84 +1,99 @@
-import { GrafanaTheme2 } from '@grafana/data';
-import { Alert } from 'app/types/unified-alerting';
-import { css } from '@emotion/css';
-import React, { FC, useMemo } from 'react';
+import * as React from 'react';
+import { useMemo } from 'react';
+
+import { AlertLabels } from '@grafana/alerting/unstable';
+import { PluginExtensionPoints, dateTime } from '@grafana/data';
+import { t } from '@grafana/i18n';
+import { Alert, CombinedRule, PaginationProps } from 'app/types/unified-alerting';
+
 import { alertInstanceKey } from '../../utils/rules';
-import { AlertLabels } from '../AlertLabels';
+import { DynamicTable, DynamicTableColumnProps, DynamicTableItemProps } from '../DynamicTable';
+import { AlertInstanceExtensionPoint } from '../extensions/AlertInstanceExtensionPoint';
+
 import { AlertInstanceDetails } from './AlertInstanceDetails';
 import { AlertStateTag } from './AlertStateTag';
-import { DynamicTable, DynamicTableColumnProps, DynamicTableItemProps } from '../DynamicTable';
 
 interface Props {
+  rule?: CombinedRule;
   instances: Alert[];
+  pagination?: PaginationProps;
+  footerRow?: React.ReactNode;
 }
 
-type AlertTableColumnProps = DynamicTableColumnProps<Alert>;
-type AlertTableItemProps = DynamicTableItemProps<Alert>;
+interface RuleAndAlert {
+  rule?: CombinedRule;
+  alert: Alert;
+}
 
-export const AlertInstancesTable: FC<Props> = ({ instances }) => {
+type AlertTableColumnProps = DynamicTableColumnProps<RuleAndAlert>;
+type AlertTableItemProps = DynamicTableItemProps<RuleAndAlert>;
+
+export const AlertInstancesTable = ({ rule, instances, pagination, footerRow }: Props) => {
   const items = useMemo(
     (): AlertTableItemProps[] =>
       instances.map((instance) => ({
-        data: instance,
+        data: { rule, alert: instance },
         id: alertInstanceKey(instance),
       })),
-    [instances]
+    [instances, rule]
   );
+
+  const columns: AlertTableColumnProps[] = [
+    {
+      id: 'state',
+      label: t('alerting.alert-instances-table.state', 'State'),
+      // eslint-disable-next-line react/display-name
+      renderCell: ({
+        data: {
+          alert: { state },
+        },
+      }) => <AlertStateTag state={state} />,
+      size: '95px',
+    },
+    {
+      id: 'labels',
+      label: t('alerting.alert-instances-table.labels', 'Labels'),
+      // eslint-disable-next-line react/display-name
+      renderCell: ({
+        data: {
+          alert: { labels },
+        },
+      }) => <AlertLabels labels={labels} labelSets={instances.map((i) => i.labels)} displayCommonLabels size="sm" />,
+    },
+    {
+      id: 'created',
+      label: t('alerting.alert-instances-table.created', 'Created'),
+      // eslint-disable-next-line react/display-name
+      renderCell: ({
+        data: {
+          alert: { activeAt },
+        },
+      }) => <>{activeAt.startsWith('0001') ? '-' : dateTime(activeAt).format('YYYY-MM-DD HH:mm:ss')}</>,
+      size: '150px',
+    },
+    {
+      id: 'actions',
+      label: '',
+      renderCell: ({ data: { alert, rule } }) => (
+        <AlertInstanceExtensionPoint
+          rule={rule}
+          instance={alert}
+          extensionPointId={PluginExtensionPoints.AlertInstanceAction}
+          key="alert-instance-extension-point"
+        />
+      ),
+      size: '40px',
+    },
+  ];
 
   return (
     <DynamicTable
       cols={columns}
       isExpandable={true}
       items={items}
-      renderExpandedContent={({ data }) => <AlertInstanceDetails instance={data} />}
+      renderExpandedContent={({ data }) => <AlertInstanceDetails instance={data.alert} />}
+      pagination={pagination}
+      footerRow={footerRow}
     />
   );
 };
-
-export const getStyles = (theme: GrafanaTheme2) => ({
-  colExpand: css`
-    width: 36px;
-  `,
-  colState: css`
-    width: 110px;
-  `,
-  labelsCell: css`
-    padding-top: ${theme.spacing(0.5)} !important;
-    padding-bottom: ${theme.spacing(0.5)} !important;
-  `,
-  createdCell: css`
-    white-space: nowrap;
-  `,
-  table: css`
-    td {
-      vertical-align: top;
-      padding-top: ${theme.spacing(1)};
-      padding-bottom: ${theme.spacing(1)};
-    }
-  `,
-});
-
-const columns: AlertTableColumnProps[] = [
-  {
-    id: 'state',
-    label: 'State',
-    // eslint-disable-next-line react/display-name
-    renderCell: ({ data: { state } }) => <AlertStateTag state={state} />,
-    size: '80px',
-  },
-  {
-    id: 'labels',
-    label: 'Labels',
-    // eslint-disable-next-line react/display-name
-    renderCell: ({ data: { labels } }) => <AlertLabels labels={labels} />,
-  },
-  {
-    id: 'created',
-    label: 'Created',
-    // eslint-disable-next-line react/display-name
-    renderCell: ({ data: { activeAt } }) => (
-      <>{activeAt.startsWith('0001') ? '-' : activeAt.slice(0, 19).replace('T', ' ')}</>
-    ),
-    size: '150px',
-  },
-];

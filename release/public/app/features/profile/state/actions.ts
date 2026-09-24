@@ -1,7 +1,10 @@
 import { config } from '@grafana/runtime';
+import { ThunkResult } from 'app/types/store';
+import { UserOrg } from 'app/types/user';
 
+import { api } from '../api';
 import { ChangePasswordFields, ProfileUpdateFields } from '../types';
-import { ThunkResult, UserOrg } from '../../../types';
+
 import {
   initLoadOrgs,
   initLoadSessions,
@@ -13,7 +16,6 @@ import {
   userLoaded,
   userSessionRevoked,
 } from './reducers';
-import { api } from '../api';
 
 export function changePassword(payload: ChangePasswordFields): ThunkResult<void> {
   return async function (dispatch) {

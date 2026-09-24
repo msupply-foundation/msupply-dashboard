@@ -1,73 +1,112 @@
-import React from 'react';
-// @ts-ignore
-import Drop from 'tether-drop';
-import { GrafanaRouteComponentProps } from './types';
-import { locationSearchToObject, navigationLogger, reportPageview } from '@grafana/runtime';
-import { keybindingSrv } from '../services/keybindingSrv';
+import { Suspense, useEffect, useLayoutEffect } from 'react';
+import { Navigate, useLocation } from 'react-router-dom-v5-compat';
 
-export interface Props extends Omit<GrafanaRouteComponentProps, 'queryParams'> {}
+import { config, locationSearchToObject, navigationLogger, reportPageview } from '@grafana/runtime';
+import { ErrorBoundary } from '@grafana/ui';
+import { isFrontendService } from 'app/core/utils/isFrontendService';
 
-export class GrafanaRoute extends React.Component<Props> {
-  componentDidMount() {
-    this.updateBodyClassNames();
-    this.cleanupDOM();
-    // unbinds all and re-bind global keybindins
-    keybindingSrv.reset();
-    keybindingSrv.initGlobals();
+import { useGrafana } from '../context/GrafanaContext';
+import { contextSrv } from '../services/context_srv';
+
+import { GrafanaRouteError } from './GrafanaRouteError';
+import { GrafanaRouteLoading } from './GrafanaRouteLoading';
+import { GrafanaRouteComponentProps, RouteDescriptor } from './types';
+
+export interface Props extends Pick<GrafanaRouteComponentProps, 'route' | 'location'> {}
+
+export function GrafanaRoute(props: Props) {
+  const { chrome, keybindings } = useGrafana();
+
+  chrome.setMatchedRoute(props.route);
+
+  useLayoutEffect(() => {
+    keybindings.clearAndInitGlobalBindings(props.route);
+  }, [keybindings, props.route]);
+
+  useEffect(() => {
+    updateBodyClassNames(props.route);
+    cleanupDOM();
+    navigationLogger('GrafanaRoute', false, 'Mounted', props.route);
+
+    return () => {
+      navigationLogger('GrafanaRoute', false, 'Unmounted', props.route);
+      updateBodyClassNames(props.route, true);
+    };
+    // props.match instance change even though only query params changed so to make this effect only trigger on route mount we have to disable exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    cleanupDOM();
     reportPageview();
-    navigationLogger('GrafanaRoute', false, 'Mounted', this.props.match);
-  }
+    navigationLogger('GrafanaRoute', false, 'Updated', props);
+  });
 
-  componentDidUpdate(prevProps: Props) {
-    this.cleanupDOM();
-    reportPageview();
-    navigationLogger('GrafanaRoute', false, 'Updated', this.props, prevProps);
-  }
+  navigationLogger('GrafanaRoute', false, 'Rendered', props.route);
 
-  componentWillUnmount() {
-    this.updateBodyClassNames(true);
-    navigationLogger('GrafanaRoute', false, 'Unmounted', this.props.route);
-  }
+  return (
+    <ErrorBoundary boundaryName="grafana-route" dependencies={[props.route]}>
+      {({ error, errorInfo }) => {
+        if (error) {
+          return <GrafanaRouteError error={error} errorInfo={errorInfo} />;
+        }
 
-  getPageClasses() {
-    return this.props.route.pageClass ? this.props.route.pageClass.split(' ') : [];
-  }
+        return (
+          <Suspense fallback={<GrafanaRouteLoading />}>
+            <props.route.component {...props} queryParams={locationSearchToObject(props.location.search)} />
+          </Suspense>
+        );
+      }}
+    </ErrorBoundary>
+  );
+}
 
-  updateBodyClassNames(clear = false) {
-    for (const cls of this.getPageClasses()) {
-      if (clear) {
-        document.body.classList.remove(cls);
-      } else {
-        document.body.classList.add(cls);
-      }
+export function GrafanaRouteWrapper({ route }: Pick<Props, 'route'>) {
+  const location = useLocation();
+
+  // Perform login check in the frontend now
+  if (isFrontendService()) {
+    const routeRequiresSignin = !route.allowAnonymous && !config.anonymousEnabled;
+    if (routeRequiresSignin && !contextSrv.isSignedIn) {
+      contextSrv.setRedirectToUrl();
+
+      return <Navigate replace to="/login" />;
     }
   }
 
-  cleanupDOM() {
-    document.body.classList.remove('sidemenu-open--xs');
-
-    // cleanup tooltips
-    const tooltipById = document.getElementById('tooltip');
-    tooltipById?.parentElement?.removeChild(tooltipById);
-
-    const tooltipsByClass = document.querySelectorAll('.tooltip');
-    for (let i = 0; i < tooltipsByClass.length; i++) {
-      const tooltip = tooltipsByClass[i];
-      tooltip.parentElement?.removeChild(tooltip);
-    }
-
-    // cleanup tether-drop
-    for (const drop of Drop.drops) {
-      drop.destroy();
+  const roles = route.roles ? route.roles() : [];
+  if (roles?.length) {
+    if (!roles.some((r: string) => contextSrv.hasRole(r))) {
+      return <Navigate replace to="/" />;
     }
   }
 
-  render() {
-    const { props } = this;
-    navigationLogger('GrafanaRoute', false, 'Rendered', props.route);
+  return <GrafanaRoute route={route} location={location} />;
+}
+function getPageClasses(route: RouteDescriptor) {
+  return route.pageClass ? route.pageClass.split(' ') : [];
+}
 
-    const RouteComponent = props.route.component;
+function updateBodyClassNames(route: RouteDescriptor, clear = false) {
+  for (const cls of getPageClasses(route)) {
+    if (clear) {
+      document.body.classList.remove(cls);
+    } else {
+      document.body.classList.add(cls);
+    }
+  }
+}
 
-    return <RouteComponent {...props} queryParams={locationSearchToObject(props.location.search)} />;
+function cleanupDOM() {
+  document.body.classList.remove('sidemenu-open--xs');
+
+  // cleanup tooltips
+  const tooltipById = document.getElementById('tooltip');
+  tooltipById?.parentElement?.removeChild(tooltipById);
+
+  const tooltipsByClass = document.querySelectorAll('.tooltip');
+  for (let i = 0; i < tooltipsByClass.length; i++) {
+    const tooltip = tooltipsByClass[i];
+    tooltip.parentElement?.removeChild(tooltip);
   }
 }

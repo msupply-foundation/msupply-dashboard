@@ -1,7 +1,8 @@
-import { DashboardSearchHit } from 'app/features/search/types';
-import { LoadingState } from '@grafana/data';
-import { AnyAction } from 'redux';
 import { createAction } from '@reduxjs/toolkit';
+import { AnyAction } from 'redux';
+
+import { LoadingState } from '@grafana/data';
+import { DashboardQueryResult } from 'app/features/search/service/types';
 
 export interface DeleteLibraryPanelModalState {
   loadingState: LoadingState;
@@ -13,7 +14,7 @@ export const initialDeleteLibraryPanelModalState: DeleteLibraryPanelModalState =
   dashboardTitles: [],
 };
 
-export const searchCompleted = createAction<{ dashboards: DashboardSearchHit[] }>(
+export const searchCompleted = createAction<{ dashboards: DashboardQueryResult[] }>(
   'libraryPanels/delete/searchCompleted'
 );
 
@@ -24,7 +25,7 @@ export const deleteLibraryPanelModalReducer = (
   if (searchCompleted.match(action)) {
     return {
       ...state,
-      dashboardTitles: action.payload.dashboards.map((d) => d.title),
+      dashboardTitles: action.payload.dashboards.map((d) => d.name),
       loadingState: LoadingState.Done,
     };
   }

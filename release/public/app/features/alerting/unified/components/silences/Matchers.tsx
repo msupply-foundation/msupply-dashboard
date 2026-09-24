@@ -1,12 +1,13 @@
-import React, { FC } from 'react';
 import { css } from '@emotion/css';
+
 import { TagList, useStyles2 } from '@grafana/ui';
 import { Matcher } from 'app/plugins/datasource/alertmanager/types';
+
 import { matcherToOperator } from '../../utils/alertmanager';
 
 type MatchersProps = { matchers: Matcher[] };
 
-export const Matchers: FC<MatchersProps> = ({ matchers }) => {
+export const Matchers = ({ matchers }: MatchersProps) => {
   const styles = useStyles2(getStyles);
   return (
     <div>
@@ -19,7 +20,7 @@ export const Matchers: FC<MatchersProps> = ({ matchers }) => {
 };
 
 const getStyles = () => ({
-  tags: css`
-    justify-content: flex-start;
-  `,
+  tags: css({
+    justifyContent: 'flex-start',
+  }),
 });
