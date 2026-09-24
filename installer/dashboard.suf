@@ -3814,7 +3814,7 @@ INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "auth.gener
 
 result = Shell.Execute(SessionVar.Expand("%AppFolder%\\conf\\provisioning\\db-init.bat"), "open", SessionVar.Expand("%db_pass% %db_user% %db_port% %db_name%"), SessionVar.Expand("%AppFolder%"));
 
-result = Shell.Execute(SessionVar.Expand("%AppFolder%\\bin\\nssm.exe"), "open", SessionVar.Expand("install \"mSupply Dashboard\" \"%AppFolder%\\bin\\grafana-server.exe\""), "", SW_SHOWNORMAL, true);
+result = Shell.Execute(SessionVar.Expand("%AppFolder%\\bin\\nssm.exe"), "open", SessionVar.Expand("install \"mSupply Dashboard\" \"%AppFolder%\\bin\\grafana.exe\" server"), "", SW_SHOWNORMAL, true);
 result = Shell.Execute(SessionVar.Expand("%AppFolder%\\bin\\nssm.exe"), "open", SessionVar.Expand("set \"mSupply Dashboard\" Description \"Server which provides the mSupply Dashboard.\""));
 result = Shell.Execute(SessionVar.Expand("%AppFolder%\\bin\\nssm.exe"), "open", SessionVar.Expand("set \"mSupply Dashboard\" start SERVICE_DELAYED_START "));
 

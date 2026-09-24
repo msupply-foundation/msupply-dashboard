@@ -36,6 +36,10 @@ IF ERRORLEVEL 1 EXIT /B 1
 @ECHO.
 @ECHO ##### Locating Grafana executables #####
 
+REM Modern Grafana ships a single bin\grafana.exe; the old grafana-server.exe
+REM and grafana-cli.exe wrappers were removed (the equivalents are the
+REM `grafana server` and `grafana cli` subcommands). Copy whichever of the
+REM three the archive actually contains, and only require grafana.exe.
 SET GRAFANA_EXE=
 SET GRAFANA_SERVER_EXE=
 SET GRAFANA_CLI_EXE=
@@ -50,33 +54,38 @@ for /D %%d in ("%GRAFANA_TMP%\grafana-*") do (
     if exist "%%d\bin\grafana-cli.exe" (
         SET GRAFANA_CLI_EXE=%%d\bin\grafana-cli.exe
     )
-
-    REM Check if all three were found
-    if defined GRAFANA_EXE if defined GRAFANA_SERVER_EXE if defined GRAFANA_CLI_EXE (
-        goto :found_grafana
-    )
 )
 
-ECHO ERROR: One or more Grafana executables not found
-ECHO   grafana.exe        = %GRAFANA_EXE%
-ECHO   grafana-server.exe = %GRAFANA_SERVER_EXE%
-ECHO   grafana-cli.exe    = %GRAFANA_CLI_EXE%
-EXIT /B 1
+if not defined GRAFANA_EXE (
+    ECHO ERROR: grafana.exe not found in the downloaded archive
+    EXIT /B 1
+)
 
 :found_grafana
 ECHO Found Grafana executables:
 ECHO   %GRAFANA_EXE%
-ECHO   %GRAFANA_SERVER_EXE%
-ECHO   %GRAFANA_CLI_EXE%
+if defined GRAFANA_SERVER_EXE ECHO   %GRAFANA_SERVER_EXE%
+if defined GRAFANA_CLI_EXE ECHO   %GRAFANA_CLI_EXE%
 
 REM Ensure destination exists
 IF NOT EXIST "%WORKSPACE%\release\bin" (
     mkdir "%WORKSPACE%\release\bin"
 )
 
-copy /Y "%GRAFANA_EXE%"        "%WORKSPACE%\release\bin\"
-copy /Y "%GRAFANA_SERVER_EXE%" "%WORKSPACE%\release\bin\"
-copy /Y "%GRAFANA_CLI_EXE%"    "%WORKSPACE%\release\bin\"
+copy /Y "%GRAFANA_EXE%" "%WORKSPACE%\release\bin\"
+if defined GRAFANA_SERVER_EXE copy /Y "%GRAFANA_SERVER_EXE%" "%WORKSPACE%\release\bin\"
+if defined GRAFANA_CLI_EXE    copy /Y "%GRAFANA_CLI_EXE%"    "%WORKSPACE%\release\bin\"
+
+REM Drop stale wrappers from older Grafana builds so the shipped bin\ matches
+REM the version we just downloaded. The service runs `grafana.exe server`.
+if not defined GRAFANA_SERVER_EXE (
+    if exist "%WORKSPACE%\release\bin\grafana-server.exe" del /q "%WORKSPACE%\release\bin\grafana-server.exe"
+    if exist "%WORKSPACE%\release\bin\grafana-server.exe.md5" del /q "%WORKSPACE%\release\bin\grafana-server.exe.md5"
+)
+if not defined GRAFANA_CLI_EXE (
+    if exist "%WORKSPACE%\release\bin\grafana-cli.exe" del /q "%WORKSPACE%\release\bin\grafana-cli.exe"
+    if exist "%WORKSPACE%\release\bin\grafana-cli.exe.md5" del /q "%WORKSPACE%\release\bin\grafana-cli.exe.md5"
+)
 
 ECHO Grafana executables copied successfully
 
