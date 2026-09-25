@@ -97,7 +97,16 @@ jobs:
       # shipped installers. Modern Grafana archives contain only bin\grafana.exe
       # (`server` and `cli` are subcommands), so stale grafana-server.exe /
       # grafana-cli.exe wrappers are removed to match the downloaded version.
-      - name: Download Grafana into release/bin
+      # Replace every Grafana-owned part of release/ from the archive named in
+      # installer/grafana.url. Only refreshing bin/ would ship a new backend
+      # behind the committed (older) frontend in public/, which is how the
+      # installer ended up serving a 12.3.1 UI on a 13.2.2 server.
+      #
+      # Kept from the repo, because they are ours and not Grafana's:
+      #   conf/custom.ini, conf/provisioning/  (site configuration)
+      #   data/                                (grafana.db, msupply.db, panels)
+      #   scripts/, bin/nssm.exe               (service tooling)
+      - name: Install Grafana into release/
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -116,25 +125,42 @@ jobs:
           tar -xzf $archive -C $tmp
           if ($LASTEXITCODE -ne 0) { throw "extract failed with exit code $LASTEXITCODE" }
 
-          $binDir = Get-ChildItem -Path $tmp -Directory -Filter 'grafana-*' |
-            ForEach-Object { Join-Path $_.FullName 'bin' } |
-            Where-Object { Test-Path (Join-Path $_ 'grafana.exe') } |
+          $root = Get-ChildItem -Path $tmp -Directory -Filter 'grafana-*' |
+            Where-Object { Test-Path (Join-Path $_.FullName 'bin/grafana.exe') } |
             Select-Object -First 1
-          if (-not $binDir) { throw "grafana.exe not found in the downloaded archive" }
+          if (-not $root) { throw "grafana.exe not found in the downloaded archive" }
+          Write-Host "Grafana archive root: $($root.Name)"
 
-          New-Item -ItemType Directory -Force -Path release/bin | Out-Null
-          foreach ($name in 'grafana.exe', 'grafana-server.exe', 'grafana-cli.exe') {
-            $src = Join-Path $binDir $name
-            if (Test-Path $src) {
-              Copy-Item $src release/bin/ -Force
-              Write-Host "copied $name"
-            } else {
-              # Drop the stale wrapper (and its md5) so bin\ matches this version.
-              Remove-Item "release/bin/$name", "release/bin/$name.md5" -Force -ErrorAction SilentlyContinue
-              Write-Host "removed stale $name"
-            }
+          # public/ and tools/ are wholly Grafana's: replace them outright so
+          # files removed upstream do not linger from the previous version.
+          foreach ($dir in 'public', 'tools') {
+            $src = Join-Path $root.FullName $dir
+            if (-not (Test-Path $src)) { throw "$dir missing from the archive" }
+            if (Test-Path "release/$dir") { Remove-Item -Recurse -Force "release/$dir" }
+            Copy-Item $src "release/$dir" -Recurse
+            Write-Host "replaced release/$dir"
           }
 
+          # bin/: take Grafana's executables but keep nssm.exe, which is ours.
+          New-Item -ItemType Directory -Force -Path release/bin | Out-Null
+          Get-ChildItem release/bin -File |
+            Where-Object { $_.Name -ne 'nssm.exe' } |
+            Remove-Item -Force
+          Copy-Item (Join-Path $root.FullName 'bin/*') release/bin/ -Recurse -Force
+
+          # conf/: Grafana's reference files only. custom.ini and provisioning/
+          # are site configuration and must survive.
+          foreach ($name in 'defaults.ini', 'sample.ini', 'ldap.toml', 'ldap_multiple.toml') {
+            $src = Join-Path $root.FullName "conf/$name"
+            if (Test-Path $src) { Copy-Item $src "release/conf/$name" -Force }
+          }
+
+          foreach ($name in 'LICENSE', 'NOTICE.md', 'README.md') {
+            $src = Join-Path $root.FullName $name
+            if (Test-Path $src) { Copy-Item $src "release/$name" -Force }
+          }
+
+          Write-Host "--- release/bin ---"
           Get-ChildItem release/bin | Select-Object Name, Length | Format-Table
 
       # dashboard-upgrade.suf packages release\data\plugins, so that folder has
