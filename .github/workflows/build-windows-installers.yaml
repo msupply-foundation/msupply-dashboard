@@ -137,6 +137,47 @@ jobs:
 
           Get-ChildItem release/bin | Select-Object Name, Length | Format-Table
 
+      # dashboard-upgrade.suf packages release\data\plugins, so that folder has
+      # to exist or Setup Factory aborts (exit code 2051). Build the custom
+      # panels here rather than committing their dist output: the installer then
+      # always ships plugins built against the Grafana in installer/grafana.url,
+      # and ~117MB of build artefacts stays out of git. Each plugin is copied to
+      # a folder named after its plugin.json id, which is what Grafana expects.
+      - name: Build custom plugins into release/data/plugins
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $plugins = 'msupplyfoundation-table', 'msupplyfoundation-msupply-regionmap'
+
+          $target = 'release/data/plugins'
+          New-Item -ItemType Directory -Force -Path $target | Out-Null
+
+          foreach ($plugin in $plugins) {
+            $dir = "custom-plugins/$plugin"
+            Write-Host "::group::building $plugin"
+            Push-Location $dir
+            try {
+              npm ci
+              if ($LASTEXITCODE -ne 0) { throw "npm ci failed for $plugin" }
+              npm run build
+              if ($LASTEXITCODE -ne 0) { throw "npm run build failed for $plugin" }
+            } finally {
+              Pop-Location
+            }
+            Write-Host "::endgroup::"
+
+            $manifest = Get-Content "$dir/dist/plugin.json" -Raw | ConvertFrom-Json
+            $id = $manifest.id
+            if (-not $id) { throw "$plugin has no id in dist/plugin.json" }
+
+            $dest = Join-Path $target $id
+            if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+            Copy-Item "$dir/dist" $dest -Recurse
+            Write-Host "installed $plugin as $id"
+          }
+
+          Get-ChildItem $target | Select-Object Name | Format-Table
+
       - name: Mirror release to short path
         shell: pwsh
         run: |
