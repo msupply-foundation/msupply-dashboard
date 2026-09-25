@@ -96,6 +96,20 @@ ECHO Grafana executables copied successfully
 rmdir /s /q "%GRAFANA_TMP%"
 ECHO Grafana ready
 
+@ECHO.
+@ECHO ##### Building custom plugins #####
+REM dashboard-upgrade.suf packages release\data\plugins, so the folder must
+REM exist or Setup Factory aborts with exit code 2051. Build the panels from
+REM source so they match the Grafana downloaded above.
+if not exist "%WORKSPACE%\release\data\plugins" mkdir "%WORKSPACE%\release\data\plugins"
+
+REM Called as a subroutine per plugin: a for-loop body would need delayed
+REM expansion to read PLUGIN_ID back after setting it.
+call :build_plugin msupplyfoundation-table
+if errorlevel 1 exit /b 1
+call :build_plugin msupplyfoundation-msupply-regionmap
+if errorlevel 1 exit /b 1
+
 REM required as setup factory crashes when a file path is too long
 REM and the jenkins workspace is a very long path
 @ECHO ##### Copying build files #####
@@ -104,4 +118,31 @@ REM and the jenkins workspace is a very long path
 @ECHO.
 @ECHO ##### Creating installers #####
 start "" /wait "C:\Program Files (x86)\Setup Factory 9\SUFDesign.exe" /BUILD /LOG:installer\setup-factory.log "%WORKSPACE%\installer\dashboard.suf"
+@if errorlevel 1 exit /b %errorlevel%
 start "" /wait "C:\Program Files (x86)\Setup Factory 9\SUFDesign.exe" /BUILD /LOG:installer\setup-factory.log "%WORKSPACE%\installer\dashboard-upgrade.suf"
+@if errorlevel 1 exit /b %errorlevel%
+
+goto :eof
+
+REM ---------------------------------------------------------------------------
+REM build_plugin <folder under custom-plugins>
+REM Builds the panel and copies dist\ to release\data\plugins\<plugin.json id>.
+REM ---------------------------------------------------------------------------
+:build_plugin
+ECHO --- building %~1
+pushd "%WORKSPACE%\custom-plugins\%~1"
+call npm ci
+if errorlevel 1 ( popd & ECHO ERROR: npm ci failed for %~1 & exit /b 1 )
+call npm run build
+if errorlevel 1 ( popd & ECHO ERROR: npm run build failed for %~1 & exit /b 1 )
+popd
+
+set PLUGIN_ID=
+for /f "usebackq delims=" %%i in (`node -p "require('%WORKSPACE%/custom-plugins/%~1/dist/plugin.json').id"`) do set PLUGIN_ID=%%i
+if not defined PLUGIN_ID ( ECHO ERROR: could not read plugin id for %~1 & exit /b 1 )
+
+if exist "%WORKSPACE%\release\data\plugins\%PLUGIN_ID%" rmdir /s /q "%WORKSPACE%\release\data\plugins\%PLUGIN_ID%"
+xcopy "%WORKSPACE%\custom-plugins\%~1\dist" "%WORKSPACE%\release\data\plugins\%PLUGIN_ID%\" /e /c /i /y >nul
+if errorlevel 1 ( ECHO ERROR: copy failed for %~1 & exit /b 1 )
+ECHO installed %~1 as %PLUGIN_ID%
+goto :eof

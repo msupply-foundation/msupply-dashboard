@@ -2,3 +2,8 @@
 installer/.DS_Store
 node_modules
 custom-plugins/*/dist
+
+# Built by the installer build (see .github/workflows/build-windows-installers.yaml)
+# from custom-plugins/*/dist -- not committed, so the shipped panels always match
+# the Grafana in installer/grafana.url.
+release/data/plugins
