@@ -57,18 +57,27 @@ jobs:
       # versionTag (e.g. v8.6.0) names the installer exes and is stamped into
       # the .suf ProductVer by adjustSUFs.js — replaces the version.txt the
       # Jenkins job used to write.
-      # On a tag push the tag itself is the version. On a develop build there is
-      # no tag at HEAD, so `git describe` returns <last-tag>-<n>-g<sha>; keep
-      # that (it is unique and traceable) but prefix it so a dev installer is
-      # never mistaken for a release build.
+      #
+      # A tag push uses the tag. A branch build has no tag at HEAD, and
+      # `git describe` would report the nearest *older* tag (e.g. a v12.3.1.*
+      # tag long after the bundled Grafana moved to 13.2.2), which makes the
+      # artifact look like it shipped the wrong Grafana. So name branch builds
+      # after the Grafana version actually being installed, plus the short sha
+      # for traceability.
       - name: Record version
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           if ($env:GITHUB_REF_TYPE -eq 'tag') {
             $versionTag = $env:GITHUB_REF_NAME
           } else {
-            $describe = (git describe --tags --always).Trim()
-            $versionTag = "dev-$env:GITHUB_REF_NAME-$describe"
+            $url = (Get-Content installer/grafana.url -Raw).Trim()
+            if ($url -notmatch 'grafana-(\d+\.\d+\.\d+)') {
+              throw "could not parse a Grafana version from installer/grafana.url: $url"
+            }
+            $grafanaVersion = $Matches[1]
+            $sha = $env:GITHUB_SHA.Substring(0, 7)
+            $versionTag = "dev-$env:GITHUB_REF_NAME-grafana$grafanaVersion-$sha"
           }
           Write-Host "versionTag=$versionTag"
           "versionTag=$versionTag" >> $env:GITHUB_ENV
