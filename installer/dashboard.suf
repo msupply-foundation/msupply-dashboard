@@ -3816,6 +3816,9 @@ result = Shell.Execute(SessionVar.Expand("%AppFolder%\\conf\\provisioning\\db-in
 
 result = Shell.Execute(SessionVar.Expand("%AppFolder%\\bin\\nssm.exe"), "open", SessionVar.Expand("install \"mSupply Dashboard\" \"%AppFolder%\\bin\\grafana.exe\" server"), "", SW_SHOWNORMAL, true);
 result = Shell.Execute(SessionVar.Expand("%AppFolder%\\bin\\nssm.exe"), "open", SessionVar.Expand("set \"mSupply Dashboard\" Description \"Server which provides the mSupply Dashboard.\""));
+-- grafana.exe resolves conf/ and public/ relative to its working directory,
+-- which for a service defaults to C:\\Windows\\System32.
+result = Shell.Execute(SessionVar.Expand("%AppFolder%\\bin\\nssm.exe"), "open", SessionVar.Expand("set \"mSupply Dashboard\" AppDirectory \"%AppFolder%\""));
 result = Shell.Execute(SessionVar.Expand("%AppFolder%\\bin\\nssm.exe"), "open", SessionVar.Expand("set \"mSupply Dashboard\" start SERVICE_DELAYED_START "));
 
 Service.Start("mSupply Dashboard", "grafana", nil);
