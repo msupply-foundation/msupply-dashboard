@@ -6,7 +6,25 @@ set GRAFANA_DB=C:\Program Files\mSupply Dashboard\data\grafana.db
 set BACKUP_DIR=C:\Program Files\mSupply Dashboard\data
 set USER_DIR=C:\Program Files\mSupply Dashboard\data\temp
 set LOGDIR=%~dp0
-set TIMESTAMP=%DATE:~10,4%%DATE:~4,2%%DATE:~7,2%_%TIME:~0,2%%TIME:~3,2%%TIME:~6,2%
+
+:: Build the timestamp via WMIC, which always returns yyyymmddHHMMSS regardless
+:: of the machine's locale. Slicing %DATE% assumed a US mm/dd/yyyy format and on
+:: a dd/MM/yyyy machine produced a name containing "/", which made every path
+:: built from it invalid ("The system cannot find the path specified").
+for /f "skip=1 delims=" %%i in ('wmic os get localdatetime 2^>nul') do (
+    if not defined WMIC_DT set WMIC_DT=%%i
+)
+set TIMESTAMP=%WMIC_DT:~0,8%_%WMIC_DT:~8,6%
+
+:: Fall back to PowerShell if WMIC is unavailable (removed in newer Windows).
+if "%TIMESTAMP%"=="_" set TIMESTAMP=
+if not defined TIMESTAMP (
+    for /f "delims=" %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set TIMESTAMP=%%i
+)
+if not defined TIMESTAMP (
+    echo ERROR: could not determine a timestamp for the log file name
+    exit /b 1
+)
 set TIMESTAMP=%TIMESTAMP: =0%
 
 :: ---- Default postgres values ----
