@@ -240,6 +240,43 @@ del /q "%DS_SQL%" "%DS_OUT%" 2>nul
 if not defined DS_LEGACY set DS_LEGACY=unknown
 echo Datasources still using the legacy 'postgres' type: %DS_LEGACY%
 
+echo.
+echo ==========================================
+echo Checking the default datasource ...
+echo ==========================================
+:: is_default has no unique constraint, so an org can end up with several
+:: datasources flagged default (Grafana then picks one arbitrarily) or none at
+:: all. Either way the UI reports no default and refuses to set one. Leave the
+:: existing choice alone where there is exactly one; otherwise keep the
+:: lowest-id flagged datasource -- the oldest, i.e. the original default -- and
+:: clear the rest. No datasource is added or removed.
+set DS_SQL=%USER_DIR%\datasource-default.sql
+del /q "%DS_SQL%" 2>nul
+>  "%DS_SQL%" echo UPDATE data_source SET is_default=0
+>> "%DS_SQL%" echo WHERE is_default=1
+>> "%DS_SQL%" echo   AND id NOT IN ^(SELECT MIN^(id^) FROM data_source WHERE is_default=1 GROUP BY org_id^);
+>> "%DS_SQL%" echo UPDATE data_source SET is_default=1
+>> "%DS_SQL%" echo WHERE id IN ^(
+>> "%DS_SQL%" echo   SELECT MIN^(id^) FROM data_source
+>> "%DS_SQL%" echo   WHERE org_id NOT IN ^(SELECT org_id FROM data_source WHERE is_default=1^)
+>> "%DS_SQL%" echo   GROUP BY org_id
+>> "%DS_SQL%" echo ^);
+
+"%SQLITE%" "%GRAFANA_DB%" < "%DS_SQL%" >> "%LOGDIR%sqlite_update.log" 2>&1
+if errorlevel 1 (
+    echo ERROR: could not check the default datasource. Check sqlite_update.log
+    del /q "%DS_SQL%" 2>nul
+    exit /b 1
+)
+
+del /q "%DS_SQL%" 2>nul
+set DS_OUT=%USER_DIR%\ds-default.txt
+> "%DS_SQL%" echo SELECT name FROM data_source WHERE is_default=1 ORDER BY org_id, id;
+"%SQLITE%" "%GRAFANA_DB%" < "%DS_SQL%" > "%DS_OUT%" 2>&1
+
+for /f "usebackq delims=" %%i in ("%DS_OUT%") do echo Default datasource: %%i
+del /q "%DS_SQL%" "%DS_OUT%" 2>nul
+
 :: Report the outcome rather than assuming success. Any OAuth user still
 :: missing an auth_id cannot log in on Grafana 13, so surface the count.
 echo.
