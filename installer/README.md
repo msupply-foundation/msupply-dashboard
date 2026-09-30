@@ -1,3 +1,7 @@
+> **Installing or upgrading a customer server?** See
+> **[INSTALL-13.2.md](INSTALL-13.2.md)**. This file is about *building* the
+> installer, not running it.
+
 ## Building Installer
 
 The installer is using Setup Factory, with the .suf file in this project.
