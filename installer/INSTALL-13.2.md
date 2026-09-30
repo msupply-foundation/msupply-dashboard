@@ -27,28 +27,34 @@ the customer's real one first and puts it back afterwards.
 
 **Take a backup. This is the whole job — everything else can be redone.**
 
-```cmd
-net stop "mSupply Dashboard"
+**a. Stop the dashboard**
 
-copy "C:\Program Files\mSupply Dashboard\data\grafana.db" "%USERPROFILE%\grafana.db.backup"
-copy "C:\Program Files\mSupply Dashboard\conf\custom.ini" "%USERPROFILE%\custom.ini.backup"
-```
+1. Press `Windows` + `R`, type `services.msc`, press Enter
+2. Find **mSupply Dashboard** in the list
+3. Right-click it → **Stop**
 
-These two files **are** the customer's dashboard:
+Leave the Services window open — you will need it again later.
 
-- `grafana.db` — every dashboard, user and saved setting
-- `custom.ini` — the site's web address and mSupply login settings
+> If there is no **mSupply Dashboard** in the list, this is a **new server** —
+> skip to section 4.
 
-Check both copies exist before going any further:
+**b. Back up the old dashboard**
 
-```cmd
-dir "%USERPROFILE%\grafana.db.backup" "%USERPROFILE%\custom.ini.backup"
-```
+Right-click the `C:\Program Files\mSupply Dashboard` folder →
+**Send to** → **Compressed (zipped) folder**, and move that zip somewhere safe.
 
-If `net stop` said the service does not exist, this is a **new server** — skip
-to section 4.
+Then copy these two files into a separate folder on the Desktop, because you
+will need to put them back after installing:
 
-Also note down:
+| File | Found in | What it holds |
+| --- | --- | --- |
+| `grafana.db` | the `data` folder | every dashboard, user and saved setting |
+| `custom.ini` | the `conf` folder | the web address and mSupply login settings |
+
+Check both files really are in that folder before going any further. If
+anything goes wrong later, these are the only way back.
+
+**c. Note these down**
 
 - The web address users visit, e.g. `https://customer.msupply.org:3000`
 - The PostgreSQL password (ask whoever set the server up)
@@ -74,32 +80,36 @@ Follow these in order. The order matters.
    is running on an empty database at this point, which is why the next step
    stops it again.
 
-3. **Stop the dashboard, then put the customer's data back**
+3. **Stop the dashboard again**
 
-   ```cmd
-   net stop "mSupply Dashboard"
+   In the Services window: right-click **mSupply Dashboard** → **Stop**.
 
-   copy /Y "%USERPROFILE%\grafana.db.backup" "C:\Program Files\mSupply Dashboard\data\grafana.db"
-   copy /Y "%USERPROFILE%\custom.ini.backup" "C:\Program Files\mSupply Dashboard\conf\custom.ini"
-   ```
-
-   > The service **must** be stopped first. Copying over the database while the
+   > Do this **before** the next step. Replacing the database while the
    > dashboard is running will damage it.
 
-4. **Start the dashboard**
+4. **Put the customer's two files back**
 
-   ```cmd
-   net start "mSupply Dashboard"
-   ```
+   Copy them from your Desktop folder into the new installation, replacing the
+   ones the installer put there:
+
+   - `grafana.db` → into `C:\Program Files\mSupply Dashboard\data`
+   - `custom.ini` → into `C:\Program Files\mSupply Dashboard\conf`
+
+   Windows asks what to do about the existing files — choose **Replace the
+   files in the destination**.
+
+5. **Start the dashboard**
+
+   In the Services window: right-click **mSupply Dashboard** → **Start**.
 
    This first start is slow — up to several minutes — because the dashboard is
-   bringing the customer's old database up to date. **Do not interrupt it.**
-   If it does not start, see *Troubleshooting*.
+   bringing the customer's old database up to date. **Wait for it.** Do not
+   stop it or restart the server. If it will not start, see *Troubleshooting*.
 
-5. **Fix the user logins** — section 5. **Required.** Without it, customers
+6. **Fix the user logins** — section 5. **Required.** Without it, customers
    cannot log in with their mSupply username and password.
 
-6. **Check everything works** — section 6.
+7. **Check everything works** — section 6.
 
 ---
 
@@ -135,10 +145,7 @@ Follow these in order. The order matters.
 
 4. **Restart so the settings apply**
 
-   ```cmd
-   net stop "mSupply Dashboard"
-   net start "mSupply Dashboard"
-   ```
+   In `services.msc`: right-click **mSupply Dashboard** → **Restart**.
 
 5. **Section 5 is not needed** — a new server has no existing users to fix.
 
@@ -152,28 +159,42 @@ Follow these in order. The order matters.
 versions matched on email address. Existing users have no ID stored yet, so
 until this runs they **cannot log in**.
 
-Run it **after** the dashboard has started successfully — it reads the
+Do this **after** the dashboard has started successfully — it reads the
 updated database.
 
-```cmd
+This is the one step with no window to click through; it is a script you have
+to run.
+
+**1. Open a Command Prompt as administrator**
+
+Click Start, type `cmd`, then right-click **Command Prompt** → **Run as
+administrator**.
+
+**2. Type these two lines**, pressing Enter after each:
+
+```
 cd /d "C:\Program Files\mSupply Dashboard\conf\provisioning"
+```
+
+```
 grafanadb-update.bat <postgres-password> postgres 5432 dashboard localhost <postgres-version>
 ```
 
-Real example — PostgreSQL 17, password `secret123`:
+Put in the password and version you noted in section 2c. For PostgreSQL 17
+with the password `secret123`, the second line would be:
 
-```cmd
+```
 grafanadb-update.bat secret123 postgres 5432 dashboard localhost 17
 ```
 
-> The **password comes first**, then the username. Easy to reverse by mistake.
-> The version is the folder name under `C:\Program Files\PostgreSQL`.
+> The **password comes first**, then the word `postgres` (the username). It is
+> easy to type these the wrong way round.
 
-The script prints nothing on screen — it writes a log:
+**3. Read the result**
 
-```cmd
-type migration_*.log
-```
+The script shows nothing on screen — it writes a log file. In File Explorer,
+open `C:\Program Files\mSupply Dashboard\conf\provisioning` and open the
+newest `migration_....log` file in Notepad.
 
 Scroll to the **Result** section at the bottom:
 
@@ -194,11 +215,9 @@ Safe to run more than once. It backs up the database each time.
 
 Work down the list. Stop and investigate at the first failure.
 
-**1. The service is running**
-```cmd
-sc query "mSupply Dashboard"
-```
-Look for `STATE : 4 RUNNING`.
+**1. The dashboard service is running**
+
+In `services.msc`, **mSupply Dashboard** should show **Running**.
 
 **2. The dashboard answers** — open the customer's web address. You should see
 the login page.
@@ -219,10 +238,11 @@ stop and redo it.
 **5. Dashboards show data** — open two or three. Panels should draw charts,
 not red error boxes.
 
-**6. No login or data errors in the log**
-```cmd
-findstr /i "error" "C:\Program Files\mSupply Dashboard\data\log\grafana.log"
-```
+**6. Check the log for login and data errors**
+
+Open `C:\Program Files\mSupply Dashboard\data\log\grafana.log` in Notepad and
+press `Ctrl` + `F` to search for `error`.
+
 Errors about missing `provisioning\plugins` and `provisioning\alerting`
 folders are normal and harmless. Anything mentioning **login**, **oauth** or
 **datasource** is worth looking into.
@@ -231,54 +251,71 @@ folders are normal and harmless. Anything mentioning **login**, **oauth** or
 
 ## 7. Troubleshooting
 
-### The service will not start
+### The dashboard will not start
 
-Run the dashboard by hand to see the real reason — the Services window hides
-it:
+The Services window hides the real reason. To see it, open a Command Prompt as
+administrator (Start → type `cmd` → right-click **Command Prompt** → **Run as
+administrator**) and type these two lines:
 
-```cmd
+```
 cd /d "C:\Program Files\mSupply Dashboard"
+```
+
+```
 bin\grafana.exe server
 ```
 
-The error appears on screen. Press `Ctrl+C` to stop, fix it, then start the
-service normally.
+The error appears on screen. Press `Ctrl` + `C` to stop it, fix the cause,
+then start the service from `services.msc` as usual.
 
 ### Windows says "the service did not return an error"
 
-The service is pointing at the wrong program. Re-register it:
+The service is pointing at the wrong program. In a Command Prompt opened as
+administrator, type these lines one at a time:
 
-```cmd
+```
 cd /d "C:\Program Files\mSupply Dashboard\bin"
-nssm remove "mSupply Dashboard" confirm
-nssm install "mSupply Dashboard" "C:\Program Files\mSupply Dashboard\bin\grafana.exe" server
-nssm set "mSupply Dashboard" AppDirectory "C:\Program Files\mSupply Dashboard"
-nssm set "mSupply Dashboard" start SERVICE_DELAYED_START
-net start "mSupply Dashboard"
 ```
 
-If `nssm install` reports *"marked for deletion"*, close the **Services**
-window and Task Manager, then try again. If it still refuses, restart the
+```
+nssm remove "mSupply Dashboard" confirm
+```
+
+```
+nssm install "mSupply Dashboard" "C:\Program Files\mSupply Dashboard\bin\grafana.exe" server
+```
+
+```
+nssm set "mSupply Dashboard" AppDirectory "C:\Program Files\mSupply Dashboard"
+```
+
+```
+nssm set "mSupply Dashboard" start SERVICE_DELAYED_START
+```
+
+Then start **mSupply Dashboard** from `services.msc`.
+
+If `nssm install` reports *"marked for deletion"*, close the Services window
+and Task Manager, then run that line again. If it still refuses, restart the
 server.
 
 ### Users cannot log in
 
-Section 5 has not run, or did not match everyone. Check how many are affected:
+Section 5 has not been run, or did not match everyone. Open the newest
+`migration_....log` in
+`C:\Program Files\mSupply Dashboard\conf\provisioning` and look at the
+**Result** section at the bottom — it says how many people are still missing.
 
-```cmd
-"C:\Program Files\mSupply Dashboard\bin\sqlite3.exe" "C:\Program Files\mSupply Dashboard\data\grafana.db" "SELECT COUNT(*) FROM user_auth WHERE auth_module='oauth_generic_oauth' AND (auth_id IS NULL OR auth_id='');"
-```
-
-`0` means logins should work. A higher number means those people were not
-found in mSupply — usually old test accounts, which is harmless. If real users
-are affected, check that mSupply and the dashboard hold the same email address
-for them.
+A number higher than 0 means those people were not found in mSupply. Usually
+they are old test accounts, which is harmless. If real users are affected,
+check that mSupply and the dashboard hold the same email address for them.
 
 ### Logins go to the wrong web address
 
-Check `root_url` and the three `auth_url` / `token_url` / `api_url` lines in
-`custom.ini`. If any say `localhost`, the wrong `custom.ini` was restored —
-put the customer's backup back (section 3, step 3).
+Open `C:\Program Files\mSupply Dashboard\conf\custom.ini` in Notepad and check
+`root_url` and the three `auth_url` / `token_url` / `api_url` lines. If any of
+them say `localhost`, the wrong `custom.ini` was put back — copy the
+customer's saved one over it again.
 
 ### A panel says the datasource is missing, or there is no default datasource
 
@@ -287,29 +324,28 @@ If a single panel is still wrong, set its connection by hand.
 
 ### The dashboards are empty after installing
 
-The database restore did not happen, or happened while the service was
-running. Redo section 3 steps 3 and 4, making sure the service is stopped
-before copying.
+The customer's `grafana.db` was not copied back, or was copied while the
+dashboard was running. Redo section 3 steps 3 to 5, making sure the service is
+stopped before you copy the file.
 
 ### An image or logo is missing from a dashboard
 
 Version 13 replaced the dashboard's built-in files, so a custom image added to
 the old installation may have gone. Copy it back into
-`C:\Program Files\mSupply Dashboard\public\img\`.
+`C:\Program Files\mSupply Dashboard\public\img`.
 
 ---
 
 ## 8. If you need to go back
 
-```cmd
-net stop "mSupply Dashboard"
-copy /Y "%USERPROFILE%\grafana.db.backup" "C:\Program Files\mSupply Dashboard\data\grafana.db"
-copy /Y "%USERPROFILE%\custom.ini.backup" "C:\Program Files\mSupply Dashboard\conf\custom.ini"
-net start "mSupply Dashboard"
-```
+1. Stop **mSupply Dashboard** in `services.msc`
+2. Copy `grafana.db` and `custom.ini` from your Desktop folder back into the
+   `data` and `conf` folders, replacing what is there
+3. Start **mSupply Dashboard** again
 
 Note: **once version 13 has started on a database, an older version cannot use
-it again.** To return to the old version you must reinstall that version *and*
-restore the backup.
+it again.** To go back to the old version you must reinstall that version
+*and* copy the saved files back — that is what the zip from section 2b is for.
 
-Keep both backup files until the customer confirms everything works.
+Keep the zip and the two saved files until the customer confirms everything
+works.
