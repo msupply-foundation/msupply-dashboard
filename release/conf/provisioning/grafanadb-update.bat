@@ -110,7 +110,23 @@ if not exist "%USER_DIR%" (
 )
 
 SET USER_CSV=%USER_DIR%\users.csv
-"%SQLITE%" "%GRAFANA_DB%" -header -csv "SELECT u.id AS user_id, u.name, u.email FROM user u JOIN user_auth ua ON u.id = ua.user_id WHERE u.is_disabled = 0 AND ua.auth_module='oauth_generic_oauth';" > "%USER_CSV%"
+
+:: Write the CSV with sqlite3's .once instead of redirecting with ">".
+:: sqlite3 already ends lines with CRLF on Windows and cmd's redirection turns
+:: the LF into CRLF again, producing CR CR LF. psql's \copy then reads the
+:: extra CR as an empty second line and fails with
+:: 'missing data for column "name"'.
+(
+    echo .mode csv
+    echo .headers on
+    echo .once "%USER_CSV:\=\\%"
+    echo SELECT u.id AS user_id, u.name, u.email FROM user u JOIN user_auth ua ON u.id = ua.user_id WHERE u.is_disabled = 0 AND ua.auth_module='oauth_generic_oauth';
+) | "%SQLITE%" "%GRAFANA_DB%"
+
+if not exist "%USER_CSV%" (
+    echo ERROR: sqlite3 did not produce %USER_CSV%
+    exit /b 1
+)
 
 for /f "usebackq delims=" %%A in ("%USER_CSV%") do (
     set /a LINE_COUNT+=1
