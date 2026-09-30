@@ -146,7 +146,8 @@ if %LINE_COUNT% LEQ 1 (
     echo Only header found in %USER_CSV%, nothing to do.
     exit /b 0
 )
-echo Exported %LINE_COUNT% lines ^(including header^) to %USER_CSV%
+set /a OAUTH_EXPORTED=%LINE_COUNT%-1
+echo Exported %OAUTH_EXPORTED% OAuth users to %USER_CSV%
 
 echo.
 echo ==========================================
@@ -176,9 +177,20 @@ for /f "usebackq delims=" %%A in ("%USER_SQL%") do (
 )
 
 if %LINE_COUNT% LEQ 0 (
-    echo no users found in %USER_SQL%, nothing to do.
-    exit /b 0
+    echo ERROR: psql produced no UPDATE statements in %USER_SQL%.
+    echo.
+    echo        The CSV exported %OAUTH_EXPORTED% Grafana users, but none of them
+    echo        matched a row in the Postgres "%PGDB%" database, so no auth_id
+    echo        can be written and OAuth logins will keep failing. Check:
+    echo.
+    echo          * public.user in "%PGDB%" is populated with the 4D users
+    echo            psql -U %PGUSER% -d %PGDB% -c "SELECT COUNT(*) FROM public.user;"
+    echo          * grafanadb-update.sql joins with lower^(^) on both sides; a
+    echo            case-sensitive join matches nothing once Grafana 13 has
+    echo            lowercased user.email.
+    exit /b 1
 )
+echo Generated %LINE_COUNT% UPDATE statements.
 
 echo.
 echo ==========================================
@@ -198,8 +210,31 @@ echo.
 echo ==========================================
 echo Result
 echo ==========================================
-for /f "delims=" %%i in ('"%SQLITE%" "%GRAFANA_DB%" "SELECT COUNT(*) FROM user_auth WHERE auth_module='oauth_generic_oauth';"') do set OAUTH_TOTAL=%%i
-for /f "delims=" %%i in ('"%SQLITE%" "%GRAFANA_DB%" "SELECT COUNT(*) FROM user_auth WHERE auth_module='oauth_generic_oauth' AND (auth_id IS NULL OR auth_id='');"') do set OAUTH_MISSING=%%i
+:: Write the counts to a file and read them back. Running sqlite3 inline in a
+:: `for /f` needs the quoted "C:\Program Files" path nested inside the command
+:: quotes, which cmd mis-parses ("'C:\Program' is not recognized").
+set COUNT_OUT=%USER_DIR%\counts.txt
+(
+    echo SELECT COUNT(*) FROM user_auth WHERE auth_module='oauth_generic_oauth';
+    echo SELECT COUNT(*) FROM user_auth WHERE auth_module='oauth_generic_oauth' AND (auth_id IS NULL OR auth_id='');
+) | "%SQLITE%" "%GRAFANA_DB%" > "%COUNT_OUT%"
+
+set OAUTH_TOTAL=
+set OAUTH_MISSING=
+for /f "usebackq delims=" %%i in ("%COUNT_OUT%") do (
+    if not defined OAUTH_TOTAL (
+        set OAUTH_TOTAL=%%i
+    ) else (
+        if not defined OAUTH_MISSING set OAUTH_MISSING=%%i
+    )
+)
+del /q "%COUNT_OUT%" 2>nul
+
+if not defined OAUTH_TOTAL (
+    echo ERROR: could not read the auth_id counts back from grafana.db
+    exit /b 1
+)
+if not defined OAUTH_MISSING set OAUTH_MISSING=0
 
 echo OAuth identities:    %OAUTH_TOTAL%
 echo Still missing authid: %OAUTH_MISSING%
