@@ -213,14 +213,18 @@ echo ==========================================
 :: Write the counts to a file and read them back. Running sqlite3 inline in a
 :: `for /f` needs the quoted "C:\Program Files" path nested inside the command
 :: quotes, which cmd mis-parses ("'C:\Program' is not recognized").
-:: Parentheses must be escaped as ^( ^) inside a parenthesised echo block --
-:: an unescaped ")" from COUNT(*) closes the block early and cmd then reports
-:: "FROM was unexpected at this time".
+:: Build the query in a file one line at a time. A parenthesised ( echo ... )
+:: block would need every ( and ) of COUNT(*) escaped, and an unescaped one
+:: closes the block early ("FROM was unexpected at this time"); redirecting
+:: each echo separately avoids the escaping entirely.
+set COUNT_SQL=%USER_DIR%\counts.sql
 set COUNT_OUT=%USER_DIR%\counts.txt
-(
-    echo SELECT COUNT^(*^) FROM user_auth WHERE auth_module='oauth_generic_oauth';
-    echo SELECT COUNT^(*^) FROM user_auth WHERE auth_module='oauth_generic_oauth' AND ^(auth_id IS NULL OR auth_id=''^);
-) | "%SQLITE%" "%GRAFANA_DB%" > "%COUNT_OUT%"
+del /q "%COUNT_SQL%" 2>nul
+
+>  "%COUNT_SQL%" echo SELECT COUNT(*^) FROM user_auth WHERE auth_module='oauth_generic_oauth';
+>> "%COUNT_SQL%" echo SELECT COUNT(*^) FROM user_auth WHERE auth_module='oauth_generic_oauth' AND (auth_id IS NULL OR auth_id=''^);
+
+"%SQLITE%" "%GRAFANA_DB%" < "%COUNT_SQL%" > "%COUNT_OUT%" 2>&1
 
 set OAUTH_TOTAL=
 set OAUTH_MISSING=
@@ -231,12 +235,15 @@ for /f "usebackq delims=" %%i in ("%COUNT_OUT%") do (
         if not defined OAUTH_MISSING set OAUTH_MISSING=%%i
     )
 )
-del /q "%COUNT_OUT%" 2>nul
 
 if not defined OAUTH_TOTAL (
     echo ERROR: could not read the auth_id counts back from grafana.db
+    echo        sqlite3 output was:
+    type "%COUNT_OUT%"
+    del /q "%COUNT_SQL%" "%COUNT_OUT%" 2>nul
     exit /b 1
 )
+del /q "%COUNT_SQL%" "%COUNT_OUT%" 2>nul
 if not defined OAUTH_MISSING set OAUTH_MISSING=0
 
 echo OAuth identities:    %OAUTH_TOTAL%
