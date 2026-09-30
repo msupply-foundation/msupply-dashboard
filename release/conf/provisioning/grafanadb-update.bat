@@ -184,7 +184,7 @@ if %LINE_COUNT% LEQ 0 (
     echo        can be written and OAuth logins will keep failing. Check:
     echo.
     echo          * public.user in "%PGDB%" is populated with the 4D users
-    echo            psql -U %PGUSER% -d %PGDB% -c "SELECT COUNT(*) FROM public.user;"
+    echo            psql -U %PGUSER% -d %PGDB% -c "SELECT COUNT^(*^) FROM public.user;"
     echo          * grafanadb-update.sql joins with lower^(^) on both sides; a
     echo            case-sensitive join matches nothing once Grafana 13 has
     echo            lowercased user.email.
@@ -203,6 +203,42 @@ if errorlevel 1 (
     echo ERROR: SQLite update failed. Check sqlite_update.log
     exit /b 1
 )
+
+echo.
+echo ==========================================
+echo Migrating legacy datasource types ...
+echo ==========================================
+:: Grafana renamed the Postgres plugin from "postgres" to
+:: "grafana-postgresql-datasource". Rows carrying the old type survive the
+:: upgrade unchanged, and Grafana 13 cannot resolve a plugin for them: the
+:: datasource stops working, is not honoured as the default and cannot be
+:: edited in the UI. Only the type changes -- uids are left alone, so
+:: dashboards (which reference datasources by uid) keep resolving.
+set DS_SQL=%USER_DIR%\datasource-types.sql
+del /q "%DS_SQL%" 2>nul
+> "%DS_SQL%" echo UPDATE data_source SET type='grafana-postgresql-datasource' WHERE type='postgres';
+
+"%SQLITE%" "%GRAFANA_DB%" < "%DS_SQL%" >> "%LOGDIR%sqlite_update.log" 2>&1
+if errorlevel 1 (
+    echo ERROR: could not migrate datasource types. Check sqlite_update.log
+    del /q "%DS_SQL%" 2>nul
+    exit /b 1
+)
+del /q "%DS_SQL%" 2>nul
+
+:: Report via a file, not an inline `for /f` -- the quoted "C:\Program Files"
+:: path nested inside the command quotes is what cmd mis-parses.
+set DS_OUT=%USER_DIR%\ds-count.txt
+del /q "%DS_SQL%" 2>nul
+> "%DS_SQL%" echo SELECT COUNT(*^) FROM data_source WHERE type='postgres';
+"%SQLITE%" "%GRAFANA_DB%" < "%DS_SQL%" > "%DS_OUT%" 2>&1
+
+set DS_LEGACY=
+for /f "usebackq delims=" %%i in ("%DS_OUT%") do if not defined DS_LEGACY set DS_LEGACY=%%i
+del /q "%DS_SQL%" "%DS_OUT%" 2>nul
+
+if not defined DS_LEGACY set DS_LEGACY=unknown
+echo Datasources still using the legacy 'postgres' type: %DS_LEGACY%
 
 :: Report the outcome rather than assuming success. Any OAuth user still
 :: missing an auth_id cannot log in on Grafana 13, so surface the count.
