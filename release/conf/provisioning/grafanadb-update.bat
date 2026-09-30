@@ -111,11 +111,10 @@ if not exist "%USER_DIR%" (
 
 SET USER_CSV=%USER_DIR%\users.csv
 
-:: Write the CSV with sqlite3's .once instead of redirecting with ">".
-:: sqlite3 already ends lines with CRLF on Windows and cmd's redirection turns
-:: the LF into CRLF again, producing CR CR LF. psql's \copy then reads the
-:: extra CR as an empty second line and fails with
-:: 'missing data for column "name"'.
+:: Write the CSV with sqlite3's .once rather than ">" redirection. sqlite3
+:: already ends lines with CRLF on Windows, and cmd's redirection converts the
+:: LF to CRLF again, producing CR CR LF -- psql's \copy reads the extra CR as an
+:: empty second line and fails with 'missing data for column "name"'.
 (
     echo .mode csv
     echo .headers on
@@ -128,6 +127,17 @@ if not exist "%USER_CSV%" (
     exit /b 1
 )
 
+:: Normalise line endings regardless of how the CSV was produced: collapse any
+:: run of CRs before a LF to a single CRLF, and drop a trailing blank line.
+:: This keeps the handoff to psql working across sqlite3 versions and shells,
+:: rather than depending on .once behaving a particular way.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0normalise-csv.ps1" -Path "%USER_CSV%"
+if errorlevel 1 (
+    echo ERROR: could not normalise line endings in %USER_CSV%
+    exit /b 1
+)
+
+set LINE_COUNT=0
 for /f "usebackq delims=" %%A in ("%USER_CSV%") do (
     set /a LINE_COUNT+=1
 )
@@ -136,15 +146,31 @@ if %LINE_COUNT% LEQ 1 (
     echo Only header found in %USER_CSV%, nothing to do.
     exit /b 0
 )
+echo Exported %LINE_COUNT% lines ^(including header^) to %USER_CSV%
 
 echo.
 echo ==========================================
 echo ImportCSV to postges and export sql with [user]ID ...
 echo ==========================================
 
-SET USER_SQL=%USER_DIR%\updates.sql
-"C:\Program Files\PostgreSQL\%PGVERSION%\bin\psql" --username=%PGUSER% --port=%PGPORT% --file=grafanadb-update.sql --host=%PGHOST% --dbname=%PGDB% -q -t -A >  "%USER_SQL%" 
+SET PSQL=C:\Program Files\PostgreSQL\%PGVERSION%\bin\psql.exe
+if not exist "%PSQL%" (
+    echo ERROR: psql not found at "%PSQL%"
+    echo        Pass the PostgreSQL major version as the 6th argument, e.g.
+    echo        grafanadb-update.bat %%PGPASSWORD%% %%PGUSER%% %%PGPORT%% %%PGDB%% %%PGHOST%% 16
+    exit /b 1
+)
 
+SET USER_SQL=%USER_DIR%\updates.sql
+:: -v ON_ERROR_STOP=1 so a failed \copy or query is fatal instead of leaving an
+:: empty updates.sql and carrying on as though there was nothing to do.
+"%PSQL%" --username=%PGUSER% --port=%PGPORT% --file=grafanadb-update.sql --host=%PGHOST% --dbname=%PGDB% -v ON_ERROR_STOP=1 -q -t -A > "%USER_SQL%"
+if errorlevel 1 (
+    echo ERROR: psql failed -- see the messages above.
+    exit /b 1
+)
+
+set LINE_COUNT=0
 for /f "usebackq delims=" %%A in ("%USER_SQL%") do (
     set /a LINE_COUNT+=1
 )
@@ -159,9 +185,32 @@ echo ==========================================
 echo Update grafana.db with [user]ID ...
 echo ==========================================
 
-"%SQLITE%" "%GRAFANA_DB%" < "%USER_SQL%" > sqlite_update.log 2>&1
+"%SQLITE%" "%GRAFANA_DB%" < "%USER_SQL%" > "%LOGDIR%sqlite_update.log" 2>&1
 
 if errorlevel 1 (
     echo ERROR: SQLite update failed. Check sqlite_update.log
     exit /b 1
 )
+
+:: Report the outcome rather than assuming success. Any OAuth user still
+:: missing an auth_id cannot log in on Grafana 13, so surface the count.
+echo.
+echo ==========================================
+echo Result
+echo ==========================================
+for /f "delims=" %%i in ('"%SQLITE%" "%GRAFANA_DB%" "SELECT COUNT(*) FROM user_auth WHERE auth_module='oauth_generic_oauth';"') do set OAUTH_TOTAL=%%i
+for /f "delims=" %%i in ('"%SQLITE%" "%GRAFANA_DB%" "SELECT COUNT(*) FROM user_auth WHERE auth_module='oauth_generic_oauth' AND (auth_id IS NULL OR auth_id='');"') do set OAUTH_MISSING=%%i
+
+echo OAuth identities:    %OAUTH_TOTAL%
+echo Still missing authid: %OAUTH_MISSING%
+
+if not "%OAUTH_MISSING%"=="0" (
+    echo.
+    echo WARNING: %OAUTH_MISSING% of %OAUTH_TOTAL% OAuth users have no auth_id and
+    echo          cannot log in. Those users were not matched in the Postgres
+    echo          "%PGDB%" database -- check that public.user is populated and
+    echo          that grafanadb-update.sql compares names/emails with lower^(^).
+    exit /b 1
+)
+
+echo All OAuth users have an auth_id.
