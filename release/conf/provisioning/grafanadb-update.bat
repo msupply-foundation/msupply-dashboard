@@ -213,10 +213,13 @@ echo ==========================================
 :: Write the counts to a file and read them back. Running sqlite3 inline in a
 :: `for /f` needs the quoted "C:\Program Files" path nested inside the command
 :: quotes, which cmd mis-parses ("'C:\Program' is not recognized").
+:: Parentheses must be escaped as ^( ^) inside a parenthesised echo block --
+:: an unescaped ")" from COUNT(*) closes the block early and cmd then reports
+:: "FROM was unexpected at this time".
 set COUNT_OUT=%USER_DIR%\counts.txt
 (
-    echo SELECT COUNT(*) FROM user_auth WHERE auth_module='oauth_generic_oauth';
-    echo SELECT COUNT(*) FROM user_auth WHERE auth_module='oauth_generic_oauth' AND (auth_id IS NULL OR auth_id='');
+    echo SELECT COUNT^(*^) FROM user_auth WHERE auth_module='oauth_generic_oauth';
+    echo SELECT COUNT^(*^) FROM user_auth WHERE auth_module='oauth_generic_oauth' AND ^(auth_id IS NULL OR auth_id=''^);
 ) | "%SQLITE%" "%GRAFANA_DB%" > "%COUNT_OUT%"
 
 set OAUTH_TOTAL=
