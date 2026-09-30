@@ -109,7 +109,10 @@ Follow these in order. The order matters.
 6. **Fix the user logins** — section 5. **Required.** Without it, customers
    cannot log in with their mSupply username and password.
 
-7. **Check everything works** — section 6.
+7. **Update the plugin names** — section 5b. **Required.** Without it the
+   mSupply table and region map panels will not load.
+
+8. **Check everything works** — section 6.
 
 ---
 
@@ -143,13 +146,23 @@ Follow these in order. The order matters.
    Leaving these as `localhost` is the usual reason logins go to the wrong
    place.
 
-4. **Restart so the settings apply**
+4. **Allow the mSupply panels to load.** Still in `custom.ini`, add these two
+   lines at the end of the file:
 
-   In `services.msc`: right-click **mSupply Dashboard** → **Restart**.
+   ```ini
+   [plugins]
+   allow_loading_unsigned_plugins = msupplyfoundation-table,msupplyfoundation-msupply-regionmap
+   ```
 
-5. **Section 5 is not needed** — a new server has no existing users to fix.
+   Without them the mSupply table and region map panels will not appear.
 
-6. **Check everything works** — section 6.
+5. **Save and close**, then restart **mSupply Dashboard** from `services.msc`
+   so the settings apply
+
+6. **Sections 5 and 5b are not needed** — a new server has no existing users
+   or old plugin names to fix.
+
+7. **Check everything works** — section 6.
 
 ---
 
@@ -206,8 +219,47 @@ Default datasource: PostgreSQL
 
 - **`Still missing authid: 0`** — everyone can log in. Done.
 - **Any other number** — that many people still cannot. See *Troubleshooting*.
+- **`Default datasource:`** — should name a real data connection, e.g.
+  `PostgreSQL`. If it is blank, see *Troubleshooting*.
+
+The same script also repairs the customer's data connections, which version 13
+would otherwise refuse to use.
 
 Safe to run more than once. It backs up the database each time.
+
+---
+
+## 5b. Update the plugin names (EXISTING CUSTOMERS ONLY)
+
+The mSupply panels were renamed in version 13. The customer's old
+`custom.ini` — the one you copied back — still lists the old names, so those
+panels will not load and their dashboards will show an error instead of a
+chart.
+
+1. Open `C:\Program Files\mSupply Dashboard\conf\custom.ini` in Notepad (as
+   administrator)
+2. Find the line starting `allow_loading_unsigned_plugins`
+3. Make sure **both** of these names appear in the list:
+
+   ```
+   msupplyfoundation-table
+   msupplyfoundation-msupply-regionmap
+   ```
+
+   The names are comma-separated with no spaces. Leave any old names in place
+   — they do no harm. A finished line looks like this:
+
+   ```ini
+   [plugins]
+   allow_loading_unsigned_plugins = msupplyfoundation-datasource,msupply-horizontal-bar,msupplyfoundation-table,msupplyfoundation-msupply-regionmap
+   ```
+
+4. Save, then restart **mSupply Dashboard** from `services.msc`
+
+> Watch the spelling. The old regionmap name was
+> `m-supply-foundation-msupply-regionmap` (with hyphens after `m`); the new one
+> is `msupplyfoundation-msupply-regionmap`. They look alike and only the new
+> one works.
 
 ---
 
@@ -238,7 +290,20 @@ stop and redo it.
 **5. Dashboards show data** — open two or three. Panels should draw charts,
 not red error boxes.
 
-**6. Check the log for login and data errors**
+**6. The mSupply panels load**
+
+Open a dashboard that uses the **mSupply table** and the **region map**. Both
+should draw normally.
+
+A panel showing *"Panel plugin not found"* means the plugin names in
+`custom.ini` still need updating — go back to section 5b.
+
+**7. There is a default data connection**
+
+Go to the gear icon → **Data sources**. One entry should be marked
+**default**. If none is, see *Troubleshooting*.
+
+**8. Check the log for login and data errors**
 
 Open `C:\Program Files\mSupply Dashboard\data\log\grafana.log` in Notepad and
 press `Ctrl` + `F` to search for `error`.
@@ -317,10 +382,23 @@ Open `C:\Program Files\mSupply Dashboard\conf\custom.ini` in Notepad and check
 them say `localhost`, the wrong `custom.ini` was put back — copy the
 customer's saved one over it again.
 
-### A panel says the datasource is missing, or there is no default datasource
+### A panel says the datasource is missing, or no data connection is marked default
 
-Re-run section 5 — it repairs old data connections and the default datasource.
-If a single panel is still wrong, set its connection by hand.
+Run section 5 again — it repairs the customer's data connections and sets the
+default. Restart the dashboard afterwards, then check under the gear icon →
+**Data sources** that one is marked **default**.
+
+If a single panel is still wrong, open that panel and choose the correct data
+connection by hand.
+
+### A panel says "Panel plugin not found"
+
+The plugin names in `custom.ini` are the old ones. Go to section 5b and make
+sure both `msupplyfoundation-table` and `msupplyfoundation-msupply-regionmap`
+are listed, then restart the dashboard.
+
+The error message names the plugin it could not find, which tells you which
+name is missing or misspelled.
 
 ### The dashboards are empty after installing
 
