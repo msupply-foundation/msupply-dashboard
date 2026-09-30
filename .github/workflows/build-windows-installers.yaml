@@ -150,10 +150,13 @@ jobs:
             Write-Host "replaced release/$dir"
           }
 
-          # bin/: take Grafana's executables but keep nssm.exe, which is ours.
+          # bin/: take Grafana's executables but keep the tools that are ours
+          # (nssm.exe is committed; sqlite3.exe is downloaded by a later step,
+          # and is listed so a re-run in a dirty workspace does not drop it).
           New-Item -ItemType Directory -Force -Path release/bin | Out-Null
+          $ours = 'nssm.exe', 'sqlite3.exe'
           Get-ChildItem release/bin -File |
-            Where-Object { $_.Name -ne 'nssm.exe' } |
+            Where-Object { $ours -notcontains $_.Name } |
             Remove-Item -Force
           Copy-Item (Join-Path $root.FullName 'bin/*') release/bin/ -Recurse -Force
 
@@ -178,6 +181,34 @@ jobs:
       # always ships plugins built against the Grafana in installer/grafana.url,
       # and ~117MB of build artefacts stays out of git. Each plugin is copied to
       # a folder named after its plugin.json id, which is what Grafana expects.
+      # conf/provisioning/grafanadb-update.bat needs sqlite3 to read and write
+      # grafana.db (Grafana's database is SQLite; psql cannot touch it). It
+      # looked for sqlite3 on PATH and exited if absent, so the script could
+      # never run on a fresh install. Ship the binary next to nssm.exe instead.
+      - name: Download sqlite3 into release/bin
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $url = (Get-Content installer/sqlite.url -Raw).Trim()
+          if (-not $url) { throw "installer/sqlite.url is empty" }
+          Write-Host "sqlite URL: $url"
+
+          $tmp = Join-Path $env:RUNNER_TEMP 'sqlite'
+          if (Test-Path $tmp) { Remove-Item -Recurse -Force $tmp }
+          New-Item -ItemType Directory -Path $tmp | Out-Null
+
+          $zip = Join-Path $tmp 'sqlite-tools.zip'
+          curl.exe -fL --retry 3 $url -o $zip
+          if ($LASTEXITCODE -ne 0) { throw "download failed with exit code $LASTEXITCODE" }
+
+          Expand-Archive -Path $zip -DestinationPath $tmp -Force
+          $exe = Get-ChildItem -Path $tmp -Recurse -Filter 'sqlite3.exe' |
+            Select-Object -First 1
+          if (-not $exe) { throw "sqlite3.exe not found in the downloaded archive" }
+
+          Copy-Item $exe.FullName release/bin/ -Force
+          Write-Host "installed sqlite3.exe ($([math]::Round($exe.Length/1MB,1)) MB)"
+
       - name: Build custom plugins into release/data/plugins
         shell: pwsh
         run: |

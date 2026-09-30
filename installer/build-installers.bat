@@ -97,6 +97,28 @@ rmdir /s /q "%GRAFANA_TMP%"
 ECHO Grafana ready
 
 @ECHO.
+@ECHO ##### Downloading sqlite3 #####
+REM conf\provisioning\grafanadb-update.bat needs sqlite3 to read and write
+REM grafana.db; ship it so the script works on a fresh install.
+SET /P SQLITE_URL=<installer\sqlite.url
+SET SQLITE_TMP=%WORKSPACE%\_sqlite_tmp
+IF EXIST "%SQLITE_TMP%" rmdir /s /q "%SQLITE_TMP%"
+mkdir "%SQLITE_TMP%"
+
+curl -f -L "%SQLITE_URL%" -o "%SQLITE_TMP%\sqlite-tools.zip"
+IF ERRORLEVEL 1 EXIT /B 1
+tar -xf "%SQLITE_TMP%\sqlite-tools.zip" -C "%SQLITE_TMP%"
+IF ERRORLEVEL 1 EXIT /B 1
+
+FOR /R "%SQLITE_TMP%" %%f IN (sqlite3.exe) DO copy /Y "%%f" "%WORKSPACE%\release\bin\"
+IF NOT EXIST "%WORKSPACE%\release\bin\sqlite3.exe" (
+    ECHO ERROR: sqlite3.exe not found in the downloaded archive
+    EXIT /B 1
+)
+rmdir /s /q "%SQLITE_TMP%"
+ECHO sqlite3 ready
+
+@ECHO.
 @ECHO ##### Building custom plugins #####
 REM dashboard-upgrade.suf packages release\data\plugins, so the folder must
 REM exist or Setup Factory aborts with exit code 2051. Build the panels from

@@ -65,12 +65,18 @@ echo ==========================================
 echo Checking SQLITE path...
 echo ==========================================
 
+:: Prefer the sqlite3.exe shipped in bin\ (the installer downloads it), and
+:: fall back to PATH so the script still works on older installs.
+set "SQLITE=%~dp0..\..\bin\sqlite3.exe"
+if exist "%SQLITE%" goto :found
+
 for /f "delims=" %%i in ('where sqlite3 2^>nul') do (
     set "SQLITE=%%i"
     goto :found
 )
 
-echo ERROR: sqlite3.exe not found in PATH
+echo ERROR: sqlite3.exe not found in "%~dp0..\..\bin" or on PATH
+echo        Install the SQLite command line tools from https://sqlite.org/download.html
 exit /b 1
 
 :found
