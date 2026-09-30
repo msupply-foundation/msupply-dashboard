@@ -1,215 +1,103 @@
 # Installing mSupply Dashboard 13.2 (Grafana 13.2.2)
 
-
-Everything here happens on the **Windows server** that runs the dashboard,
-signed in as an **Administrator**.
+Do this on the Windows server, signed in as an **Administrator**.
 
 ---
 
-## 1. Which installer do I use?
+## Before you start — read this
 
-Use **`dashboard-setup-<version>.exe`** — the full installer — in both cases:
-a brand-new server *and* an existing customer.
+**1. Use `dashboard-setup-<version>.exe`, the full installer.**
+For a new server *and* for an existing customer.
 
-> ### Do not use `dashboard-upgrade-<version>.exe`
->
-> The upgrade installer does not work for this release. It leaves the Windows
-> service pointing at a program that no longer exists, so the dashboard will
-> not start afterwards. Use the full installer instead.
+**Do not use `dashboard-upgrade-<version>.exe`.** It does not work for this
+release — it leaves the dashboard unable to start.
 
-The full installer is safe on an existing customer **as long as you follow
-section 3**. It brings its own empty dashboard database; section 3 backs up
-the customer's real one first and puts it back afterwards.
+**2. The customer's whole dashboard is two files.**
 
----
+| File | Folder |
+| --- | --- |
+| `grafana.db` | `C:\Program Files\mSupply Dashboard\data` |
+| `custom.ini` | `C:\Program Files\mSupply Dashboard\conf` |
 
-## 2. Before you start
+`grafana.db` holds every dashboard, user and setting. `custom.ini` holds the
+web address and mSupply login settings. Back them up, and nothing is lost.
 
-**Take a backup. This is the whole job — everything else can be redone.**
+**3. There is no going back.** Once version 13 starts on a database, older
+versions cannot read it. Your backup is the only way back.
 
-**a. Stop the dashboard**
+**4. Existing customers need two manual fixes afterwards** (steps 6 and 7).
+Skip them and users cannot log in and two panels stop working.
 
-1. Press `Windows` + `R`, type `services.msc`, press Enter
-2. Find **mSupply Dashboard** in the list
-3. Right-click it → **Stop**
+**5. Have these ready:**
 
-Leave the Services window open — you will need it again later.
+- The PostgreSQL password — ask whoever set the server up
+- The PostgreSQL version — the folder name in `C:\Program Files\PostgreSQL`,
+  e.g. `17`
+- The customer's web address, e.g. `https://customer.msupply.org:3000`
 
-> If there is no **mSupply Dashboard** in the list, this is a **new server** —
-> skip to section 4.
-
-**b. Back up the old dashboard**
-
-Right-click the `C:\Program Files\mSupply Dashboard` folder →
-**Send to** → **Compressed (zipped) folder**, and move that zip somewhere safe.
-
-Then copy these two files into a separate folder on the Desktop, because you
-will need to put them back after installing:
-
-| File | Found in | What it holds |
-| --- | --- | --- |
-| `grafana.db` | the `data` folder | every dashboard, user and saved setting |
-| `custom.ini` | the `conf` folder | the web address and mSupply login settings |
-
-Check both files really are in that folder before going any further. If
-anything goes wrong later, these are the only way back.
-
-**c. Note these down**
-
-- The web address users visit, e.g. `https://customer.msupply.org:3000`
-- The PostgreSQL password (ask whoever set the server up)
-- The PostgreSQL version — look at `C:\Program Files\PostgreSQL` and note the
-  folder name, e.g. `17`
-
-Tell the customer the dashboard will be **offline for 30–60 minutes**, and
-that **nobody should log in until you have finished section 5**.
+Allow **30–60 minutes offline**, and keep users out until you finish step 7.
 
 ---
 
-## 3. Existing customer
+## Installing — existing customer
 
-Follow these in order. The order matters.
+**1. Stop the dashboard**
 
-1. **Back up and stop the service** — section 2. Do not skip.
+`Windows`+`R` → `services.msc` → right-click **mSupply Dashboard** → **Stop**.
+Leave this window open.
 
-2. **Run `dashboard-setup-<version>.exe`** — right-click, *Run as
-   administrator*. It asks for the PostgreSQL password; the rest can stay at
-   defaults.
+**2. Back up**
 
-   The installer starts the dashboard when it finishes. That is expected — it
-   is running on an empty database at this point, which is why the next step
-   stops it again.
+Zip the `C:\Program Files\mSupply Dashboard` folder and move it somewhere safe.
+Then copy `grafana.db` and `custom.ini` into a folder on the Desktop — check
+they are really there.
 
-3. **Stop the dashboard again**
+**3. Run the installer**
 
-   In the Services window: right-click **mSupply Dashboard** → **Stop**.
+Right-click `dashboard-setup-<version>.exe` → **Run as administrator**. Give it
+the PostgreSQL password; leave everything else as it is.
 
-   > Do this **before** the next step. Replacing the database while the
-   > dashboard is running will damage it.
+It starts the dashboard at the end. That is normal — it is running on an empty
+database, which is why the next step stops it again.
 
-4. **Put the customer's two files back**
+**4. Stop the dashboard, put the two files back**
 
-   Copy them from your Desktop folder into the new installation, replacing the
-   ones the installer put there:
+Stop it in Services **first** — copying over a running database damages it.
 
-   - `grafana.db` → into `C:\Program Files\mSupply Dashboard\data`
-   - `custom.ini` → into `C:\Program Files\mSupply Dashboard\conf`
+Copy `grafana.db` and `custom.ini` from your Desktop folder back into the
+`data` and `conf` folders, choosing **Replace the files in the destination**.
 
-   Windows asks what to do about the existing files — choose **Replace the
-   files in the destination**.
+**5. Start the dashboard**
 
-5. **Start the dashboard**
+Right-click **mSupply Dashboard** → **Start**.
 
-   In the Services window: right-click **mSupply Dashboard** → **Start**.
+This first start takes several minutes — it is updating the customer's
+database. **Wait for it.**
 
-   This first start is slow — up to several minutes — because the dashboard is
-   bringing the customer's old database up to date. **Wait for it.** Do not
-   stop it or restart the server. If it will not start, see *Troubleshooting*.
+**6. Fix the user logins** — the one step with no window to click through.
 
-6. **Fix the user logins** — section 5. **Required.** Without it, customers
-   cannot log in with their mSupply username and password.
-
-7. **Update the plugin names** — section 5b. **Required.** Without it the
-   mSupply table and region map panels will not load.
-
-8. **Check everything works** — section 6.
-
----
-
-## 4. New customer
-
-1. **Check PostgreSQL is installed** — `C:\Program Files\PostgreSQL` must
-   exist. If not, install it first; the dashboard cannot work without it.
-
-2. **Run `dashboard-setup-<version>.exe`** as administrator. Give it the
-   PostgreSQL password.
-
-3. **Set the web address.** Open
-   `C:\Program Files\mSupply Dashboard\conf\custom.ini` in Notepad (as
-   administrator) and set the customer's real address:
-
-   ```ini
-   [server]
-   domain = customer.msupply.org
-   root_url = https://customer.msupply.org:3000
-   ```
-
-   Then point the three login URLs at the customer's mSupply server:
-
-   ```ini
-   [auth.generic_oauth]
-   auth_url  = https://customer.msupply.org:2048/api/v4/oauth/
-   token_url = https://customer.msupply.org:2048/api/v4/oauth_access_token/
-   api_url   = https://customer.msupply.org:2048/api/v4/oauth_userinfo/
-   ```
-
-   Leaving these as `localhost` is the usual reason logins go to the wrong
-   place.
-
-4. **Allow the mSupply panels to load.** Still in `custom.ini`, add these two
-   lines at the end of the file:
-
-   ```ini
-   [plugins]
-   allow_loading_unsigned_plugins = msupplyfoundation-table,msupplyfoundation-msupply-regionmap
-   ```
-
-   Without them the mSupply table and region map panels will not appear.
-
-5. **Save and close**, then restart **mSupply Dashboard** from `services.msc`
-   so the settings apply
-
-6. **Sections 5 and 5b are not needed** — a new server has no existing users
-   or old plugin names to fix.
-
-7. **Check everything works** — section 6.
-
----
-
-## 5. Fix the user logins (EXISTING CUSTOMERS ONLY)
-
-**Why:** version 13 identifies people by an ID number from mSupply. Older
-versions matched on email address. Existing users have no ID stored yet, so
-until this runs they **cannot log in**.
-
-Do this **after** the dashboard has started successfully — it reads the
-updated database.
-
-This is the one step with no window to click through; it is a script you have
-to run.
-
-**1. Open a Command Prompt as administrator**
-
-Click Start, type `cmd`, then right-click **Command Prompt** → **Run as
-administrator**.
-
-**2. Type these two lines**, pressing Enter after each:
+Open a Command Prompt as administrator (Start → type `cmd` → right-click →
+**Run as administrator**) and type these two lines:
 
 ```
 cd /d "C:\Program Files\mSupply Dashboard\conf\provisioning"
 ```
 
 ```
-grafanadb-update.bat <postgres-password> postgres 5432 dashboard localhost <postgres-version>
+grafanadb-update.bat <password> postgres 5432 dashboard localhost <version>
 ```
 
-Put in the password and version you noted in section 2c. For PostgreSQL 17
-with the password `secret123`, the second line would be:
+Use the PostgreSQL password and version from step 5 above. For version 17 with
+password `secret123`:
 
 ```
 grafanadb-update.bat secret123 postgres 5432 dashboard localhost 17
 ```
 
-> The **password comes first**, then the word `postgres` (the username). It is
-> easy to type these the wrong way round.
+> **Password first**, then the word `postgres`. Easy to reverse.
 
-**3. Read the result**
-
-The script shows nothing on screen — it writes a log file. In File Explorer,
-open `C:\Program Files\mSupply Dashboard\conf\provisioning` and open the
-newest `migration_....log` file in Notepad.
-
-Scroll to the **Result** section at the bottom:
+It prints nothing. Open the newest `migration_....log` in that folder and read
+the **Result** at the bottom:
 
 ```
 OAuth identities:    132
@@ -217,110 +105,93 @@ Still missing authid: 0
 Default datasource: PostgreSQL
 ```
 
-- **`Still missing authid: 0`** — everyone can log in. Done.
-- **Any other number** — that many people still cannot. See *Troubleshooting*.
-- **`Default datasource:`** — should name a real data connection, e.g.
-  `PostgreSQL`. If it is blank, see *Troubleshooting*.
+`Still missing authid: 0` means everyone can log in. Safe to run again.
 
-The same script also repairs the customer's data connections, which version 13
-would otherwise refuse to use.
+**7. Update the plugin names**
 
-Safe to run more than once. It backs up the database each time.
+Open `conf\custom.ini` in Notepad (as administrator), find
+`allow_loading_unsigned_plugins`, and make sure both of these are in the list:
 
----
+```
+msupplyfoundation-table
+msupplyfoundation-msupply-regionmap
+```
 
-## 5b. Update the plugin names (EXISTING CUSTOMERS ONLY)
+Comma-separated, no spaces. Leave any old names in place. Save, then restart
+**mSupply Dashboard** in Services.
 
-The mSupply panels were renamed in version 13. The customer's old
-`custom.ini` — the one you copied back — still lists the old names, so those
-panels will not load and their dashboards will show an error instead of a
-chart.
-
-1. Open `C:\Program Files\mSupply Dashboard\conf\custom.ini` in Notepad (as
-   administrator)
-2. Find the line starting `allow_loading_unsigned_plugins`
-3. Make sure **both** of these names appear in the list:
-
-   ```
-   msupplyfoundation-table
-   msupplyfoundation-msupply-regionmap
-   ```
-
-   The names are comma-separated with no spaces. Leave any old names in place
-   — they do no harm. A finished line looks like this:
-
-   ```ini
-   [plugins]
-   allow_loading_unsigned_plugins = msupplyfoundation-datasource,msupply-horizontal-bar,msupplyfoundation-table,msupplyfoundation-msupply-regionmap
-   ```
-
-4. Save, then restart **mSupply Dashboard** from `services.msc`
-
-> Watch the spelling. The old regionmap name was
-> `m-supply-foundation-msupply-regionmap` (with hyphens after `m`); the new one
-> is `msupplyfoundation-msupply-regionmap`. They look alike and only the new
-> one works.
+> The old regionmap name was `m-supply-foundation-msupply-regionmap`. The new
+> one looks almost the same but only the new one works.
 
 ---
 
-## 6. Things to verify afterwards
+## Installing — new customer
 
-Work down the list. Stop and investigate at the first failure.
+**1.** Check `C:\Program Files\PostgreSQL` exists. If not, install PostgreSQL
+first.
 
-**1. The dashboard service is running**
+**2.** Right-click `dashboard-setup-<version>.exe` → **Run as administrator**.
+Give it the PostgreSQL password.
 
-In `services.msc`, **mSupply Dashboard** should show **Running**.
+**3.** Open `conf\custom.ini` in Notepad (as administrator) and set the
+customer's real addresses — leaving these as `localhost` is the usual reason
+logins go wrong:
 
-**2. The dashboard answers** — open the customer's web address. You should see
-the login page.
+```ini
+[server]
+domain = customer.msupply.org
+root_url = https://customer.msupply.org:3000
 
-**3. A real user can log in with mSupply**
+[auth.generic_oauth]
+auth_url  = https://customer.msupply.org:2048/api/v4/oauth/
+token_url = https://customer.msupply.org:2048/api/v4/oauth_access_token/
+api_url   = https://customer.msupply.org:2048/api/v4/oauth_userinfo/
+```
 
-Click **Sign in with OAuth** and use a genuine mSupply username and password —
-**not** the local admin account. Admin login works even when mSupply login is
-completely broken, so it proves nothing on its own. This is the most important
-check.
+**4.** Add these two lines at the end of the same file, or the mSupply panels
+will not load:
 
-**4. The customer's dashboards are all still there**
+```ini
+[plugins]
+allow_loading_unsigned_plugins = msupplyfoundation-table,msupplyfoundation-msupply-regionmap
+```
 
-Compare against what they had before. Nothing should be missing. If the list
-looks empty or unfamiliar, the database restore in section 3 did not take —
-stop and redo it.
+**5.** Save, then restart **mSupply Dashboard** in Services.
 
-**5. Dashboards show data** — open two or three. Panels should draw charts,
-not red error boxes.
-
-**6. The mSupply panels load**
-
-Open a dashboard that uses the **mSupply table** and the **region map**. Both
-should draw normally.
-
-A panel showing *"Panel plugin not found"* means the plugin names in
-`custom.ini` still need updating — go back to section 5b.
-
-**7. There is a default data connection**
-
-Go to the gear icon → **Data sources**. One entry should be marked
-**default**. If none is, see *Troubleshooting*.
-
-**8. Check the log for login and data errors**
-
-Open `C:\Program Files\mSupply Dashboard\data\log\grafana.log` in Notepad and
-press `Ctrl` + `F` to search for `error`.
-
-Errors about missing `provisioning\plugins` and `provisioning\alerting`
-folders are normal and harmless. Anything mentioning **login**, **oauth** or
-**datasource** is worth looking into.
+Steps 6 and 7 of the existing-customer list do not apply — there are no old
+users or plugin names to fix.
 
 ---
 
-## 7. Troubleshooting
+## Verify
 
-### The dashboard will not start
+Stop at the first failure.
 
-The Services window hides the real reason. To see it, open a Command Prompt as
-administrator (Start → type `cmd` → right-click **Command Prompt** → **Run as
-administrator**) and type these two lines:
+| # | Check | Where |
+| --- | --- | --- |
+| 1 | Service shows **Running** | `services.msc` |
+| 2 | Login page appears | the customer's web address |
+| 3 | **A real mSupply user can log in** | click *Sign in with OAuth* |
+| 4 | All the customer's dashboards are listed | dashboard list |
+| 5 | Panels draw charts, no red boxes | open 2–3 dashboards |
+| 6 | mSupply table and region map panels work | a dashboard using them |
+| 7 | One data connection is marked **default** | gear icon → Data sources |
+
+**Check 3 matters most.** Use a genuine mSupply username and password, not the
+local admin account — admin works even when mSupply login is completely
+broken, so it proves nothing.
+
+**Check 4 matters next.** An empty or unfamiliar dashboard list means the file
+copy in step 4 did not work.
+
+---
+
+## Troubleshooting
+
+**The dashboard will not start**
+
+Run it by hand to see the real reason — Services hides it. In a Command Prompt
+as administrator:
 
 ```
 cd /d "C:\Program Files\mSupply Dashboard"
@@ -330,100 +201,65 @@ cd /d "C:\Program Files\mSupply Dashboard"
 bin\grafana.exe server
 ```
 
-The error appears on screen. Press `Ctrl` + `C` to stop it, fix the cause,
-then start the service from `services.msc` as usual.
+The error appears on screen. `Ctrl`+`C` to stop.
 
-### Windows says "the service did not return an error"
+**"The service did not return an error"**
 
-The service is pointing at the wrong program. In a Command Prompt opened as
-administrator, type these lines one at a time:
+The service points at the wrong program. In a Command Prompt as administrator,
+one line at a time:
 
 ```
 cd /d "C:\Program Files\mSupply Dashboard\bin"
-```
-
-```
 nssm remove "mSupply Dashboard" confirm
-```
-
-```
 nssm install "mSupply Dashboard" "C:\Program Files\mSupply Dashboard\bin\grafana.exe" server
-```
-
-```
 nssm set "mSupply Dashboard" AppDirectory "C:\Program Files\mSupply Dashboard"
-```
-
-```
 nssm set "mSupply Dashboard" start SERVICE_DELAYED_START
 ```
 
-Then start **mSupply Dashboard** from `services.msc`.
+Then start it in Services. If `nssm install` says *"marked for deletion"*,
+close Services and Task Manager and run that line again; if it still refuses,
+restart the server.
 
-If `nssm install` reports *"marked for deletion"*, close the Services window
-and Task Manager, then run that line again. If it still refuses, restart the
-server.
+**Users cannot log in**
 
-### Users cannot log in
+Step 6 was not run, or did not match everyone. Read the newest
+`migration_....log` — the **Result** section says how many are still missing.
+A number above 0 means those people were not found in mSupply; usually old
+test accounts, which is harmless. If real users are affected, check mSupply
+and the dashboard hold the same email address for them.
 
-Section 5 has not been run, or did not match everyone. Open the newest
-`migration_....log` in
-`C:\Program Files\mSupply Dashboard\conf\provisioning` and look at the
-**Result** section at the bottom — it says how many people are still missing.
+**Logins go to the wrong web address**
 
-A number higher than 0 means those people were not found in mSupply. Usually
-they are old test accounts, which is harmless. If real users are affected,
-check that mSupply and the dashboard hold the same email address for them.
+Check `root_url` and the three `auth_url` / `token_url` / `api_url` lines in
+`custom.ini`. If any say `localhost`, the wrong `custom.ini` was put back.
 
-### Logins go to the wrong web address
+**"Panel plugin not found"**
 
-Open `C:\Program Files\mSupply Dashboard\conf\custom.ini` in Notepad and check
-`root_url` and the three `auth_url` / `token_url` / `api_url` lines. If any of
-them say `localhost`, the wrong `custom.ini` was put back — copy the
-customer's saved one over it again.
+Old plugin names — see step 7. The message names the plugin it could not find.
 
-### A panel says the datasource is missing, or no data connection is marked default
+**A datasource is missing, or none is marked default**
 
-Run section 5 again — it repairs the customer's data connections and sets the
-default. Restart the dashboard afterwards, then check under the gear icon →
-**Data sources** that one is marked **default**.
+Run step 6 again; it repairs the data connections and the default. Restart
+afterwards. If one panel is still wrong, set its connection by hand.
 
-If a single panel is still wrong, open that panel and choose the correct data
-connection by hand.
+**Dashboards are empty**
 
-### A panel says "Panel plugin not found"
+`grafana.db` was not copied back, or was copied while the dashboard was
+running. Redo steps 4 and 5.
 
-The plugin names in `custom.ini` are the old ones. Go to section 5b and make
-sure both `msupplyfoundation-table` and `msupplyfoundation-msupply-regionmap`
-are listed, then restart the dashboard.
+**An image or logo is missing**
 
-The error message names the plugin it could not find, which tells you which
-name is missing or misspelled.
-
-### The dashboards are empty after installing
-
-The customer's `grafana.db` was not copied back, or was copied while the
-dashboard was running. Redo section 3 steps 3 to 5, making sure the service is
-stopped before you copy the file.
-
-### An image or logo is missing from a dashboard
-
-Version 13 replaced the dashboard's built-in files, so a custom image added to
-the old installation may have gone. Copy it back into
-`C:\Program Files\mSupply Dashboard\public\img`.
+Version 13 replaced the built-in files, so a custom image may have gone. Copy
+it back into `C:\Program Files\mSupply Dashboard\public\img`.
 
 ---
 
-## 8. If you need to go back
+## Rolling back
 
-1. Stop **mSupply Dashboard** in `services.msc`
-2. Copy `grafana.db` and `custom.ini` from your Desktop folder back into the
-   `data` and `conf` folders, replacing what is there
-3. Start **mSupply Dashboard** again
+1. Stop **mSupply Dashboard** in Services
+2. Copy `grafana.db` and `custom.ini` from your Desktop folder back
+3. Start it again
 
-Note: **once version 13 has started on a database, an older version cannot use
-it again.** To go back to the old version you must reinstall that version
-*and* copy the saved files back — that is what the zip from section 2b is for.
-
-Keep the zip and the two saved files until the customer confirms everything
-works.
+If you need the old *version* back, reinstall it and then restore those files —
+that is what the zip from step 2 is for. Keep the zip and both files until the
+customer confirms everything works.
