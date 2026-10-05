@@ -5,7 +5,8 @@ plugins, the default `grafana.db` from `release/data/` and the `msupply` command
 `check`, `update-grafanadb`, `import-dashboards`, `version`). PostgreSQL is not in the image; it runs on
 the server.
 
-To install the image on a server, follow [INSTALL-LINUX.md](INSTALL-LINUX.md).
+To install the image on a server, follow [INSTALL-LINUX.md](INSTALL-LINUX.md). Installing does not need a
+build: the image comes from Docker Hub. The build below is only for publishing a new version.
 
 ## Files
 
@@ -37,3 +38,14 @@ linux/build.sh . 13.2.2
 `build.sh` stops if the checkout has uncommitted changes, if `grafana.db` is still an LFS pointer, or if a
 plugin has no `dist/module.js`. The image is labelled with the branch and commit it was built from;
 `msupply version` prints them.
+
+## Publish
+
+Test a new image before publishing it. Then, with an account that can push to `msupplyfoundation`:
+
+```bash
+docker login
+docker push msupplyfoundation/msupply-dashboard-linux:<tag>
+```
+
+Use `13.2.2-rc6`, `13.2.2-rc7` and so on for test builds, and `13.2.2` for the release.
