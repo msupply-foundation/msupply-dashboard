@@ -55,8 +55,8 @@ Fill in this table. The steps use these values where you see `<...>`.
 
 ### Step A1 of 10: does this server already have the dashboard database?
 
-*If mSupply already exports to this server, the database exists and must be kept. The answer decides
-which steps to do.*
+*If mSupply already exports to this server, the database exists and must be kept. Its answer tells you
+which steps to skip.*
 
 ```bash
 sudo -u postgres psql -p 5432 -Atc "select count(*) from pg_database where datname = 'dashboard'"
@@ -284,7 +284,7 @@ GF_SECURITY_ADMIN_PASSWORD=(filled)
 
 ### Step A8 of 10: download the dashboard
 
-*Downloads Grafana with the mSupply plugins and dashboards. Nothing starts yet.*
+*This step downloads Grafana with the mSupply plugins and dashboards. Nothing starts yet.*
 
 ```bash
 docker compose pull
@@ -294,7 +294,8 @@ docker compose pull
 
 ### Step A9 of 10: create or update the dashboard tables
 
-*Creates the tables that mSupply exports into, or adds what this version needs to an existing database.*
+*This step creates the tables that mSupply exports into, or adds what this version needs to an existing
+database.*
 
 If step A1 printed `0` (new database):
 
@@ -317,7 +318,7 @@ ownership changes to "postgres") are normal.
 
 ### Step A10 of 10: start and check
 
-*Starts the dashboard, then checks the login, the database, the plugins and the dashboards.*
+*This step starts the dashboard, then checks the login, the database, the plugins and the dashboards.*
 
 ```bash
 docker compose up -d
@@ -385,7 +386,7 @@ Save and close.
 
 ### Step B3 of 7: put the client's grafana.db in place
 
-*Replaces the empty `grafana.db` of the new install with the client's.*
+*This step replaces the empty `grafana.db` of the new install with the client's.*
 
 Copy `grafana.db` to the server, then stop the dashboard:
 
@@ -434,7 +435,7 @@ running). If it stops with `level=error` lines instead, see [Problems](#problems
 
 ### Step B5 of 7: fix the logins and data sources
 
-*Links each user to their mSupply account, so the mSupply login keeps working, and fixes the data
+*This step links each user to their mSupply account, so the mSupply login keeps working, and fixes the data
 sources for Grafana 13. It backs up `grafana.db` first, in `data/backups/`.*
 
 ```bash
@@ -766,7 +767,7 @@ settings.
 | `FAIL Dashboard database ... post_export() missing` | The database was not created by step A9. mSupply exports will not build the dashboard data. |
 | `Still missing authid: N` (step B5) | N users exist in the dashboard but not in mSupply's user list. After mSupply exports again, run step B5 again. Users who no longer exist in mSupply stay in this count. |
 | `No Grafana user matched public.user` (step B5) | mSupply has not exported its users into this database yet. After it does, run step B5 again. |
-| `other errors:` after `init-db` or `update-db` | The listed lines are real problems in the database script. Nothing else in this guide fixes them: send them to the dashboard team. |
+| `other errors:` after `init-db` or `update-db` | The listed lines are real problems in the database script, and this guide does not cover them. Send them to the dashboard team. |
 | `WARNING: panel type '<type>' ... has no plugin` | Those panels show "Panel plugin not found". Install the plugin from the Grafana screen: see [Install other plugins](#install-other-plugins). |
 | `NOTE: 'graph' panels ... are converted` | Nothing to do. |
 | `Grafana is running. Stop it first` | `docker compose stop dashboard`, then the command again. |
