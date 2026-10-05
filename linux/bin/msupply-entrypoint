@@ -1,0 +1,98 @@
+#!/bin/bash
+# Runs on every container start, then hands over to Grafana's own /run.sh.
+#   1. First start only: put the default grafana.db in the data volume. An existing grafana.db
+#      (an earlier install, or a client's file) is never replaced.
+#   2. Login through mSupply: build the OAuth URLs from MSUPPLY_SERVER_URL, unless .env sets them.
+#   3. Once Grafana answers, set the admin password from GF_SECURITY_ADMIN_PASSWORD.
+set -euo pipefail
+
+# `docker compose run --rm dashboard msupply <command>`: run the tool, start nothing.
+if [ "${1:-}" = "msupply" ]; then
+  exec "$@"
+fi
+
+DATA="${GF_PATHS_DATA:-/var/lib/grafana}"
+SEED=/usr/share/msupply/seed/grafana.db
+log() { printf 'msupply: %s\n' "$*"; }
+
+log "image built from $(cat /usr/share/msupply/SOURCE 2>/dev/null || echo unknown)"
+
+# Values still in <...> form were never filled in.
+required="GF_SERVER_ROOT_URL PG_HOST PG_PORT PG_DATABASE PG_USER PG_PASSWORD GF_SECURITY_ADMIN_PASSWORD"
+if [ "${GF_AUTH_GENERIC_OAUTH_ENABLED:-false}" = "true" ]; then
+  required="$required MSUPPLY_SERVER_URL GF_AUTH_GENERIC_OAUTH_CLIENT_ID GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"
+fi
+bad=""
+for v in $required; do
+  case "${!v:-}" in ""|*"<"*">"*) bad="$bad $v" ;; esac
+done
+if [ -n "$bad" ]; then
+  log "ERROR: fill in these settings in .env:$bad"
+  exit 1
+fi
+# A malformed address (for example http://http//10.0.0.5:3000/) starts Grafana with a broken login:
+# the session cookie gets a path the browser never sends back.
+url_re='^https?://[A-Za-z0-9.-]+(:[0-9]+)?/$'
+host="${GF_SERVER_ROOT_URL#*://}"; host="${host%%[:/]*}"
+if ! [[ "$GF_SERVER_ROOT_URL" =~ $url_re ]] || [ "$host" = "http" ] || [ "$host" = "https" ]; then
+  log "ERROR: GF_SERVER_ROOT_URL in .env is not a valid address: $GF_SERVER_ROOT_URL"
+  log "       It must look like http://10.0.0.5:3000/ or https://dashboard.example.org:3000/"
+  exit 1
+fi
+
+if [ ! -w "$DATA" ]; then
+  log "ERROR: $DATA is not writable by uid $(id -u). Set GRAFANA_UID in .env to the owner of ./data (id -u)."
+  exit 1
+fi
+if [ ! -f "$DATA/grafana.db" ]; then
+  cp "$SEED" "$DATA/grafana.db"
+  chmod 640 "$DATA/grafana.db"
+  log "new install: default grafana.db copied to the data folder"
+else
+  log "using the existing grafana.db in the data folder"
+fi
+
+# The mSupply plugins come with the image: replace them on every start so they match this version.
+# Other plugins in data/plugins (installed from the Grafana screen) are left as they are.
+PLUGINS="${GF_PATHS_PLUGINS:-$DATA/plugins}"
+mkdir -p "$PLUGINS"
+for src in /usr/share/msupply/plugins/*/; do
+  id="$(basename "$src")"
+  rm -rf "${PLUGINS:?}/$id"
+  cp -r "$src" "$PLUGINS/$id"
+done
+others=$(find "$PLUGINS" -mindepth 1 -maxdepth 1 -type d | grep -v -c -F -f <(ls /usr/share/msupply/plugins) || true)
+log "plugins: mSupply plugins from the image; $others other plugin(s) in the data folder"
+
+# Only when the mSupply login is on: with it off, MSUPPLY_SERVER_URL may still hold the template text,
+# and a logout redirect built from it sends the browser to an invalid address.
+if [ "${GF_AUTH_GENERIC_OAUTH_ENABLED:-false}" = "true" ]; then
+  base="${MSUPPLY_SERVER_URL%/}"
+  export GF_AUTH_GENERIC_OAUTH_AUTH_URL="${GF_AUTH_GENERIC_OAUTH_AUTH_URL:-$base/api/v4/oauth/}"
+  export GF_AUTH_GENERIC_OAUTH_TOKEN_URL="${GF_AUTH_GENERIC_OAUTH_TOKEN_URL:-$base/api/v4/oauth_access_token/}"
+  export GF_AUTH_GENERIC_OAUTH_API_URL="${GF_AUTH_GENERIC_OAUTH_API_URL:-$base/api/v4/oauth_userinfo/}"
+  export GF_AUTH_SIGNOUT_REDIRECT_URL="${GF_AUTH_SIGNOUT_REDIRECT_URL:-$base/dashboard-oauth/#/logout}"
+  log "mSupply login: on ($base)"
+else
+  log "mSupply login: off"
+fi
+
+if [ -n "${GF_SECURITY_ADMIN_PASSWORD:-}" ]; then
+  (
+    for _ in $(seq 1 150); do
+      if wget -q -O- "http://localhost:3000/api/health" 2>/dev/null | grep -q '"database": *"ok"'; then
+        if printf '%s\n' "$GF_SECURITY_ADMIN_PASSWORD" \
+             | grafana cli admin reset-admin-password --password-from-stdin >/dev/null 2>&1; then
+          log "admin password set from GF_SECURITY_ADMIN_PASSWORD"
+        else
+          log "WARNING: could not set the admin password"
+        fi
+        exit 0
+      fi
+      sleep 2
+    done
+    log "WARNING: Grafana did not answer in 300 s; admin password not set"
+  ) &
+fi
+
+exec /run.sh "$@"
