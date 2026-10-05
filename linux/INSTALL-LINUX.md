@@ -47,13 +47,16 @@ Fill in this table. The steps use these values where you see `<...>`.
 | `<pg-password>` | Password of the database user `dashboard` |
 | `<admin-password>` | Team's standard password for the Grafana `admin` user |
 | `<msupply-ip>` | IP address of the mSupply server |
-| `<version>` | Dashboard version to install, for example `13.2.2` |
+| `<version>` | Dashboard version to install, for example `13.2.2`. The versions are on the [tags page](https://hub.docker.com/r/msupplyfoundation/msupply-dashboard-linux/tags) |
 
 ---
 
 ## A. Install
 
 ### Step A1 of 10: does this server already have the dashboard database?
+
+*If mSupply already exports to this server, the database exists and must be kept. The answer decides
+which steps to do.*
 
 ```bash
 sudo -u postgres psql -p 5432 -Atc "select count(*) from pg_database where datname = 'dashboard'"
@@ -67,7 +70,8 @@ sudo -u postgres psql -p 5432 -Atc "select count(*) from pg_database where datna
 
 ### Step A2 of 10: create the database user and the database
 
-Only if step A1 printed `0`.
+Only if step A1 printed `0`. *mSupply writes into this database and the dashboard reads from it, both as
+the user `dashboard`.*
 
 ```bash
 sudo -u postgres psql -p 5432 -c "create role dashboard login"
@@ -104,7 +108,7 @@ it in place of `17` below.
 echo "listen_addresses = '*'" | sudo tee /etc/postgresql/17/main/conf.d/10-msupply-dashboard.conf
 ```
 
-**Expected:** it may show nothing. The next two commands apply and check it.
+**Expected:** `listen_addresses = '*'`. The next two commands apply and check it.
 
 ```bash
 sudo systemctl restart postgresql
@@ -148,7 +152,11 @@ sudo systemctl reload postgresql
 
 Check again with the first command of this step. **Expected:** `172.30.0.0` and `<msupply-ip>`.
 
+If mSupply runs on this same server, leave out the `<msupply-ip>` line here and in step A5.
+
 ### Step A5 of 10: firewall
+
+*If the firewall is on, it also blocks the dashboard and the mSupply server from reaching PostgreSQL.*
 
 ```bash
 sudo ufw status
@@ -167,6 +175,9 @@ sudo ufw allow from <msupply-ip> to any port 5432 proto tcp
 **Expected:** `Rule added` each time.
 
 ### Step A6 of 10: create the install folder
+
+*This folder is the installation: the settings, the Grafana data and the file that starts the dashboard
+all live here.*
 
 ```bash
 sudo mkdir -p /opt/msupply-dashboard
@@ -232,6 +243,12 @@ sed -i 's|^GF_SERVER_ROOT_URL=.*|GF_SERVER_ROOT_URL=http://<server-address>:3000
 sed -i 's|^PG_PORT=.*|PG_PORT=5432|' .env
 ```
 
+And the Linux user that owns this folder:
+
+```bash
+sed -i "s|^GRAFANA_UID=.*|GRAFANA_UID=$(id -u)|" .env
+```
+
 Now the two passwords:
 
 ```bash
@@ -245,10 +262,13 @@ Find these two lines and replace the text after `=`, including `<` and `>`:
 | `PG_PASSWORD=<database password>` | `<pg-password>`: the password **of the database** |
 | `GF_SECURITY_ADMIN_PASSWORD=<admin password>` | `<admin-password>`: the password **of the Grafana screen** |
 
+If a password has a `$`, write it twice (`$$`): `.env` reads a single `$` as the start of a variable. Do
+not put a space in a password.
+
 Save with `Ctrl+O` then `Enter`, close with `Ctrl+X`. Check, without showing the passwords:
 
 ```bash
-grep -E "^(DASHBOARD_VERSION|GF_SERVER_ROOT_URL|PG_PORT|PG_PASSWORD|GF_SECURITY_ADMIN_PASSWORD)=" .env | sed -E 's/(PASSWORD=).+/\1(filled)/'
+grep -E "^(DASHBOARD_VERSION|GF_SERVER_ROOT_URL|PG_PORT|GRAFANA_UID|PG_PASSWORD|GF_SECURITY_ADMIN_PASSWORD)=" .env | sed -E 's/(PASSWORD=).+/\1(filled)/'
 ```
 
 **Expected,** with your values:
@@ -256,12 +276,15 @@ grep -E "^(DASHBOARD_VERSION|GF_SERVER_ROOT_URL|PG_PORT|PG_PASSWORD|GF_SECURITY_
 ```
 DASHBOARD_VERSION=<version>
 GF_SERVER_ROOT_URL=http://<server-address>:3000/
+GRAFANA_UID=<a number, often 1000>
 PG_PORT=5432
 PG_PASSWORD=(filled)
 GF_SECURITY_ADMIN_PASSWORD=(filled)
 ```
 
 ### Step A8 of 10: download the dashboard
+
+*Downloads Grafana with the mSupply plugins and dashboards. Nothing starts yet.*
 
 ```bash
 docker compose pull
@@ -271,14 +294,17 @@ docker compose pull
 
 ### Step A9 of 10: create or update the dashboard tables
 
+*Creates the tables that mSupply exports into, or adds what this version needs to an existing database.*
+
 If step A1 printed `0` (new database):
 
 ```bash
 docker compose run --rm dashboard msupply init-db
 ```
 
-**Expected,** at the end: `Done. Point the mSupply export at this database now.` The errors it reports as
-ownership changes to "postgres" are normal.
+**Expected,** at the end: `Done. Point the mSupply export at this database now.` Errors like
+`must be able to SET ROLE "postgres"` (or `must be member of role "postgres"` on older PostgreSQL) are
+normal. If it prints `other errors:`, see [Problems](#problems).
 
 If step A1 printed `1` (existing database). This adds what this version needs and keeps the data:
 
@@ -290,6 +316,8 @@ docker compose run --rm dashboard msupply update-db
 ownership changes to "postgres") are normal.
 
 ### Step A10 of 10: start and check
+
+*Starts the dashboard, then checks the login, the database, the plugins and the dashboards.*
 
 ```bash
 docker compose up -d
@@ -305,9 +333,6 @@ docker compose exec dashboard msupply check
 
 Open `http://<server-address>:3000/` in the browser and log in as `admin` with `<admin-password>`.
 
-If step A1 printed `0`: in the mSupply server, point the dashboard export at host `<server-address>`, port
-`5432`, database `dashboard`, user `dashboard`, password `<pg-password>`, and run a full export.
-
 The install is done. If users log in with their mSupply account, continue with
 [Login through mSupply](#login-through-msupply).
 
@@ -315,10 +340,11 @@ The install is done. If users log in with their mSupply account, continue with
 
 ## B. Move a client from Windows
 
-Do all of [A. Install](#a-install) first. The dashboard database must have the client's users, so the full
-export from mSupply (end of step A10) must have run. Then:
+Do all of [A. Install](#a-install) first, on the database that mSupply exports into. Then:
 
 ### Step B1 of 7: copy two files from the Windows server
+
+*`grafana.db` holds the client's users, dashboards and data sources. `custom.ini` holds its settings.*
 
 On the Windows server, stop the dashboard (Command Prompt as administrator):
 
@@ -335,13 +361,16 @@ If the Windows dashboard must keep running: `net start "mSupply Dashboard"`.
 
 ### Step B2 of 7: copy the settings from custom.ini to .env
 
+*On Linux, `.env` does the job of `custom.ini`.*
+
 Open `custom.ini` in a text editor, and `.env` on the Linux server:
 
 ```bash
 nano .env
 ```
 
-For each line on the left that has a value in `custom.ini`, copy the value to the line on the right:
+For each line on the left that has a value in `custom.ini`, copy the value to the line on the right. Lines
+that start with `;` are notes in `custom.ini`: skip them.
 
 | In custom.ini | In .env |
 |---|---|
@@ -356,15 +385,21 @@ Save and close.
 
 ### Step B3 of 7: put the client's grafana.db in place
 
-Copy `grafana.db` to the server, then:
+*Replaces the empty `grafana.db` of the new install with the client's.*
+
+Copy `grafana.db` to the server, then stop the dashboard:
 
 ```bash
 docker compose stop dashboard
 ```
 
+Keep the new install's file as a backup:
+
 ```bash
 cp data/grafana.db data/grafana.db.new-install
 ```
+
+Put the client's file in its place, readable only by the dashboard:
 
 ```bash
 cp <path to the client's grafana.db> data/grafana.db
@@ -374,19 +409,33 @@ cp <path to the client's grafana.db> data/grafana.db
 chmod 640 data/grafana.db
 ```
 
+Remove the search index of the old file. Grafana builds a new one when it starts:
+
 ```bash
 rm -rf data/unified-search
 ```
 
 ### Step B4 of 7: let Grafana update the file
 
+*On the first start, Grafana converts the client's file from its old version to 13.*
+
 ```bash
 docker compose up -d
 ```
 
-Wait until the login page opens in the browser. A large file can take several minutes.
+Wait until the login page opens in the browser. A large file can take several minutes. To follow it:
+
+```bash
+docker compose logs -f dashboard
+```
+
+It is ready when a line shows `HTTP Server Listen`. Close the log with `Ctrl+C` (the dashboard keeps
+running). If it stops with `level=error` lines instead, see [Problems](#problems).
 
 ### Step B5 of 7: fix the logins and data sources
+
+*Links each user to their mSupply account, so the mSupply login keeps working, and fixes the data
+sources for Grafana 13. It backs up `grafana.db` first, in `data/backups/`.*
 
 ```bash
 docker compose stop dashboard
@@ -405,7 +454,8 @@ docker compose up -d
 
 ### Step B6 of 7: fix the data sources that point at localhost
 
-Only if step B5 printed `WARNING: '<name>' points at localhost`. For each `<name>`:
+Only if step B5 printed `WARNING: '<name>' points at localhost`. *Inside Docker, `localhost` is the
+dashboard itself, not this server, so these data sources cannot connect.* For each `<name>`:
 
 1. In Grafana, open **Connections > Data sources > `<name>`**.
 2. Set **Host URL** to `host.docker.internal:5432`.
@@ -413,7 +463,8 @@ Only if step B5 printed `WARNING: '<name>' points at localhost`. For each `<name
 4. Click **Save & test**. **Expected:** `Database Connection OK`.
 
 If the test says `no pg_hba.conf entry`, add a line for that database as in step A4, with its name in place
-of the first `dashboard`.
+of the first `dashboard`. The user `dashboard` may also need read access to that database: ask its
+administrator.
 
 ### Step B7 of 7: check
 
@@ -430,8 +481,16 @@ docker compose exec dashboard msupply check
 
 ### Step C1 of 4: back up
 
+*A copy of `data/` and of the database lets you go back to the current version if the new one has a problem.*
+
 ```bash
 cd /opt/msupply-dashboard
+```
+
+Check the current version first, and note the result to compare after the update:
+
+```bash
+docker compose exec dashboard msupply check
 ```
 
 ```bash
@@ -442,6 +501,12 @@ docker compose stop dashboard
 cp -a data data.before-update
 ```
 
+```bash
+sudo -u postgres pg_dump -p 5432 -Fc dashboard > dashboard-before-update.dump
+```
+
+**Expected:** the last three show nothing.
+
 ### Step C2 of 4: set the new version
 
 Replace `<new-version>`:
@@ -451,6 +516,8 @@ sed -i 's|^DASHBOARD_VERSION=.*|DASHBOARD_VERSION=<new-version>|' .env
 ```
 
 ### Step C3 of 4: start the new version
+
+Download the new version, then add what it needs to the database:
 
 ```bash
 docker compose pull
@@ -474,11 +541,11 @@ Wait 30 seconds, then:
 docker compose exec dashboard msupply check
 ```
 
-**Expected:** the same result as before the update. The update is done. When you are satisfied, remove the
-backup:
+**Expected:** the same result as in step C1. The update is done. When you are satisfied, remove the
+backups:
 
 ```bash
-rm -rf data.before-update
+rm -rf data.before-update dashboard-before-update.dump
 ```
 
 **To go back to the previous version** (replace `<previous-version>`):
@@ -499,6 +566,9 @@ sed -i 's|^DASHBOARD_VERSION=.*|DASHBOARD_VERSION=<previous-version>|' .env
 docker compose up -d
 ```
 
+The database keeps the update. If the previous version shows database errors, ask a database administrator
+to restore `dashboard-before-update.dump` from step C1.
+
 ---
 
 ## Extras
@@ -518,7 +588,7 @@ Then `docker compose up -d`. The login page shows an **OAuth** button.
 
 In mSupply, open the **Dashboard** window and set the dashboard redirect URL to `<server-address>:3000`
 (no `http://`). Without it, after logging in, users land on the mSupply server's address instead of the
-dashboard. Only a special user can change this field.
+dashboard.
 
 ### HTTPS
 
@@ -592,6 +662,9 @@ Give each install its own folder, port (`GRAFANA_PORT`), network (`DOCKER_SUBNET
 
 ### Data sources that read another database through postgres_fdw
 
+*Advanced. Only for a dashboard database that reads tables from another database (for example the
+Open mSupply database) through a `foreign_schema` schema. Ask a database administrator if unsure.*
+
 If the dashboard database has a `foreign_schema` schema, list its links:
 
 ```bash
@@ -615,7 +688,8 @@ create user mapping for dashboard server <fdw-server> options (user '<remote-use
 
 ### Restore the dashboard database from a Windows backup
 
-Only when a full export from mSupply is not possible. A `pg_dumpall` file has one section per database.
+*Advanced.* Only when mSupply cannot export into the new database. A `pg_dumpall` file has one section per
+database.
 
 1. Find the dashboard section. It starts on the line after `\connect dashboard` and ends on the line before
    the next `-- Database "`:
@@ -690,8 +764,9 @@ settings.
 | `FAIL Admin login` | `GF_SECURITY_ADMIN_PASSWORD` in `.env` is wrong. Fix it and run `docker compose up -d`. |
 | `FAIL Data source connects: <name>` | Step B6 for that data source. |
 | `FAIL Dashboard database ... post_export() missing` | The database was not created by step A9. mSupply exports will not build the dashboard data. |
-| `Still missing authid: N` (step B5) | N users exist in the dashboard but not in mSupply's user list. Run a full export from mSupply, then step B5 again. Users who no longer exist in mSupply stay in this count. |
-| `No Grafana user matched public.user` (step B5) | The full export from mSupply has not run yet. Run it, then step B5 again. |
+| `Still missing authid: N` (step B5) | N users exist in the dashboard but not in mSupply's user list. After mSupply exports again, run step B5 again. Users who no longer exist in mSupply stay in this count. |
+| `No Grafana user matched public.user` (step B5) | mSupply has not exported its users into this database yet. After it does, run step B5 again. |
+| `other errors:` after `init-db` or `update-db` | The listed lines are real problems in the database script. Nothing else in this guide fixes them: send them to the dashboard team. |
 | `WARNING: panel type '<type>' ... has no plugin` | Those panels show "Panel plugin not found". Install the plugin from the Grafana screen: see [Install other plugins](#install-other-plugins). |
 | `NOTE: 'graph' panels ... are converted` | Nothing to do. |
 | `Grafana is running. Stop it first` | `docker compose stop dashboard`, then the command again. |
