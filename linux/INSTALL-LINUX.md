@@ -184,7 +184,18 @@ cd /opt/msupply-dashboard
 mkdir -p data import certs
 ```
 
-These four show nothing. Now copy `compose.yaml` and `.env.example` into `/opt/msupply-dashboard`, then:
+These four show nothing. Now download the two files the dashboard needs:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/msupply-foundation/msupply-dashboard/develop/linux/compose.yaml
+```
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/msupply-foundation/msupply-dashboard/develop/linux/.env.example
+```
+
+**Expected:** both show nothing. If one fails with `Could not resolve host`, the server has no internet: copy
+the two files from the `linux/` folder of the repository by USB drive or a shared folder instead.
 
 ```bash
 ls -A
