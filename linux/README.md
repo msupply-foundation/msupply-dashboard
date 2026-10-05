@@ -1,6 +1,6 @@
 # mSupply Dashboard for Linux (Docker image)
 
-This folder builds the `msupplyfoundation/msupply-dashboard` image: Grafana 13.2.2 with the mSupply
+This folder builds the `msupplyfoundation/msupply-dashboard-linux` image: Grafana 13.2.2 with the mSupply
 plugins, the default `grafana.db` from `release/data/` and the `msupply` command (`init-db`, `update-db`,
 `check`, `update-grafanadb`, `import-dashboards`, `version`). PostgreSQL is not in the image; it runs on
 the server.

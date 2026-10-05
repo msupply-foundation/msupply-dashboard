@@ -4,7 +4,7 @@ name: msupply-dashboard
 
 services:
   dashboard:
-    image: ${DASHBOARD_IMAGE:-msupplyfoundation/msupply-dashboard}:${DASHBOARD_VERSION:?set DASHBOARD_VERSION in .env}
+    image: ${DASHBOARD_IMAGE:-msupplyfoundation/msupply-dashboard-linux}:${DASHBOARD_VERSION:?set DASHBOARD_VERSION in .env}
     restart: unless-stopped
     # Reaps the background job that sets the admin password.
     init: true

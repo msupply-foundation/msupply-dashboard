@@ -6,7 +6,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SRC="$(cd "${1:?checkout path}" && pwd)"
 TAG="${2:?tag, e.g. 13.2.2}"
-IMAGE="${IMAGE:-msupplyfoundation/msupply-dashboard}"
+IMAGE="${IMAGE:-msupplyfoundation/msupply-dashboard-linux}"
 CTX="$(mktemp -d)"
 trap 'rm -rf "$CTX"' EXIT
 

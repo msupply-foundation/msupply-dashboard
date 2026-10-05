@@ -559,17 +559,17 @@ Back up `data/` (with the dashboard stopped), `.env`, and the database (`pg_dump
 On a computer with internet:
 
 ```bash
-docker pull msupplyfoundation/msupply-dashboard:<version>
+docker pull msupplyfoundation/msupply-dashboard-linux:<version>
 ```
 
 ```bash
-docker save msupplyfoundation/msupply-dashboard:<version> | gzip > msupply-dashboard-<version>.tar.gz
+docker save msupplyfoundation/msupply-dashboard-linux:<version> | gzip > msupply-dashboard-linux-<version>.tar.gz
 ```
 
 Copy the file to the server, then:
 
 ```bash
-gunzip -c msupply-dashboard-<version>.tar.gz | docker load
+gunzip -c msupply-dashboard-linux-<version>.tar.gz | docker load
 ```
 
 Skip `docker compose pull` in the steps.
