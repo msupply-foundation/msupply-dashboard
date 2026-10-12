@@ -78,10 +78,37 @@ export const TablePanel: React.FC<PanelProps<Options>> = ({
     return undefined;
   };
 
+  // Which cell display mode a column is on. Grafana only paints a cell when
+  // this is explicitly "Color text" or "Color background" - the default (Auto)
+  // renders plain text.
+  const colorMode = (field: (typeof frame.fields)[number]): "background" | "text" | "none" => {
+    const mode = String(
+      (field.config.custom?.cellOptions?.type ?? field.config.custom?.displayMode ?? "") as string
+    );
+
+    if (mode.includes("background")) {
+      return "background";
+    }
+    // "color-text" (cellOptions) and "color-text"/"colorText" (legacy displayMode).
+    if (mode.replace(/-/g, "").toLowerCase().includes("colortext")) {
+      return "text";
+    }
+    return "none";
+  };
+
   // The colour Grafana would paint this cell with (from thresholds, value
   // mappings or a fixed colour), so the export can match the panel.
+  //
+  // field.display() ALWAYS returns a colour - on a column with no thresholds,
+  // mappings or fixed colour it still hands back the theme's default text
+  // colour. Colouring on that alone put a font colour on every cell of every
+  // plain column in the exported sheet, which is not what the panel shows
+  // (#267). So the display mode decides, exactly as it does on screen.
   const cellColor = (field: (typeof frame.fields)[number], rowIndex: number): string | undefined => {
     if (field.type === FieldType.time) {
+      return undefined;
+    }
+    if (colorMode(field) === "none") {
       return undefined;
     }
     const values = field.values;
@@ -216,11 +243,7 @@ export const TablePanel: React.FC<PanelProps<Options>> = ({
         // looks like what's on screen.
         const argb = cellColor(f, i);
         if (argb) {
-          const mode = String(
-            (f.config.custom?.cellOptions?.type ?? f.config.custom?.displayMode ?? "") as string
-          );
-
-          if (mode.includes("background")) {
+          if (colorMode(f) === "background") {
             cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb } };
             // Keep the text readable on a saturated fill.
             cell.font = { color: { argb: "FFFFFFFF" }, bold: true };
