@@ -1,0 +1,32 @@
+# mSupply Dashboard on Linux. Every setting comes from .env (copy .env.example and fill it in).
+# Nothing in this file changes per server.
+name: msupply-dashboard
+
+services:
+  dashboard:
+    image: ${DASHBOARD_IMAGE:-msupplyfoundation/msupply-dashboard-linux}:${DASHBOARD_VERSION:?set DASHBOARD_VERSION in .env}
+    restart: unless-stopped
+    # Reaps the background job that sets the admin password.
+    init: true
+    # Owner of ./data on this server (id -u). Grafana writes grafana.db there.
+    user: "${GRAFANA_UID:-1000}"
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    # On Linux, host.docker.internal only exists with this line. It is this server, as seen from the
+    # container, so a PostgreSQL on this server is reached at host.docker.internal:<port>.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file: .env
+    volumes:
+      - ./data:/var/lib/grafana
+      - ./import:/import:ro
+      - ./certs:/certs:ro
+    networks:
+      - dashboard
+
+networks:
+  dashboard:
+    ipam:
+      config:
+        # Fixed so pg_hba.conf can allow only this subnet.
+        - subnet: ${DOCKER_SUBNET:-172.30.0.0/24}

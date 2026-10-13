@@ -1,0 +1,20 @@
+# Dashboard PostgreSQL data source. Same name as the one inside the shipped
+# grafana.db ("PostgreSQL"), so provisioning updates it instead of adding a second one.
+apiVersion: 1
+
+datasources:
+  - name: PostgreSQL
+    type: grafana-postgresql-datasource
+    orgId: 1
+    url: $__env{PG_HOST}:$__env{PG_PORT}
+    user: $__env{PG_USER}
+    isDefault: true
+    secureJsonData:
+      password: $__env{PG_PASSWORD}
+    jsonData:
+      database: $__env{PG_DATABASE}
+      sslmode: disable
+      maxOpenConns: 0
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+      timescaledb: false
