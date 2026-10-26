@@ -140,8 +140,10 @@ jobs:
           if (-not $root) { throw "grafana.exe not found in the downloaded archive" }
           Write-Host "Grafana archive root: $($root.Name)"
 
-          # public/ and tools/ are wholly Grafana's: replace them outright so
-          # files removed upstream do not linger from the previous version.
+          # tools/ is wholly Grafana's. public/ is too, apart from the mSupply
+          # branding committed under it -- replacing the tree outright drops the
+          # logo and the build that references it, so restore those files from
+          # git afterwards.
           foreach ($dir in 'public', 'tools') {
             $src = Join-Path $root.FullName $dir
             if (-not (Test-Path $src)) { throw "$dir missing from the archive" }
@@ -149,6 +151,23 @@ jobs:
             Copy-Item $src "release/$dir" -Recurse
             Write-Host "replaced release/$dir"
           }
+
+          # Put the mSupply branding back. Restore only these paths -- a blanket
+          # `git checkout release/public` would also bring back the committed
+          # (older) build output and undo the frontend we just installed.
+          $branding = @(
+            'release/public/img/msupply_icon.svg',
+            'release/public/img/msupply_light_icon.svg',
+            'release/public/img/logo_transparent_200x.png',
+            'release/public/img/logo_transparent_200x75.png',
+            'release/public/img/logo_transparent_400x.png'
+          )
+          foreach ($path in $branding) {
+            git checkout -- $path
+            if ($LASTEXITCODE -ne 0) { throw "could not restore $path" }
+            if (-not (Test-Path $path)) { throw "$path missing after restore" }
+          }
+          Write-Host "restored $($branding.Count) mSupply branding files"
 
           # bin/: take Grafana's executables but keep the tools that are ours
           # (nssm.exe is committed; sqlite3.exe is downloaded by a later step,
