@@ -143,7 +143,7 @@ jobs:
           # tools/ is wholly Grafana's. public/ is too, apart from the mSupply
           # branding committed under it -- replacing the tree outright drops the
           # logo and the build that references it, so restore those files from
-          # git afterwards.
+          # git afterwards and point Grafana's own icons at them.
           foreach ($dir in 'public', 'tools') {
             $src = Join-Path $root.FullName $dir
             if (-not (Test-Path $src)) { throw "$dir missing from the archive" }
@@ -160,7 +160,8 @@ jobs:
             'release/public/img/msupply_light_icon.svg',
             'release/public/img/logo_transparent_200x.png',
             'release/public/img/logo_transparent_200x75.png',
-            'release/public/img/logo_transparent_400x.png'
+            'release/public/img/logo_transparent_400x.png',
+            'release/public/img/fav32.png'
           )
           foreach ($path in $branding) {
             git checkout -- $path
@@ -168,6 +169,28 @@ jobs:
             if (-not (Test-Path $path)) { throw "$path missing after restore" }
           }
           Write-Host "restored $($branding.Count) mSupply branding files"
+
+          # Restoring the files is not enough on its own: the old logo came from
+          # a patched Branding.tsx compiled into the old build, and Grafana's own
+          # build never asks for msupply_*.svg. It loads grafana_icon.svg (login
+          # page and side menu, one file for both) and fav32.png (browser tab),
+          # so write the mSupply images over those. The light icon is the one
+          # that reads on the default dark theme. The build/static copy carries
+          # a content hash that changes with every Grafana version, hence the
+          # wildcard -- and the throw, so a renamed asset fails the build rather
+          # than quietly shipping the Grafana logo.
+          $hashedIcons = @(Get-ChildItem 'release/public/build/static/img' -Filter 'grafana_icon.*.svg')
+          if ($hashedIcons.Count -eq 0) { throw "no build/static/img/grafana_icon.*.svg in this Grafana - find the new logo asset" }
+          $icons = @('release/public/img/grafana_icon.svg', 'release/public/build/img/grafana_icon.svg') +
+            $hashedIcons.FullName
+          foreach ($path in $icons) {
+            if (-not (Test-Path $path)) { throw "$path missing - find the new logo asset" }
+            Copy-Item 'release/public/img/msupply_light_icon.svg' $path -Force
+            Write-Host "branded $path"
+          }
+          if (-not (Test-Path 'release/public/build/img/fav32.png')) { throw "build/img/fav32.png missing - find the new favicon" }
+          Copy-Item 'release/public/img/fav32.png' 'release/public/build/img/fav32.png' -Force
+          Write-Host "branded release/public/build/img/fav32.png"
 
           # bin/: take Grafana's executables but keep the tools that are ours
           # (nssm.exe is committed; sqlite3.exe is downloaded by a later step,
