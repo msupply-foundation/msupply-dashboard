@@ -340,6 +340,38 @@ jobs:
         with:
           node-version: lts/*
 
+      # Grafana only loads folders that have a plugin.json, so _sign is not
+      # read as a plugin.
+      - name: Build plugin signing app into release/data/plugins/_sign
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $src = (Resolve-Path 'installer/plugin-signer/Sign-mSupplyPlugins.ps1').Path
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile($src, [ref]$null, [ref]$errors)
+          if ($errors) { $errors | ForEach-Object { Write-Host $_ }; throw "syntax errors in $src" }
+
+          if (-not (Get-Module -ListAvailable -Name ps2exe)) {
+            Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
+            Install-Module -Name ps2exe -Scope CurrentUser -Force
+          }
+          Import-Module ps2exe
+
+          $out = 'release/data/plugins/_sign'
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $exe = Join-Path (Resolve-Path $out).Path 'Sign mSupply Plugins.exe'
+          Invoke-ps2exe -inputFile $src -outputFile $exe -noConsole -STA -requireAdmin `
+            -title 'Sign mSupply Plugins' -product 'mSupply Dashboard' -company 'mSupply Foundation' -version '1.0.0.0'
+          if (-not (Test-Path $exe)) { throw "ps2exe did not create $exe" }
+
+      - name: Sign plugin signing app
+        if: ${{ github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && !inputs.skip_signing) }}
+        shell: cmd
+        run: |
+          java -jar "%JSIGN_JAR%" --storetype ETOKEN --storepass %ETOKEN_PASS% --tsaurl %TSA_URL% "release\data\plugins\_sign\Sign mSupply Plugins.exe" || exit /b 1
+        env:
+          ETOKEN_PASS: ${{ secrets.ETOKEN_PASS }}
+
       - name: Mirror release to short path
         shell: pwsh
         run: |

@@ -185,6 +185,26 @@ users or plugin names to fix.
 
 ---
 
+## Signing the plugins (optional)
+
+The mSupply plugins work unsigned, because `allow_loading_unsigned_plugins`
+lists them. To sign them for the customer's web address:
+
+1. Open `C:\Program Files\mSupply Dashboard\data\plugins\_sign` and run
+   **Sign mSupply Plugins.exe**. Windows asks for administrator rights.
+2. Check the link. It comes from `root_url` in `custom.ini` and must be the
+   same address users open.
+3. Paste a grafana.com Access Policy token (it starts with `glc_`, scope
+   `plugins:write`). The app does not save it.
+4. Click **Sign**. The app signs the ticked plugins, restarts the dashboard
+   and shows any signature errors from the Grafana log.
+
+The server needs internet access only while it signs. If the customer's web
+address changes later, run the app again with the new link, or click
+**Remove signature** to go back to unsigned plugins.
+
+---
+
 ## Verify
 
 Stop at the first failure.
