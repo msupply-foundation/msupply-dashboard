@@ -6,6 +6,7 @@ import { WorldMapOptions } from 'types';
 import { DataPointLayer, GeoJSONLayer, Legend } from './components';
 import { useTheme } from '@grafana/ui';
 import { LatLngTuple } from 'leaflet';
+import { tileServers } from './tiles';
 
 import './leaflet.css';
 import './worldmap-panel.css';
@@ -15,23 +16,7 @@ interface Props extends PanelProps<WorldMapOptions> {}
 export const WorldMap: React.FC<Props> = ({ options, data, fieldConfig, height, width }) => {
   const { geoJSON, geoJSONOutlineColour, initialZoom, mouseWheelZoom, showLegend } = options;
   const theme = useTheme();
-  const tileServers = {
-    light: {
-      url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
-      attribution:
-        '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
-        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
-      subdomains: 'abcd',
-    },
-    dark: {
-      url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
-      attribution:
-        '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
-        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
-      subdomains: 'abcd',
-    },
-  };
-
+  const tiles = theme.isLight ? tileServers.light : tileServers.dark;
   const centre: LatLngTuple = [0, 0];
   options.centre.split(',').forEach((value, index) => {
     const l = parseFloat(value);
@@ -49,7 +34,8 @@ export const WorldMap: React.FC<Props> = ({ options, data, fieldConfig, height, 
       <Legend fieldConfig={fieldConfig} visible={showLegend} />
       <DataPointLayer options={options} data={data} />
       <Pane name="background-pane" style={{ zIndex: 1 }}>
-        <TileLayer {...(theme.isLight ? tileServers.light : tileServers.dark)} />
+        <TileLayer {...tiles.base} />
+        <TileLayer {...tiles.labels} />
         <GeoJSONLayer geoJSON={geoJSON} color={geoJSONOutlineColour} />
       </Pane>
     </MapContainer>

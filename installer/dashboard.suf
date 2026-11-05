@@ -3819,6 +3819,8 @@ result = Shell.Execute(SessionVar.Expand("%AppFolder%\\conf\\provisioning\\db-in
 -- on, it downloads extra apps into the side menu on first start, updates the
 -- bundled plugins to whatever version is current that day and needs internet.
 INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "plugins", "preinstall_disabled", "true");
+-- The mSupply plugins in data\\plugins are not signed.
+INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "plugins", "allow_loading_unsigned_plugins", "msupplyfoundation-table,msupplyfoundation-msupply-regionmap,m-supply-foundation-msupply-worldmap");
 -- No news feed, usage reporting or feedback prompts inside the dashboard.
 -- Plugin update checks and the help menu stay on.
 INIFile.SetValue(SessionVar.Expand("%AppFolder%\\conf\\custom.ini"), "news", "news_feed_enabled", "false");

@@ -301,6 +301,45 @@ jobs:
 
           Get-ChildItem $target | Select-Object Name | Format-Table
 
+      # msupply-worldmap still builds with @grafana/toolkit 7, which needs
+      # Node 16. sass-loader prefers node-sass whenever it can be resolved,
+      # and node-sass does not compile here, so it is removed and the pinned
+      # dart sass is used instead. The toolkit does not copy the stylesheets
+      # that module.js loads at runtime, so they are copied after the build.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 16
+
+      - name: Build msupply-worldmap into release/data/plugins
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = 'custom-plugins/msupply-worldmap'
+          Push-Location $dir
+          try {
+            npx --yes yarn@1.22.22 install --frozen-lockfile --ignore-engines --ignore-scripts
+            if ($LASTEXITCODE -ne 0) { throw "yarn install failed for msupply-worldmap" }
+            if (Test-Path node_modules/node-sass) { Remove-Item -Recurse -Force node_modules/node-sass }
+            npx --yes yarn@1.22.22 --ignore-engines build
+            if ($LASTEXITCODE -ne 0) { throw "yarn build failed for msupply-worldmap" }
+            Copy-Item src/*.css dist/ -Force
+          } finally {
+            Pop-Location
+          }
+
+          $manifest = Get-Content "$dir/dist/plugin.json" -Raw | ConvertFrom-Json
+          $id = $manifest.id
+          if (-not $id) { throw "msupply-worldmap has no id in dist/plugin.json" }
+
+          $dest = Join-Path 'release/data/plugins' $id
+          if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+          Copy-Item "$dir/dist" $dest -Recurse
+          Write-Host "installed msupply-worldmap as $id"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+
       - name: Mirror release to short path
         shell: pwsh
         run: |

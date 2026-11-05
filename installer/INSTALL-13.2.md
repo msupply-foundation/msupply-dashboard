@@ -121,11 +121,12 @@ when they have none. Safe to run again.
 **7. Update the plugin names**
 
 Open `conf\custom.ini` in Notepad (as administrator), find
-`allow_loading_unsigned_plugins`, and make sure both of these are in the list:
+`allow_loading_unsigned_plugins`, and make sure these are in the list:
 
 ```
 msupplyfoundation-table
 msupplyfoundation-msupply-regionmap
+m-supply-foundation-msupply-worldmap
 ```
 
 Comma-separated, no spaces. Leave any old names in place.
@@ -177,14 +178,7 @@ token_url = https://customer.msupply.org:2048/api/v4/oauth_access_token/
 api_url   = https://customer.msupply.org:2048/api/v4/oauth_userinfo/
 ```
 
-**4.** In the same file, find the `[plugins]` section (the installer creates
-it) and add this line under it, or the mSupply panels will not load:
-
-```ini
-allow_loading_unsigned_plugins = msupplyfoundation-table,msupplyfoundation-msupply-regionmap
-```
-
-**5.** Save, then restart **mSupply Dashboard** in Services.
+**4.** Save, then restart **mSupply Dashboard** in Services.
 
 Steps 6 and 7 of the existing-customer list do not apply — there are no old
 users or plugin names to fix.
@@ -202,7 +196,7 @@ Stop at the first failure.
 | 3 | **A real mSupply user can log in** | click *Sign in with OAuth* |
 | 4 | All the customer's dashboards are listed | dashboard list |
 | 5 | Panels draw charts, no red boxes | open 2–3 dashboards |
-| 6 | mSupply table and region map panels work | a dashboard using them |
+| 6 | mSupply table, region map and world map panels work | a dashboard using them |
 | 7 | One data connection is marked **default** | gear icon → Data sources |
 
 **Check 3 matters most.** Use a genuine mSupply username and password, not the
@@ -278,10 +272,10 @@ The panel options are the same in both versions, so only the type changes:
 open the dashboard → **Edit** → **Settings** → **JSON Model**, replace the old
 name in `"type": "..."` with the new one, then **Save dashboard**.
 
-The world map (`m-supply-foundation-msupply-worldmap`) is not in this
-installer. Builds without the legend fix (see the plugin's `CHANGELOG.md`) fail
+The world map keeps its name (`m-supply-foundation-msupply-worldmap`), so its
+panels need no change. A world map copied in by hand from an older build fails
 on version 13 with *"Object(...) is not a function"* whenever the legend is
-shown.
+shown; the installer's copy (1.0.3 or later) does not.
 
 **Every panel says "no default database configured"**
 
