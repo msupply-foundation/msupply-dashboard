@@ -68,19 +68,29 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          $url = (Get-Content installer/grafana.url -Raw).Trim()
+          if ($url -notmatch 'grafana-(\d+\.\d+\.\d+)') {
+            throw "could not parse a Grafana version from installer/grafana.url: $url"
+          }
+          $grafanaVersion = $Matches[1]
           if ($env:GITHUB_REF_TYPE -eq 'tag') {
             $versionTag = $env:GITHUB_REF_NAME
-          } else {
-            $url = (Get-Content installer/grafana.url -Raw).Trim()
-            if ($url -notmatch 'grafana-(\d+\.\d+\.\d+)') {
-              throw "could not parse a Grafana version from installer/grafana.url: $url"
+            # A tag names the Grafana it ships, e.g. v13.2.2.build.1
+            if (-not $versionTag.StartsWith("v$grafanaVersion.")) {
+              throw "tag $versionTag does not match the Grafana in installer/grafana.url ($grafanaVersion) - use v$grafanaVersion.build.<n>"
             }
-            $grafanaVersion = $Matches[1]
+            # Previous real release, for the release notes; test/rc tags are skipped
+            $prevTag = git describe --tags --abbrev=0 --match 'v*' --exclude '*test*' --exclude '*rc*' "$env:GITHUB_SHA^" 2>$null
+            if ($LASTEXITCODE -ne 0) { $prevTag = '' }
+            Write-Host "prevTag=$prevTag"
+            "prevTag=$prevTag" >> $env:GITHUB_ENV
+          } else {
             $sha = $env:GITHUB_SHA.Substring(0, 7)
             $versionTag = "dev-$env:GITHUB_REF_NAME-grafana$grafanaVersion-$sha"
           }
           Write-Host "versionTag=$versionTag"
           "versionTag=$versionTag" >> $env:GITHUB_ENV
+          $global:LASTEXITCODE = 0
 
       - uses: actions/setup-node@v5
         with:
@@ -341,9 +351,10 @@ jobs:
           node-version: lts/*
 
       # Grafana only loads folders that have a plugin.json, so _sign is not
-      # read as a plugin.
+      # read as a plugin. ps2exe needs Windows PowerShell, whose execution
+      # policy on the build box blocks scripts, so bypass it for this step.
       - name: Build plugin signing app into release/data/plugins/_sign
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
           $ErrorActionPreference = 'Stop'
           $src = (Resolve-Path 'installer/plugin-signer/Sign-mSupplyPlugins.ps1').Path
@@ -427,10 +438,12 @@ jobs:
           name: msupply-dashboard-installers-${{ env.versionTag }}
           path: installer/dashboard-*.exe
 
-      # Attach installers to the GitHub release for this tag — but only if a
-      # release already exists (draft or published); the release list is
+      # Attach installers to the GitHub release for this tag, creating it if
+      # needed with notes listing the PRs merged since the previous release.
+      # An existing release (draft or published) is reused; the release list is
       # matched by tag_name (not get-by-tag) so draft releases count too.
-      - name: Upload to GitHub release (if one exists)
+      # Tags containing "test" or "rc" become pre-releases.
+      - name: Upload to GitHub release
         if: github.ref_type == 'tag'
         uses: actions/github-script@v8
         with:
@@ -441,10 +454,21 @@ jobs:
             const releases = await github.paginate(github.rest.repos.listReleases, {
               ...context.repo, per_page: 100,
             });
-            const release = releases.find(r => r.tag_name === tag);
+            let release = releases.find(r => r.tag_name === tag);
             if (!release) {
-              core.info(`No release for ${tag} - skipping upload`);
-              return;
+              const notes = (await github.rest.repos.generateReleaseNotes({
+                ...context.repo,
+                tag_name: tag,
+                ...(process.env.prevTag ? { previous_tag_name: process.env.prevTag } : {}),
+              })).data;
+              core.info(`Creating release ${tag} (changes since ${process.env.prevTag || 'the start'})`);
+              release = (await github.rest.repos.createRelease({
+                ...context.repo,
+                tag_name: tag,
+                name: tag,
+                body: notes.body,
+                prerelease: /test|rc/i.test(tag),
+              })).data;
             }
             const dir = path.join(process.env.GITHUB_WORKSPACE, 'installer');
             const installers = fs.readdirSync(dir).filter(f => f.startsWith('dashboard-') && f.endsWith('.exe'));
