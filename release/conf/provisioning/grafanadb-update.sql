@@ -17,8 +17,12 @@ CREATE TEMP TABLE temp_grafana_users (
 -- lowercases every user.email, while 4D's e_mail keeps its original case.
 -- A case-sensitive `=` here silently matches nothing for those users, which
 -- produces no UPDATE row and leaves them unable to log in.
--- Names are compared the same way for symmetry; 4D is the source of truth for
--- display case and Grafana does not normalise user.name.
+--
+-- The match key is the email Grafana stored at the user's last login, rebuilt
+-- the way 4D builds it (routesApiV4OauthUserInfo): [user]e_mail when it is
+-- set, otherwise [user]name || '@sussol.net'. The display name is not a usable
+-- key: 4D sends "first_name last_name" whenever first_name is set, so it only
+-- equals [user]name for users without a first name.
 --
 -- Only rows that match are updated, so a user present in Grafana but absent
 -- from 4D is simply skipped rather than breaking the run.
@@ -27,8 +31,9 @@ SELECT
     'WHERE user_id = ' || t.user_id ||
     ' AND auth_module=''oauth_generic_oauth'';'
 FROM temp_grafana_users t
-JOIN public.user u ON CASE
-    WHEN u.e_mail IS NULL OR u.e_mail = ''
-        THEN lower(u.name) = lower(t.name)
-        ELSE lower(u.e_mail) = lower(t.email)
-    END;
+JOIN public.user u ON lower(
+    CASE
+        WHEN coalesce(u.e_mail, '') <> '' THEN u.e_mail
+        ELSE u.name || '@sussol.net'
+    END
+) = lower(t.email);

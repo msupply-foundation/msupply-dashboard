@@ -1,6 +1,6 @@
 {
   "name": "m-supply-foundation-msupply-worldmap",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Display locations on a world map",
   "scripts": {
     "copy": "rsync -rP --exclude=node_modules ./ ~/GitHub/msupply-dashboard/custom-plugins/msupply-worldmap/",
@@ -24,10 +24,11 @@
     "@grafana/toolkit": "7.3.3",
     "@grafana/ui": "7.3.3",
     "@types/leaflet": "^1.5.19",
-    "emotion": "10.0.27"
+    "emotion": "10.0.27",
+    "sass": "1.27.0"
   },
   "engines": {
-    "node": ">=12 <13"
+    "node": ">=12 <17"
   },
   "dependencies": {
     "leaflet": "^1.7.1",

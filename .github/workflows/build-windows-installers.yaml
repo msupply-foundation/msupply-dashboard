@@ -68,19 +68,29 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          $url = (Get-Content installer/grafana.url -Raw).Trim()
+          if ($url -notmatch 'grafana-(\d+\.\d+\.\d+)') {
+            throw "could not parse a Grafana version from installer/grafana.url: $url"
+          }
+          $grafanaVersion = $Matches[1]
           if ($env:GITHUB_REF_TYPE -eq 'tag') {
             $versionTag = $env:GITHUB_REF_NAME
-          } else {
-            $url = (Get-Content installer/grafana.url -Raw).Trim()
-            if ($url -notmatch 'grafana-(\d+\.\d+\.\d+)') {
-              throw "could not parse a Grafana version from installer/grafana.url: $url"
+            # A tag names the Grafana it ships, e.g. v13.2.2.build.1
+            if (-not $versionTag.StartsWith("v$grafanaVersion.")) {
+              throw "tag $versionTag does not match the Grafana in installer/grafana.url ($grafanaVersion) - use v$grafanaVersion.build.<n>"
             }
-            $grafanaVersion = $Matches[1]
+            # Previous real release, for the release notes; test/rc tags are skipped
+            $prevTag = git describe --tags --abbrev=0 --match 'v*' --exclude '*test*' --exclude '*rc*' "$env:GITHUB_SHA^" 2>$null
+            if ($LASTEXITCODE -ne 0) { $prevTag = '' }
+            Write-Host "prevTag=$prevTag"
+            "prevTag=$prevTag" >> $env:GITHUB_ENV
+          } else {
             $sha = $env:GITHUB_SHA.Substring(0, 7)
             $versionTag = "dev-$env:GITHUB_REF_NAME-grafana$grafanaVersion-$sha"
           }
           Write-Host "versionTag=$versionTag"
           "versionTag=$versionTag" >> $env:GITHUB_ENV
+          $global:LASTEXITCODE = 0
 
       - uses: actions/setup-node@v5
         with:
@@ -214,6 +224,21 @@ jobs:
             if (Test-Path $src) { Copy-Item $src "release/$name" -Force }
           }
 
+          # data/plugins-bundled/: the native datasources (PostgreSQL, MySQL,
+          # Prometheus, ...) are no longer compiled into public/. Grafana loads
+          # them from this folder (`bundled_plugins` in defaults.ini). Without
+          # it the PostgreSQL datasource only appears if the first start can
+          # download it from grafana.com, and an offline server is left with
+          # no working panels. Replace it outright, like public/.
+          $bundledSrc = Join-Path $root.FullName 'data/plugins-bundled'
+          if (-not (Test-Path (Join-Path $bundledSrc 'grafana-postgresql-datasource'))) {
+            throw "data/plugins-bundled/grafana-postgresql-datasource missing from the archive"
+          }
+          if (Test-Path 'release/data/plugins-bundled') { Remove-Item -Recurse -Force 'release/data/plugins-bundled' }
+          New-Item -ItemType Directory -Force -Path release/data | Out-Null
+          Copy-Item $bundledSrc 'release/data/plugins-bundled' -Recurse
+          Write-Host "replaced release/data/plugins-bundled ($((Get-ChildItem 'release/data/plugins-bundled' -Directory).Count) plugins)"
+
           Write-Host "--- release/bin ---"
           Get-ChildItem release/bin | Select-Object Name, Length | Format-Table
 
@@ -286,6 +311,78 @@ jobs:
 
           Get-ChildItem $target | Select-Object Name | Format-Table
 
+      # msupply-worldmap still builds with @grafana/toolkit 7, which needs
+      # Node 16. sass-loader prefers node-sass whenever it can be resolved,
+      # and node-sass does not compile here, so it is removed and the pinned
+      # dart sass is used instead. The toolkit does not copy the stylesheets
+      # that module.js loads at runtime, so they are copied after the build.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 16
+
+      - name: Build msupply-worldmap into release/data/plugins
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = 'custom-plugins/msupply-worldmap'
+          Push-Location $dir
+          try {
+            npx --yes yarn@1.22.22 install --frozen-lockfile --ignore-engines --ignore-scripts
+            if ($LASTEXITCODE -ne 0) { throw "yarn install failed for msupply-worldmap" }
+            if (Test-Path node_modules/node-sass) { Remove-Item -Recurse -Force node_modules/node-sass }
+            npx --yes yarn@1.22.22 --ignore-engines build
+            if ($LASTEXITCODE -ne 0) { throw "yarn build failed for msupply-worldmap" }
+            Copy-Item src/*.css dist/ -Force
+          } finally {
+            Pop-Location
+          }
+
+          $manifest = Get-Content "$dir/dist/plugin.json" -Raw | ConvertFrom-Json
+          $id = $manifest.id
+          if (-not $id) { throw "msupply-worldmap has no id in dist/plugin.json" }
+
+          $dest = Join-Path 'release/data/plugins' $id
+          if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+          Copy-Item "$dir/dist" $dest -Recurse
+          Write-Host "installed msupply-worldmap as $id"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+
+      # Grafana only loads folders that have a plugin.json, so _sign is not
+      # read as a plugin. ps2exe needs Windows PowerShell, whose execution
+      # policy on the build box blocks scripts, so bypass it for this step.
+      - name: Build plugin signing app into release/data/plugins/_sign
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $src = (Resolve-Path 'installer/plugin-signer/Sign-mSupplyPlugins.ps1').Path
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile($src, [ref]$null, [ref]$errors)
+          if ($errors) { $errors | ForEach-Object { Write-Host $_ }; throw "syntax errors in $src" }
+
+          if (-not (Get-Module -ListAvailable -Name ps2exe)) {
+            Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
+            Install-Module -Name ps2exe -Scope CurrentUser -Force
+          }
+          Import-Module ps2exe
+
+          $out = 'release/data/plugins/_sign'
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $exe = Join-Path (Resolve-Path $out).Path 'Sign mSupply Plugins.exe'
+          Invoke-ps2exe -inputFile $src -outputFile $exe -noConsole -STA -requireAdmin `
+            -title 'Sign mSupply Plugins' -product 'mSupply Dashboard' -company 'mSupply Foundation' -version '1.0.0.0'
+          if (-not (Test-Path $exe)) { throw "ps2exe did not create $exe" }
+
+      - name: Sign plugin signing app
+        if: ${{ github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && !inputs.skip_signing) }}
+        shell: cmd
+        run: |
+          java -jar "%JSIGN_JAR%" --storetype ETOKEN --storepass %ETOKEN_PASS% --tsaurl %TSA_URL% "release\data\plugins\_sign\Sign mSupply Plugins.exe" || exit /b 1
+        env:
+          ETOKEN_PASS: ${{ secrets.ETOKEN_PASS }}
+
       - name: Mirror release to short path
         shell: pwsh
         run: |
@@ -341,10 +438,12 @@ jobs:
           name: msupply-dashboard-installers-${{ env.versionTag }}
           path: installer/dashboard-*.exe
 
-      # Attach installers to the GitHub release for this tag — but only if a
-      # release already exists (draft or published); the release list is
+      # Attach installers to the GitHub release for this tag, creating it if
+      # needed with notes listing the PRs merged since the previous release.
+      # An existing release (draft or published) is reused; the release list is
       # matched by tag_name (not get-by-tag) so draft releases count too.
-      - name: Upload to GitHub release (if one exists)
+      # Tags containing "test" or "rc" become pre-releases.
+      - name: Upload to GitHub release
         if: github.ref_type == 'tag'
         uses: actions/github-script@v8
         with:
@@ -355,10 +454,21 @@ jobs:
             const releases = await github.paginate(github.rest.repos.listReleases, {
               ...context.repo, per_page: 100,
             });
-            const release = releases.find(r => r.tag_name === tag);
+            let release = releases.find(r => r.tag_name === tag);
             if (!release) {
-              core.info(`No release for ${tag} - skipping upload`);
-              return;
+              const notes = (await github.rest.repos.generateReleaseNotes({
+                ...context.repo,
+                tag_name: tag,
+                ...(process.env.prevTag ? { previous_tag_name: process.env.prevTag } : {}),
+              })).data;
+              core.info(`Creating release ${tag} (changes since ${process.env.prevTag || 'the start'})`);
+              release = (await github.rest.repos.createRelease({
+                ...context.repo,
+                tag_name: tag,
+                name: tag,
+                body: notes.body,
+                prerelease: /test|rc/i.test(tag),
+              })).data;
             }
             const dir = path.join(process.env.GITHUB_WORKSPACE, 'installer');
             const installers = fs.readdirSync(dir).filter(f => f.startsWith('dashboard-') && f.endsWith('.exe'));
