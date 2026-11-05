@@ -1,6 +1,25 @@
-import { FieldConfigSource, Threshold, getColorForTheme } from '@grafana/data';
+import * as grafanaData from '@grafana/data';
+import { FieldConfigSource, Threshold } from '@grafana/data';
+import { config } from '@grafana/runtime';
 import { useTheme } from '@grafana/ui';
 import React from 'react';
+
+// getColorForTheme no longer exists in @grafana/data on current Grafana
+// versions, and calling it crashed the panel whenever the legend was shown.
+// Use theme2.visualization.getColorByName where it exists (Grafana 8 and
+// later), fall back to getColorForTheme on Grafana 7, and otherwise use the
+// threshold colour as it is.
+const resolveColor = (color: string, theme: any): string => {
+  const visualization = (config as any).theme2?.visualization;
+  if (visualization && typeof visualization.getColorByName === 'function') {
+    return visualization.getColorByName(color);
+  }
+  const legacy = (grafanaData as any).getColorForTheme;
+  if (typeof legacy === 'function') {
+    return legacy(color, theme);
+  }
+  return color;
+};
 
 const POSITION_CLASSES = {
   bottomleft: 'leaflet-bottom leaflet-left',
@@ -41,7 +60,7 @@ export const Legend: React.FC<LegendProps> = ({ fieldConfig, position = 'bottoml
       <div className="info legend leaflet-control">
         {steps.map((step, index) => (
           <div key={`${step.value}_${step.color}`} className="legend-item">
-            <i style={{ background: getColorForTheme(step.color, theme) }} />
+            <i style={{ background: resolveColor(step.color, theme) }} />
             {renderLabel(step, index)}
           </div>
         ))}

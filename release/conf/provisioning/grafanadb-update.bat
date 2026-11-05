@@ -7,25 +7,15 @@ set BACKUP_DIR=C:\Program Files\mSupply Dashboard\data
 set USER_DIR=C:\Program Files\mSupply Dashboard\data\temp
 set LOGDIR=%~dp0
 
-:: Build the timestamp via WMIC, which always returns yyyymmddHHMMSS regardless
-:: of the machine's locale. Slicing %DATE% assumed a US mm/dd/yyyy format and on
-:: a dd/MM/yyyy machine produced a name containing "/", which made every path
-:: built from it invalid ("The system cannot find the path specified").
-for /f "skip=1 delims=" %%i in ('wmic os get localdatetime 2^>nul') do (
-    if not defined WMIC_DT set WMIC_DT=%%i
-)
-set TIMESTAMP=%WMIC_DT:~0,8%_%WMIC_DT:~8,6%
-
-:: Fall back to PowerShell if WMIC is unavailable (removed in newer Windows).
-if "%TIMESTAMP%"=="_" set TIMESTAMP=
-if not defined TIMESTAMP (
-    for /f "delims=" %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set TIMESTAMP=%%i
-)
+:: Timestamp for the log and backup file names, as yyyyMMdd_HHmmss. PowerShell
+:: returns this format whatever the machine's locale; slicing %DATE% does not,
+:: and wmic is no longer shipped with current Windows releases.
+set TIMESTAMP=
+for /f "delims=" %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set TIMESTAMP=%%i
 if not defined TIMESTAMP (
     echo ERROR: could not determine a timestamp for the log file name
     exit /b 1
 )
-set TIMESTAMP=%TIMESTAMP: =0%
 
 :: ---- Default postgres values ----
 set DEFAULT_PASSWORD=postgres
@@ -33,7 +23,6 @@ set DEFAULT_USER=postgres
 set DEFAULT_PORT=5432
 set DEFAULT_DB=dashboard
 set DEFAULT_HOST=localhost
-set DEFAULT_VERSION=17
 
 :: ---- Read parameters ----
 set PGPASSWORD=%~1
@@ -49,7 +38,13 @@ if "%PGUSER%"=="" set PGUSER=%DEFAULT_USER%
 if "%PGPORT%"=="" set PGPORT=%DEFAULT_PORT%
 if "%PGDB%"=="" set PGDB=%DEFAULT_DB%
 if "%PGHOST%"=="" set PGHOST=%DEFAULT_HOST%
-if "%PGVERSION%"=="" set PGVERSION=%DEFAULT_VERSION%
+
+:: Without an explicit version, use the newest PostgreSQL installed under
+:: Program Files that has a psql.exe. A fixed default breaks on every server
+:: whose PostgreSQL is a different major version.
+if not "%PGVERSION%"=="" goto :have_pgversion
+for /f "delims=" %%v in ('powershell -NoProfile -Command "Get-ChildItem 'C:\Program Files\PostgreSQL' -Directory -ErrorAction SilentlyContinue | Where-Object { Test-Path (Join-Path $_.FullName 'bin\psql.exe') } | Sort-Object { $_.Name -as [double] } -Descending | Select-Object -First 1 -ExpandProperty Name"') do set PGVERSION=%%v
+:have_pgversion
 
 set LOGFILE=%LOGDIR%migration_%TIMESTAMP%.log
 
@@ -102,110 +97,6 @@ echo Found sqlite at: %SQLITE%
 
 echo.
 echo ==========================================
-echo Export CSV from grafana.db...
-echo ==========================================
-
-if not exist "%USER_DIR%" (
-    mkdir "%USER_DIR%"
-)
-
-SET USER_CSV=%USER_DIR%\users.csv
-
-:: Write the CSV with sqlite3's .once rather than ">" redirection. sqlite3
-:: already ends lines with CRLF on Windows, and cmd's redirection converts the
-:: LF to CRLF again, producing CR CR LF -- psql's \copy reads the extra CR as an
-:: empty second line and fails with 'missing data for column "name"'.
-(
-    echo .mode csv
-    echo .headers on
-    echo .once "%USER_CSV:\=\\%"
-    echo SELECT u.id AS user_id, u.name, u.email FROM user u JOIN user_auth ua ON u.id = ua.user_id WHERE u.is_disabled = 0 AND ua.auth_module='oauth_generic_oauth';
-) | "%SQLITE%" "%GRAFANA_DB%"
-
-if not exist "%USER_CSV%" (
-    echo ERROR: sqlite3 did not produce %USER_CSV%
-    exit /b 1
-)
-
-:: Normalise line endings regardless of how the CSV was produced: collapse any
-:: run of CRs before a LF to a single CRLF, and drop a trailing blank line.
-:: This keeps the handoff to psql working across sqlite3 versions and shells,
-:: rather than depending on .once behaving a particular way.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0normalise-csv.ps1" -Path "%USER_CSV%"
-if errorlevel 1 (
-    echo ERROR: could not normalise line endings in %USER_CSV%
-    exit /b 1
-)
-
-set LINE_COUNT=0
-for /f "usebackq delims=" %%A in ("%USER_CSV%") do (
-    set /a LINE_COUNT+=1
-)
-
-if %LINE_COUNT% LEQ 1 (
-    echo Only header found in %USER_CSV%, nothing to do.
-    exit /b 0
-)
-set /a OAUTH_EXPORTED=%LINE_COUNT%-1
-echo Exported %OAUTH_EXPORTED% OAuth users to %USER_CSV%
-
-echo.
-echo ==========================================
-echo ImportCSV to postges and export sql with [user]ID ...
-echo ==========================================
-
-SET PSQL=C:\Program Files\PostgreSQL\%PGVERSION%\bin\psql.exe
-if not exist "%PSQL%" (
-    echo ERROR: psql not found at "%PSQL%"
-    echo        Pass the PostgreSQL major version as the 6th argument, e.g.
-    echo        grafanadb-update.bat %%PGPASSWORD%% %%PGUSER%% %%PGPORT%% %%PGDB%% %%PGHOST%% 16
-    exit /b 1
-)
-
-SET USER_SQL=%USER_DIR%\updates.sql
-:: -v ON_ERROR_STOP=1 so a failed \copy or query is fatal instead of leaving an
-:: empty updates.sql and carrying on as though there was nothing to do.
-"%PSQL%" --username=%PGUSER% --port=%PGPORT% --file=grafanadb-update.sql --host=%PGHOST% --dbname=%PGDB% -v ON_ERROR_STOP=1 -q -t -A > "%USER_SQL%"
-if errorlevel 1 (
-    echo ERROR: psql failed -- see the messages above.
-    exit /b 1
-)
-
-set LINE_COUNT=0
-for /f "usebackq delims=" %%A in ("%USER_SQL%") do (
-    set /a LINE_COUNT+=1
-)
-
-if %LINE_COUNT% LEQ 0 (
-    echo ERROR: psql produced no UPDATE statements in %USER_SQL%.
-    echo.
-    echo        The CSV exported %OAUTH_EXPORTED% Grafana users, but none of them
-    echo        matched a row in the Postgres "%PGDB%" database, so no auth_id
-    echo        can be written and OAuth logins will keep failing. Check:
-    echo.
-    echo          * public.user in "%PGDB%" is populated with the 4D users
-    echo            psql -U %PGUSER% -d %PGDB% -c "SELECT COUNT^(*^) FROM public.user;"
-    echo          * grafanadb-update.sql joins with lower^(^) on both sides; a
-    echo            case-sensitive join matches nothing once Grafana 13 has
-    echo            lowercased user.email.
-    exit /b 1
-)
-echo Generated %LINE_COUNT% UPDATE statements.
-
-echo.
-echo ==========================================
-echo Update grafana.db with [user]ID ...
-echo ==========================================
-
-"%SQLITE%" "%GRAFANA_DB%" < "%USER_SQL%" > "%LOGDIR%sqlite_update.log" 2>&1
-
-if errorlevel 1 (
-    echo ERROR: SQLite update failed. Check sqlite_update.log
-    exit /b 1
-)
-
-echo.
-echo ==========================================
 echo Migrating legacy datasource types ...
 echo ==========================================
 :: Grafana renamed the Postgres plugin from "postgres" to
@@ -239,6 +130,41 @@ del /q "%DS_SQL%" "%DS_OUT%" 2>nul
 
 if not defined DS_LEGACY set DS_LEGACY=unknown
 echo Datasources still using the legacy 'postgres' type: %DS_LEGACY%
+
+echo.
+echo ==========================================
+echo Copying the database name into jsonData ...
+echo ==========================================
+:: Datasources created on older Grafana versions keep the database name only
+:: in the data_source.database column. The current PostgreSQL plugin reads it from
+:: jsonData.database, and with it empty every panel on that datasource fails
+:: with "no default database configured". The Grafana upgrade does not copy it
+:: across, and editing the datasource in the UI is the only other way it gets
+:: written, so copy it here. Existing jsonData values are never overwritten.
+set DS_SQL=%USER_DIR%\datasource-database.sql
+del /q "%DS_SQL%" 2>nul
+>  "%DS_SQL%" echo UPDATE data_source
+>> "%DS_SQL%" echo SET json_data = json_set^(CASE WHEN json_valid^(json_data^) THEN json_data ELSE '{}' END, '$.database', database^)
+>> "%DS_SQL%" echo WHERE type='grafana-postgresql-datasource'
+>> "%DS_SQL%" echo   AND coalesce^(database, ''^) NOT IN ^(''^)
+>> "%DS_SQL%" echo   AND coalesce^(json_extract^(json_data, '$.database'^), ''^) IN ^(''^);
+
+"%SQLITE%" "%GRAFANA_DB%" < "%DS_SQL%" >> "%LOGDIR%sqlite_update.log" 2>&1
+if errorlevel 1 (
+    echo ERROR: could not copy the database name into jsonData. Check sqlite_update.log
+    del /q "%DS_SQL%" 2>nul
+    exit /b 1
+)
+del /q "%DS_SQL%" 2>nul
+
+set DS_OUT=%USER_DIR%\ds-database.txt
+> "%DS_SQL%" echo SELECT COUNT^(*^) FROM data_source WHERE type='grafana-postgresql-datasource' AND coalesce^(json_extract^(json_data, '$.database'^), ''^) IN ^(''^);
+"%SQLITE%" "%GRAFANA_DB%" < "%DS_SQL%" > "%DS_OUT%" 2>&1
+set DS_NODB=
+for /f "usebackq delims=" %%i in ("%DS_OUT%") do if not defined DS_NODB set DS_NODB=%%i
+del /q "%DS_SQL%" "%DS_OUT%" 2>nul
+if not defined DS_NODB set DS_NODB=unknown
+echo PostgreSQL datasources without a database name: %DS_NODB%
 
 echo.
 echo ==========================================
@@ -276,6 +202,11 @@ set DS_OUT=%USER_DIR%\ds-default.txt
 
 for /f "usebackq delims=" %%i in ("%DS_OUT%") do echo Default datasource: %%i
 del /q "%DS_SQL%" "%DS_OUT%" 2>nul
+
+:: Remapping OAuth users needs PostgreSQL; the grafana.db fixes above do not.
+:: Run it last so a wrong password or an unmatched user list never leaves the
+:: datasources half-migrated.
+call :oauth_remap
 
 :: Report the outcome rather than assuming success. Any OAuth user still
 :: missing an auth_id cannot log in on Grafana 13, so surface the count.
@@ -325,10 +256,118 @@ echo Still missing authid: %OAUTH_MISSING%
 if not "%OAUTH_MISSING%"=="0" (
     echo.
     echo WARNING: %OAUTH_MISSING% of %OAUTH_TOTAL% OAuth users have no auth_id and
-    echo          cannot log in. Those users were not matched in the Postgres
-    echo          "%PGDB%" database -- check that public.user is populated and
-    echo          that grafanadb-update.sql compares names/emails with lower^(^).
+    echo          cannot log in until they are linked again. Those users were
+    echo          not matched in the Postgres "%PGDB%" database -- check the
+    echo          messages above and that public.user holds the 4D users.
     exit /b 1
 )
 
 echo All OAuth users have an auth_id.
+exit /b 0
+
+:oauth_remap
+echo.
+echo ==========================================
+echo Export CSV from grafana.db...
+echo ==========================================
+
+if not exist "%USER_DIR%" (
+    mkdir "%USER_DIR%"
+)
+
+SET USER_CSV=%USER_DIR%\users.csv
+
+:: Write the CSV with sqlite3's .once rather than ">" redirection. sqlite3
+:: already ends lines with CRLF on Windows, and cmd's redirection converts the
+:: LF to CRLF again, producing CR CR LF -- psql's \copy reads the extra CR as an
+:: empty second line and fails with 'missing data for column "name"'.
+(
+    echo .mode csv
+    echo .headers on
+    echo .once "%USER_CSV:\=\\%"
+    echo SELECT u.id AS user_id, u.name, u.email FROM user u JOIN user_auth ua ON u.id = ua.user_id WHERE u.is_disabled = 0 AND ua.auth_module='oauth_generic_oauth';
+) | "%SQLITE%" "%GRAFANA_DB%"
+
+if not exist "%USER_CSV%" (
+    echo ERROR: sqlite3 did not produce %USER_CSV%
+    goto :eof
+)
+
+:: Normalise line endings regardless of how the CSV was produced: collapse any
+:: run of CRs before a LF to a single CRLF, and drop a trailing blank line.
+:: This keeps the handoff to psql working across sqlite3 versions and shells,
+:: rather than depending on .once behaving a particular way.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0normalise-csv.ps1" -Path "%USER_CSV%"
+if errorlevel 1 (
+    echo ERROR: could not normalise line endings in %USER_CSV%
+    goto :eof
+)
+
+set LINE_COUNT=0
+for /f "usebackq delims=" %%A in ("%USER_CSV%") do (
+    set /a LINE_COUNT+=1
+)
+
+if %LINE_COUNT% LEQ 1 (
+    echo No OAuth users in grafana.db, nothing to remap.
+    goto :eof
+)
+set /a OAUTH_EXPORTED=%LINE_COUNT%-1
+echo Exported %OAUTH_EXPORTED% OAuth users to %USER_CSV%
+
+echo.
+echo ==========================================
+echo ImportCSV to postges and export sql with [user]ID ...
+echo ==========================================
+
+SET PSQL=C:\Program Files\PostgreSQL\%PGVERSION%\bin\psql.exe
+if not exist "%PSQL%" (
+    echo ERROR: psql not found at "%PSQL%"
+    echo        Pass the PostgreSQL major version as the 6th argument, e.g.
+    echo        grafanadb-update.bat %%PGPASSWORD%% %%PGUSER%% %%PGPORT%% %%PGDB%% %%PGHOST%% 17
+    goto :eof
+)
+
+SET USER_SQL=%USER_DIR%\updates.sql
+:: -v ON_ERROR_STOP=1 so a failed \copy or query is fatal instead of leaving an
+:: empty updates.sql and carrying on as though there was nothing to do.
+"%PSQL%" --username=%PGUSER% --port=%PGPORT% --file=grafanadb-update.sql --host=%PGHOST% --dbname=%PGDB% -v ON_ERROR_STOP=1 -q -t -A > "%USER_SQL%"
+if errorlevel 1 (
+    echo ERROR: psql failed -- see the messages above.
+    goto :eof
+)
+
+set LINE_COUNT=0
+for /f "usebackq delims=" %%A in ("%USER_SQL%") do (
+    set /a LINE_COUNT+=1
+)
+
+if %LINE_COUNT% LEQ 0 (
+    echo ERROR: psql produced no UPDATE statements in %USER_SQL%.
+    echo.
+    echo        The CSV exported %OAUTH_EXPORTED% Grafana users, but none of them
+    echo        matched a row in the Postgres "%PGDB%" database, so no auth_id
+    echo        can be written and OAuth logins will keep failing. Check:
+    echo.
+    echo          * public.user in "%PGDB%" is populated with the 4D users
+    echo            psql -U %PGUSER% -d %PGDB% -c "SELECT COUNT^(*^) FROM public.user;"
+    echo          * the 4D server that signs users in to Grafana is the one
+    echo            that fills public.user in "%PGDB%". If it is not, no user
+    echo            can be matched here and they have to be linked again on
+    echo            their next OAuth login.
+    goto :eof
+)
+echo Generated %LINE_COUNT% UPDATE statements.
+
+echo.
+echo ==========================================
+echo Update grafana.db with [user]ID ...
+echo ==========================================
+
+"%SQLITE%" "%GRAFANA_DB%" < "%USER_SQL%" > "%LOGDIR%sqlite_update.log" 2>&1
+
+if errorlevel 1 (
+    echo ERROR: SQLite update failed. Check sqlite_update.log
+    goto :eof
+)
+goto :eof

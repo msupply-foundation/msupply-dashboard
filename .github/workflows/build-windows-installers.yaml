@@ -214,6 +214,21 @@ jobs:
             if (Test-Path $src) { Copy-Item $src "release/$name" -Force }
           }
 
+          # data/plugins-bundled/: the native datasources (PostgreSQL, MySQL,
+          # Prometheus, ...) are no longer compiled into public/. Grafana loads
+          # them from this folder (`bundled_plugins` in defaults.ini). Without
+          # it the PostgreSQL datasource only appears if the first start can
+          # download it from grafana.com, and an offline server is left with
+          # no working panels. Replace it outright, like public/.
+          $bundledSrc = Join-Path $root.FullName 'data/plugins-bundled'
+          if (-not (Test-Path (Join-Path $bundledSrc 'grafana-postgresql-datasource'))) {
+            throw "data/plugins-bundled/grafana-postgresql-datasource missing from the archive"
+          }
+          if (Test-Path 'release/data/plugins-bundled') { Remove-Item -Recurse -Force 'release/data/plugins-bundled' }
+          New-Item -ItemType Directory -Force -Path release/data | Out-Null
+          Copy-Item $bundledSrc 'release/data/plugins-bundled' -Recurse
+          Write-Host "replaced release/data/plugins-bundled ($((Get-ChildItem 'release/data/plugins-bundled' -Directory).Count) plugins)"
+
           Write-Host "--- release/bin ---"
           Get-ChildItem release/bin | Select-Object Name, Length | Format-Table
 
