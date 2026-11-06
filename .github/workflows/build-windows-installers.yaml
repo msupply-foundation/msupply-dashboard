@@ -418,6 +418,30 @@ jobs:
           path: installer/setup-factory.log
           if-no-files-found: ignore
 
+      # Install Assistant: a window that runs INSTALL-13.2.md around the setup
+      # (backup, setup, put back the customer files, database update, checks,
+      # rollback). Written to installer\ as dashboard-*.exe, so the sign,
+      # artifact and release steps below include it as they are.
+      - name: Build install assistant
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $src = (Resolve-Path 'installer/install-assistant/dashboard-install-assistant.ps1').Path
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile($src, [ref]$null, [ref]$errors)
+          if ($errors) { $errors | ForEach-Object { Write-Host $_ }; throw "syntax errors in $src" }
+
+          if (-not (Get-Module -ListAvailable -Name ps2exe)) {
+            Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
+            Install-Module -Name ps2exe -Scope CurrentUser -Force
+          }
+          Import-Module ps2exe
+
+          $exe = Join-Path (Resolve-Path 'installer').Path 'dashboard-install-assistant.exe'
+          Invoke-ps2exe -inputFile $src -outputFile $exe -noConsole -STA -requireAdmin `
+            -title 'mSupply Dashboard Install Assistant' -product 'mSupply Dashboard' -company 'mSupply Foundation' -version '1.0.0.0'
+          if (-not (Test-Path $exe)) { throw "ps2exe did not create $exe" }
+
       # ETOKEN storetype = SafeNet USB hardware token plugged into the build
       # box; --storepass avoids the interactive PIN dialog. Requires Java and
       # the SafeNet Authentication Client drivers on the runner.
