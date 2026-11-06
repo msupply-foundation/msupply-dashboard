@@ -151,8 +151,8 @@ Invoke-ps2exe .\dashboard-install-assistant.ps1 .\dashboard-install-assistant.ex
 | MIGRATE 12.3.1 to 13.2.2 (window) | ok: no new errors in the log; login, table and export, region map and world map ok in the browser |
 | REPAIR on 13.2.2 (window and exe) | ok: all fixes `no change`, no new errors |
 | Rollback 13.2.2 to 12.3.1 (window) | ok |
-| MIGRATE 8.5 to 13.2.2 | not tested yet |
-| NEW install | not tested yet |
+| MIGRATE 8.5 to 13.2.2 | in progress |
+| NEW install | in progress |
 
 ## Not covered
 
