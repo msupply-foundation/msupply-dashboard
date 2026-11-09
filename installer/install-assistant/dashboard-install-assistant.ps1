@@ -635,10 +635,143 @@ function Invoke-Detect {
       Log ("grafana.db: OAuth users {0}, without auth id {1}; legacy datasources {2}; datasources without db name {3}; old panel types {4}" -f `
         $c.OAuthUsers, $c.OAuthMissing, $c.LegacyDs, $c.DsNoDb, $c.OldPanels)
     } else { Log 'grafana.db: no sqlite3 yet; it is checked again after the setup.' 'Yellow' }
+    $d.Signout = Get-SignoutState (Get-Content $CustomIni)
+    Invoke-OAuthCheck
   }
   $d.FreeGb = [math]::Round((Get-PSDrive C).Free / 1GB, 1)
   Log "Free space on C: $($d.FreeGb) GB"
   return $d
+}
+
+# =================================================================== OAuth check (read only, no data)
+
+# Port of a URL, or the protocol default. Never prints the host.
+function Get-UrlPort([string]$Url) {
+  if (-not $Url) { return '-' }
+  $m = [regex]::Match($Url.Trim('"', '`'), '^(https?)://[^/:]+(?::(\d+))?')
+  if (-not $m.Success) { return 'bad url' }
+  if ($m.Groups[2].Success) { return $m.Groups[2].Value }
+  return $(if ($m.Groups[1].Value -eq 'https') { '443 (default)' } else { '80 (default)' })
+}
+
+# Masks e-mails, quoted text, numbers and hosts in a log message or address.
+function Hide-LogData([string]$s) {
+  $s = $s -replace '[^\s"=]+@[^\s"]+', '<email>'
+  $s = $s -replace "'[^']*'", "'<x>'"
+  $s = $s -replace '//[^/:"]+', '//<host>'
+  $s = $s -replace '\b\d{2,}\b', '<n>'
+  return $s
+}
+
+# The value Grafana reads (go-ini): # and ; start a comment, unless the
+# value is in backquotes or triple quotes. Double quotes do not protect them.
+function Get-GoIniValue([string]$Raw) {
+  if ($null -eq $Raw) { return $null }
+  $v = $Raw.Trim()
+  if ($v.StartsWith('`') -and $v.IndexOf('`', 1) -gt 0) { return $v.Substring(1, $v.IndexOf('`', 1) - 1) }
+  if ($v.StartsWith('"""') -and $v.IndexOf('"""', 3) -gt 0) { return $v.Substring(3, $v.IndexOf('"""', 3) - 3) }
+  $i = $v.IndexOfAny([char[]]'#;'); if ($i -ge 0) { $v = $v.Substring(0, $i).TrimEnd() }
+  if ($v.Length -ge 2 -and $v.StartsWith('"') -and $v.EndsWith('"')) { $v = $v.Substring(1, $v.Length - 2) }
+  return $v
+}
+
+# Logout address. The mSupply login page (/dashboard-oauth) logs the user
+# back in while its token is kept; only its #/logout route ends the session.
+# The setup writes .../dashboard-oauth/ without it, so logout loops.
+function Get-SignoutState([string[]]$Lines) {
+  $s = [pscustomobject]@{ State = $null; Fix = $null }
+  if ((Get-IniValue $Lines 'auth.generic_oauth' 'enabled') -ne 'true') { $s.State = 'OAuth is off'; return $s }
+  $read = Get-GoIniValue (Get-IniValue $Lines 'auth' 'signout_redirect_url')
+  if ("$read" -match '^https?://[^/"]+/dashboard-oauth/(index\.html)?#/logout$') { $s.State = 'ok'; return $s }
+  $base = $null
+  $m = [regex]::Match("$read", '^"?(https?://[^/"#]+)/dashboard-oauth')
+  if ($m.Success) { $base = $m.Groups[1].Value; $s.State = 'no #/logout (logout logs the user back in)' }
+  elseif (-not $read) {
+    $s.State = 'empty (logout keeps the mSupply session)'
+    $m = [regex]::Match("$(Get-GoIniValue (Get-IniValue $Lines 'auth.generic_oauth' 'auth_url'))", '^(https?://[^/"#]+)/')
+    if ($m.Success) { $base = $m.Groups[1].Value }
+  } else { $s.State = 'other address (not changed)' }
+  if ($base -and $base -notmatch 'localhost|127\.0\.0\.1') { $s.Fix = '`' + $base + '/dashboard-oauth/index.html#/logout`' }
+  return $s
+}
+
+# Where the running Grafana sends a logout. No login needed: /logout without
+# a session still answers with the redirect.
+function Get-LogoutTarget {
+  if (-not (Get-Svc) -or (Get-Svc).Status -ne 'Running') { return $null }
+  try {
+    $req = [Net.HttpWebRequest]::Create((Get-ServerUrl) + '/logout')
+    $req.AllowAutoRedirect = $false
+    $req.Timeout = 15000
+    $resp = $req.GetResponse()
+    try { return "$($resp.Headers['Location'])" } finally { $resp.Close() }
+  } catch { return $null }
+}
+
+function Write-LogoutTarget {
+  $loc = Get-LogoutTarget
+  if (-not $loc) { Log 'Logout goes to: (cannot read, service not running?)' 'Yellow' }
+  elseif ($loc -match '/dashboard-oauth/(index\.html)?#/logout$') { Log 'Logout goes to the mSupply logout page (#/logout).' 'Green' }
+  else { Log ("Logout goes to: {0}" -f (Hide-LogData $loc)) 'Yellow' }
+}
+
+function Invoke-OAuthCheck {
+  Title 'OAUTH (nothing is changed)'
+  if (Test-Path $CustomIni) {
+    $l = @(Get-Content $CustomIni)
+    $s = 'auth.generic_oauth'
+    $v = { param($k) Get-IniValue $l $s $k }
+    if (-not (Get-SectionRange $l $s)) { Log "custom.ini: no [$s] section. OAuth is not set up here." 'Red' }
+    else {
+      $secret = & $v 'client_secret'
+      Log ("enabled = {0}   allow_sign_up = {1}   client_id set: {2}   client_secret: {3}" -f `
+        (& $v 'enabled'), (& $v 'allow_sign_up'), [bool](& $v 'client_id'),
+        $(if (-not $secret) { 'EMPTY' } elseif ($secret -match 'some_secret|changeme') { 'PLACEHOLDER' } else { 'set' }))
+      Log ("login_attribute_path = {0}   name_attribute_path = {1}   email_attribute_path = {2}" -f `
+        (& $v 'login_attribute_path'), (& $v 'name_attribute_path'), (& $v 'email_attribute_path'))
+      Log ("ports: auth_url {0}   token_url {1}   api_url {2}" -f `
+        (Get-UrlPort (& $v 'auth_url')), (Get-UrlPort (& $v 'token_url')), (Get-UrlPort (& $v 'api_url')))
+    }
+    Log ("[server] root_url port {0}   [auth] oauth_allow_insecure_email_lookup = {1}   oauth_auto_login = {2}" -f `
+      (Get-UrlPort (Get-IniValue $l 'server' 'root_url')), (Get-IniValue $l 'auth' 'oauth_allow_insecure_email_lookup'),
+      (Get-IniValue $l 'auth' 'oauth_auto_login'))
+    $so = Get-SignoutState $l
+    Log ("signout_redirect_url: {0}" -f $so.State) $(if ($so.State -eq 'ok' -or $so.State -eq 'OAuth is off') { 'Gray' } else { 'Yellow' })
+    Write-LogoutTarget
+  } else { Log 'custom.ini not found.' 'Red' }
+
+  if ((Find-Sqlite) -and (Test-Path $GrafanaDb)) {
+    $sql = @"
+select count(*) from user where is_service_account = 0;
+select count(*) from user u where is_service_account = 0 and not exists (select 1 from user_auth a where a.user_id = u.id and a.auth_module = 'oauth_generic_oauth');
+select count(*) from user_auth where auth_module = 'oauth_generic_oauth' and coalesce(auth_id, '') = '';
+select count(*) from (select lower(login) from user group by lower(login) having count(*) > 1);
+select count(*) from (select lower(email) from user where coalesce(email, '') <> '' group by lower(email) having count(*) > 1);
+select count(*) from user where is_service_account = 0 and coalesce(email, '') = '';
+select count(*) from user where is_service_account = 0 and instr(login, ' ') > 0;
+select count(*) from user where is_service_account = 0 and is_disabled = 1;
+"@
+    try {
+      $n = @(Invoke-Sqlite $sql | Where-Object { $_ -match '^\d+$' })
+      if ($n.Count -eq 8) {
+        Log ("grafana.db: users {0}; without OAuth link {1}; OAuth links without auth id {2}" -f $n[0], $n[1], $n[2])
+        Log ("grafana.db: logins repeated (any case) {0}; e-mails repeated (any case) {1}; no e-mail {2}; login with space {3}; disabled {4}" -f `
+          $n[3], $n[4], $n[5], $n[6], $n[7])
+      } else { Log 'grafana.db: unexpected answer to the OAuth counts.' 'Yellow' }
+    } catch { Log "grafana.db: cannot read OAuth counts: $($_.Exception.Message)" 'Yellow' }
+  } else { Log 'grafana.db: no sqlite3, OAuth counts skipped.' 'Yellow' }
+
+  # Login errors since the last start: component | message | error, with data masked.
+  $kinds = @(Get-LastBootLines | Where-Object {
+      $_ -match 'level=(error|warn)' -and $_ -match 'logger=(authn|user\.sync|oauth|login|context|social|org\.sync)' } |
+    ForEach-Object {
+      $err = [regex]::Match($_, 'error="([^"]*)"').Groups[1].Value
+      if (-not $err) { $err = [regex]::Match($_, 'err="([^"]*)"').Groups[1].Value }
+      Hide-LogData ('{0} | {1} | {2}' -f [regex]::Match($_, 'logger=(\S+)').Groups[1].Value,
+        [regex]::Match($_, 'msg="([^"]*)"').Groups[1].Value, $err)
+    } | Group-Object | Sort-Object Count -Descending)
+  if ($kinds.Count -eq 0) { Log 'grafana.log: no login errors since the last start. If a login fails, try once, then run this again.' }
+  foreach ($k in $kinds) { Log ("grafana.log x{0}: {1}" -f $k.Count, $k.Name) }
 }
 
 # =================================================================== plan
@@ -688,6 +821,8 @@ function New-Plan($d) {
   Add $migrating 'First start (database migration)' $(if ($migrating) { "grafana.db moves from $($d.From) to $($d.To)" } else { 'no new major version' })
   Add $ex 'Datasources and OAuth logins' 'grafanadb-update.bat runs only if the counts are not zero'
   Add $ex 'OAuth email lookup' 'only if users have no auth id (you decide), or to turn it off'
+  Add ($runSetup -or ($d.Signout -and $d.Signout.Fix)) 'OAuth logout address' $(if ($runSetup) { 'the setup writes it without #/logout; checked after the setup' }
+      elseif ($d.Signout) { $d.Signout.State } else { 'no install yet' })
   Add $true 'Database code (db-init)' $(if ($ex) { 'only check that it did not change' }
       elseif ($d.Pg11) { 'the setup runs it (PostgreSQL 11 found)' }
       else { "the setup cannot run it; this tool runs db-init.sql with PostgreSQL $($d.PgVersion)" })
@@ -923,11 +1058,19 @@ update library_element set model = replace(model, '$o', '$n') where instr(model,
         Fail 'The password has a character that breaks grafanadb-update.bat (& | < > ^ % " or space). Run it by hand (INSTALL-13.2.md step 6).'
       }
       if (Confirm-Step 'Run grafanadb-update.bat (it makes its own grafana.db backup too)') {
+        # The .bat writes to data\temp in its first step but creates the folder
+        # only later. Without it the .bat stops before the OAuth part.
+        $tempDir = Join-Path $AppDir 'data\temp'
+        if (-not (Test-Path $tempDir)) { New-Item -ItemType Directory -Path $tempDir | Out-Null; Log 'Created data\temp (the .bat needs it).' }
         $t0 = Get-Date
         $bat = Invoke-Exe 'cmd.exe' @('/c', ('grafanadb-update.bat {0} {1} {2} {3} {4} {5}' -f $script:Pw, $DbUser, $DbPort, $DbName, $DbHost, $script:Pg.Version)) $ProvDir
         $mlog = Get-ChildItem $ProvDir -Filter 'migration_*.log' | Where-Object { $_.LastWriteTime -ge $t0.AddSeconds(-5) } |
           Sort-Object LastWriteTime -Descending | Select-Object -First 1
-        if ($mlog) { Copy-Item $mlog.FullName $script:Bk }
+        if ($mlog) {
+          Copy-Item $mlog.FullName $script:Bk
+          # The .bat's own ERROR lines are fixed text, no data.
+          Select-String $mlog.FullName -Pattern '^ERROR' | ForEach-Object { Log "grafanadb-update.bat: $($_.Line)" 'Red' }
+        }
         $c = Get-DbCounts
         Log ("After (bat exit {0}): legacy datasources {1}, without db name {2}, OAuth users without auth id {3} of {4}" -f `
           $bat.Code, $c.LegacyDs, $c.DsNoDb, $c.OAuthMissing, $c.OAuthUsers)
@@ -959,6 +1102,21 @@ update library_element set model = replace(model, '$o', '$n') where instr(model,
         Log 'OAuth email lookup OFF.' 'Green'
       } else { $lookup = 'on' }
     } else { Log 'All OAuth users have an auth id. Lookup stays OFF.' 'Green'; Set-StepStatus $script:CurStep 'no change' }
+  }
+
+  if (Enter-Step $p 'OAuth logout address') {
+    $st = Get-SignoutState (Get-Content $CustomIni)
+    if ($st.State -eq 'ok') { Log 'Logout address ends in #/logout.' 'Green'; Set-StepStatus $script:CurStep 'no change' }
+    elseif (-not $st.Fix) { Log "Logout address: $($st.State). Nothing changed." 'Yellow'; Set-StepStatus $script:CurStep 'no change' }
+    else {
+      Log "Logout address: $($st.State)." 'Yellow'
+      Log 'Only .../dashboard-oauth/index.html#/logout ends the mSupply login. It is written between backquotes so the # part is kept.'
+      if (Confirm-Step 'Set the logout address to .../dashboard-oauth/index.html#/logout') {
+        Stop-Dashboard
+        Save-Ini (Set-IniValue (Get-Content $CustomIni) 'auth' 'signout_redirect_url' $st.Fix)
+        Log 'Logout address set.' 'Green'
+      }
+    }
   }
 
   if (Enter-Step $p 'Database code (db-init)') {
@@ -1012,6 +1170,7 @@ update library_element set model = replace(model, '$o', '$n') where instr(model,
     if ($local.Count -gt 0) {
       Log "custom.ini still has localhost in: $($local -join ', '). Set the customer address there (INSTALL-13.2.md, new customer step 3)." 'Yellow'
     }
+    if ((Get-SignoutState (Get-Content $CustomIni)).State -ne 'OAuth is off') { Write-LogoutTarget }
     if ($fresh.Count -eq 0) { Log 'New errors: none.' 'Green' }
     else {
       Log "New errors: $($fresh.Count) line(s). Check these:" 'Red'
