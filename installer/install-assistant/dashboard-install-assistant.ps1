@@ -502,6 +502,17 @@ function Get-Plugins {
   return $list
 }
 
+# Our plugin folders left by an older version next to the new copy of the same
+# id (the setup names new folders by id; old ones were msupply-table etc.).
+# Only these are safe to move without a setup: the new copy stays.
+function Get-OldPluginCopies($plugins) {
+  @($plugins | Where-Object {
+    $pl = $_
+    $pl.Ours -and $pl.Folder -ne $pl.Id -and
+      @($plugins | Where-Object { $_.Id -eq $pl.Id -and $_.Folder -eq $_.Id }).Count -gt 0
+  })
+}
+
 # Datasources in public\app\plugins\datasource left by an older version (the
 # setup copies over and never deletes): the real one is in plugins-bundled, or
 # its program is missing (for example parca, gone in 13).
@@ -818,7 +829,9 @@ function New-Plan($d) {
   $migrating = $ex -and $d.From -and $d.To -and $d.From.Major -lt $d.To.Major
 
   Add $ex 'Backup' 'whole install folder, service settings and database code (no rows)'
-  Add ($runSetup -and $oldOurs -gt 0) 'Old mSupply plugins out' $(if ($runSetup) { "$oldOurs folder(s) of our plugins; the setup puts the new ones" } else { 'no setup in this run' })
+  $oldLeft = @(Get-OldPluginCopies $d.Plugins).Count
+  Add (($runSetup -and $oldOurs -gt 0) -or (-not $runSetup -and $oldLeft -gt 0)) 'Old mSupply plugins out' $(if ($runSetup) { "$oldOurs folder(s) of our plugins; the setup puts the new ones" }
+      elseif ($oldLeft -gt 0) { "$oldLeft old folder(s) next to the new copy of the same plugin" } else { 'no old folders next to the new ones' })
   Add ($obsFree.Count -gt 0) 'Obsolete plugins out' $(if ($d.Obsolete.Count -eq 0) { 'none found' }
       elseif ($obsUsed.Count -gt 0) { 'kept, still in use: ' + (($obsUsed | ForEach-Object { $_.Plugin.Id }) -join ', ') }
       else { (($obsFree | ForEach-Object { $_.Plugin.Id }) -join ', ') + ': not in use' })
@@ -913,7 +926,8 @@ function Invoke-Run($d, $p) {
     if (Confirm-Step 'Move the old folders of our plugins to the backup folder') {
       $dest = Join-Path $script:Bk 'plugins_old'
       New-Item -ItemType Directory -Path $dest -Force | Out-Null
-      foreach ($pl in @($d.Plugins | Where-Object { $_.Ours })) {
+      $toMove = $(if ($p.Scenario -eq 'REPAIR') { @(Get-OldPluginCopies $d.Plugins) } else { @($d.Plugins | Where-Object { $_.Ours }) })
+      foreach ($pl in $toMove) {
         Move-Item $pl.Path (Join-Path $dest $pl.Folder)
         Log "Moved out: $($pl.Folder) ($($pl.Id))"
       }
@@ -1298,8 +1312,8 @@ function Show-Gui {
   $lblNext.Font = $bold; $lblNext.ForeColor = [System.Drawing.Color]::SteelBlue
   $btnStart = New-Ctl Button 12 708 100 28 'Start' $BL
   $btnRun = New-Ctl Button 120 708 100 28 'Run step' $BL
-  $btnSkip = New-Ctl Button 228 708 100 28 'Skip step' $BL
-  $btnStop = New-Ctl Button 336 708 100 28 'Stop' $BL
+  $btnSkip = New-Ctl Button 244 708 100 28 'Skip step' $BL
+  $btnStop = New-Ctl Button 352 708 100 28 'Stop' $BL
   $btnRollback = New-Ctl Button 542 708 110 28 'Rollback...' $BR
   $btnFolder = New-Ctl Button 660 708 132 28 'Open backup folder' $BR
   $btnClose = New-Ctl Button 800 708 90 28 'Close' $BR
@@ -1376,7 +1390,8 @@ function Show-Gui {
   })
 
   $btnRun.Add_Click({ $script:Choice = 'R' })
-  $btnSkip.Add_Click({ $script:Choice = 'S' })
+  # Every step that asks is one the plan marked DO, so a skip is confirmed.
+  $btnSkip.Add_Click({ if (Confirm-Yes ("Skip this step?`r`n" + $lblNext.Text)) { $script:Choice = 'S' } })
   $btnStop.Add_Click({
     if (Confirm-Yes 'Stop after the current action? The backup stays and you can use Rollback.') {
       $script:Choice = 'Q'; $script:StopAsked = $true
