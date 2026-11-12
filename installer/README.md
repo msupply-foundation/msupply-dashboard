@@ -1,6 +1,9 @@
 > **Installing or upgrading a customer server?** See
 > **[INSTALL-13.2.md](INSTALL-13.2.md)**. This file is about *building* the
 > installer, not running it.
+>
+> **[install-assistant/](install-assistant/README.md)** runs the INSTALL-13.2.md
+> steps around the setup, with a plan, checks and rollback.
 
 ## Building Installer
 
