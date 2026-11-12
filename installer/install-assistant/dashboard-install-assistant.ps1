@@ -66,6 +66,17 @@ $UnsignedIds = @(
   'msupplyfoundation-msupply-regionmap',
   'm-supply-foundation-msupply-worldmap'
 )
+# Plugins that can still be on a server but are not in this build. Their errors
+# after the upgrade are expected and shown apart from new errors.
+$NotInBuildIds = @(
+  'msupply-horizontal-bar',
+  'msupplyfoundation-datasource'   # report scheduler
+)
+# Datasources in public\app\plugins\datasource whose program is inside
+# grafana.exe in 13. No exe in their folder is normal, not a sign of an old copy.
+$CoreInExeIds = @(
+  'grafana-azure-monitor-datasource', 'cloudwatch', 'grafana-testdata-datasource', 'graphite'
+)
 # Old panel type -> new panel type (same options, only the name changed).
 $PanelTypeMap = [ordered]@{
   'm-supply-foundation-msupply-regionmap' = 'msupplyfoundation-msupply-regionmap'
@@ -508,7 +519,7 @@ function Get-StaleCoreDatasources {
         $j = Get-Content $pj -Raw | ConvertFrom-Json
         $id = $j.id
         if ($id -and $bundled.ContainsKey($id)) { $why = 'the real one is in data\plugins-bundled' }
-        elseif ($j.backend -and $j.executable) {
+        elseif ($j.backend -and $j.executable -and ($CoreInExeIds -notcontains $id)) {
           $exe = Split-Path $j.executable -Leaf
           if (-not (Get-ChildItem $_.FullName -Recurse -Filter "$exe*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1)) {
             $why = 'its program is missing: not part of this version'
@@ -610,7 +621,7 @@ function Invoke-Detect {
   if ($d.Existing) {
     $d.Plugins = @(Get-Plugins)
     foreach ($pl in $d.Plugins) {
-      $tag = @(); if ($pl.Ours) { $tag += 'ours' }; if ($pl.Obsolete) { $tag += 'obsolete' }; if ($pl.Angular) { $tag += 'maybe Angular' }
+      $tag = @(); if ($pl.Ours) { $tag += 'ours' }; if ($pl.Obsolete) { $tag += 'obsolete' }; if ($NotInBuildIds -contains $pl.Id) { $tag += 'not in this build' }; if ($pl.Angular) { $tag += 'maybe Angular' }
       Log ("Plugin: {0}  {1} {2}  [{3}]" -f $pl.Id, $pl.Type, $pl.Version, ($tag -join ', '))
     }
     foreach ($pl in @($d.Plugins | Where-Object { $_.Obsolete })) {
@@ -815,7 +826,7 @@ function New-Plan($d) {
   Add $runSetup 'Official setup' $(if ($runSetup) { "install $($d.To)" } else { 'same version: nothing to install' })
   Add ($runSetup -and $ex) 'Put back grafana.db and custom.ini' $(if ($runSetup) { 'the setup overwrites them with empty ones' } else { 'no setup in this run' })
   Add ($ex -and ($runSetup -or $d.IniGaps.Count -gt 0)) 'Add missing custom.ini keys' "$($d.IniGaps.Count) missing now"
-  Add ($ex -and ($runSetup -or $staleN -gt 0)) 'Old datasource copies out' $(if ($runSetup) { 'checked after the setup' } else { "$staleN found" })
+  Add ($ex -and ($runSetup -or $staleN -gt 0)) 'Old datasource copies out' $(if ($runSetup) { 'only if "Old Grafana files out" was skipped' } else { "$staleN found" })
   Add $ex 'Missing provisioning folders' 'conf\provisioning\plugins and alerting; created empty if missing'
   Add ($migrating -and (-not $known -or $c.OldPanels -gt 0)) 'Old panel types -> new' $(if (-not $migrating) { 'only before the first start of a new version' } elseif ($known) { "$($c.OldPanels) dashboard(s)" } else { 'counted after the setup' })
   Add $migrating 'First start (database migration)' $(if ($migrating) { "grafana.db moves from $($d.From) to $($d.To)" } else { 'no new major version' })
@@ -868,6 +879,7 @@ function Show-Plan($p) {
 
 function Invoke-Run($d, $p) {
   $ex = $d.Existing
+  $script:PublicReplaced = $false
   $script:Bk = Join-Path $BackupRoot (Get-Date -Format 'yyyyMMdd_HHmmss')
   New-Item -ItemType Directory -Path $script:Bk -Force | Out-Null
   $script:TmpDir = $script:Bk
@@ -928,6 +940,7 @@ function Invoke-Run($d, $p) {
         $src = Join-Path $AppDir $rel
         if (Test-Path $src) { Move-Item $src (Join-Path $dest ($rel -replace '\\', '_')); Log "Moved out: $rel" }
       }
+      $script:PublicReplaced = $true
     }
   }
 
@@ -992,8 +1005,10 @@ function Invoke-Run($d, $p) {
   }
 
   if (Enter-Step $p 'Old datasource copies out') {
-    $stale = @(Get-StaleCoreDatasources)
-    if ($stale.Count -eq 0) { Log 'None: public has only the datasources of this version.' 'Green'; Set-StepStatus $script:CurStep 'no change' }
+    # After "Old Grafana files out" everything in public comes from the setup.
+    $stale = $(if ($script:PublicReplaced) { @() } else { @(Get-StaleCoreDatasources) })
+    if ($script:PublicReplaced) { Log 'public came new from the setup in this run: no old copies possible.' 'Green'; Set-StepStatus $script:CurStep 'no change' }
+    elseif ($stale.Count -eq 0) { Log 'None: public has only the datasources of this version.' 'Green'; Set-StepStatus $script:CurStep 'no change' }
     else {
       $stale | ForEach-Object { Log "  old copy: $($_.Folder) ($($_.Id)); $($_.Why)" }
       if (Confirm-Step "Move $($stale.Count) old copy(ies) to the backup folder") {
@@ -1153,7 +1168,14 @@ update library_element set model = replace(model, '$o', '$n') where instr(model,
       $ok = @($new | Where-Object { $_ -match 'Plugin registered' -and $_ -match [regex]::Escape($id) }).Count
       if ($ok -gt 0) { Log "Plugin loaded: $id" 'Green' } else { Log "Plugin NOT loaded: $id" 'Red'; Set-StepStatus $script:CurStep 'failed' }
     }
-    $kinds = @(Get-ErrorKinds $new)
+    $allKinds = @(Get-ErrorKinds $new)
+    # Errors of plugins that are not in this build are expected: listed apart.
+    $nibRe = ($NotInBuildIds | ForEach-Object { [regex]::Escape($_) }) -join '|'
+    $nibHit = @($NotInBuildIds | Where-Object { $nid = $_; @($allKinds | Where-Object { $_ -match [regex]::Escape($nid) }).Count -gt 0 })
+    $kinds = @($allKinds | Where-Object { $_ -notmatch $nibRe })
+    if ($nibHit.Count -gt 0) {
+      Log ("Not in this build, errors expected: {0}. Their panels or schedules do not work in this version." -f ($nibHit -join ', ')) 'Yellow'
+    }
     $prev = @($d.ErrBefore)
     $known = @($kinds | Where-Object { $prev -contains $_ })
     $fresh = @($kinds | Where-Object { $prev -notcontains $_ })
@@ -1184,6 +1206,7 @@ update library_element set model = replace(model, '$o', '$n') where instr(model,
   Log ("Scenario: {0}. Version: {1}. OAuth email lookup: {2}." -f $p.Scenario, $(if ($h) { $h.version } else { '?' }), $lookup) 'Green'
   Log "Backup and logs: $($script:Bk)"
   Log 'Now test in the browser: login with a real mSupply user, a table (and its export), a region map, the world map.'
+  Log 'If a panel shows a plugin error, clear the browser cache and open the page again.'
   if ($ex) { Log 'To go back: Rollback, and choose this backup folder.' }
 }
 
