@@ -1,0 +1,94 @@
+#!/bin/bash
+# mSupply Dashboard tools inside the image. From the install folder:
+#   docker compose run --rm dashboard msupply init-db             create the tables in an EMPTY database
+#   docker compose run --rm dashboard msupply update-db           bring an EXISTING database up to this version
+#   docker compose exec dashboard msupply check                   check a running installation
+#   docker compose run --rm dashboard msupply update-grafanadb    fix a client's grafana.db (Grafana stopped)
+#   docker compose exec dashboard msupply import-dashboards --folder-uid <uid> [--overwrite] [--dry-run]
+#                                                                 import the JSON files in ./import
+#   docker compose run --rm dashboard msupply version
+set -euo pipefail
+LIB=/usr/share/msupply/lib
+ROLE_ERR='must be able to SET ROLE|must be member of role'
+
+fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+need_pg() {
+  for v in PG_HOST PG_PORT PG_USER PG_PASSWORD PG_DATABASE; do
+    [ -n "${!v:-}" ] || fail "$v is empty in .env."
+  done
+}
+pg() { PGPASSWORD="$PG_PASSWORD" PGCONNECT_TIMEOUT=10 psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" -d "$PG_DATABASE" -X "$@"; }
+
+cmd="${1:-help}"; shift || true
+case "$cmd" in
+  init-db)
+    need_pg
+    tables=$(pg -q -t -A -c "select count(*) from information_schema.tables where table_schema = 'public'" 2>&1) \
+      || fail "Cannot connect to $PG_HOST:$PG_PORT/$PG_DATABASE as $PG_USER: ${tables##*FATAL:}"
+    [ "$tables" = "0" ] || fail "The database already has $tables tables. init-db is only for an empty database; nothing was changed."
+    echo "connected to $PG_DATABASE; empty. Creating the dashboard tables..."
+    err=$(mktemp)
+    pg -q -f /usr/share/msupply/db/db-init.sql >/dev/null 2>"$err" || true
+    total=$(grep -c 'ERROR' "$err" || true)
+    # Ownership changes to "postgres" fail when the user is not a superuser. PostgreSQL 16+ says
+    # "must be able to SET ROLE", older versions "must be member of role".
+    role=$(grep -c -E "$ROLE_ERR" "$err" || true)
+    other=$((total - role))
+    tables=$(pg -q -t -A -c "select count(*) from information_schema.tables where table_schema = 'public'")
+    post=$(pg -q -t -A -c "select count(*) from pg_proc where proname = 'post_export'")
+    echo "tables: $tables, post_export(): $([ "$post" != 0 ] && echo present || echo MISSING)"
+    echo "errors: $total ($role ownership changes to \"postgres\": expected when the user is not a superuser)"
+    if [ "$other" -gt 0 ]; then
+      echo "other errors:"; grep 'ERROR' "$err" | grep -v -E "$ROLE_ERR" | head -20
+      rm -f "$err"; exit 1
+    fi
+    rm -f "$err"
+    [ "$post" != 0 ] || fail "post_export() was not created."
+    echo "Done. Point the mSupply export at this database now."
+    ;;
+  update-db)
+    # Brings an existing dashboard database up to this version: db-init.sql creates what is missing
+    # (tables, procedures) and replaces the procedures and views with the current ones. It has no DROP,
+    # DELETE or TRUNCATE outside procedures, so data is not touched. "already exists" errors are expected.
+    need_pg
+    tables=$(pg -q -t -A -c "select count(*) from information_schema.tables where table_schema = 'public'" 2>&1) \
+      || fail "Cannot connect to $PG_HOST:$PG_PORT/$PG_DATABASE as $PG_USER: ${tables##*FATAL:}"
+    [ "$tables" != "0" ] || fail "The database is empty. Use init-db for an empty database."
+    echo "connected to $PG_DATABASE ($tables tables). Updating the dashboard tables and procedures..."
+    err=$(mktemp)
+    pg -q -f /usr/share/msupply/db/db-init.sql >/dev/null 2>"$err" || true
+    total=$(grep -c 'ERROR' "$err" || true)
+    other=$(grep 'ERROR' "$err" | grep -v -c -E "already exists|$ROLE_ERR" || true)
+    echo "errors: $total (expected kinds only: 'already exists' and ownership changes to \"postgres\")"
+    if [ "$other" -gt 0 ]; then
+      echo "other errors:"; grep 'ERROR' "$err" | grep -v -E "already exists|$ROLE_ERR" | head -20
+      rm -f "$err"; exit 1
+    fi
+    rm -f "$err"
+    echo "rebuilding the dashboard data (post_export)..."
+    start=$(date +%s)
+    out=$(pg -q -c "call post_export()" 2>&1) || fail "post_export failed: $out"
+    echo "done in $(( $(date +%s) - start )) s. The database is up to date."
+    ;;
+  check)
+    exec python3 "$LIB/check.py" "$@" ;;
+  update-grafanadb)
+    need_pg
+    exec python3 "$LIB/grafanadb_update.py" "$@" ;;
+  import-dashboards)
+    shopt -s nullglob
+    files=(/import/*.json)
+    [ ${#files[@]} -gt 0 ] || fail "No .json files in ./import (mounted at /import)."
+    exec python3 "$LIB/import_dashboards.py" --report /var/lib/grafana/import-report.json "$@" "${files[@]}" ;;
+  version)
+    echo "mSupply Dashboard image: $(cat /usr/share/msupply/SOURCE)"
+    grafana server -v 2>/dev/null | head -1 || true
+    for p in /usr/share/msupply/plugins/*/plugin.json; do
+      python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['id'], d['info']['version'])" "$p"
+    done ;;
+  help|-h|--help)
+    # The comment block at the top of this file, without the leading "# ".
+    awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0" ;;
+  *)
+    fail "Unknown command: $cmd (run: msupply help)" ;;
+esac
